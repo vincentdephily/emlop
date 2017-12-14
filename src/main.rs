@@ -43,8 +43,9 @@ fn pretty_duration(secs: i64) -> String {
     let m = secs % 3600 / 60;
     let s = secs % 60;
     if h > 0      { format!("{:02}:{:02}:{:02}", h, m, s) }
-    else if m > 0 { format!(   "   {:02}:{:02}", m, s) }
-    else          { format!(      "      {:02}", s) }
+    else if m > 0 { format!(      "{:02}:{:02}", m, s) }
+    else          { format!(            "{:02}", s) }
+}
 }
 
 fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
@@ -57,8 +58,8 @@ fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
             },
             Event::Stop{ts, ebuild, version, iter} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
-                    Some(start_ts) => println!("{}\t{}\t{}-{}",       Local.timestamp(ts, 0), pretty_duration(ts - start_ts), ebuild, version),
-                    None =>           println!("{}\t00:00:00\t{}-{}", Local.timestamp(ts, 0),                                 ebuild, version),
+                    Some(prevts) => println!("{} {:>9} {}-{}",     Local.timestamp(ts, 0), pretty_duration(ts - prevts), ebuild, version),
+                    None =>         println!("{}  00:00:00 {}-{}", Local.timestamp(ts, 0), ebuild, version),
                 }
             },
         }
