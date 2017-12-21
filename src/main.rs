@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::io;
 use std::str::FromStr;
 
-use parser::Event;
+use parser::*;
 
 fn main() {
     let arg_limit = Arg::with_name("limit")
@@ -47,7 +47,14 @@ fn main() {
         ("list",    Some(sub_args)) => cmd_list(args.value_of("logfile").unwrap(), sub_args),
         ("summary", Some(sub_args)) => cmd_summary(args.value_of("logfile").unwrap(), sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
-    };
+    }.unwrap();
+}
+
+fn is_posint(v: String) -> Result<(), String> {
+    match u32::from_str(&v) {
+        Ok(id) if id > 0 => Ok(()),
+        _ => Err("Must be an positive integer.".into()),
+    }
 }
 
 fn pretty_duration(secs: i64) -> String {
@@ -59,13 +66,9 @@ fn pretty_duration(secs: i64) -> String {
     else          { format!(            "{:02}", s) }
 }
 
-fn is_posint(v: String) -> Result<(), String> {
-    match u32::from_str(&v) {
-        Ok(id) if id > 0 => Ok(()),
-        _ => Err("Must be an positive integer.".into()),
-    }
-}
-
+/// Straightforward display of merge events
+///
+/// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
     let parser = parser::Parser::new(filename, args.value_of("package"));
     let mut started: HashMap<(String,String,String), i64> = HashMap::new();
@@ -85,6 +88,10 @@ fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
     Ok(())
 }
 
+/// Summary display of merge events
+///
+/// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
+/// Then we compute the stats per ebuild, and print that.
 fn cmd_summary(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
     let parser = parser::Parser::new(filename, args.value_of("package"));
     let lim = value_t!(args, "limit", usize).unwrap();
