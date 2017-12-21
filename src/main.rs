@@ -41,11 +41,15 @@ fn main() {
                     .about("Show merge stats summary")
                     .arg(&arg_pkg)
                     .arg(&arg_limit))
+        .subcommand(SubCommand::with_name("predict")
+                    .about("Predict merge time for packages listed by 'emerge -p'")
+                    .arg(&arg_limit))
         .get_matches();
 
     match args.subcommand() {
         ("list",    Some(sub_args)) => cmd_list(args.value_of("logfile").unwrap(), sub_args),
         ("summary", Some(sub_args)) => cmd_summary(args.value_of("logfile").unwrap(), sub_args),
+        ("predict", Some(sub_args)) => cmd_predict(args.value_of("logfile").unwrap(), sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
     }.unwrap();
 }
@@ -70,14 +74,15 @@ fn pretty_duration(secs: i64) -> String {
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
-    let parser = parser::Parser::new(filename, args.value_of("package"));
+    let hist = HistParser::new(filename, args.value_of("package"));
     let mut started: HashMap<(String,String,String), i64> = HashMap::new();
-    for event in parser {
+    for event in hist {
         match event {
-            Event::Start{ts, ebuild, version, iter} => {
+            HistEvent::Start{ts, ebuild, version, iter} => {
+                // This'll overwrite any previous entry, if a build started but never finished
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            Event::Stop{ts, ebuild, version, iter} => {
+            HistEvent::Stop{ts, ebuild, version, iter} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(prevts) => println!("{} {:>9} {}-{}",     Local.timestamp(ts, 0), pretty_duration(ts - prevts), ebuild, version),
                     None =>         println!("{}  00:00:00 {}-{}", Local.timestamp(ts, 0), ebuild, version),
@@ -93,17 +98,17 @@ fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 fn cmd_summary(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
-    let parser = parser::Parser::new(filename, args.value_of("package"));
+    let parser = HistParser::new(filename, args.value_of("package"));
     let lim = value_t!(args, "limit", usize).unwrap();
     let mut started: HashMap<(String,String,String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     let mut maxlen = 0;
     for event in parser {
         match event {
-            Event::Start{ts, ebuild, version, iter} => {
+            HistEvent::Start{ts, ebuild, version, iter} => {
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            Event::Stop{ts, ebuild, version, iter} => {
+            HistEvent::Stop{ts, ebuild, version, iter} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(start_ts) => {
                         maxlen = maxlen.max(ebuild.len());
@@ -123,5 +128,52 @@ fn cmd_summary(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
             });
         println!("{:width$} {:>9}/{:<4} {:>8}", pkg, pretty_duration(tottime), totcount, pretty_duration(predtime/predcount), width=maxlen);
     }
+    Ok(())
+}
+
+/// Predict future merge time
+///
+/// Very similar to cmd_summary except we want total build time for a list of ebuilds parsed from stdin.
+fn cmd_predict(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
+    let hist = HistParser::new(filename, None);
+    let pretend = PretendParser::new();
+    let lim = value_t!(args, "limit", usize).unwrap();
+    let mut started: HashMap<(String,String,String), i64> = HashMap::new();
+    let mut times: HashMap<String, Vec<i64>> = HashMap::new();
+    let mut maxlen = 0;
+    for event in hist {
+        match event {
+            HistEvent::Start{ts, ebuild, version, iter} => {
+                started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
+            },
+            HistEvent::Stop{ts, ebuild, version, iter} => {
+                match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
+                    Some(start_ts) => {
+                        maxlen = maxlen.max(ebuild.len());
+                        let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
+                        timevec.insert(0, ts-start_ts);
+                    },
+                    None => (),
+                }
+            }
+        }
+    }
+    let mut tottime = 0;
+    let mut totcount = 0;
+    for PretendEvent{ebuild, version} in pretend {
+        if let Some(tv) = times.get(&ebuild) {
+            let (predtime,predcount,_) = tv.iter()
+                .fold((0,0,0), |(pt,pc,tc), &i| {
+                    if tc >= lim {(pt,  pc,  tc+1)}
+                    else         {(pt+i,pc+1,tc+1)}
+                });
+            tottime += predtime/predcount;
+            totcount += 1;
+            println!("{:width$} {:>9}", ebuild, pretty_duration(predtime/predcount), width=maxlen);
+        } else {
+            println!("{:width$}", ebuild, width=maxlen);
+        }
+    }
+    println!("{:width$} {:>9}/{}", "Total:", pretty_duration(tottime), totcount, width=maxlen);
     Ok(())
 }
