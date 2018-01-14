@@ -1,15 +1,13 @@
 [package]
+authors = ["Vincent de Phily <vincent.dephily@mobile-devices.fr>"]
 name = "emlop"
 version = "0.1.0"
-authors = ["Vincent de Phily <vincent.dephily@mobile-devices.fr>"]
 
 [dependencies]
-clap = "~2.27"
 chrono = "~0.4"
+clap = "~2.27"
 regex = "~0.2"
-
 [profile.release]
 debug = false
-lto = true
 debug-assertions = false
-
+lto = true
