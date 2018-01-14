@@ -61,13 +61,17 @@ fn is_posint(v: String) -> Result<(), String> {
     }
 }
 
-fn pretty_duration(secs: i64) -> String {
+pub fn fmt_duration(secs: i64) -> String {
     let h = secs / 3600;
     let m = secs % 3600 / 60;
     let s = secs % 60;
     if h > 0      { format!("{:02}:{:02}:{:02}", h, m, s) }
     else if m > 0 { format!(      "{:02}:{:02}", m, s) }
     else          { format!(            "{:02}", s) }
+}
+
+pub fn fmt_time(ts: i64) -> chrono::DateTime<Local> {
+    Local.timestamp(ts, 0)
 }
 
 /// Straightforward display of merge events
@@ -84,8 +88,8 @@ fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
             },
             HistEvent::Stop{ts, ebuild, version, iter} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
-                    Some(prevts) => println!("{} {:>9} {}-{}",     Local.timestamp(ts, 0), pretty_duration(ts - prevts), ebuild, version),
-                    None =>         println!("{}  00:00:00 {}-{}", Local.timestamp(ts, 0), ebuild, version),
+                    Some(prevts) => println!("{} {:>9} {}-{}",     fmt_time(ts), fmt_duration(ts - prevts), ebuild, version),
+                    None =>         println!("{}  00:00:00 {}-{}", fmt_time(ts), ebuild, version),
                 }
             },
         }
@@ -126,7 +130,7 @@ fn cmd_summary(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
                 if tc >= lim {(pt,  pc,  tt+i,tc+1)}
                 else         {(pt+i,pc+1,tt+i,tc+1)}
             });
-        println!("{:width$} {:>9}/{:<4} {:>8}", pkg, pretty_duration(tottime), totcount, pretty_duration(predtime/predcount), width=maxlen);
+        println!("{:width$} {:>9}/{:<4} {:>8}", pkg, fmt_duration(tottime), totcount, fmt_duration(predtime/predcount), width=maxlen);
     }
     Ok(())
 }
