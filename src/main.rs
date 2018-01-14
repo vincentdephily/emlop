@@ -4,14 +4,17 @@ extern crate chrono;
 extern crate regex;
 
 mod parser;
+mod proces;
 
 use chrono::{Local, TimeZone};
 use clap::{AppSettings, Arg, ArgMatches, SubCommand};
 use std::collections::HashMap;
 use std::io;
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use parser::*;
+use proces::*;
 
 fn main() {
     let arg_limit = Arg::with_name("limit")
@@ -72,6 +75,10 @@ pub fn fmt_duration(secs: i64) -> String {
 
 pub fn fmt_time(ts: i64) -> chrono::DateTime<Local> {
     Local.timestamp(ts, 0)
+}
+
+pub fn epoch(st: SystemTime) -> i64 {
+    st.duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
 /// Straightforward display of merge events
@@ -139,21 +146,23 @@ fn cmd_summary(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds parsed from stdin.
 fn cmd_predict(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
+    let now = epoch(SystemTime::now());
     let hist = HistParser::new(filename, None);
     let pretend = PretendParser::new();
     let lim = value_t!(args, "limit", usize).unwrap();
-    let mut started: HashMap<(String,String,String), i64> = HashMap::new();
+    let mut started: HashMap<(String,String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     let mut maxlen = 0;
     for event in hist {
         match event {
-            HistEvent::Start{ts, ebuild, version, iter} => {
-                started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
+            // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
+            HistEvent::Start{ts, ebuild, version, ..} => {
+                started.insert((ebuild.clone(), version.clone()), ts);
             },
-            HistEvent::Stop{ts, ebuild, version, iter} => {
-                match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
+            HistEvent::Stop{ts, ebuild, version, ..} => {
+                match started.remove(&(ebuild.clone(), version.clone())) {
                     Some(start_ts) => {
-                        maxlen = maxlen.max(ebuild.len());
+                        maxlen = maxlen.max(ebuild.len());//FIXME compute maxlen for displayed packages only
                         let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
                         timevec.insert(0, ts-start_ts);
                     },
@@ -162,8 +171,11 @@ fn cmd_predict(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
             }
         }
     }
+    let cms = current_merge_start();
     let mut tottime = 0;
     let mut totcount = 0;
+    let mut totunknown = 0;
+    let mut totelapsed = 0;
     for PretendEvent{ebuild, version} in pretend {
         if let Some(tv) = times.get(&ebuild) {
             let (predtime,predcount,_) = tv.iter()
@@ -173,11 +185,22 @@ fn cmd_predict(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
                 });
             tottime += predtime/predcount;
             totcount += 1;
-            println!("{:width$} {:>9}", ebuild, pretty_duration(predtime/predcount), width=maxlen);
+            match started.remove(&(ebuild.clone(), version.clone())) {
+                Some(start_ts) if start_ts > cms => {
+                    // There's an emerge process running since before this unfinished merge started,
+                    // so a good guess is that this merge is currently running. This can lead to
+                    // false-positives, but is IMHO no worse than genlop's heuristics.
+                    totelapsed += now - start_ts;
+                    println!("{:width$} {:>9} - {}", ebuild, fmt_duration(predtime/predcount), fmt_duration(now-start_ts), width=maxlen);
+                },
+                _ =>
+                    println!("{:width$} {:>9}", ebuild, fmt_duration(predtime/predcount), width=maxlen),
+                }
         } else {
+            totunknown += 1;
             println!("{:width$}", ebuild, width=maxlen);
         }
     }
-    println!("{:width$} {:>9}/{}", "Total:", pretty_duration(tottime), totcount, width=maxlen);
+    println!("Estimate for {} ebuilds ({} unknown, {} elapsed)   {}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(tottime-totelapsed));
     Ok(())
 }
