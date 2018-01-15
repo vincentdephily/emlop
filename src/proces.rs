@@ -9,7 +9,6 @@
 use std::fs;
 use std::io;
 use std::io::prelude::*;
-use std::str::FromStr;
 
 use ::*;
 
@@ -56,7 +55,7 @@ fn get_all_info() -> Result<Vec<Info>, io::Error> {
 /// Print a message for each running emerge process and return the start time of the oldest emerge process.
 pub fn current_merge_start() -> i64 {
     let info = get_all_info().unwrap();
-    let now = epoch(SystemTime::now());
+    let now = epoch_now();
     let mut first_merge = std::i64::MAX;
     for i in info {
         if i.comm == "emerge" { //FIXME: test this earlyer
