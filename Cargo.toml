@@ -5,9 +5,9 @@ version = "0.1.0"
 
 [dependencies]
 chrono = "~0.4"
-clap = "~2.27"
+clap = "~2.29"
 regex = "~0.2"
-sysconf = "0.3.1"
+sysconf = "~0.3"
 [profile.release]
 debug = false
 debug-assertions = false
