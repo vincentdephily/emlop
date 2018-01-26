@@ -2,6 +2,7 @@
 extern crate clap;
 extern crate chrono;
 extern crate regex;
+extern crate sysconf;
 
 mod commands;
 mod parser;
