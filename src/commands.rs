@@ -14,11 +14,11 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
     let mut started: HashMap<(String,String,String), i64> = HashMap::new();
     for event in hist {
         match event {
-            HistEvent::Start{ts, ebuild, version, iter} => {
+            HistEvent::Start{ts, ebuild, version, iter, ..} => {
                 // This'll overwrite any previous entry, if a build started but never finished
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            HistEvent::Stop{ts, ebuild, version, iter} => {
+            HistEvent::Stop{ts, ebuild, version, iter, ..} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(prevts) => println!("{} {:>9} {}-{}",     fmt_time(ts), fmt_duration(ts - prevts), ebuild, version),
                     None =>         println!("{}  00:00:00 {}-{}", fmt_time(ts), ebuild, version),
@@ -41,10 +41,10 @@ pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
     let mut maxlen = 0;
     for event in parser {
         match event {
-            HistEvent::Start{ts, ebuild, version, iter} => {
+            HistEvent::Start{ts, ebuild, version, iter, ..} => {
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            HistEvent::Stop{ts, ebuild, version, iter} => {
+            HistEvent::Stop{ts, ebuild, version, iter, ..} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(start_ts) => {
                         maxlen = maxlen.max(ebuild.len());

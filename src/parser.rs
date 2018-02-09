@@ -9,9 +9,9 @@ use std::io::{BufRead, BufReader, Lines, stdin, Stdin};
 /// Represents one emerge event parsed from an emerge.log file.
 pub enum HistEvent {
     /// Emerge started (might never complete)
-    Start{ts: i64, ebuild: String, version: String, iter: String},
+    Start{ts: i64, ebuild: String, version: String, iter: String, line: String},
     /// Emerge completed
-    Stop{ts: i64, ebuild: String, version: String, iter: String},
+    Stop{ts: i64, ebuild: String, version: String, iter: String, line: String},
 }
 /// Represents one emerge-pretend parsed from an `emerge -p` output.
 pub struct PretendEvent {
@@ -63,7 +63,8 @@ impl Iterator for HistParser {
                             return Some(HistEvent::Start{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
                                                          ebuild: eb.to_string(),
                                                          iter: c.get(2).unwrap().as_str().to_string(),
-                                                         version: c.get(4).unwrap().as_str().to_string()})
+                                                         version: c.get(4).unwrap().as_str().to_string(),
+                                                         line: line.to_string()})
                         }
                     };
                     if let Some(c) = self.re_stop.captures(line) {
@@ -72,7 +73,8 @@ impl Iterator for HistParser {
                             return Some(HistEvent::Stop{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
                                                         ebuild: eb.to_string(),
                                                         iter: c.get(2).unwrap().as_str().to_string(),
-                                                        version: c.get(4).unwrap().as_str().to_string()})
+                                                        version: c.get(4).unwrap().as_str().to_string(),
+                                                        line: line.to_string()})
                         }
                     };
                 },
@@ -100,5 +102,43 @@ impl Iterator for PretendParser {
                     return None,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ::*;
+    use parser::*;
+
+    /// This checks parsing the given emerge.log.
+    fn parse_hist(filename: &str, mindate: i64, maxdate: i64) {
+        // Setup
+        let hist = HistParser::new(filename, None);
+        let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();//FIXME use catname.txt
+        let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();//Should match pattern used in *Parser
+        let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap();//Should match pattern used in *Parser
+        // Check that all items look valid
+        for item in hist {
+            let (ts, ebuild, version, iter, line) = match item {
+                HistEvent::Start{ts, ebuild, version, iter, line} => (ts, ebuild, version, iter, line),
+                HistEvent::Stop{ts, ebuild, version, iter, line} => (ts, ebuild, version, iter, line),
+            };
+            assert!(ts >= mindate && ts <= maxdate, "Out of bound date {} in {}", fmt_time(ts), line);
+            assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
+            assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
+            assert!(re_iter.is_match(&iter), "Invalid iteration {} in {}", iter, line);
+        }
+    }
+
+    #[test]
+    /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
+    fn parse_hist_all() {
+        parse_hist("test/emerge.all.log", 1483228800, 1483747200);// date from 2017-01-01 to 2017-01-07
+    }
+
+    #[test]
+    /// Local emerge log
+    fn parse_hist_local() {
+        parse_hist("/var/log/emerge.log", 946684800, epoch_now());// date from 2000-01-01 to now
     }
 }
