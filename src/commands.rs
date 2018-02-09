@@ -9,8 +9,8 @@ use proces::*;
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
-    let hist = HistParser::new(filename, args.value_of("package"));
+pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
+    let hist = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"));
     let mut started: HashMap<(String,String,String), i64> = HashMap::new();
     for event in hist {
         match event {
@@ -33,8 +33,8 @@ pub fn cmd_list(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_summary(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
-    let parser = HistParser::new(filename, args.value_of("package"));
+pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
+    let parser = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"));
     let lim = value_t!(args, "limit", usize).unwrap();
     let mut started: HashMap<(String,String,String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
@@ -70,11 +70,12 @@ pub fn cmd_summary(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds parsed from stdin.
-pub fn cmd_predict(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
+pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let now = epoch_now();
-    let hist = HistParser::new(filename, None);
+    let cms = current_merge_start();
+    let hist = HistParser::new(args.value_of("logfile").unwrap(), None);
     let pretend = PretendParser::new();
-    let lim = value_t!(args, "limit", usize).unwrap();
+    let lim = value_t!(subargs, "limit", usize).unwrap();
     let mut started: HashMap<(String,String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     let mut maxlen = 0;
@@ -96,7 +97,6 @@ pub fn cmd_predict(filename: &str, args: &ArgMatches) -> Result<(), io::Error> {
             }
         }
     }
-    let cms = current_merge_start();
     let mut tottime = 0;
     let mut totcount = 0;
     let mut totunknown = 0;

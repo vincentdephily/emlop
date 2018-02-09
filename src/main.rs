@@ -49,9 +49,9 @@ fn main() {
         .get_matches();
 
     match args.subcommand() {
-        ("list",    Some(sub_args)) => cmd_list(args.value_of("logfile").unwrap(), sub_args),
-        ("summary", Some(sub_args)) => cmd_summary(args.value_of("logfile").unwrap(), sub_args),
-        ("predict", Some(sub_args)) => cmd_predict(args.value_of("logfile").unwrap(), sub_args),
+        ("list",    Some(sub_args)) => cmd_list(&args, sub_args),
+        ("summary", Some(sub_args)) => cmd_summary(&args, sub_args),
+        ("predict", Some(sub_args)) => cmd_predict(&args, sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
     }.unwrap();
 }
