@@ -1,48 +1,51 @@
-//! Handles the basic log parsing.
+//! Handles the actual log parsing.
+//!
+//! Instantiate a `HistParser` or `PretendParser` and iterate over it to retrieve the events.
 
 use regex::Regex;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Lines, stdin, Stdin};
 
-/// Represents one basic event parsed from the file.
+/// Represents one emerge event parsed from an emerge.log file.
 pub enum HistEvent {
     /// Emerge started (might never complete)
     Start{ts: i64, ebuild: String, version: String, iter: String},
     /// Emerge completed
     Stop{ts: i64, ebuild: String, version: String, iter: String},
 }
+/// Represents one emerge-pretend parsed from an `emerge -p` output.
 pub struct PretendEvent {
     pub ebuild: String,
     pub version: String,
 }
 
+/// Iterates over an emerge log file to return matching `Event`s.
 pub struct HistParser {
     lines: Lines<BufReader<File>>,
     re_pkg: Option<Regex>,
     re_start: Regex,
     re_stop: Regex,
 }
+/// Iterates over an emerge-pretend output to return matching `Event`s.
 pub struct PretendParser {
     lines: Lines<BufReader<Stdin>>,
     re: Regex,
 }
 
-/// Iterates over an emerge log file to return matching `Event`s.
 impl HistParser {
     pub fn new(filename: &str, filter: Option<&str>) -> HistParser {
         let file = File::open(filename).unwrap();
         HistParser{lines: BufReader::new(file).lines(),
                    re_pkg: filter.and_then(|pkg| Some(Regex::new(pkg).unwrap())),
-                   re_start: Regex::new("^([0-9]+): *>>> emerge \\(([0-9]+ of [0-9]+)\\) (.+?)-([0-9.r-]+) ").unwrap(),
-                   re_stop: Regex::new("^([0-9]+): *::: completed emerge \\(([0-9]+ of [0-9]+)\\) (.+?)-([0-9.r-]+) ").unwrap(),
+                   re_start: Regex::new("^([0-9]+): *>>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+?)-([0-9][0-9a-z._-]*) ").unwrap(),
+                   re_stop: Regex::new("^([0-9]+): *::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+?)-([0-9][0-9a-z._-]*) ").unwrap(),
         }
     }
 }
-/// Iterates over an emerge-pretend output to return matching `Event`s.
 impl PretendParser {
     pub fn new() -> PretendParser {
         PretendParser{lines: BufReader::new(stdin()).lines(),
-                      re: Regex::new("^\\[[^]]+\\] (.+?)-([0-9.r-]+):").unwrap(),
+                      re: Regex::new("^\\[[^]]+\\] (.+?)-([0-9.r-]+)(:| |$)").unwrap(),
         }
     }
 }
