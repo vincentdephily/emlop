@@ -100,8 +100,7 @@ mod tests {
     use proces::*;
 
     fn parse_ps_time(s: &str) -> i64 {
-        let s_tz = format!("{} {}", s, fmt_time(0).to_string().split_at(19).1);//hackish way to add timezone to ps's output
-        DateTime::parse_from_str(&s_tz, "%b %d %T %Y %z")
+        DateTime::parse_from_str(&format!("{} +0000", s), "%b %d %T %Y %z")//we run ps with TZ=UTC
             .expect(&format!("Cannot parse {}", s))
             .timestamp()
     }
@@ -118,7 +117,8 @@ mod tests {
         let ps_start = epoch_now();
         let re = Regex::new("^ *([0-9]+) [A-Za-z]+ ([a-zA-Z0-9: ]+)$").unwrap();
         let cmd = Command::new("ps")
-            .args(&["-o", "pid,lstart", // Output pid and start time, in the best-but-still-crap time format that ps knows of
+            .env("TZ", "UTC").env("LC_ALL", "C") // Use a consistent format for datetimes
+            .args(&["-o", "pid,lstart", // Output pid and start time
                     "-ax", // All processes including those "not associated with a terminal"
                     "-h"]) // No headers
             .output()
