@@ -64,12 +64,13 @@ fn is_posint(v: String) -> Result<(), String> {
 }
 
 pub fn fmt_duration(secs: i64) -> String {
-    let h = secs / 3600;
-    let m = secs % 3600 / 60;
-    let s = secs % 60;
-    if h > 0      { format!("{:02}:{:02}:{:02}", h, m, s) }
-    else if m > 0 { format!(      "{:02}:{:02}", m, s) }
-    else          { format!(            "{:02}", s) }
+    let neg = if secs < 0 { "-" } else { "" };
+    let h = (secs / 3600).abs();
+    let m = (secs % 3600 / 60).abs();
+    let s = (secs % 60).abs();
+    if h > 0      { format!("{}{:02}:{:02}:{:02}", neg, h, m, s) }
+    else if m > 0 { format!(      "{}{:02}:{:02}", neg, m, s) }
+    else          { format!(            "{}{:02}", neg, s) }
 }
 
 pub fn fmt_time(ts: i64) -> DateTime<Local> {
@@ -82,4 +83,26 @@ pub fn epoch(st: SystemTime) -> i64 {
 
 pub fn epoch_now() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
+}
+
+
+#[cfg(test)]
+mod tests {
+    use ::*;
+
+    #[test]
+    fn duration() {
+        assert_eq!(       "00", fmt_duration(0));
+        assert_eq!(       "01", fmt_duration(1));
+        assert_eq!(       "59", fmt_duration(59));
+        assert_eq!(    "01:00", fmt_duration(60));
+        assert_eq!(    "01:01", fmt_duration(61));
+        assert_eq!(    "59:59", fmt_duration(3599));
+        assert_eq!( "01:00:00", fmt_duration(3600));
+        assert_eq!( "99:59:59", fmt_duration(359999));
+        assert_eq!("100:00:00", fmt_duration(360000));
+        assert_eq!(      "-01", fmt_duration(-1));
+        assert_eq!(   "-01:00", fmt_duration(-60));
+        assert_eq!("-01:00:00", fmt_duration(-3600));
+    }
 }
