@@ -35,7 +35,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let parser = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"));
-    let lim = value_t!(args, "limit", usize).unwrap();
+    let lim = value_t!(subargs, "limit", usize).unwrap();
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     let mut maxlen = 0;
