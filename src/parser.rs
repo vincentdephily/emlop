@@ -21,7 +21,9 @@ pub struct PretendEvent {
 
 /// Iterates over an emerge log file to return matching `Event`s.
 pub struct HistParser {
+    filename: String,
     lines: Lines<BufReader<File>>,
+    curline: u64,
     re_pkg: Option<Regex>,
     re_start: Regex,
     re_stop: Regex,
@@ -35,7 +37,9 @@ pub struct PretendParser {
 impl HistParser {
     pub fn new(filename: &str, filter: Option<&str>) -> HistParser {
         let file = File::open(filename).unwrap();
-        HistParser{lines: BufReader::new(file).lines(),
+        HistParser{filename: filename.to_string(),
+                   lines: BufReader::new(file).lines(),
+                   curline: 0,
                    re_pkg: filter.and_then(|pkg| Some(Regex::new(pkg).unwrap())),
                    re_start: Regex::new("^([0-9]+): *>>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+?)-([0-9][0-9a-z._-]*) ").unwrap(),
                    re_stop: Regex::new("^([0-9]+): *::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+?)-([0-9][0-9a-z._-]*) ").unwrap(),
@@ -56,6 +60,7 @@ impl Iterator for HistParser {
         loop {
             match self.lines.next() {
                 Some(Ok(ref line)) => {
+                    self.curline += 1;
                     // Try to match this line, loop with the next line if not
                     if let Some(c) = self.re_start.captures(line) {
                         let eb = c.get(3).unwrap().as_str();
@@ -78,7 +83,12 @@ impl Iterator for HistParser {
                         }
                     };
                 },
-                _ =>
+                Some(Err(e)) => {
+                    // Could be invalid UTF8, system read error...
+                    self.curline += 1;
+                    println!("WARN {}:{}: {:?}", self.filename, self.curline, e) // FIXME proper log levels
+                },
+                None =>
                     // End of file
                     return None,
             }
@@ -139,6 +149,14 @@ mod tests {
         parse_hist("test/emerge.all.log",
                    1483228800, 1483747200, // Generated dates are from 2017-01-01 to 2017-01-07
                    74718, Some(74718));    // wc -l < test/emerge.all.log
+    }
+
+    #[test]
+    /// Emerge log with some null bytes in the middle
+    fn parse_hist_nullbytes() {
+        parse_hist("test/emerge.nullbytes.log",
+                   1327867709, 1327871057, // Taken from the file
+                   28, Some(28));          // 14 merges
     }
 
     #[test]
