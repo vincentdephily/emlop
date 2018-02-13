@@ -9,7 +9,7 @@
 use std::fs;
 use std::io;
 use std::io::prelude::*;
-use sysconf::raw::{sysconf,SysconfVariable};
+use sysconf::raw::{sysconf, SysconfVariable};
 
 use ::*;
 
@@ -36,10 +36,10 @@ fn get_proc_info(filter: Option<&str>, entry: fs::DirEntry, clocktick: i64, time
     let mut comm = statfields[1].trim_left_matches('(').to_string();
     while !comm.ends_with(")") {
         parse_offset += 1;
-        comm = format!("{} {}", comm, statfields[1+parse_offset]);
+        comm = format!("{} {}", comm, statfields[1 + parse_offset]);
     }
     comm = comm.trim_right_matches(')').to_string();
-    let start_time = i64::from_str(statfields[21+parse_offset]).ok()?;
+    let start_time = i64::from_str(statfields[21 + parse_offset]).ok()?;
     // Bail out now if the command name doesn't match.
     if filter.map_or(false, |f| f != comm) {
         return None;
@@ -91,8 +91,8 @@ pub fn current_merge_start() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use regex::Regex;
     use chrono::DateTime;
+    use regex::Regex;
     use std::collections::BTreeMap;
     use std::process::Command;
 

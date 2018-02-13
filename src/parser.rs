@@ -4,7 +4,7 @@
 
 use regex::Regex;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Lines, stdin, Stdin};
+use std::io::{stdin, BufRead, BufReader, Lines, Stdin};
 
 /// Represents one emerge event parsed from an emerge.log file.
 pub enum HistEvent {
@@ -114,9 +114,9 @@ mod tests {
     fn parse_hist(filename: &str, mindate: i64, maxdate: i64) {
         // Setup
         let hist = HistParser::new(filename, None);
-        let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();//FIXME use catname.txt
-        let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();//Should match pattern used in *Parser
-        let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap();//Should match pattern used in *Parser
+        let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
+        let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
+        let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap(); //Should match pattern used in *Parser
         // Check that all items look valid
         for item in hist {
             let (ts, ebuild, version, iter, line) = match item {
@@ -133,12 +133,12 @@ mod tests {
     #[test]
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
-        parse_hist("test/emerge.all.log", 1483228800, 1483747200);// date from 2017-01-01 to 2017-01-07
+        parse_hist("test/emerge.all.log", 1483228800, 1483747200); // date from 2017-01-01 to 2017-01-07
     }
 
     #[test]
     /// Local emerge log
     fn parse_hist_local() {
-        parse_hist("/var/log/emerge.log", 946684800, epoch_now());// date from 2000-01-01 to now
+        parse_hist("/var/log/emerge.log", 946684800, epoch_now()); // date from 2000-01-01 to now
     }
 }

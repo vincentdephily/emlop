@@ -11,7 +11,7 @@ use proces::*;
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let hist = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"));
-    let mut started: HashMap<(String,String,String), i64> = HashMap::new();
+    let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     for event in hist {
         match event {
             HistEvent::Start{ts, ebuild, version, iter, ..} => {
@@ -36,7 +36,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
 pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let parser = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"));
     let lim = value_t!(args, "limit", usize).unwrap();
-    let mut started: HashMap<(String,String,String), i64> = HashMap::new();
+    let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     let mut maxlen = 0;
     for event in parser {
@@ -76,7 +76,7 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
     let hist = HistParser::new(args.value_of("logfile").unwrap(), None);
     let pretend = PretendParser::new();
     let lim = value_t!(subargs, "limit", usize).unwrap();
-    let mut started: HashMap<(String,String), i64> = HashMap::new();
+    let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     let mut maxlen = 0;
     for event in hist {
@@ -84,7 +84,7 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
             HistEvent::Start{ts, ebuild, version, ..} => {
                 started.insert((ebuild.clone(), version.clone()), ts);
-            },
+            }
             HistEvent::Stop{ts, ebuild, version, ..} => {
                 match started.remove(&(ebuild.clone(), version.clone())) {
                     Some(start_ts) => {
@@ -108,7 +108,7 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
                     if tc >= lim {(pt,  pc,  tc+1)}
                     else         {(pt+i,pc+1,tc+1)}
                 });
-            tottime += predtime/predcount;
+            tottime += predtime / predcount;
             totcount += 1;
             match started.remove(&(ebuild.clone(), version.clone())) {
                 Some(start_ts) if start_ts > cms => {

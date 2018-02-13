@@ -1,6 +1,6 @@
+extern crate chrono;
 #[macro_use]
 extern crate clap;
-extern crate chrono;
 extern crate regex;
 extern crate sysconf;
 
@@ -8,8 +8,8 @@ mod commands;
 mod parser;
 mod proces;
 
-use clap::{AppSettings, Arg, SubCommand};
 use chrono::{DateTime, Local, TimeZone};
+use clap::{AppSettings, Arg, SubCommand};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
