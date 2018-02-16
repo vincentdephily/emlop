@@ -41,8 +41,8 @@ impl HistParser {
                    lines: BufReader::new(file).lines(),
                    curline: 0,
                    re_pkg: filter.and_then(|pkg| Some(Regex::new(pkg).unwrap())),
-                   re_start: Regex::new("^([0-9]+): *>>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+?)-([0-9][0-9a-z._-]*) ").unwrap(),
-                   re_stop: Regex::new("^([0-9]+): *::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+?)-([0-9][0-9a-z._-]*) ").unwrap(),
+                   re_start: Regex::new("^([0-9]+):  >>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap(),
+                   re_stop:  Regex::new("^([0-9]+):  ::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap(),
         }
     }
 }
@@ -153,7 +153,7 @@ mod tests {
     fn parse_hist_all() {
         parse_hist("test/emerge.all.log",
                    1483228800, 1483747200, // Generated dates are from 2017-01-01 to 2017-01-07
-                   74718, Some(74718));    // wc -l < test/emerge.all.log
+                   74830, Some(74830));    // wc -l < test/emerge.all.log
     }
 
     #[test]

@@ -6565,7 +6565,6 @@ dev-perl/SRU
 dev-perl/SUPER
 dev-perl/SVG
 dev-perl/SVG-Graph
-dev-perl/SVN-Simple
 dev-perl/Safe-Hole
 dev-perl/Safe-Isa
 dev-perl/Sane
@@ -7214,6 +7213,7 @@ dev-php/pecl-xrange
 dev-php/pecl-yaml
 dev-php/pecl-yaz
 dev-php/pecl-zmq
+dev-php/phar-io-manifest
 dev-php/phar-io-version
 dev-php/phar-utils
 dev-php/phing
@@ -11463,6 +11463,7 @@ games-puzzle/mures
 games-puzzle/neverball
 games-puzzle/ngstar
 games-puzzle/nightsky
+games-puzzle/nudoku
 games-puzzle/numptyphysics
 games-puzzle/pathological
 games-puzzle/pauker
@@ -13491,7 +13492,6 @@ media-plugins/mediastreamer-ilbc
 media-plugins/mediastreamer-silk
 media-plugins/mediastreamer-x264
 media-plugins/mythplugins
-media-plugins/npapi-vlc
 media-plugins/qmmp-plugin-pack
 media-plugins/rev-plugins
 media-plugins/swh-lv2
@@ -14118,6 +14118,7 @@ media-video/frameworks
 media-video/gaupol
 media-video/get_flash_videos
 media-video/gnome-mplayer
+media-video/gnome-mpv
 media-video/gnome-video-effects
 media-video/google2srt
 media-video/gpac
@@ -16287,6 +16288,7 @@ sci-geosciences/gpscorrelate
 sci-geosciences/gpsd
 sci-geosciences/gpx-viewer
 sci-geosciences/gpxpy
+sci-geosciences/gpxsee
 sci-geosciences/grass
 sci-geosciences/gshhs
 sci-geosciences/gshhs-data
@@ -18733,7 +18735,6 @@ x11-libs/pixman
 x11-libs/qscintilla
 x11-libs/qtermwidget
 x11-libs/qwt
-x11-libs/qwtplot3d
 x11-libs/qwtpolar
 x11-libs/rep-gtk
 x11-libs/scw
@@ -19357,7 +19358,6 @@ x11-themes/laughlin-backgrounds
 x11-themes/leonidas-backgrounds
 x11-themes/light-themes
 x11-themes/lovelock-backgrounds
-x11-themes/lush
 x11-themes/mate-backgrounds
 x11-themes/mate-icon-theme
 x11-themes/mate-icon-theme-faenza
