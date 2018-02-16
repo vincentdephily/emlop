@@ -62,26 +62,31 @@ impl Iterator for HistParser {
                 Some(Ok(ref line)) => {
                     self.curline += 1;
                     // Try to match this line, loop with the next line if not
-                    if let Some(c) = self.re_start.captures(line) {
-                        let eb = c.get(3).unwrap().as_str();
-                        if self.re_pkg.as_ref().map_or(true, |r| r.is_match(eb)) {
-                            return Some(HistEvent::Start{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
-                                                         ebuild: eb.to_string(),
-                                                         iter: c.get(2).unwrap().as_str().to_string(),
-                                                         version: c.get(4).unwrap().as_str().to_string(),
-                                                         line: line.to_string()})
+                    // We do a quick string search before attempting the comparatively slow regexp parsing
+                    if line.contains("> emerge") {
+                        if let Some(c) = self.re_start.captures(line) {
+                            let eb = c.get(3).unwrap().as_str();
+                            if self.re_pkg.as_ref().map_or(true, |r| r.is_match(eb)) {
+                                return Some(HistEvent::Start{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
+                                                             ebuild: eb.to_string(),
+                                                             iter: c.get(2).unwrap().as_str().to_string(),
+                                                             version: c.get(4).unwrap().as_str().to_string(),
+                                                             line: line.to_string()})
+                            }
                         }
-                    };
-                    if let Some(c) = self.re_stop.captures(line) {
-                        let eb = c.get(3).unwrap().as_str();
-                        if self.re_pkg.as_ref().map_or(true, |r| r.is_match(eb)) {
-                            return Some(HistEvent::Stop{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
-                                                        ebuild: eb.to_string(),
-                                                        iter: c.get(2).unwrap().as_str().to_string(),
-                                                        version: c.get(4).unwrap().as_str().to_string(),
-                                                        line: line.to_string()})
+                    }
+                    if line.contains(": completed") {
+                        if let Some(c) = self.re_stop.captures(line) {
+                            let eb = c.get(3).unwrap().as_str();
+                            if self.re_pkg.as_ref().map_or(true, |r| r.is_match(eb)) {
+                                return Some(HistEvent::Stop{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
+                                                            ebuild: eb.to_string(),
+                                                            iter: c.get(2).unwrap().as_str().to_string(),
+                                                            version: c.get(4).unwrap().as_str().to_string(),
+                                                            line: line.to_string()})
+                            }
                         }
-                    };
+                    }
                 },
                 Some(Err(e)) => {
                     // Could be invalid UTF8, system read error...
