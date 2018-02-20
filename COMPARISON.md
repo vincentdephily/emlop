@@ -29,7 +29,7 @@ aim for a more spartan look: more compact, more machine-like, less colorful.
 | Output style                                                       | fancy  | compact | fancy | compact |
 | Colorized output                                                   | yes    | no      | yes   | no      |
 | Select output timezone                                             | yes    | no      | no    | no      |
-| Headers                                                            | ?      | no      | ?     | ?       |
+| Headers                                                            | no     | no      | no    | some    |
 
 ## Merge history
 
@@ -57,12 +57,8 @@ Pqlop requires a search term, it can only display info about a particular packag
 
 ## Speed
 
-Emlop is faster than the rest (and uses less memory, but that wasn't an issue to begin with).
-
-Emlop and golop always calculate the merge time. Pqlop and golop do not have an `emerge -p` mode.
-
-Some timings (in seconds, idle system, best time of many runs) on my machine which has about 35K
-emerges in its log:
+Emlop is faster (and uses less memory, as a bonus). Here are timings for some common commands (in
+seconds, best time of many runs, ~35K emerges in emerge.log):
 
 |                                                                    | genlop | emlop   | pqlop | golop   |
 | :----------------------------------------------------------------- | :----: | :-----: | :---: | :-----: |
@@ -73,8 +69,8 @@ emerges in its log:
 | `emerge -Op $(eix -ICc# qt) > p;  genlop -p < p; emlop p < p`      | 13.3   | 0.2     | n/a   | n/a     |
 | `emerge -Op $(eix -ICc# kde) > p; genlop -p < p; emlop p < p`      | 92.6   | 0.2     | n/a   | n/a     |
 
+Emlop and golop always calculate the merge time. Pqlop and golop do not have an `emerge -p` mode.
 
-Emlop also happens to use 5x less memory than genlop, but it's a negligible amount to begin with.
 
 ## Merge time prediction
 
