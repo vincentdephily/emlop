@@ -69,13 +69,16 @@ pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
 
 /// Predict future merge time
 ///
-/// Very similar to cmd_summary except we want total build time for a list of ebuilds parsed from stdin.
+/// Very similar to cmd_summary except we want total build time for a list of ebuilds.
 pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let now = epoch_now();
-    let cms = current_merge_start();
-    let hist = HistParser::new(args.value_of("logfile").unwrap(), None);
-    let pretend = PretendParser::new();
     let lim = value_t!(subargs, "limit", usize).unwrap();
+
+    // Gather and print info about current merge process.
+    let cms = current_merge_start();
+
+    // Parse emerge log.
+    let hist = HistParser::new(args.value_of("logfile").unwrap(), None);
     let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     let mut maxlen = 0;
@@ -86,17 +89,26 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
                 started.insert((ebuild.clone(), version.clone()), ts);
             }
             HistEvent::Stop{ts, ebuild, version, ..} => {
-                match started.remove(&(ebuild.clone(), version.clone())) {
-                    Some(start_ts) => {
-                        maxlen = maxlen.max(ebuild.len());//FIXME compute maxlen for displayed packages only
-                        let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
-                        timevec.insert(0, ts-start_ts);
-                    },
-                    None => (),
+                if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone())) {
+                    maxlen = maxlen.max(ebuild.len());//FIXME compute maxlen for displayed packages only
+                    let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
+                    timevec.insert(0, ts-start_ts);
                 }
             }
         }
     }
+
+    // Parse list of pending merges (from stdin or from emerge log filterd by cms).
+    // We collect immediately to deal with type mismatches; it should be a small list anyway.
+    let pretend: Vec<PretendEvent> = match atty::is(atty::Stream::Stdin) {
+        false => PretendParser::new().collect(),
+        true => started.iter()
+            .filter(|&(_,t)| *t > cms)
+            .map(|(&(ref  e,ref v),_)| PretendEvent{ebuild:e.to_string(), version:v.to_string()})
+            .collect(),
+    };
+
+    // Gather and print per-package and indivudual stats.
     let mut tottime = 0;
     let mut totcount = 0;
     let mut totunknown = 0;

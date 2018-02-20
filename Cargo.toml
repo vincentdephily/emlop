@@ -4,6 +4,7 @@ name = "emlop"
 version = "0.1.0"
 
 [dependencies]
+atty = "~0.2"
 chrono = "~0.4"
 clap = "~2.29"
 regex = "~0.2"
