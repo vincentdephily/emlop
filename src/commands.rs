@@ -139,6 +139,10 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
             println!("{:width$}", ebuild, width=maxlen);
         }
     }
-    println!("Estimate for {} ebuilds ({} unknown, {} elapsed)   {}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(tottime-totelapsed));
+    if totcount > 0 {
+        println!("Estimate for {} ebuilds ({} unknown, {} elapsed)   {}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(tottime-totelapsed));
+    } else {
+        println!("No ongoing or pretended merges found");
+    }
     Ok(())
 }
