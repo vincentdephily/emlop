@@ -120,9 +120,10 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
                 },
                 _ =>
                     println!("{:width$} {:>9}", ebuild, fmt_duration(predtime/predcount), width=maxlen),
-                }
+            }
         } else {
             totunknown += 1;
+            totcount += 1;
             println!("{:width$}", ebuild, width=maxlen);
         }
     }
