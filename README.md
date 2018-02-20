@@ -5,15 +5,15 @@ the [Gentoo](https://www.gentoo.org/) package manager) to yield useful info like
 merge time prediction.
 
 It is heavily inspired by [genlop](https://github.com/gentoo-perl/genlop) but aims to be faster,
-more accurate, and more convenient. Other rewrites of Genlop exist, see
-[COMPARISON.md](COMPARISON.md) for some comparisons.
+more accurate, and more convenient. Other rewrites of Genlop exist, see [COMPARISON](COMPARISON.md)
+doc.
 
 
 ## Installation
 
 Until a proper release is made and an ebuild is writen, the only option is to install from sources.
 
-### From sourcce
+### From source
 
 If you do not already have [Rust](https://www.rust-lang.org/), install it with `emerge rust` or
 [rustup](https://www.rust-lang.org/en-US/install.html). Emlop should always work with a version of
@@ -32,11 +32,12 @@ If you wish to install emlop system-wide, copy or symlink `~/.cargo/bin/emlop` i
 ## Usage
 
 Emlop is split into subcommands like `list` or `predict`, which can be abbreviated by their first
-letter. For complete usage innformation see online help with `emlop -h` or `emlop <sucommand> -h`.
+letter. For a complete list of arguments (this readme doesn't list them all) see `emlop -h` or
+`emlop <sucommand> -h`.
 
 ### Show merge history
 
-This shows merge date, merge time, and package name:
+Show merge date, merge time, and package name:
 
     $ emlop list | tail
     2018-01-29 10:20:52 +00:00        13 net-wireless/iw-4.9
@@ -66,17 +67,7 @@ Same info but filter packages by regexp:
 
 ### Predict merge time
 
-This takes an `emegre --pretend` output as input for emlop, and shows the currently running merges
-(if any), the predicted and elapsed time for each package, and the predicted total time.
-
-    $ emerge -rOp | emlop p
-    emerge ... um firefox konqueror (pid 8799)           1:14:11
-    www-client/chromium                                  5:49:38 - 1:10:55
-    www-client/firefox                                     53:37
-    kde-apps/konqueror                                      3:46
-    Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06
-
-This only looks at the emerge log instead of depending on an `emerge -p` run.
+Show currently emerging packages, how long they have been running, and predict how long is left:
 
     $ emlop p
     emerge ... rack=100 -O chromium (pid 27694)           2:01
@@ -85,10 +76,19 @@ This only looks at the emerge log instead of depending on an `emerge -p` run.
     www-client/firefox                                   53:37 - 1:59
     Estimate for 2 ebuilds (0 unknown, 3:57 elapsed)   6:50:42
 
+Predict merge time from an `emerge --pretend` output, taking currently elapsed time into account:
+
+    $ emerge -rOp | emlop p
+    emerge ... um firefox konqueror (pid 8799)           1:14:11
+    www-client/chromium                                  5:49:38 - 1:10:55
+    www-client/firefox                                     53:37
+    kde-apps/konqueror                                      3:46
+    Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06
+
 
 ### Show merge statistics
 
-This shows total merge time, merge count, average merge time.
+Show total merge time, merge count, and average merge time:
 
     $ emlop s gtk
     x11-libs/gtksourceview              4:54/6          49

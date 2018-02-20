@@ -23,10 +23,10 @@ fn main() {
         .takes_value(true)
         .default_value("10")
         .validator(is_posint)
-        .help("Use the last N merge time to predict future merge time");
+        .help("Use the last N merge times to predict future merge time");
     let arg_pkg = Arg::with_name("package")
         .takes_value(true)
-        .help("Regexp to match package name");
+        .help("Filer packages category/name using a regexp");
     let args = app_from_crate!()
         .setting(AppSettings::InferSubcommands)
         .setting(AppSettings::SubcommandRequiredElseHelp)

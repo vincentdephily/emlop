@@ -91,14 +91,14 @@ average, to improve the prediction.
 | Predict from `emerge -p`                                           | yes    | yes     | no    | no      |
 | Display individial package estimates in pretend mode               | no     | yes     | n/a   | n/a     |
 | Take current merges into account in pretend mode                   | no     | yes     | n/a   | n/a     |
-| Time estimation in pretend mode                                    | ok     | good    | ?     | ?       |
-| Query gentoo.linuxhowtos.org for new packages estimates            | yes    | no      | no    | no      |
+| Accuracy of time estimation                                        | ok     | good    | ?     | ?       |
+| Query gentoo.linuxhowtos.org for unknown packages                  | yes    | no      | no    | no      |
 
 ## misc
 
 Genlop started in 2007 but development seem to have stoped in 2015. Pqlop saw development between
 2011 and 2012, and a lone bugfix in 2016. Golop started in december 2017, but doesn't seem to have
-evolved since. Emlop started around the same time ass golop, and has seen regular progress so far.
+evolved since. Emlop started around the same time as golop, and has seen regular progress so far.
 
 Support for non-Linux is (probably only) tied to detecting currently running merges.
 
