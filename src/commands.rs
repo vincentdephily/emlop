@@ -1,6 +1,4 @@
-use clap::ArgMatches;
 use std::collections::HashMap;
-use std::io;
 
 use ::*;
 use parser::*;
@@ -33,12 +31,11 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
+pub fn cmd_summary(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let parser = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"));
     let lim = value_t!(subargs, "limit", usize).unwrap();
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
-    let mut maxlen = 0;
     for event in parser {
         match event {
             HistEvent::Start{ts, ebuild, version, iter, ..} => {
@@ -47,7 +44,6 @@ pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
             HistEvent::Stop{ts, ebuild, version, iter, ..} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(start_ts) => {
-                        maxlen = maxlen.max(ebuild.len());
                         let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
                         timevec.insert(0, ts-start_ts);
                     },
@@ -62,7 +58,7 @@ pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
                 if tc >= lim {(pt,  pc,  tt+i,tc+1)}
                 else         {(pt+i,pc+1,tt+i,tc+1)}
             });
-        println!("{:width$} {:>9}/{:<4} {:>8}", pkg, fmt_duration(tottime), totcount, fmt_duration(predtime/predcount), width=maxlen);
+        writeln!(tw, "{}\t{:>9}\t{:>3}\t{:>8}", pkg, fmt_duration(tottime), totcount, fmt_duration(predtime/predcount))?;
     }
     Ok(())
 }
@@ -70,18 +66,21 @@ pub fn cmd_summary(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
+pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let now = epoch_now();
     let lim = value_t!(subargs, "limit", usize).unwrap();
 
     // Gather and print info about current merge process.
-    let cms = current_merge_start();
+    let mut cms = std::i64::MAX;//current_merge_start(tw)?;
+    for i in get_all_info(Some("emerge"))? {
+        cms = std::cmp::min(cms, i.start);
+        writeln!(tw, "Pid {}: ...{}\t{:>9}", i.pid, &i.cmdline[(i.cmdline.len()-35)..], fmt_duration(now-i.start))?;
+    }
 
     // Parse emerge log.
     let hist = HistParser::new(args.value_of("logfile").unwrap(), None);
     let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
-    let mut maxlen = 0;
     for event in hist {
         match event {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
@@ -90,7 +89,6 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
             }
             HistEvent::Stop{ts, ebuild, version, ..} => {
                 if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone())) {
-                    maxlen = maxlen.max(ebuild.len());//FIXME compute maxlen for displayed packages only
                     let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
                     timevec.insert(0, ts-start_ts);
                 }
@@ -128,21 +126,21 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Er
                     // so a good guess is that this merge is currently running. This can lead to
                     // false-positives, but is IMHO no worse than genlop's heuristics.
                     totelapsed += now - start_ts;
-                    println!("{:width$} {:>9} - {}", ebuild, fmt_duration(predtime/predcount), fmt_duration(now-start_ts), width=maxlen);
+                    writeln!(tw, "{}\t{:>9} - {}", ebuild, fmt_duration(predtime/predcount), fmt_duration(now-start_ts))?;
                 },
                 _ =>
-                    println!("{:width$} {:>9}", ebuild, fmt_duration(predtime/predcount), width=maxlen),
+                    writeln!(tw, "{}\t{:>9}", ebuild, fmt_duration(predtime/predcount))?,
             }
         } else {
             totunknown += 1;
             totcount += 1;
-            println!("{:width$}", ebuild, width=maxlen);
+            writeln!(tw, "{}", ebuild)?;
         }
     }
     if totcount > 0 {
-        println!("Estimate for {} ebuilds ({} unknown, {} elapsed)   {}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(tottime-totelapsed));
+        writeln!(tw, "Estimate for {} ebuilds ({} unknown, {} elapsed)\t{:>9}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(tottime-totelapsed))?;
     } else {
-        println!("No ongoing or pretended merges found");
+        writeln!(tw, "No ongoing or pretended merges found")?;
     }
     Ok(())
 }

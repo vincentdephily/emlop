@@ -37,8 +37,6 @@ Just a framework at least. Test cases can be added as bugs are found.
 #### Proper logging
 
 ### Features
-#### Properly align output
-https://crates.io/crates/tabwriter
 #### Optional --headers
 #### `--utc` and `--local`timezone selection date output
 #### Options to format dates and durations differently

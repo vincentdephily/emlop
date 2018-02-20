@@ -15,10 +15,10 @@ use ::*;
 
 #[derive(Debug)]
 pub struct Info {
-    comm: String,
-    cmdline: String,
-    start: i64,
-    pid: i32,
+    pub comm: String,
+    pub cmdline: String,
+    pub start: i64,
+    pub pid: i32,
 }
 
 /// Get command name, arguments, start time, and pid for one process.
@@ -57,7 +57,7 @@ fn get_proc_info(filter: Option<&str>, entry: fs::DirEntry, clocktick: i64, time
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
-fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
+pub fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     let clocktick = sysconf(SysconfVariable::ScClkTck).unwrap() as i64;
@@ -74,18 +74,6 @@ fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
         }
     }
     Ok(ret)
-}
-
-/// Print a message for each running emerge process and return the start time of the oldest emerge process.
-pub fn current_merge_start() -> i64 {
-    let info = get_all_info(Some("emerge")).unwrap();
-    let now = epoch_now();
-    let mut first_merge = std::i64::MAX;
-    for i in info {
-        first_merge = std::cmp::min(first_merge, i.start);
-        println!("emerge ... {} (pid {})   {}", &i.cmdline[(i.cmdline.len()-20)..], i.pid, fmt_duration(now-i.start));
-    }
-    first_merge
 }
 
 

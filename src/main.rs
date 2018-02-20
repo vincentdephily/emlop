@@ -4,15 +4,19 @@ extern crate chrono;
 extern crate clap;
 extern crate regex;
 extern crate sysconf;
+extern crate tabwriter;
 
 mod commands;
 mod parser;
 mod proces;
 
 use chrono::{DateTime, Local, TimeZone};
-use clap::{AppSettings, Arg, SubCommand};
+use clap::{AppSettings, Arg, ArgMatches, SubCommand};
+use std::io;
+use std::io::Write;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tabwriter::TabWriter;
 
 use commands::*;
 
@@ -49,12 +53,14 @@ fn main() {
                     .arg(&arg_limit))
         .get_matches();
 
+    let mut tw = TabWriter::new(io::stdout());
     match args.subcommand() {
         ("list",    Some(sub_args)) => cmd_list(&args, sub_args),
-        ("summary", Some(sub_args)) => cmd_summary(&args, sub_args),
-        ("predict", Some(sub_args)) => cmd_predict(&args, sub_args),
+        ("summary", Some(sub_args)) => cmd_summary(&mut tw, &args, sub_args),
+        ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
     }.unwrap();
+    tw.flush().unwrap();
 }
 
 fn is_posint(v: String) -> Result<(), String> {

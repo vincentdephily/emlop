@@ -70,16 +70,16 @@ Same info but filter packages by regexp:
 Show currently emerging packages, how long they have been running, and predict how long is left:
 
     $ emlop p
-    emerge ... rack=100 -O chromium (pid 27694)           2:01
-    emerge ... track=100 -O firefox (pid 27695)           2:02
-    www-client/chromium                                6:01:02 - 1:58
-    www-client/firefox                                   53:37 - 1:59
-    Estimate for 2 ebuilds (0 unknown, 3:57 elapsed)   6:50:42
+    Pid 27455: ...n-exec/python3.5/emerge -O chromium         33
+    Pid 27848: ...on-exec/python3.5/emerge -O firefox         29
+    www-client/firefox                                     53:37 - 24
+    www-client/chromium                                  6:01:02 - 28
+    Estimate for 2 ebuilds (0 unknown, 52 elapsed)       6:53:47
 
 Predict merge time from an `emerge --pretend` output, taking currently elapsed time into account:
 
     $ emerge -rOp | emlop p
-    emerge ... um firefox konqueror (pid 8799)           1:14:11
+    Pid 8799: .../emerge -O chromium firefox konqueror   1:14:11
     www-client/chromium                                  5:49:38 - 1:10:55
     www-client/firefox                                     53:37
     kde-apps/konqueror                                      3:46
@@ -91,20 +91,20 @@ Predict merge time from an `emerge --pretend` output, taking currently elapsed t
 Show total merge time, merge count, and average merge time:
 
     $ emlop s gtk
-    x11-libs/gtksourceview              4:54/6          49
-    dev-perl/gtk2-ex-formfactory        2:29/10         14
-    app-admin/gtkdiskfree               1:19/1        1:19
-    x11-themes/gtk-engines-adwaita      1:23/4          20
-    dev-python/pywebkitgtk                13/1          13
-    dev-util/gtk-doc                    4:46/9          31
-    dev-perl/gtk2-perl                 12:49/8        1:36
-    dev-util/gtk-doc-am                 3:43/19         11
-    net-libs/webkit-gtk             63:17:43/44    1:57:33
-    dev-python/pygtksourceview          2:27/6          24
-    dev-util/gtk-update-icon-cache      5:44/16         23
-    dev-python/pygtk                   16:05/7        2:17
-    dev-cpp/gtkmm                      39:33/12       3:40
-    x11-libs/gtk+                    3:10:20/40       4:21
+    app-admin/gtkdiskfree                1:19    1      1:19
+    net-libs/webkit-gtk              63:17:43   44   1:57:33
+    x11-libs/gtk+                     3:10:20   40      4:21
+    x11-themes/gtk-engines-adwaita       1:23    4        20
+    dev-util/gtk-doc                     4:46    9        31
+    dev-python/pygtk                    16:05    7      2:17
+    dev-util/gtk-doc-am                  3:43   19        11
+    x11-libs/gtksourceview               4:54    6        49
+    dev-python/pygtksourceview           2:27    6        24
+    dev-perl/gtk2-ex-formfactory         2:29   10        14
+    dev-util/gtk-update-icon-cache       5:44   16        23
+    dev-cpp/gtkmm                       39:33   12      3:40
+    dev-python/pywebkitgtk                 13    1        13
+    dev-perl/gtk2-perl                  12:49    8      1:36
 
 
 ## Contributing
