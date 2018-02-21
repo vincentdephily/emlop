@@ -11,7 +11,17 @@ doc.
 
 ## Installation
 
-Until a proper release is made and an ebuild is writen, the only option is to install from sources.
+From most stable to most recent:
+
+### From main portage tree
+
+Sorry not available yet, waiting for the first release to ask for inclusion.
+
+### From portage overlay
+
+If you do not have it already, install and configure [layman](https://wiki.gentoo.org/wiki/Layman).
+Then run `layman -a moltonel` to add the overlay with the emlop ebuild. Then run `emerge emlop` as
+ususal.
 
 ### From source
 

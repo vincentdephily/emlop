@@ -74,20 +74,25 @@ Emlop and golop always calculate the merge time. Pqlop and golop do not have an 
 
 ## Merge time prediction
 
-To predict merge times, `emlop p` uses only the last 10 merges (configurable), which makes a big
-difference if you have a long emerge history and a package started taking longer to compile (for
-example chromium) or if you got a hardware upgrade. There are also plans to make this a weighted
-average, to improve the prediction.
+`emlop p` uses only the last 10 merges (configurable) for predictions, which makes a big difference
+if you have a long emerge history and a package progressivley takes longer to compile (for example
+chromium) or if you got a hardware upgrade.
 
-`emlop p` always checks currently runing emerges, and deducts the elapsed time to give its estimate.
+`emlop p` checks currently runing emerges even in `emerge -p` mode, to deducts the elapsed time from
+its estimate.
+
+All four tools will give pessimistic prediction when merging multiple packages in parallel, because
+they assume sequential merging. Even if they detected an ongoing parallel merge, it's not clear how
+they would estimate the resulting speedup factor.
 
 |                                                                    | genlop | emlop   | pqlop | golop   |
 | :----------------------------------------------------------------- | :----: | :-----: | :---: | :-----: |
-| Predict from current merges                                        | yes    | yes     | yes   | yes     |
+| Show current merges                                                | yes    | yes     | yes   | yes     |
+| Predict from current merges                                        | yes    | yes     | no    | yes     |
 | Predict from `emerge -p`                                           | yes    | yes     | no    | no      |
-| Display individial package estimates in pretend mode               | no     | yes     | n/a   | n/a     |
-| Take current merges into account in pretend mode                   | no     | yes     | n/a   | n/a     |
-| Accuracy of time estimation                                        | ok     | good    | ?     | ?       |
+| Display individial package estimates for `emerge -p`               | no     | yes     | n/a   | n/a     |
+| Take current merges into account for `emerge -p`                   | no     | yes     | n/a   | n/a     |
+| Accuracy of time estimation                                        | ok     | good    | n/a   | ?       |
 | Query gentoo.linuxhowtos.org for unknown packages                  | yes    | no      | no    | no      |
 
 ## misc
