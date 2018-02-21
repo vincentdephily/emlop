@@ -60,9 +60,6 @@ Another weigth should probably be how close slot or the version is (for example,
 longer to compile than qtsvg:5, but the older version is still regularly compiled on my system).
 
 Using the mean might be better than the average, to take care of outlyers.
-
-Another thing to consider is how to deal with overdue merge finishes, especially if merging multiple
-packages in parallel.
 #### Json output
 Because why not. Should also help with unit-testing.
 #### Pull timings from gentoo.linuxhowtos.org for first-time emerge

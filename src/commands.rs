@@ -107,9 +107,9 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     };
 
     // Gather and print per-package and indivudual stats.
-    let mut tottime = 0;
     let mut totcount = 0;
     let mut totunknown = 0;
+    let mut totpredict = 0;
     let mut totelapsed = 0;
     for PretendEvent{ebuild, version} in pretend {
         if let Some(tv) = times.get(&ebuild) {
@@ -118,7 +118,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
                     if tc >= lim {(pt,  pc,  tc+1)}
                     else         {(pt+i,pc+1,tc+1)}
                 });
-            tottime += predtime / predcount;
+            totpredict += predtime / predcount;
             totcount += 1;
             match started.remove(&(ebuild.clone(), version.clone())) {
                 Some(start_ts) if start_ts > cms => {
@@ -126,6 +126,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
                     // so a good guess is that this merge is currently running. This can lead to
                     // false-positives, but is IMHO no worse than genlop's heuristics.
                     totelapsed += now - start_ts;
+                    totpredict -= std::cmp::min(predtime / predcount, now - start_ts);
                     writeln!(tw, "{}\t{:>9} - {}", ebuild, fmt_duration(predtime/predcount), fmt_duration(now-start_ts))?;
                 },
                 _ =>
@@ -138,7 +139,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
         }
     }
     if totcount > 0 {
-        writeln!(tw, "Estimate for {} ebuilds ({} unknown, {} elapsed)\t{:>9}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(tottime-totelapsed))?;
+        writeln!(tw, "Estimate for {} ebuilds ({} unknown, {} elapsed)\t{:>9}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(totpredict))?;
     } else {
         writeln!(tw, "No ongoing or pretended merges found")?;
     }
