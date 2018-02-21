@@ -44,8 +44,8 @@ fn main() {
         .subcommand(SubCommand::with_name("list")
                     .about("Show full merge history")
                     .arg(&arg_pkg))
-        .subcommand(SubCommand::with_name("summary")
-                    .about("Show merge stats summary")
+        .subcommand(SubCommand::with_name("stats")
+                    .about("Show merge stats")
                     .arg(&arg_pkg)
                     .arg(&arg_limit))
         .subcommand(SubCommand::with_name("predict")
@@ -56,7 +56,7 @@ fn main() {
     let mut tw = TabWriter::new(io::stdout());
     match args.subcommand() {
         ("list",    Some(sub_args)) => cmd_list(&args, sub_args),
-        ("summary", Some(sub_args)) => cmd_summary(&mut tw, &args, sub_args),
+        ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args),
         ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
     }.unwrap();
