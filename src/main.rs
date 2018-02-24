@@ -1,7 +1,12 @@
+#[cfg(test)]
+extern crate assert_cli;
 extern crate atty;
 extern crate chrono;
 #[macro_use]
 extern crate clap;
+#[cfg(test)]
+#[macro_use]
+extern crate indoc;
 extern crate regex;
 extern crate sysconf;
 extern crate tabwriter;

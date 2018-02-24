@@ -135,7 +135,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
         } else {
             totunknown += 1;
             totcount += 1;
-            writeln!(tw, "{}", ebuild)?;
+            writeln!(tw, "{}\t", ebuild)?;
         }
     }
     if totcount > 0 {
@@ -144,4 +144,43 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
         writeln!(tw, "No ongoing or pretended merges found")?;
     }
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use assert_cli::Assert;
+
+    #[test]
+    fn predict_tty() {
+        // This depends on there being no currently running emerge.
+        // Not a hugely useful test, but it's something.
+        let o = "No ongoing or pretended merges found\n";
+        Assert::main_binary().with_args(&["p"]).stdout().is(o).unwrap();
+    }
+
+    #[test]
+    fn predict_emerge_p() {
+        let t = vec![
+            // Check garbage input
+            (indoc!("blah blah\n"),
+             indoc!("No ongoing or pretended merges found\n")),
+            // Check all-unknowns
+            (indoc!("[ebuild   R   ~] dev-lang/unknown-1.42\n"),
+             indoc!("dev-lang/unknown                               \n\
+                     Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0\n")),
+            // Check that unknown ebuild don't wreck allignment. Remember that times are {:>9}
+            (indoc!("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
+                     [ebuild   R   ~] dev-lang/unknown-1.42\n\
+                     [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n"),
+             indoc!("dev-qt/qtcore                                       3:45\n\
+                     dev-lang/unknown                               \n\
+                     dev-qt/qtgui                                        4:42\n\
+                     Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:27\n")),
+        ];
+        for (i,o) in t {
+            Assert::main_binary().with_args(&["-f","test/emerge.5000.log","p"])
+                .stdin(i).stdout().is(o).unwrap();
+        }
+    }
 }

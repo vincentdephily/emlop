@@ -10,6 +10,11 @@ clap = "~2.29"
 regex = "~0.2"
 sysconf = "~0.3"
 tabwriter = "~1.0"
+
+[dev-dependencies]
+assert_cli = "~0.5"
+indoc = "~0.2"
+
 [profile.release]
 debug = false
 debug-assertions = false
