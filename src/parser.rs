@@ -49,7 +49,7 @@ impl HistParser {
 impl PretendParser {
     pub fn new() -> PretendParser {
         PretendParser{lines: BufReader::new(stdin()).lines(),
-                      re: Regex::new("^\\[[^]]+\\] (.+?)-([0-9.r-]+)(:| |$)").unwrap(),
+                      re: Regex::new("^\\[[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap(),
         }
     }
 }
