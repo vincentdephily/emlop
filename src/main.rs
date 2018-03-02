@@ -65,7 +65,7 @@ fn main() {
         ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
     }.unwrap();
-    tw.flush().unwrap();
+    tw.flush().unwrap_or(());
 }
 
 fn is_posint(v: String) -> Result<(), String> {

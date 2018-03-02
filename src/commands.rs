@@ -18,12 +18,12 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
             },
             HistEvent::Stop{ts, ebuild, version, iter, ..} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
-                    Some(prevts) => println!("{} {:>9} {}-{}",     fmt_time(ts), fmt_duration(ts - prevts), ebuild, version),
-                    None =>         println!("{}  00:00:00 {}-{}", fmt_time(ts), ebuild, version),
+                    Some(prevts) => writeln!(io::stdout(), "{} {:>9} {}-{}",     fmt_time(ts), fmt_duration(ts - prevts), ebuild, version).unwrap_or(()),
+                    None =>         writeln!(io::stdout(), "{}  00:00:00 {}-{}", fmt_time(ts), ebuild, version).unwrap_or(()),
                 }
             },
         }
-    };
+    }
     Ok(())
 }
 
