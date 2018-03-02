@@ -4,7 +4,7 @@
 
 use regex::Regex;
 use std::fs::File;
-use std::io::{stdin, BufRead, BufReader, Lines, Stdin};
+use std::io::{BufRead, BufReader, Lines, Read};
 
 /// Represents one emerge event parsed from an emerge.log file.
 pub enum HistEvent {
@@ -17,6 +17,7 @@ pub enum HistEvent {
 pub struct PretendEvent {
     pub ebuild: String,
     pub version: String,
+    pub line: String,
 }
 
 /// Iterates over an emerge log file to return matching `Event`s.
@@ -29,8 +30,8 @@ pub struct HistParser {
     re_stop: Regex,
 }
 /// Iterates over an emerge-pretend output to return matching `Event`s.
-pub struct PretendParser {
-    lines: Lines<BufReader<Stdin>>,
+pub struct PretendParser<R: Read> {
+    lines: Lines<BufReader<R>>,
     re: Regex,
 }
 
@@ -46,9 +47,9 @@ impl HistParser {
         }
     }
 }
-impl PretendParser {
-    pub fn new() -> PretendParser {
-        PretendParser{lines: BufReader::new(stdin()).lines(),
+impl<R: Read> PretendParser<R> {
+    pub fn new(reader: R) -> PretendParser<R> {
+        PretendParser{lines: BufReader::new(reader).lines(),
                       re: Regex::new("^\\[[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap(),
         }
     }
@@ -100,7 +101,7 @@ impl Iterator for HistParser {
         }
     }
 }
-impl Iterator for PretendParser {
+impl<R: Read> Iterator for PretendParser<R> {
     type Item = PretendEvent;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -109,7 +110,8 @@ impl Iterator for PretendParser {
                     // Try to match this line, loop with the next line if not
                     if let Some(c) = self.re.captures(line) {
                         return Some(PretendEvent{ebuild: c.get(1).unwrap().as_str().to_string(),
-                                                 version: c.get(2).unwrap().as_str().to_string()})
+                                                 version: c.get(2).unwrap().as_str().to_string(),
+                                                 line: line.to_string()})
                     };
                 },
                 _ =>
@@ -170,5 +172,25 @@ mod tests {
         parse_hist("/var/log/emerge.log",
                    946684800, epoch_now(), // date from 2000-01-01 to now
                    100, None);
+    }
+
+    fn parse_pretend(filename: &str, expect_count: usize) {
+        // Setup
+        let pretend = PretendParser::new(File::open(filename).unwrap());
+        let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
+        let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
+        let mut count = 0;
+        for PretendEvent{ebuild, version, line} in pretend {
+            count += 1;
+            assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
+            assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
+        }
+        assert_eq!(count, expect_count, "Got {} events, expected {:?}", count, expect_count);
+    }
+
+    #[test]
+    fn parse_pretend_basic() {
+        parse_pretend("test/emerge-p.basic.out", 5);
+        parse_pretend("test/emerge-pv.basic.out", 5);
     }
 }

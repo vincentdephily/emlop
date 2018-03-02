@@ -1,0 +1,9 @@
+
+These are the packages that would be merged, in order:
+
+Calculating dependencies  ... done!
+[ebuild   R    ] sys-devel/gcc-6.4.0-r1 
+[ebuild   R    ] sys-libs/readline-7.0_p3 
+[ebuild   R   ~] app-portage/emlop-0.1.0_p20180221 
+[ebuild   R    ] app-shells/bash-4.4_p12 
+[ebuild   R    ] dev-db/postgresql-10.3 

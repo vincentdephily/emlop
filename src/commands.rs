@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use ::*;
 use parser::*;
 use proces::*;
+use std::io::stdin;
 
 /// Straightforward display of merge events
 ///
@@ -71,7 +72,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     let lim = value_t!(subargs, "limit", usize).unwrap();
 
     // Gather and print info about current merge process.
-    let mut cms = std::i64::MAX;//current_merge_start(tw)?;
+    let mut cms = std::i64::MAX;
     for i in get_all_info(Some("emerge"))? {
         cms = std::cmp::min(cms, i.start);
         writeln!(tw, "Pid {}: ...{}\t{:>9}", i.pid, &i.cmdline[(i.cmdline.len()-35)..], fmt_duration(now-i.start))?;
@@ -99,10 +100,10 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     // Parse list of pending merges (from stdin or from emerge log filterd by cms).
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
     let pretend: Vec<PretendEvent> = match atty::is(atty::Stream::Stdin) {
-        false => PretendParser::new().collect(),
+        false => PretendParser::new(stdin()).collect(),
         true => started.iter()
             .filter(|&(_,t)| *t > cms)
-            .map(|(&(ref  e,ref v),_)| PretendEvent{ebuild:e.to_string(), version:v.to_string()})
+            .map(|(&(ref  e,ref v),_)| PretendEvent{ebuild:e.to_string(), version:v.to_string(), line: String::from("")})
             .collect(),
     };
 
@@ -111,7 +112,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     let mut totunknown = 0;
     let mut totpredict = 0;
     let mut totelapsed = 0;
-    for PretendEvent{ebuild, version} in pretend {
+    for PretendEvent{ebuild, version, ..} in pretend {
         if let Some(tv) = times.get(&ebuild) {
             let (predtime,predcount,_) = tv.iter()
                 .fold((0,0,0), |(pt,pc,tc), &i| {
