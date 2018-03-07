@@ -64,8 +64,13 @@ Using the mean might be better than the average, to take care of outlyers.
 Because why not. Should also help with unit-testing.
 #### Pull timings from gentoo.linuxhowtos.org for first-time emerge
 Never used this in genlop, but I guess others will want the feature.
-#### Extra package info (use flags, build env, first/last merge, etc)
-Should go into the `summary` command.
+#### Extra info in stats command
+* use flags and build env of current install (like genlop)
+* date of first/last merge
+* build time variability
+* build time trend
+* distinct version count
+#### Sort stats by any column
 #### Config file to set defaults
 #### Benchmarks
 AKA more speed. Not a huge issue as all release runs take < 0.5s, but debug runs and `cargo test`
