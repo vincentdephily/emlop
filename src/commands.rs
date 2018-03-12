@@ -174,13 +174,13 @@ mod tests {
             (indoc!("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
                      [ebuild   R   ~] dev-lang/unknown-1.42\n\
                      [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n"),
-             indoc!("dev-qt/qtcore                                       3:45\n\
+             indoc!("dev-qt/qtcore                                       3:44\n\
                      dev-lang/unknown                               \n\
-                     dev-qt/qtgui                                        4:42\n\
-                     Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:27\n")),
+                     dev-qt/qtgui                                        4:36\n\
+                     Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n")),
         ];
         for (i,o) in t {
-            Assert::main_binary().with_args(&["-f","test/emerge.5000.log","p"])
+            Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
                 .stdin(i).stdout().is(o).unwrap();
         }
     }
