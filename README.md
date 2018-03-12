@@ -11,31 +11,29 @@ doc.
 
 ## Installation
 
-From most stable to most recent:
-
 ### From main portage tree
 
-Sorry not available yet, waiting for the first release to ask for inclusion.
+Not available yet, see [gentoo bug 649904](https://bugs.gentoo.org/649904).
 
 ### From portage overlay
 
-If you do not have it already, install and configure [layman](https://wiki.gentoo.org/wiki/Layman).
+If you do not have [layman](https://wiki.gentoo.org/wiki/Layman) already, install and configure it.
 Then run `layman -a moltonel` to add the overlay with the emlop ebuild. Then run `emerge emlop` as
 ususal.
 
 ### From source
 
-If you do not already have [Rust](https://www.rust-lang.org/), install it with `emerge rust` or
-[rustup](https://www.rust-lang.org/en-US/install.html). Emlop should always work with a version of
-rust available in portage, but the version from rustup might be more recent and performant.
+If you do not have [Rust](https://www.rust-lang.org/) already, install it with `emerge rust` or
+[rustup](https://www.rust-lang.org/en-US/install.html). Emlop should always work with the latest
+version of rust from portage, but the version from rustup might be more recent and performant.
 
     git clone https://github.com/vincentdephily/emlop
     cd emlop
     cargo test
     cargo install -f
 
-If you wish to install emlop system-wide, copy or symlink `~/.cargo/bin/emlop` into
-`/usr/local/bin/` or some other folder from your `$PATH`, or add `~/.cargo/bin/emlop` to your
+This installs emlop into `~/.cargo/bin/`, which should be in your `$PATH`. If you wish to install
+emlop system-wide, edit the system `$PATH` or copy/symlink `~/.cargo/bin/emlop` somewhere in
 `$PATH`.
 
 
@@ -95,7 +93,6 @@ Predict merge time from an `emerge --pretend` output, taking currently elapsed t
     kde-apps/konqueror                                      3:46
     Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06
 
-
 ### Show merge statistics
 
 Show total merge time, merge count, and average merge time:
@@ -119,11 +116,4 @@ Show total merge time, merge count, and average merge time:
 
 ## Contributing
 
-Thanks for using, sharing, and contributing to emlop :)
-
-Please create issues and send pull request via [Github](https://github.com/vincentdephily/emlop). Be
-nice. Make sure to `cargo test` before submitting your code. `rustfmt` and `clippy` are also
-recomended, but not followed religiously.
-
-Emlop is licensed as GPLv3. Any contribution accepted into the emlop repo will have that license,
-unless the contributor explicitly demands otherwise.
+Thanks, and welcome :) See [CONTRIBUTING](CONTRIBUTING.md). Emlop is licensed as GPLv3.
