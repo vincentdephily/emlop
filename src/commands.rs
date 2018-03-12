@@ -9,7 +9,7 @@ use std::io::stdin;
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
-    let hist = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"));
+    let hist = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"), subargs.is_present("exact"));
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     for event in hist {
         match event {
@@ -33,7 +33,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
-    let parser = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"));
+    let parser = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"), subargs.is_present("exact"));
     let lim = value_t!(subargs, "limit", usize).unwrap();
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
@@ -79,7 +79,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     }
 
     // Parse emerge log.
-    let hist = HistParser::new(args.value_of("logfile").unwrap(), None);
+    let hist = HistParser::new(args.value_of("logfile").unwrap(), None, false);
     let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     for event in hist {

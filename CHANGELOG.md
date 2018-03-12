@@ -1,3 +1,8 @@
+# master
+
+* Make regexp search case-insensitive: no need to remeber that 'PyQt' is camelcase anymore.
+* Add `--exact`/`-e` (non-regexp) search mode (like the default/only mode of `{gen,q,pq,go}lop`).
+
 # 0.1 2018-03-07
 
 First release, huzza !

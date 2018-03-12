@@ -2,9 +2,40 @@
 //!
 //! Instantiate a `HistParser` or `PretendParser` and iterate over it to retrieve the events.
 
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Lines, Read};
+
+/// Create a closure that matches package depending on options.
+fn filter_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
+    match package {
+        // No filter
+        None => {
+            Box::new(|_| true)
+        },
+        Some(search) => match exact {
+            true => match search.contains("/") {
+                // Filter on exact name
+                true => {
+                    let srch = search.to_string();
+                    Box::new(move |pkg| pkg == srch)
+                },
+                // Filter on exact category/name
+                false => {
+                    let srch = format!("/{}",search);
+                    Box::new(move |pkg| pkg.ends_with(&srch))
+                }
+            },
+            // Filter on case-insensitive regexp
+            false => {
+                let re = RegexBuilder::new(search)
+                    .case_insensitive(true)
+                    .build().unwrap();
+                Box::new(move |pkg| re.is_match(pkg))
+            }
+        }
+    }
+}
 
 /// Represents one emerge event parsed from an emerge.log file.
 pub enum HistEvent {
@@ -25,7 +56,7 @@ pub struct HistParser {
     filename: String,
     lines: Lines<BufReader<File>>,
     curline: u64,
-    re_pkg: Option<Regex>,
+    filter: Box<Fn(&str) -> bool>,
     re_start: Regex,
     re_stop: Regex,
 }
@@ -36,12 +67,12 @@ pub struct PretendParser<R: Read> {
 }
 
 impl HistParser {
-    pub fn new(filename: &str, filter: Option<&str>) -> HistParser {
+    pub fn new(filename: &str, search_str: Option<&str>, search_exact: bool) -> HistParser {
         let file = File::open(filename).unwrap();
         HistParser{filename: filename.to_string(),
                    lines: BufReader::new(file).lines(),
                    curline: 0,
-                   re_pkg: filter.and_then(|pkg| Some(Regex::new(pkg).unwrap())),
+                   filter: filter_fn(search_str, search_exact),
                    re_start: Regex::new("^([0-9]+):  >>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap(),
                    re_stop:  Regex::new("^([0-9]+):  ::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap(),
         }
@@ -67,7 +98,7 @@ impl Iterator for HistParser {
                     if line.contains("> emerge") {
                         if let Some(c) = self.re_start.captures(line) {
                             let eb = c.get(3).unwrap().as_str();
-                            if self.re_pkg.as_ref().map_or(true, |r| r.is_match(eb)) {
+                            if (self.filter)(eb) {
                                 return Some(HistEvent::Start{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
                                                              ebuild: eb.to_string(),
                                                              iter: c.get(2).unwrap().as_str().to_string(),
@@ -79,7 +110,7 @@ impl Iterator for HistParser {
                     if line.contains(": completed") {
                         if let Some(c) = self.re_stop.captures(line) {
                             let eb = c.get(3).unwrap().as_str();
-                            if self.re_pkg.as_ref().map_or(true, |r| r.is_match(eb)) {
+                            if (self.filter)(eb) {
                                 return Some(HistEvent::Stop{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
                                                             ebuild: eb.to_string(),
                                                             iter: c.get(2).unwrap().as_str().to_string(),
@@ -128,9 +159,9 @@ mod tests {
     use parser::*;
 
     /// This checks parsing the given emerge.log.
-    fn parse_hist(filename: &str, mindate: i64, maxdate: i64, mincount: usize, maxcount: Option<usize>) {
+    fn parse_hist(filename: &str, filter: Option<&str>, exact: bool, mindate: i64, maxdate: i64, mincount: usize, maxcount: Option<usize>) {
         // Setup
-        let hist = HistParser::new(filename, None);
+        let hist = HistParser::new(filename, filter, exact);
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap(); //Should match pattern used in *Parser
@@ -147,13 +178,13 @@ mod tests {
             assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
             assert!(re_iter.is_match(&iter), "Invalid iteration {} in {}", iter, line);
         }
-        assert!(count >= mincount && count <= maxcount.unwrap_or(count), "Got {} events, expected {:?}", count, (mincount, maxcount));
+        assert!(count >= mincount && count <= maxcount.unwrap_or(count), "Got {} events, expected {:?} {:?}", count, (mincount, maxcount), (filter,exact));
     }
 
     #[test]
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
-        parse_hist("test/emerge.all.log",
+        parse_hist("test/emerge.all.log", None, false,
                    1483228800, 1483747200, // Generated dates are from 2017-01-01 to 2017-01-07
                    74830, Some(74830));    // wc -l < test/emerge.all.log
     }
@@ -161,7 +192,7 @@ mod tests {
     #[test]
     /// Emerge log with some null bytes in the middle
     fn parse_hist_nullbytes() {
-        parse_hist("test/emerge.nullbytes.log",
+        parse_hist("test/emerge.nullbytes.log", None, false,
                    1327867709, 1327871057, // Taken from the file
                    28, Some(28));          // 14 merges
     }
@@ -169,9 +200,29 @@ mod tests {
     #[test]
     /// Local emerge log
     fn parse_hist_local() {
-        parse_hist("/var/log/emerge.log",
+        parse_hist("/var/log/emerge.log", None, false,
                    946684800, epoch_now(), // date from 2000-01-01 to now
                    100, None);
+    }
+
+    #[test]
+    /// Filtering by package
+    fn parse_hist_filter() {
+        for (f,e,c) in vec![(None,                               false, 1721), // Everything
+                            (Some("kactivities"),                false,    8), // regexp matches 4
+                            (Some("kactivities"),                true,     4), // string matches 2
+                            (Some("kde-frameworks/kactivities"), true,     4), // string matches 2
+                            (Some("frameworks/kactivities"),     true,     0), // string matches nothing
+                            (Some("ks/kw"),                      false,   17), // regexp matches 16 (+1 failed)
+                            (Some("file"),                       false,   14), // case-insensitive
+                            (Some("FILE"),                       false,   14), // case-insensitive
+                            (Some("file-next"),                  true,     0), // case-sensitive
+                            (Some("File-Next"),                  true,     2), // case-sensitive
+        ] {
+            parse_hist("test/emerge.10000.log", f, e,
+                       1517609348, 1520891098,
+                       c, Some(c));
+        }
     }
 
     fn parse_pretend(filename: &str, expect_count: usize) {
@@ -180,6 +231,7 @@ mod tests {
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let mut count = 0;
+        // Check that all items look valid
         for PretendEvent{ebuild, version, line} in pretend {
             count += 1;
             assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);

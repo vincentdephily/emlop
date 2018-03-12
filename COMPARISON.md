@@ -48,16 +48,21 @@ outputs.
 
 ## Filtering
 
+Genlop switches case-sensitivity using `-s` vs `-S` flag. Emlop doesn't have a flag, but regexp can
+be prepended with `(?-i)` should case-sensitivity ever be needed. {q,pq,go}lop only support
+plaintext whole-word matching.
+
 Pqlop requires a search term, it can only display info about a particular package. Golop only
 displays one of the possible matches when an ambiguous name is given (like `pkgconfig`).
 
-|                                                          | genlop | qlop | emlop | pqlop | golop |
-| :------------------------------------------------------- | :----: | :--: | :---: | :---: | :---: |
-| Limit log parsing by date                                | yes    | yes  | no    | no    | no    |
-| Plaintext exact package search                           | yes    | yes  | no    | yes   | yes   |
-| Regexp package search                                    | yes    | no   | yes   | no    | no    |
-| Optional case-insensitive regexp                         | yes    | no   | no    | no    | no    |
-| Unfiltered package listing                               | yes    | yes  | yes   | no    | yes   |
+|                                                        | genlop | qlop  | emlop  | pqlop | golop |
+| :----------------------------------------------------- | :----: | :--:  | :----: | :---: | :---: |
+| Limit log parsing by date                              | yes    | yes   | no     | no    | no    |
+| Plaintext exact package search                         | yes    | yes   | yes    | yes   | yes   |
+| Regexp package search                                  | yes    | no    | yes    | no    | no    |
+| Regexp case-sensitivity switch                         | flag   | n/a   | syntax | n/a   | n/a   |
+| Default search mode                                    | plain  | plain | regexp | plain | plain |
+| Unfiltered package listing                             | yes    | yes   | yes    | no    | yes   |
 
 ## Speed
 

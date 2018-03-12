@@ -35,7 +35,14 @@ fn main() {
         .help("Use the last N merge times to predict future merge time");
     let arg_pkg = Arg::with_name("package")
         .takes_value(true)
-        .help("Filer packages category/name using a regexp");
+        .help("Display only packages matching <package>.");
+    let arg_exact = Arg::with_name("exact")
+        .short("e")
+        .long("exact")
+        .help("Interpret <package> as a string instead of a regexp.")
+        .long_help("Match packages using exact string instead of regexp. \
+Without this flag, matching is done by case-insensitive regexp (see https://docs.rs/regex/0.2.8/regex/index.html#syntax) on 'category/name'. \
+With this flag, matching is done by case-sentitive string on 'name' (or 'category/name' if <package> contains a /).");//FIXME crate version
     let args = app_from_crate!()
         .setting(AppSettings::InferSubcommands)
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -48,9 +55,11 @@ fn main() {
              .help("Location of emerge log file"))
         .subcommand(SubCommand::with_name("list")
                     .about("Show full merge history")
+                    .arg(&arg_exact)
                     .arg(&arg_pkg))
         .subcommand(SubCommand::with_name("stats")
                     .about("Show merge stats")
+                    .arg(&arg_exact)
                     .arg(&arg_pkg)
                     .arg(&arg_limit))
         .subcommand(SubCommand::with_name("predict")
