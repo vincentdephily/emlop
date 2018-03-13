@@ -145,7 +145,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     if totcount > 0 {
         writeln!(tw, "Estimate for {} ebuilds ({} unknown, {} elapsed)\t{:>9}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(totpredict))?;
     } else {
-        writeln!(tw, "No pretended merges found")?;
+        writeln!(tw, "No pretended merge found")?;
     }
     Ok(())
 }
@@ -159,7 +159,7 @@ mod tests {
     fn predict_tty() {
         // This depends on there being no currently running emerge.
         // Not a hugely useful test, but it's something.
-        let o = "No ongoing or pretended merges found\n";
+        let o = "No pretended merge found\n";
         Assert::main_binary().with_args(&["p"]).stdout().is(o).unwrap();
     }
 
@@ -168,7 +168,7 @@ mod tests {
         let t = vec![
             // Check garbage input
             (indoc!("blah blah\n"),
-             indoc!("No pretended merges found\n")),
+             indoc!("No pretended merge found\n")),
             // Check all-unknowns
             (indoc!("[ebuild   R   ~] dev-lang/unknown-1.42\n"),
              indoc!("dev-lang/unknown                               \n\
