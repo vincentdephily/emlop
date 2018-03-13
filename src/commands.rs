@@ -77,6 +77,10 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
         cms = std::cmp::min(cms, i.start);
         writeln!(tw, "Pid {}: ...{}\t{:>9}", i.pid, &i.cmdline[(i.cmdline.len()-35)..], fmt_duration(now-i.start))?;
     }
+    if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
+        writeln!(tw, "No ongoing merge found")?;
+        return Ok(())
+    }
 
     // Parse emerge log.
     let hist = HistParser::new(args.value_of("logfile").unwrap(), None, false);
@@ -97,13 +101,13 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
         }
     }
 
-    // Parse list of pending merges (from stdin or from emerge log filterd by cms).
+    // Parse list of pending merges (from stdin or from emerge log filtered by cms).
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
     let pretend: Vec<PretendEvent> = match atty::is(atty::Stream::Stdin) {
         false => PretendParser::new(stdin()).collect(),
         true => started.iter()
             .filter(|&(_,t)| *t > cms)
-            .map(|(&(ref  e,ref v),_)| PretendEvent{ebuild:e.to_string(), version:v.to_string(), line: String::from("")})
+            .map(|(&(ref e,ref v),_)| PretendEvent{ebuild:e.to_string(), version:v.to_string(), line: String::from("")})
             .collect(),
     };
 
@@ -113,6 +117,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     let mut totpredict = 0;
     let mut totelapsed = 0;
     for PretendEvent{ebuild, version, ..} in pretend {
+        totcount += 1;
         if let Some(tv) = times.get(&ebuild) {
             let (predtime,predcount,_) = tv.iter()
                 .fold((0,0,0), |(pt,pc,tc), &i| {
@@ -120,7 +125,6 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
                     else         {(pt+i,pc+1,tc+1)}
                 });
             totpredict += predtime / predcount;
-            totcount += 1;
             match started.remove(&(ebuild.clone(), version.clone())) {
                 Some(start_ts) if start_ts > cms => {
                     // There's an emerge process running since before this unfinished merge started,
@@ -135,14 +139,13 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
             }
         } else {
             totunknown += 1;
-            totcount += 1;
             writeln!(tw, "{}\t", ebuild)?;
         }
     }
     if totcount > 0 {
         writeln!(tw, "Estimate for {} ebuilds ({} unknown, {} elapsed)\t{:>9}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(totpredict))?;
     } else {
-        writeln!(tw, "No ongoing or pretended merges found")?;
+        writeln!(tw, "No pretended merges found")?;
     }
     Ok(())
 }
@@ -165,7 +168,7 @@ mod tests {
         let t = vec![
             // Check garbage input
             (indoc!("blah blah\n"),
-             indoc!("No ongoing or pretended merges found\n")),
+             indoc!("No pretended merges found\n")),
             // Check all-unknowns
             (indoc!("[ebuild   R   ~] dev-lang/unknown-1.42\n"),
              indoc!("dev-lang/unknown                               \n\
