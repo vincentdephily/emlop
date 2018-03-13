@@ -1,7 +1,7 @@
-# Comparison with genlop, pqlop, golop
+# Comparison with genlop, qlop, pqlop, golop
 
 [Genlop](https://github.com/gentoo-perl/genlop) is great and was the inspiration for emlop. Original
-motivation for a rewrite was improving the speed and accuracy or `genlop -p`, and learning
+motivation for a rewrite was improving the speed and accuracy of `genlop -p`, and learning
 Rust. Other rewrites exists: [qlop](https://github.com/gentoo/portage-utils) (part of the
 [q-applets](https://wiki.gentoo.org/wiki/Q_applets) toolkit),
 [Pqlop](https://bitbucket.org/LK4D4/pqlop), and [golop](https://github.com/klausman/golop). Perl,
