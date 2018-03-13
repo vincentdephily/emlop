@@ -159,7 +159,7 @@ mod tests {
     use parser::*;
 
     /// This checks parsing the given emerge.log.
-    fn parse_hist(filename: &str, filter: Option<&str>, exact: bool, mindate: i64, maxdate: i64, mincount: usize, maxcount: Option<usize>) {
+    fn parse_hist(filename: &str, filter: Option<&str>, exact: bool, mindate: i64, maxdate: i64, expect_count: usize) {
         // Setup
         let hist = HistParser::new(filename, filter, exact);
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
@@ -178,7 +178,7 @@ mod tests {
             assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
             assert!(re_iter.is_match(&iter), "Invalid iteration {} in {}", iter, line);
         }
-        assert!(count >= mincount && count <= maxcount.unwrap_or(count), "Got {} events, expected {:?} {:?}", count, (mincount, maxcount), (filter,exact));
+        assert_eq!(count, expect_count, "Got {} events, expected {:?} {:?} {}", count, expect_count, filter, exact);
     }
 
     #[test]
@@ -186,7 +186,7 @@ mod tests {
     fn parse_hist_all() {
         parse_hist("test/emerge.all.log", None, false,
                    1483228800, 1483747200, // Generated dates are from 2017-01-01 to 2017-01-07
-                   74830, Some(74830));    // wc -l < test/emerge.all.log
+                   74830);                 // wc -l < test/emerge.all.log
     }
 
     #[test]
@@ -194,15 +194,7 @@ mod tests {
     fn parse_hist_nullbytes() {
         parse_hist("test/emerge.nullbytes.log", None, false,
                    1327867709, 1327871057, // Taken from the file
-                   28, Some(28));          // 14 merges
-    }
-
-    #[test]
-    /// Local emerge log
-    fn parse_hist_local() {
-        parse_hist("/var/log/emerge.log", None, false,
-                   946684800, epoch_now(), // date from 2000-01-01 to now
-                   100, None);
+                   28);                    // 14 merges
     }
 
     #[test]
@@ -221,7 +213,7 @@ mod tests {
         ] {
             parse_hist("test/emerge.10000.log", f, e,
                        1517609348, 1520891098,
-                       c, Some(c));
+                       c);
         }
     }
 
