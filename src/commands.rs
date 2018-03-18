@@ -3,26 +3,28 @@ use std::collections::HashMap;
 use ::*;
 use parser::*;
 use proces::*;
+use std::fs::File;
 use std::io::stdin;
 
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
-    let hist = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"), subargs.is_present("exact"));
+    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(), subargs.value_of("package"), subargs.is_present("exact"));
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
-    for event in hist {
-        match event {
-            HistEvent::Start{ts, ebuild, version, iter, ..} => {
+    for p in hist {
+        match p {
+            Parsed::Start{ts, ebuild, version, iter, ..} => {
                 // This'll overwrite any previous entry, if a build started but never finished
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            HistEvent::Stop{ts, ebuild, version, iter, ..} => {
+            Parsed::Stop{ts, ebuild, version, iter, ..} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(prevts) => writeln!(io::stdout(), "{} {:>9} {}-{}",     fmt_time(ts), fmt_duration(ts - prevts), ebuild, version).unwrap_or(()),
                     None =>         writeln!(io::stdout(), "{}  00:00:00 {}-{}", fmt_time(ts), ebuild, version).unwrap_or(()),
                 }
             },
+            _ => assert!(false, "unexpected {:?}", p),
         }
     }
     Ok(())
@@ -33,16 +35,16 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
-    let parser = HistParser::new(args.value_of("logfile").unwrap(), subargs.value_of("package"), subargs.is_present("exact"));
+    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(), subargs.value_of("package"), subargs.is_present("exact"));
     let lim = value_t!(subargs, "limit", usize).unwrap();
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
-    for event in parser {
-        match event {
-            HistEvent::Start{ts, ebuild, version, iter, ..} => {
+    for p in hist {
+        match p {
+            Parsed::Start{ts, ebuild, version, iter, ..} => {
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            HistEvent::Stop{ts, ebuild, version, iter, ..} => {
+            Parsed::Stop{ts, ebuild, version, iter, ..} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(start_ts) => {
                         let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
@@ -50,7 +52,8 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                     },
                     None => (),
                 }
-            }
+            },
+            _ => assert!(false, "unexpected {:?}", p),
         }
     };
     for (pkg,tv) in times.iter() {
@@ -83,31 +86,32 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     }
 
     // Parse emerge log.
-    let hist = HistParser::new(args.value_of("logfile").unwrap(), None, false);
+    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(), None, false);
     let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
-    for event in hist {
-        match event {
+    for p in hist {
+        match p {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
-            HistEvent::Start{ts, ebuild, version, ..} => {
+            Parsed::Start{ts, ebuild, version, ..} => {
                 started.insert((ebuild.clone(), version.clone()), ts);
             }
-            HistEvent::Stop{ts, ebuild, version, ..} => {
+            Parsed::Stop{ts, ebuild, version, ..} => {
                 if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone())) {
                     let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
                     timevec.insert(0, ts-start_ts);
                 }
             }
+            _ => assert!(false, "unexpected {:?}", p),
         }
     }
 
     // Parse list of pending merges (from stdin or from emerge log filtered by cms).
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
-    let pretend: Vec<PretendEvent> = match atty::is(atty::Stream::Stdin) {
-        false => PretendParser::new(stdin()).collect(),
+    let pretend: Vec<Parsed> = match atty::is(atty::Stream::Stdin) {
+        false => Parser::new_pretend(stdin(), "STDIN").collect(),
         true => started.iter()
             .filter(|&(_,t)| *t > cms)
-            .map(|(&(ref e,ref v),_)| PretendEvent{ebuild:e.to_string(), version:v.to_string(), line: String::from("")})
+            .map(|(&(ref e,ref v),_)| Parsed::Pretend{ebuild:e.to_string(), version:v.to_string(), line: String::from("")})
             .collect(),
     };
 
@@ -116,30 +120,35 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     let mut totunknown = 0;
     let mut totpredict = 0;
     let mut totelapsed = 0;
-    for PretendEvent{ebuild, version, ..} in pretend {
-        totcount += 1;
-        if let Some(tv) = times.get(&ebuild) {
-            let (predtime,predcount,_) = tv.iter()
-                .fold((0,0,0), |(pt,pc,tc), &i| {
-                    if tc >= lim {(pt,  pc,  tc+1)}
-                    else         {(pt+i,pc+1,tc+1)}
-                });
-            totpredict += predtime / predcount;
-            match started.remove(&(ebuild.clone(), version.clone())) {
-                Some(start_ts) if start_ts > cms => {
-                    // There's an emerge process running since before this unfinished merge started,
-                    // so a good guess is that this merge is currently running. This can lead to
-                    // false-positives, but is IMHO no worse than genlop's heuristics.
-                    totelapsed += now - start_ts;
-                    totpredict -= std::cmp::min(predtime / predcount, now - start_ts);
-                    writeln!(tw, "{}\t{:>9} - {}", ebuild, fmt_duration(predtime/predcount), fmt_duration(now-start_ts))?;
-                },
-                _ =>
-                    writeln!(tw, "{}\t{:>9}", ebuild, fmt_duration(predtime/predcount))?,
-            }
-        } else {
-            totunknown += 1;
-            writeln!(tw, "{}\t", ebuild)?;
+    for p in pretend {
+        match p {
+            Parsed::Pretend{ebuild, version, ..} => {
+                totcount += 1;
+                if let Some(tv) = times.get(&ebuild) {
+                    let (predtime,predcount,_) = tv.iter()
+                        .fold((0,0,0), |(pt,pc,tc), &i| {
+                            if tc >= lim {(pt,  pc,  tc+1)}
+                            else         {(pt+i,pc+1,tc+1)}
+                        });
+                    totpredict += predtime / predcount;
+                    match started.remove(&(ebuild.clone(), version.clone())) {
+                        Some(start_ts) if start_ts > cms => {
+                            // There's an emerge process running since before this unfinished merge started,
+                            // so a good guess is that this merge is currently running. This can lead to
+                            // false-positives, but is IMHO no worse than genlop's heuristics.
+                            totelapsed += now - start_ts;
+                            totpredict -= std::cmp::min(predtime / predcount, now - start_ts);
+                            writeln!(tw, "{}\t{:>9} - {}", ebuild, fmt_duration(predtime/predcount), fmt_duration(now-start_ts))?;
+                        },
+                        _ =>
+                            writeln!(tw, "{}\t{:>9}", ebuild, fmt_duration(predtime/predcount))?,
+                    }
+                } else {
+                    totunknown += 1;
+                    writeln!(tw, "{}\t", ebuild)?;
+                }
+            },
+            _ => assert!(false, "unexpected {:?}", p),
         }
     }
     if totcount > 0 {

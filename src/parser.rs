@@ -3,7 +3,6 @@
 //! Instantiate a `HistParser` or `PretendParser` and iterate over it to retrieve the events.
 
 use regex::{Regex, RegexBuilder};
-use std::fs::File;
 use std::io::{BufRead, BufReader, Lines, Read};
 
 /// Create a closure that matches package depending on options.
@@ -37,141 +36,125 @@ fn filter_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
     }
 }
 
-/// Represents one emerge event parsed from an emerge.log file.
-pub enum HistEvent {
+/// Items returned from Parser.next().
+#[derive(Debug)]
+pub enum Parsed {
     /// Emerge started (might never complete)
     Start{ts: i64, ebuild: String, version: String, iter: String, line: String},
     /// Emerge completed
     Stop{ts: i64, ebuild: String, version: String, iter: String, line: String},
-}
-/// Represents one emerge-pretend parsed from an `emerge -p` output.
-pub struct PretendEvent {
-    pub ebuild: String,
-    pub version: String,
-    pub line: String,
+    /// Pretend output
+    Pretend{ebuild: String, version: String, line: String},
 }
 
-/// Iterates over an emerge log file to return matching `Event`s.
-pub struct HistParser {
-    filename: String,
-    lines: Lines<BufReader<File>>,
+/// Iterates over line by line over the input to produce `Parsed` items.
+pub struct Parser<R: Read> {
+    input: String,
+    lines: Lines<BufReader<R>>,
     curline: u64,
     filter: Box<Fn(&str) -> bool>,
-    re_start: Regex,
-    re_stop: Regex,
-}
-/// Iterates over an emerge-pretend output to return matching `Event`s.
-pub struct PretendParser<R: Read> {
-    lines: Lines<BufReader<R>>,
-    re: Regex,
+    re_start: Option<Regex>,
+    re_stop: Option<Regex>,
+    re_pretend: Option<Regex>,
 }
 
-impl HistParser {
-    pub fn new(filename: &str, search_str: Option<&str>, search_exact: bool) -> HistParser {
-        let file = File::open(filename).unwrap();
-        HistParser{filename: filename.to_string(),
-                   lines: BufReader::new(file).lines(),
-                   curline: 0,
-                   filter: filter_fn(search_str, search_exact),
-                   re_start: Regex::new("^([0-9]+):  >>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap(),
-                   re_stop:  Regex::new("^([0-9]+):  ::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap(),
+impl<R: Read> Parser<R> {
+    fn parse_start(&mut self, line: &str) -> Option<Parsed> {
+        let re = self.re_start.as_ref()?;
+        if !line.contains("> emerge") {return None}
+        let c = re.captures(line)?;
+        let eb = c.get(3).unwrap().as_str();
+        if !(self.filter)(eb) {return None}
+        Some(Parsed::Start{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
+                           ebuild: eb.to_string(),
+                           iter: c.get(2).unwrap().as_str().to_string(),
+                           version: c.get(4).unwrap().as_str().to_string(),
+                           line: line.to_string()})
+    }
+    fn parse_stop(&mut self, line: &str) -> Option<Parsed> {
+        let re = self.re_stop.as_ref()?;
+        if !line.contains(": completed") {return None}
+        let c = re.captures(line)?;
+        let eb = c.get(3).unwrap().as_str();
+        if !(self.filter)(eb) {return None}
+        Some(Parsed::Stop{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
+                          ebuild: eb.to_string(),
+                          iter: c.get(2).unwrap().as_str().to_string(),
+                          version: c.get(4).unwrap().as_str().to_string(),
+                          line: line.to_string()})
+    }
+    fn parse_pretend(&mut self, line: &str) -> Option<Parsed> {
+        let re = self.re_pretend.as_ref()?;
+        let c = re.captures(line)?;
+        Some(Parsed::Pretend{ebuild: c.get(1).unwrap().as_str().to_string(),
+                             version: c.get(2).unwrap().as_str().to_string(),
+                             line: line.to_string()})
+    }
+
+    pub fn new_hist(reader: R, reader_name: &str, search_str: Option<&str>, search_exact: bool) -> Parser<R> {
+        Parser{input: reader_name.to_string(),
+               lines: BufReader::new(reader).lines(),
+               curline: 0,
+               filter: filter_fn(search_str, search_exact),
+               re_start: Some(Regex::new("^([0-9]+):  >>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap()),
+               re_stop: Some(Regex::new("^([0-9]+):  ::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap()),
+               re_pretend: None,
+        }
+    }
+    pub fn new_pretend(reader: R, reader_name: &str) -> Parser<R> {
+        Parser{input: reader_name.to_string(),
+               lines: BufReader::new(reader).lines(),
+               curline: 0,
+               filter: filter_fn(None, true),
+               re_start: None,
+               re_stop: None,
+               re_pretend: Some(Regex::new("^\\[[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap()),
         }
     }
 }
-impl<R: Read> PretendParser<R> {
-    pub fn new(reader: R) -> PretendParser<R> {
-        PretendParser{lines: BufReader::new(reader).lines(),
-                      re: Regex::new("^\\[[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap(),
-        }
-    }
-}
 
-impl Iterator for HistParser {
-    type Item = HistEvent;
+impl<R: Read> Iterator for Parser<R> {
+    type Item = Parsed;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
+            self.curline += 1;
             match self.lines.next() {
-                Some(Ok(ref line)) => {
-                    self.curline += 1;
-                    // Try to match this line, loop with the next line if not
-                    // We do a quick string search before attempting the comparatively slow regexp parsing
-                    if line.contains("> emerge") {
-                        if let Some(c) = self.re_start.captures(line) {
-                            let eb = c.get(3).unwrap().as_str();
-                            if (self.filter)(eb) {
-                                return Some(HistEvent::Start{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
-                                                             ebuild: eb.to_string(),
-                                                             iter: c.get(2).unwrap().as_str().to_string(),
-                                                             version: c.get(4).unwrap().as_str().to_string(),
-                                                             line: line.to_string()})
-                            }
-                        }
-                    }
-                    if line.contains(": completed") {
-                        if let Some(c) = self.re_stop.captures(line) {
-                            let eb = c.get(3).unwrap().as_str();
-                            if (self.filter)(eb) {
-                                return Some(HistEvent::Stop{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
-                                                            ebuild: eb.to_string(),
-                                                            iter: c.get(2).unwrap().as_str().to_string(),
-                                                            version: c.get(4).unwrap().as_str().to_string(),
-                                                            line: line.to_string()})
-                            }
-                        }
-                    }
+                Some(Ok(ref line)) => { // Got a line, see if one of the funs match it
+                    if let Some(found) = self.parse_start(line) {return Some(found)}
+                    if let Some(found) = self.parse_stop(line) {return Some(found)}
+                    if let Some(found) = self.parse_pretend(line) {return Some(found)}
                 },
-                Some(Err(e)) => {
-                    // Could be invalid UTF8, system read error...
-                    self.curline += 1;
-                    println!("WARN {}:{}: {:?}", self.filename, self.curline, e) // FIXME proper log levels
-                },
-                None =>
-                    // End of file
+                Some(Err(e)) => // Could be invalid UTF8, system read error...
+                    println!("WARN {}:{}: {}", self.input, self.curline, e), // FIXME proper log levels
+                None => // End of file
                     return None,
             }
         }
     }
 }
-impl<R: Read> Iterator for PretendParser<R> {
-    type Item = PretendEvent;
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.lines.next() {
-                Some(Ok(ref line)) => {
-                    // Try to match this line, loop with the next line if not
-                    if let Some(c) = self.re.captures(line) {
-                        return Some(PretendEvent{ebuild: c.get(1).unwrap().as_str().to_string(),
-                                                 version: c.get(2).unwrap().as_str().to_string(),
-                                                 line: line.to_string()})
-                    };
-                },
-                _ =>
-                    // End of file
-                    return None,
-            }
-        }
-    }
-}
+
 
 #[cfg(test)]
 mod tests {
     use ::*;
     use parser::*;
+    use std::fs::File;
 
     /// This checks parsing the given emerge.log.
     fn parse_hist(filename: &str, filter: Option<&str>, exact: bool, mindate: i64, maxdate: i64, expect_count: usize) {
         // Setup
-        let hist = HistParser::new(filename, filter, exact);
+        let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter, exact);
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap(); //Should match pattern used in *Parser
         let mut count = 0;
         // Check that all items look valid
-        for item in hist {
+        for p in hist {
             count += 1;
-            let (ts, ebuild, version, iter, line) = match item {
-                HistEvent::Start{ts, ebuild, version, iter, line} => (ts, ebuild, version, iter, line),
-                HistEvent::Stop{ts, ebuild, version, iter, line} => (ts, ebuild, version, iter, line),
+            let (ts, ebuild, version, iter, line) = match p {
+                Parsed::Start{ts, ebuild, version, iter, line} => (ts, ebuild, version, iter, line),
+                Parsed::Stop{ts, ebuild, version, iter, line} => (ts, ebuild, version, iter, line),
+                e => {assert!(false, "unexpected {:?}", e);(0,String::from(""),String::from(""),String::from(""),String::from(""))},
             };
             assert!(ts >= mindate && ts <= maxdate, "Out of bound date {} in {}", fmt_time(ts), line);
             assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
@@ -186,7 +169,7 @@ mod tests {
     fn parse_hist_all() {
         parse_hist("test/emerge.all.log", None, false,
                    1483228800, 1483747200, // Generated dates are from 2017-01-01 to 2017-01-07
-                   74830);                 // wc -l < test/emerge.all.log
+                   74830);    // wc -l < test/emerge.all.log
     }
 
     #[test]
@@ -194,7 +177,7 @@ mod tests {
     fn parse_hist_nullbytes() {
         parse_hist("test/emerge.nullbytes.log", None, false,
                    1327867709, 1327871057, // Taken from the file
-                   28);                    // 14 merges
+                   28);          // 14 merges
     }
 
     #[test]
@@ -219,15 +202,20 @@ mod tests {
 
     fn parse_pretend(filename: &str, expect_count: usize) {
         // Setup
-        let pretend = PretendParser::new(File::open(filename).unwrap());
+        let pretend = Parser::new_pretend(File::open(filename).unwrap(), filename);
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let mut count = 0;
         // Check that all items look valid
-        for PretendEvent{ebuild, version, line} in pretend {
+        for p in pretend {
             count += 1;
-            assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
-            assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
+            match p {
+                Parsed::Pretend{ebuild, version, line} => {
+                    assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
+                    assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
+                },
+                e => assert!(false, "unexpected {:?}", e),
+            }
         }
         assert_eq!(count, expect_count, "Got {} events, expected {:?}", count, expect_count);
     }
