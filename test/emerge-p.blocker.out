@@ -1,0 +1,4 @@
+[ebuild     U  ] app-admin/syslog-ng-3.13.2 [3.7.3] USE="-http%" 
+[uninstall     ] dev-libs/eventlog-0.2.12 
+[blocks b      ] dev-libs/eventlog ("dev-libs/eventlog" is blocking app-admin/syslog-ng-3.13.2)
+[ebuild  r  U  ] dev-lang/php-7.1.13 [7.1.11]

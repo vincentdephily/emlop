@@ -47,7 +47,7 @@ pub enum Parsed {
     Pretend{ebuild: String, version: String, line: String},
 }
 
-/// Iterates over line by line over the input to produce `Parsed` items.
+/// Iterates over input line by line over the input to produce `Parsed` items.
 pub struct Parser<R: Read> {
     input: String,
     lines: Lines<BufReader<R>>,
@@ -108,7 +108,7 @@ impl<R: Read> Parser<R> {
                filter: filter_fn(None, true),
                re_start: None,
                re_stop: None,
-               re_pretend: Some(Regex::new("^\\[[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap()),
+               re_pretend: Some(Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap()),
         }
     }
 }
@@ -200,7 +200,7 @@ mod tests {
         }
     }
 
-    fn parse_pretend(filename: &str, expect_count: usize) {
+    fn parse_pretend(filename: &str, expect: &Vec<(&str, &str)>) {
         // Setup
         let pretend = Parser::new_pretend(File::open(filename).unwrap(), filename);
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
@@ -208,21 +208,34 @@ mod tests {
         let mut count = 0;
         // Check that all items look valid
         for p in pretend {
-            count += 1;
             match p {
                 Parsed::Pretend{ebuild, version, line} => {
                     assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
                     assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
+                    assert_eq!(ebuild, expect[count].0);
+                    assert_eq!(version, expect[count].1);
                 },
                 e => assert!(false, "unexpected {:?}", e),
             }
+            count += 1;
         }
-        assert_eq!(count, expect_count, "Got {} events, expected {:?}", count, expect_count);
     }
 
     #[test]
     fn parse_pretend_basic() {
-        parse_pretend("test/emerge-p.basic.out", 5);
-        parse_pretend("test/emerge-pv.basic.out", 5);
+        let out = vec![("sys-devel/gcc","6.4.0-r1"),
+                       ("sys-libs/readline","7.0_p3"),
+                       ("app-portage/emlop","0.1.0_p20180221"),
+                       ("app-shells/bash","4.4_p12"),
+                       ("dev-db/postgresql","10.3")];
+        parse_pretend("test/emerge-p.basic.out", &out);
+        parse_pretend("test/emerge-pv.basic.out", &out);
+    }
+
+    #[test]
+    fn parse_pretend_blocker() {
+        let out = vec![("app-admin/syslog-ng","3.13.2"),
+                       ("dev-lang/php","7.1.13")];
+        parse_pretend("test/emerge-p.blocker.out", &out);
     }
 }
