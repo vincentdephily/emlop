@@ -203,17 +203,13 @@ mod tests {
     fn parse_pretend(filename: &str, expect: &Vec<(&str, &str)>) {
         // Setup
         let pretend = Parser::new_pretend(File::open(filename).unwrap(), filename);
-        let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
-        let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let mut count = 0;
         // Check that all items look valid
         for p in pretend {
             match p {
                 Parsed::Pretend{ebuild, version, line} => {
-                    assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
-                    assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
-                    assert_eq!(ebuild, expect[count].0);
-                    assert_eq!(version, expect[count].1);
+                    assert_eq!(ebuild, expect[count].0, "{}", line);
+                    assert_eq!(version, expect[count].1, "{}", line);
                 },
                 e => assert!(false, "unexpected {:?}", e),
             }
