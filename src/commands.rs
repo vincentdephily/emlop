@@ -11,6 +11,7 @@ use std::io::stdin;
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
+                                value_t!(args, "mindate", i64).ok(), value_t!(args, "maxdate", i64).ok(),
                                 subargs.value_of("package"), subargs.is_present("exact"));
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     for p in hist {
@@ -37,6 +38,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
     let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
+                                value_t!(args, "mindate", i64).ok(), value_t!(args, "maxdate", i64).ok(),
                                 subargs.value_of("package"), subargs.is_present("exact"));
     let lim = value_t!(subargs, "limit", usize).unwrap();
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
@@ -89,6 +91,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
 
     // Parse emerge log.
     let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
+                                value_t!(args, "mindate", i64).ok(), value_t!(args, "maxdate", i64).ok(),
                                 None, false);
     let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();

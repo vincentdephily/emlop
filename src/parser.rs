@@ -5,8 +5,17 @@
 use regex::{Regex, RegexBuilder};
 use std::io::{BufRead, BufReader, Lines, Read};
 
+/// Create a closure that matches timestamp depending on options.
+fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> Box<Fn(i64) -> bool> {
+    match (min, max) {
+        (None,    None) =>    Box::new(|_| true),
+        (Some(a), None) =>    Box::new(move |n| n >= a),
+        (None,    Some(b)) => Box::new(move |n| n <= b),
+        (Some(a), Some(b)) => Box::new(move |n| n >= a && n <= b),
+    }
+}
 /// Create a closure that matches package depending on options.
-fn filter_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
+fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
     match (package, package.map_or(false, |p| p.contains("/")), exact) {
         // No filter
         (None, _, _) => {
@@ -48,7 +57,8 @@ pub struct Parser<R: Read> {
     input: String,
     lines: Lines<BufReader<R>>,
     curline: u64,
-    filter: Box<Fn(&str) -> bool>,
+    filter_pkg: Box<Fn(&str) -> bool>,
+    filter_ts: Box<Fn(i64) -> bool>,
     re_start: Option<Regex>,
     re_stop: Option<Regex>,
     re_pretend: Option<Regex>,
@@ -59,9 +69,11 @@ impl<R: Read> Parser<R> {
         let re = self.re_start.as_ref()?;
         if !line.contains("> emerge") {return None}
         let c = re.captures(line)?;
+        let t = c.get(1).unwrap().as_str().parse::<i64>().unwrap();
+        if !(self.filter_ts)(t) {return None}
         let eb = c.get(3).unwrap().as_str();
-        if !(self.filter)(eb) {return None}
-        Some(Parsed::Start{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
+        if !(self.filter_pkg)(eb) {return None}
+        Some(Parsed::Start{ts: t,
                            ebuild: eb.to_string(),
                            iter: c.get(2).unwrap().as_str().to_string(),
                            version: c.get(4).unwrap().as_str().to_string(),
@@ -71,9 +83,11 @@ impl<R: Read> Parser<R> {
         let re = self.re_stop.as_ref()?;
         if !line.contains(": completed") {return None}
         let c = re.captures(line)?;
+        let t = c.get(1).unwrap().as_str().parse::<i64>().unwrap();
+        if !(self.filter_ts)(t) {return None}
         let eb = c.get(3).unwrap().as_str();
-        if !(self.filter)(eb) {return None}
-        Some(Parsed::Stop{ts: c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
+        if !(self.filter_pkg)(eb) {return None}
+        Some(Parsed::Stop{ts: t,
                           ebuild: eb.to_string(),
                           iter: c.get(2).unwrap().as_str().to_string(),
                           version: c.get(4).unwrap().as_str().to_string(),
@@ -87,11 +101,12 @@ impl<R: Read> Parser<R> {
                              line: line.to_string()})
     }
 
-    pub fn new_hist(reader: R, reader_name: &str, search_str: Option<&str>, search_exact: bool) -> Parser<R> {
+    pub fn new_hist(reader: R, reader_name: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Parser<R> {
         Parser{input: reader_name.to_string(),
                lines: BufReader::new(reader).lines(),
                curline: 0,
-               filter: filter_fn(search_str, search_exact),
+               filter_pkg: filter_pkg_fn(search_str, search_exact),
+               filter_ts: filter_ts_fn(min_ts, max_ts),
                re_start: Some(Regex::new("^([0-9]+):  >>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap()),
                re_stop: Some(Regex::new("^([0-9]+):  ::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap()),
                re_pretend: None,
@@ -101,7 +116,8 @@ impl<R: Read> Parser<R> {
         Parser{input: reader_name.to_string(),
                lines: BufReader::new(reader).lines(),
                curline: 0,
-               filter: filter_fn(None, true),
+               filter_pkg: filter_pkg_fn(None, true),
+               filter_ts: filter_ts_fn(None, None),
                re_start: None,
                re_stop: None,
                re_pretend: Some(Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap()),
@@ -199,6 +215,28 @@ mod tests {
         ] {
             parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
                        None, None, f, e, vec![("start",c1),("stop",c2)]);
+        }
+    }
+
+    #[test]
+    /// Filtering by timestamp
+    fn parse_hist_filter_ts() {
+        let (umin,umax,fmin,fmax) = (std::i64::MIN, std::i64::MAX, 1517609348, 1520891098);
+        for (min,max,c1,c2) in vec![(None,             None,           889, 832),
+                                    (Some(umin),       None,           889, 832),
+                                    (Some(fmin),       None,           889, 832),
+                                    (None,             Some(umax),     889, 832),
+                                    (None,             Some(fmax),     889, 832),
+                                    (Some(fmin),       Some(fmax),     889, 832),
+                                    (Some(fmax),       None,             0,   0),
+                                    (None,             Some(fmin),       0,   1), //fist line of this file happens to be a stop
+                                    (None,             Some(umin),       0,   0),
+                                    (Some(umax),       None,             0,   0),
+                                    (Some(1517917751), Some(1517931835), 6,   6),
+                                    (Some(1517959010), Some(1518176159), 24, 21),
+        ] {
+            parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
+                       min, max, None, true, vec![("start",c1),("stop",c2)]);
         }
     }
 
