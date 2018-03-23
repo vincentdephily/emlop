@@ -7,31 +7,27 @@ use std::io::{BufRead, BufReader, Lines, Read};
 
 /// Create a closure that matches package depending on options.
 fn filter_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
-    match package {
+    match (package, package.map_or(false, |p| p.contains("/")), exact) {
         // No filter
-        None => {
+        (None, _, _) => {
             Box::new(|_| true)
         },
-        Some(search) => match exact {
-            true => match search.contains("/") {
-                // Filter on exact name
-                true => {
-                    let srch = search.to_string();
-                    Box::new(move |pkg| pkg == srch)
-                },
-                // Filter on exact category/name
-                false => {
-                    let srch = format!("/{}",search);
-                    Box::new(move |pkg| pkg.ends_with(&srch))
-                }
-            },
-            // Filter on case-insensitive regexp
-            false => {
-                let re = RegexBuilder::new(search)
-                    .case_insensitive(true)
-                    .build().unwrap();
-                Box::new(move |pkg| re.is_match(pkg))
-            }
+        // Filter on exact name
+        (Some(search), true, true) => {
+            let srch = search.to_string();
+            Box::new(move |pkg| pkg == srch)
+        },
+        // Filter on exact category/name
+        (Some(search), false, true) => {
+            let srch = format!("/{}",search);
+            Box::new(move |pkg| pkg.ends_with(&srch))
+        },
+        // Filter on case-insensitive regexp
+        (Some(search), _, false) => {
+            let re = RegexBuilder::new(search)
+                .case_insensitive(true)
+                .build().unwrap();
+            Box::new(move |pkg| re.is_match(pkg))
         }
     }
 }
@@ -138,65 +134,71 @@ impl<R: Read> Iterator for Parser<R> {
 mod tests {
     use ::*;
     use parser::*;
+    use std::collections::HashMap;
     use std::fs::File;
 
     /// This checks parsing the given emerge.log.
-    fn parse_hist(filename: &str, filter: Option<&str>, exact: bool, mindate: i64, maxdate: i64, expect_count: usize) {
+    fn parse_hist(filename: &str, mints: i64, maxts: i64,
+                  filter_mints: Option<i64>, filter_maxts: Option<i64>,
+                  filter_pkg: Option<&str>, exact: bool,
+                  mut expect_counts: Vec<(&str, usize)>) {
         // Setup
-        let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter, exact);
+        let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter_mints, filter_maxts, filter_pkg, exact);
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap(); //Should match pattern used in *Parser
-        let mut count = 0;
+        let mut counts: HashMap<&str, usize> = HashMap::new();
         // Check that all items look valid
         for p in hist {
-            count += 1;
-            let (ts, ebuild, version, iter, line) = match p {
-                Parsed::Start{ts, ebuild, version, iter, line} => (ts, ebuild, version, iter, line),
-                Parsed::Stop{ts, ebuild, version, iter, line} => (ts, ebuild, version, iter, line),
-                e => {assert!(false, "unexpected {:?}", e);(0,String::from(""),String::from(""),String::from(""),String::from(""))},
+            let (kind, ts, ebuild, version, iter, line) = match p {
+                Parsed::Start{ts, ebuild, version, iter, line} => ("start",   ts, ebuild, version, iter,             line),
+                Parsed::Stop{ts, ebuild, version, iter, line} =>  ("stop",    ts, ebuild, version, iter,             line),
+                Parsed::Pretend{ebuild, version, line} =>         ("pretend", 0,  ebuild, version, String::from(""), line),
             };
-            assert!(ts >= mindate && ts <= maxdate, "Out of bound date {} in {}", fmt_time(ts), line);
+            *counts.entry(kind).or_insert(0) += 1;
+            assert!(ts >= filter_mints.unwrap_or(mints) && ts <= filter_maxts.unwrap_or(maxts), "Out of bound date {} in {}", fmt_time(ts), line);
             assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
             assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
             assert!(re_iter.is_match(&iter), "Invalid iteration {} in {}", iter, line);
         }
-        assert_eq!(count, expect_count, "Got {} events, expected {:?} {:?} {}", count, expect_count, filter, exact);
+        // Check that we got the right number of each kind (always expect 0 pretend)
+        expect_counts.push(("pretend",0));
+        for (t, ref c) in expect_counts {
+            let v = counts.get(t).unwrap_or(&0);
+            assert_eq!(v, c, "Got {} {}, expected {:?} with {:?} {} {:?} {:?}", v, t, c, filter_pkg, exact, filter_mints, filter_maxts);
+        }
     }
 
     #[test]
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
-        parse_hist("test/emerge.all.log", None, false,
-                   1483228800, 1483747200, // Generated dates are from 2017-01-01 to 2017-01-07
-                   74830);    // wc -l < test/emerge.all.log
+        parse_hist("test/emerge.all.log", 1483228800, 1483747200,
+                   None, None, None, false, vec![("start",37415),("stop",37415)]);
     }
 
     #[test]
     /// Emerge log with some null bytes in the middle
     fn parse_hist_nullbytes() {
-        parse_hist("test/emerge.nullbytes.log", None, false,
-                   1327867709, 1327871057, // Taken from the file
-                   28);          // 14 merges
+        parse_hist("test/emerge.nullbytes.log", 1327867709, 1327871057,
+                   None, None, None, false, vec![("start",14),("stop",14)]);
     }
 
     #[test]
     /// Filtering by package
-    fn parse_hist_filter() {
-        for (f,e,c) in vec![(None,                               false, 1721), // Everything
-                            (Some("kactivities"),                false,    8), // regexp matches 4
-                            (Some("kactivities"),                true,     4), // string matches 2
-                            (Some("kde-frameworks/kactivities"), true,     4), // string matches 2
-                            (Some("frameworks/kactivities"),     true,     0), // string matches nothing
-                            (Some("ks/kw"),                      false,   17), // regexp matches 16 (+1 failed)
-                            (Some("file"),                       false,   14), // case-insensitive
-                            (Some("FILE"),                       false,   14), // case-insensitive
-                            (Some("file-next"),                  true,     0), // case-sensitive
-                            (Some("File-Next"),                  true,     2), // case-sensitive
+    fn parse_hist_filter_pkg() {
+        for (f,e,c1,c2) in vec![(None,                               false, 889, 832), // Everything
+                                (Some("kactivities"),                false,   4,   4), // regexp matches 4
+                                (Some("kactivities"),                true,    2,   2), // string matches 2
+                                (Some("kde-frameworks/kactivities"), true,    2,   2), // string matches 2
+                                (Some("frameworks/kactivities"),     true,    0,   0), // string matches nothing
+                                (Some("ks/kw"),                      false,   9,   8), // regexp matches 16 (+1 failed)
+                                (Some("file"),                       false,   7,   7), // case-insensitive
+                                (Some("FILE"),                       false,   7,   7), // case-insensitive
+                                (Some("file-next"),                  true,    0,   0), // case-sensitive
+                                (Some("File-Next"),                  true,    1,   1), // case-sensitive
         ] {
-            parse_hist("test/emerge.10000.log", f, e,
-                       1517609348, 1520891098,
-                       c);
+            parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
+                       None, None, f, e, vec![("start",c1),("stop",c2)]);
         }
     }
 
