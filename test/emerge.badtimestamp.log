@@ -1,0 +1,11 @@
+1327867709: Started emerge on: Jan 29, 2012 20:08:29
+1327867709:  *** emerge --newuse --deep --ask --update --verbose world
+1327867778l:  >>> emerge (1 of 3) media-libs/jpeg-8c-r1 to /
+1327867804:  ::: completed emerge (1 of 3) media-libs/jpeg-8c-r1 to /
+1327867804:  >>> emerge (2 of 3) dev-libs/libical-0.48 to /
+1327867830:  ::: completed emerge (2 of 3) dev-libs/libical-0.48 to /
+1327867830:  >>> emerge (3 of 3) media-libs/libpng-1.5.7 to /
+1327867849:  ::: completed emerge (3 of 3) media-libs/libpng-1.5.7 to /
+1327871047:  *** Finished. Cleaning up...
+1327871049:  *** exiting successfully.
+1327871057:  *** terminating.

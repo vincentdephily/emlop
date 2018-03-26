@@ -16,7 +16,7 @@ fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> Box<Fn(i64) -> bool> {
 }
 /// Create a closure that matches package depending on options.
 fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
-    match (package, package.map_or(false, |p| p.contains("/")), exact) {
+    match (package, exact, package.map_or(false, |p| p.contains("/"))) {
         // No filter
         (None, _, _) => {
             Box::new(|_| true)
@@ -27,17 +27,33 @@ fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
             Box::new(move |pkg| pkg == srch)
         },
         // Filter on exact category/name
-        (Some(search), false, true) => {
+        (Some(search), true, false) => {
             let srch = format!("/{}",search);
             Box::new(move |pkg| pkg.ends_with(&srch))
         },
         // Filter on case-insensitive regexp
-        (Some(search), _, false) => {
+        (Some(search), false, _) => {
             let re = RegexBuilder::new(search)
                 .case_insensitive(true)
                 .build().unwrap();
             Box::new(move |pkg| re.is_match(pkg))
         }
+    }
+}
+
+/// Split "categ/name-version" into "categ/name" and "version"
+fn split_atom(atom: &str) -> Option<(&str, &str)> {
+    let mut start = 0;
+    loop {
+        let pos = atom[start..].find('-')?;
+        if atom.len() <= start+pos+1 {return None}
+        //if atom.as_bytes()[start+pos+1].is_ascii_digit() && start+pos > 0 {//FIXME: use that when portage gets rust 1.24
+        let c = atom.as_bytes()[start+pos+1];
+        if  c >= 48 && c <= 57 && start+pos > 0 {
+            let (name,ver) = atom.split_at(pos+start);
+            return Some((name,&ver[1..]))
+        }
+        start += if pos==0 {1} else {pos};
     }
 }
 
@@ -59,38 +75,40 @@ pub struct Parser<R: Read> {
     curline: u64,
     filter_pkg: Box<Fn(&str) -> bool>,
     filter_ts: Box<Fn(i64) -> bool>,
-    re_start: Option<Regex>,
-    re_stop: Option<Regex>,
+    out_start: bool,
+    out_stop: bool,
     re_pretend: Option<Regex>,
 }
 
 impl<R: Read> Parser<R> {
     fn parse_start(&mut self, line: &str) -> Option<Parsed> {
-        let re = self.re_start.as_ref()?;
-        if !line.contains("> emerge") {return None}
-        let c = re.captures(line)?;
-        let t = c.get(1).unwrap().as_str().parse::<i64>().unwrap();
-        if !(self.filter_ts)(t) {return None}
-        let eb = c.get(3).unwrap().as_str();
-        if !(self.filter_pkg)(eb) {return None}
-        Some(Parsed::Start{ts: t,
-                           ebuild: eb.to_string(),
-                           iter: c.get(2).unwrap().as_str().to_string(),
-                           version: c.get(4).unwrap().as_str().to_string(),
+        if !self.out_start {return None}
+        let (ts_str,rest) = line.split_at(line.find(':')?);
+        if !rest.starts_with(":  >>> emerge") {return None}
+        let ts = ts_str.parse::<i64>().ok()?;
+        if !(self.filter_ts)(ts) {return None}
+        let tokens: Vec<&str> = rest.split_whitespace().take(7).collect();
+        let (ebuild,version) = split_atom(tokens.get(6)?)?;
+        if !(self.filter_pkg)(ebuild) {return None}
+        Some(Parsed::Start{ts: ts,
+                           ebuild: ebuild.to_string(),
+                           iter: format!("{} of {}", &tokens[3][1..], tokens[5].trim_right_matches(')')),
+                           version: version.to_string(),
                            line: line.to_string()})
     }
     fn parse_stop(&mut self, line: &str) -> Option<Parsed> {
-        let re = self.re_stop.as_ref()?;
-        if !line.contains(": completed") {return None}
-        let c = re.captures(line)?;
-        let t = c.get(1).unwrap().as_str().parse::<i64>().unwrap();
-        if !(self.filter_ts)(t) {return None}
-        let eb = c.get(3).unwrap().as_str();
-        if !(self.filter_pkg)(eb) {return None}
-        Some(Parsed::Stop{ts: t,
-                          ebuild: eb.to_string(),
-                          iter: c.get(2).unwrap().as_str().to_string(),
-                          version: c.get(4).unwrap().as_str().to_string(),
+        if !self.out_stop {return None}
+        let (ts_str,rest) = line.split_at(line.find(':')?);
+        if !rest.starts_with(":  ::: completed") {return None}
+        let ts = ts_str.parse::<i64>().ok()?;
+        if !(self.filter_ts)(ts) {return None}
+        let tokens: Vec<&str> = rest.split_whitespace().take(8).collect();
+        let (ebuild,version) = split_atom(tokens.get(7)?)?;
+        if !(self.filter_pkg)(ebuild) {return None}
+        Some(Parsed::Stop{ts: ts,
+                          ebuild: ebuild.to_string(),
+                          iter: format!("{} of {}", &tokens[4][1..], tokens[6].trim_right_matches(')')),
+                          version: version.to_string(),
                           line: line.to_string()})
     }
     fn parse_pretend(&mut self, line: &str) -> Option<Parsed> {
@@ -107,8 +125,8 @@ impl<R: Read> Parser<R> {
                curline: 0,
                filter_pkg: filter_pkg_fn(search_str, search_exact),
                filter_ts: filter_ts_fn(min_ts, max_ts),
-               re_start: Some(Regex::new("^([0-9]+):  >>> emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap()),
-               re_stop: Some(Regex::new("^([0-9]+):  ::: completed emerge \\(([1-9][0-9]* of [1-9][0-9]*)\\) (.+)-([0-9][0-9a-z._-]*) ").unwrap()),
+               out_start: true,
+               out_stop: true,
                re_pretend: None,
         }
     }
@@ -118,8 +136,8 @@ impl<R: Read> Parser<R> {
                curline: 0,
                filter_pkg: filter_pkg_fn(None, true),
                filter_ts: filter_ts_fn(None, None),
-               re_start: None,
-               re_stop: None,
+               out_start: false,
+               out_stop: false,
                re_pretend: Some(Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap()),
         }
     }
@@ -163,7 +181,7 @@ mod tests {
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap(); //Should match pattern used in *Parser
-        let mut counts: HashMap<&str, usize> = HashMap::new();
+        let mut counts: HashMap<String, usize> = HashMap::new();
         // Check that all items look valid
         for p in hist {
             let (kind, ts, ebuild, version, iter, line) = match p {
@@ -171,7 +189,8 @@ mod tests {
                 Parsed::Stop{ts, ebuild, version, iter, line} =>  ("stop",    ts, ebuild, version, iter,             line),
                 Parsed::Pretend{ebuild, version, line} =>         ("pretend", 0,  ebuild, version, String::from(""), line),
             };
-            *counts.entry(kind).or_insert(0) += 1;
+            *counts.entry(kind.to_string()).or_insert(0) += 1;
+            *counts.entry(ebuild.clone()).or_insert(0) += 1;
             assert!(ts >= filter_mints.unwrap_or(mints) && ts <= filter_maxts.unwrap_or(maxts), "Out of bound date {} in {}", fmt_time(ts), line);
             assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
             assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
@@ -193,10 +212,37 @@ mod tests {
     }
 
     #[test]
-    /// Emerge log with some null bytes in the middle
+    /// Emerge log with various invalid data
     fn parse_hist_nullbytes() {
         parse_hist("test/emerge.nullbytes.log", 1327867709, 1327871057,
                    None, None, None, false, vec![("start",14),("stop",14)]);
+    }
+    #[test]
+    /// Emerge log with various invalid data
+    fn parse_hist_badtimestamp() {
+        parse_hist("test/emerge.badtimestamp.log", 1327867709, 1327871057,
+                   None, None, None, false, vec![("start",2),("stop",3),
+                                                 ("media-libs/jpeg",1),    //letter in timestamp
+                                                 ("dev-libs/libical",2),
+                                                 ("media-libs/libpng",2)]);
+    }
+    #[test]
+    /// Emerge log with various invalid data
+    fn parse_hist_badversion() {
+        parse_hist("test/emerge.badversion.log", 1327867709, 1327871057,
+                   None, None, None, false, vec![("start",3),("stop",2),
+                                                 ("media-libs/jpeg",2),
+                                                 ("dev-libs/libical",2),
+                                                 ("media-libs/libpng",1)]); //missing version
+    }
+    #[test]
+    /// Emerge log with various invalid data
+    fn parse_hist_shortline() {
+        parse_hist("test/emerge.shortline.log", 1327867709, 1327871057,
+                   None, None, None, false, vec![("start",3),("stop",2),
+                                                 ("media-libs/jpeg",2),
+                                                 ("dev-libs/libical",1),    //missing end of line and spaces in iter
+                                                 ("media-libs/libpng",2)]);
     }
 
     #[test]
@@ -273,5 +319,33 @@ mod tests {
         let out = vec![("app-admin/syslog-ng","3.13.2"),
                        ("dev-lang/php","7.1.13")];
         parse_pretend("test/emerge-p.blocker.out", &out);
+    }
+
+    #[test]
+    fn split_atom_() {
+        assert_eq!(None, split_atom(""));
+        assert_eq!(None, split_atom("a"));
+        assert_eq!(None, split_atom("-"));
+        assert_eq!(None, split_atom("42"));
+        assert_eq!(None, split_atom("-42"));
+        assert_eq!(None, split_atom("42-"));
+        assert_eq!(None, split_atom("a-/"));
+        assert_eq!(Some(("a","0")), split_atom("a-0"));
+        assert_eq!(Some(("a","1")), split_atom("a-1"));
+        assert_eq!(Some(("a","2")), split_atom("a-2"));
+        assert_eq!(Some(("a","3")), split_atom("a-3"));
+        assert_eq!(Some(("a","4")), split_atom("a-4"));
+        assert_eq!(Some(("a","5")), split_atom("a-5"));
+        assert_eq!(Some(("a","6")), split_atom("a-6"));
+        assert_eq!(Some(("a","7")), split_atom("a-7"));
+        assert_eq!(Some(("a","8")), split_atom("a-8"));
+        assert_eq!(Some(("a","9")), split_atom("a-9"));
+        assert_eq!(None, split_atom("a-:"));
+        assert_eq!(Some(("a-b","2")), split_atom("a-b-2"));
+        assert_eq!(Some(("a-b","2-3")), split_atom("a-b-2-3"));
+        assert_eq!(Some(("a-b","2-3_r1")), split_atom("a-b-2-3_r1"));
+        assert_eq!(Some(("a-b","2foo-4")), split_atom("a-b-2foo-4"));
+        assert_eq!(Some(("a-b","2foo-4-")), split_atom("a-b-2foo-4-"));
+        assert_eq!(Some(("Noël","2-bêta")), split_atom("Noël-2-bêta"));
     }
 }
