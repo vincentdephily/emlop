@@ -2,12 +2,13 @@
 extern crate assert_cli;
 extern crate atty;
 extern crate chrono;
-#[macro_use]
 extern crate clap;
 #[cfg(test)]
 #[macro_use]
 extern crate indoc;
 extern crate regex;
+#[macro_use]
+extern crate structopt;
 extern crate sysconf;
 extern crate tabwriter;
 
@@ -16,71 +17,85 @@ mod parser;
 mod proces;
 
 use chrono::{DateTime, Local, TimeZone};
-use clap::{AppSettings, Arg, ArgMatches, SubCommand};
+use clap::AppSettings;
 use std::io;
 use std::io::Write;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
+use structopt::StructOpt;
 use tabwriter::TabWriter;
 
 use commands::*;
 
-fn main() {
-    let arg_limit = Arg::with_name("limit")
-        .long("limit")
-        .short("l")
-        .takes_value(true)
-        .default_value("10")
-        .validator(is_posint)
-        .help("Use the last N merge times to predict future merge time");
-    let arg_pkg = Arg::with_name("package")
-        .takes_value(true)
-        .help("Display only packages matching <package>.");
-    let arg_exact = Arg::with_name("exact")
-        .short("e")
-        .long("exact")
-        .help("Interpret <package> as a string instead of a regexp.")
-        .long_help("Match packages using exact string instead of regexp. \
-Without this flag, matching is done by case-insensitive regexp (see https://docs.rs/regex/0.2.8/regex/index.html#syntax) on 'category/name'. \
-With this flag, matching is done by case-sentitive string on 'name' (or 'category/name' if <package> contains a /).");//FIXME crate version
-    let args = app_from_crate!()
-        .setting(AppSettings::InferSubcommands)
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-        .setting(AppSettings::DeriveDisplayOrder)
-        .arg(Arg::with_name("logfile")
-             .long("logfile")
-             .short("f")
-             .takes_value(true)
-             .default_value("/var/log/emerge.log")
-             .help("Location of emerge log file"))
-        .arg(Arg::with_name("mindate")
-             .long("from")
-             .takes_value(true)
-             .help("Only consider events after that date."))
-        .arg(Arg::with_name("maxdate")
-             .long("to")
-             .takes_value(true)
-             .help("Only consider events before that date."))
-        .subcommand(SubCommand::with_name("list")
-                    .about("Show full merge history")
-                    .arg(&arg_exact)
-                    .arg(&arg_pkg))
-        .subcommand(SubCommand::with_name("stats")
-                    .about("Show merge stats")
-                    .arg(&arg_exact)
-                    .arg(&arg_pkg)
-                    .arg(&arg_limit))
-        .subcommand(SubCommand::with_name("predict")
-                    .about("Predict merge time for packages listed by 'emerge -p'")
-                    .arg(&arg_limit))
-        .get_matches();
+#[derive(StructOpt)]
+#[structopt(raw(global_settings="&[AppSettings::InferSubcommands, AppSettings::DeriveDisplayOrder, AppSettings::VersionlessSubcommands, AppSettings::DisableHelpSubcommand]"))]
+pub struct Opt {
+    #[structopt(help="Location of emerge log file.", short="f", long="logfile", default_value="/var/log/emerge.log", raw(global="true"))]
+    logfile: String,
+    #[structopt(help="Only consider events from that date onward.", long="from", raw(global="true", validator="is_posint"))]
+    mindate: Option<i64>,
+    #[structopt(help="Only consider events up to that date.", long="to", raw(global="true", validator="is_posint"))]
+    maxdate: Option<i64>,
+    #[structopt(subcommand)]
+    subcmd: SubCmd,
+}
 
+#[derive(StructOpt)]
+enum SubCmd {
+    #[structopt(name="list", about="Show merge history.",
+                long_about="Show merge history.\nShows date, merge time, package name-version of completed merges.")]
+    List(ListOpt),
+    #[structopt(name="predict", about="Predict merge time for current/pretended merges.",
+                long_about="Predict merge time.\n\
+                            If input is a terminal, predict time for the current merge (if any).\n\
+                            If input is an emerge pretend output (for example run `emerge -rOp|emlop p`), predict time for those merges.")]
+    Predict(PredictOpt),
+    #[structopt(name="stats", about="Show merge stats.",
+                long_about="Show merge stats.\n\nStatistics include total merge time, total merge count, and merge time prediction.")]
+    Stats(StatsOpt),
+}
+
+#[derive(StructOpt)]
+pub struct ListOpt {
+    #[structopt(help="Display only packages matching <package>.")]
+    package: Option<String>,
+    #[structopt(help="Interpret <package> as a string instead of a regexp.",
+                long_help="Match packages using exact string instead of regexp. \
+                           Without this flag, matching is done by case-insensitive regexp (see https://docs.rs/regex/0.2.8/regex/index.html#syntax) on 'category/name'. \
+                           With this flag, matching is done by case-sentitive string on 'name' (or 'category/name' if <package> contains a /).", //FIXME crate version
+                short="e")]
+    exact: bool,
+}
+
+#[derive(StructOpt)]
+pub struct PredictOpt {
+    #[structopt(help="Use the last N merge times to predict future merge time.",
+                short="l", long="limit", default_value="10", raw(validator="is_posint"))]
+    limit: u32,
+}
+
+#[derive(StructOpt)]
+pub struct StatsOpt {
+    #[structopt(help="Display only packages matching <package>.")]
+    package: Option<String>,
+    #[structopt(help="Interpret <package> as a string instead of a regexp.",
+                long_help="Match packages using exact string instead of regexp. \
+                           Without this flag, matching is done by case-insensitive regexp (see https://docs.rs/regex/0.2.8/regex/index.html#syntax) on 'category/name'. \
+                           With this flag, matching is done by case-sentitive string on 'name' (or 'category/name' if <package> contains a /).", //FIXME crate version
+                short="e")]
+    exact: bool,
+    #[structopt(help="Use the last N merge times to predict future merge time.",
+                short="l", long="limit", default_value="10", raw(validator="is_posint"))]
+    limit: u32,
+}
+
+fn main() {
+    let opt = Opt::from_args();
     let mut tw = TabWriter::new(io::stdout());
-    match args.subcommand() {
-        ("list",    Some(sub_args)) => cmd_list(&args, sub_args),
-        ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args),
-        ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args),
-        (other, _) => unimplemented!("{} subcommand", other),
+    match &opt.subcmd {
+        &SubCmd::List{0:ref s} => cmd_list(&opt, s),
+        &SubCmd::Stats{0:ref s} => cmd_stats(&mut tw, &opt, s),
+        &SubCmd::Predict{0:ref s} => cmd_predict(&mut tw, &opt, s),
     }.unwrap();
     tw.flush().unwrap_or(());
 }

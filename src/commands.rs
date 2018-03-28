@@ -9,10 +9,10 @@ use std::io::stdin;
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
-    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
-                                value_t!(args, "mindate", i64).ok(), value_t!(args, "maxdate", i64).ok(),
-                                subargs.value_of("package"), subargs.is_present("exact"));
+pub fn cmd_list(opt: &Opt, cmdopt: &ListOpt) -> Result<(), io::Error> {
+    let hist = Parser::new_hist(File::open(&opt.logfile).unwrap(), &opt.logfile,
+                                opt.mindate, opt.maxdate,
+                                cmdopt.package.clone(), cmdopt.exact);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     for p in hist {
         match p {
@@ -36,11 +36,10 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
-    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
-                                value_t!(args, "mindate", i64).ok(), value_t!(args, "maxdate", i64).ok(),
-                                subargs.value_of("package"), subargs.is_present("exact"));
-    let lim = value_t!(subargs, "limit", usize).unwrap();
+pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, opt: &Opt, cmdopt: &StatsOpt) -> Result<(), io::Error> {
+    let hist = Parser::new_hist(File::open(&opt.logfile).unwrap(), &opt.logfile,
+                                opt.mindate, opt.maxdate,
+                                cmdopt.package.clone(), cmdopt.exact);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     for p in hist {
@@ -63,8 +62,8 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
     for (pkg,tv) in times.iter() {
         let (predtime,predcount,tottime,totcount) = tv.iter()
             .fold((0,0,0,0), |(pt,pc,tt,tc), &i| {
-                if tc >= lim {(pt,  pc,  tt+i,tc+1)}
-                else         {(pt+i,pc+1,tt+i,tc+1)}
+                if tc >= cmdopt.limit {(pt,  pc,  tt+i,tc+1)}
+                else                  {(pt+i,pc+1,tt+i,tc+1)}
             });
         writeln!(tw, "{}\t{:>9}\t{:>3}\t{:>8}", pkg, fmt_duration(tottime), totcount, fmt_duration(predtime/predcount))?;
     }
@@ -74,9 +73,8 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
+pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, opt: &Opt, cmdopt: &PredictOpt) -> Result<(), io::Error> {
     let now = epoch_now();
-    let lim = value_t!(subargs, "limit", usize).unwrap();
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
@@ -90,15 +88,14 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     }
 
     // Parse emerge log.
-    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
-                                value_t!(args, "mindate", i64).ok(), value_t!(args, "maxdate", i64).ok(),
+    let hist = Parser::new_hist(File::open(&opt.logfile).unwrap(), &opt.logfile,
+                                opt.mindate, opt.maxdate,
                                 None, false);
     let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     for p in hist {
         match p {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
-            // FIXME: there's no need for that, use iter.
             Parsed::Start{ts, ebuild, version, ..} => {
                 started.insert((ebuild.clone(), version.clone()), ts);
             }
@@ -134,8 +131,8 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
                 if let Some(tv) = times.get(&ebuild) {
                     let (predtime,predcount,_) = tv.iter()
                         .fold((0,0,0), |(pt,pc,tc), &i| {
-                            if tc >= lim {(pt,  pc,  tc+1)}
-                            else         {(pt+i,pc+1,tc+1)}
+                            if tc >= cmdopt.limit {(pt,  pc,  tc+1)}
+                            else                  {(pt+i,pc+1,tc+1)}
                         });
                     totpredict += predtime / predcount;
                     match started.remove(&(ebuild.clone(), version.clone())) {

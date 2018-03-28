@@ -15,8 +15,8 @@ fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> Box<Fn(i64) -> bool> {
     }
 }
 /// Create a closure that matches package depending on options.
-fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
-    match (package, exact, package.map_or(false, |p| p.contains("/"))) {
+fn filter_pkg_fn(package: Option<String>, exact: bool) -> Box<Fn(&str) -> bool> {
+    match (package.clone(), exact, package.map_or(false, |p| p.contains("/"))) {
         // No filter
         (None, _, _) => {
             Box::new(|_| true)
@@ -33,7 +33,7 @@ fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
         },
         // Filter on case-insensitive regexp
         (Some(search), false, _) => {
-            let re = RegexBuilder::new(search)
+            let re = RegexBuilder::new(&search)
                 .case_insensitive(true)
                 .build().unwrap();
             Box::new(move |pkg| re.is_match(pkg))
@@ -119,7 +119,7 @@ impl<R: Read> Parser<R> {
                              line: line.to_string()})
     }
 
-    pub fn new_hist(reader: R, reader_name: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Parser<R> {
+    pub fn new_hist(reader: R, reader_name: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<String>, search_exact: bool) -> Parser<R> {
         Parser{input: reader_name.to_string(),
                lines: BufReader::new(reader).lines(),
                curline: 0,
@@ -174,10 +174,10 @@ mod tests {
     /// This checks parsing the given emerge.log.
     fn parse_hist(filename: &str, mints: i64, maxts: i64,
                   filter_mints: Option<i64>, filter_maxts: Option<i64>,
-                  filter_pkg: Option<&str>, exact: bool,
+                  filter_pkg: Option<String>, exact: bool,
                   mut expect_counts: Vec<(&str, usize)>) {
         // Setup
-        let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter_mints, filter_maxts, filter_pkg, exact);
+        let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter_mints, filter_maxts, filter_pkg.clone(), exact);
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap(); //Should match pattern used in *Parser
@@ -260,7 +260,7 @@ mod tests {
                                 (Some("File-Next"),                  true,    1,   1), // case-sensitive
         ] {
             parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
-                       None, None, f, e, vec![("start",c1),("stop",c2)]);
+                       None, None, f.map(|s|s.to_string()), e, vec![("start",c1),("stop",c2)]);
         }
     }
 
