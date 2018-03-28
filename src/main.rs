@@ -16,7 +16,7 @@ mod parser;
 mod proces;
 
 use chrono::{DateTime, Local, TimeZone};
-use clap::{AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::io;
 use std::io::Write;
 use std::str::FromStr;
@@ -31,51 +31,70 @@ fn main() {
         .takes_value(true)
         .default_value("10")
         .validator(is_posint)
-        .help("Use the last N merge times to predict future merge time");
+        .help("Use the last N merge times to predict next merge time.");
     let arg_pkg = Arg::with_name("package")
         .takes_value(true)
         .help("Display only packages matching <package>.");
     let arg_exact = Arg::with_name("exact")
         .short("e")
         .long("exact")
-        .help("Interpret <package> as a string instead of a regexp.")
-        .long_help("Match packages using exact string instead of regexp. \
-Without this flag, matching is done by case-insensitive regexp (see https://docs.rs/regex/0.2.8/regex/index.html#syntax) on 'category/name'. \
-With this flag, matching is done by case-sentitive string on 'name' (or 'category/name' if <package> contains a /).");//FIXME crate version
-    let args = app_from_crate!()
+        .help("Match package with a string instead of a regex.")
+        .long_help("Match package with a string instead of a regex. \
+Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/0.2.6/regex/index.html#syntax). \
+String is case-sentitive and matches on whole name, or whole category/name if it contains a /.");//FIXME auto crate version
+    let args = App::new("emlop")
+        .version(crate_version!())
+        .global_setting(AppSettings::ColoredHelp)
+        .global_setting(AppSettings::DeriveDisplayOrder)
+        .setting(AppSettings::DisableHelpSubcommand)
         .setting(AppSettings::InferSubcommands)
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .setting(AppSettings::DeriveDisplayOrder)
         .setting(AppSettings::VersionlessSubcommands)
-        .setting(AppSettings::DisableHelpSubcommand)
+        .about("A fast, accurate, ergonnomic EMerge LOg Parser.\nhttps://github.com/vincentdephily/emlop")
+        .after_help("Subcommands can be abbreviated down to a single letter.")
+        .help_message("Prints help information. Use --help for more details. Use <subcommand> -h for subcommand help.")
         .arg(Arg::with_name("logfile")
              .long("logfile")
              .short("f")
              .global(true)
              .takes_value(true)
              .default_value("/var/log/emerge.log")
-             .help("Location of emerge log file"))
+             .help("Location of emerge log file."))
         .arg(Arg::with_name("mindate")
              .long("from")
              .global(true)
              .takes_value(true)
-             .help("Only consider events after that date."))
+             .help("Only consider events from that date onward.")
+             .long_help("Only consider events from that date onward.\n\
+Currently accepted format is a unix timestamp, get one using `$(date -d 'human-readable date' +%s)`."))
         .arg(Arg::with_name("maxdate")
              .long("to")
              .global(true)
              .takes_value(true)
-             .help("Only consider events before that date."))
+             .help("Only consider events up to that date.")
+             .long_help("Only consider events up to that date.\n\
+Currently accepted format is a unix timestamp, get one using `$(date -d 'human-readable date' +%s)`."))
         .subcommand(SubCommand::with_name("list")
-                    .about("Show full merge history")
+                    .about("Show list of completed merges.")
+                    .long_about("Show list of completed merges.\n\
+Merge date, merge time, package name-version.")
+                    .help_message("Prints help information. Use --help for more details.")
                     .arg(&arg_exact)
                     .arg(&arg_pkg))
+        .subcommand(SubCommand::with_name("predict")
+                    .about("Predict merge time for current or pretended merges.")
+                    .long_about("Predict merge time for current or pretended merges.\n\
+If input is a terminal, predict time for the current merge (if any).\n\
+If input is a pipe (for example by running `emerge -rOp|emlop p`), predict time for those merges.")
+                    .help_message("Prints help information. Use --help for more details.")
+                    .arg(&arg_limit))
         .subcommand(SubCommand::with_name("stats")
-                    .about("Show merge stats")
+                    .about("Show statistics for completed merges.")
+                    .long_about("Show statistics for completed merges.\n\
+Total merge time, total merge count, and next merge time prediction.")
+                    .help_message("Prints help information. Use --help for more details.")
                     .arg(&arg_exact)
                     .arg(&arg_pkg)
-                    .arg(&arg_limit))
-        .subcommand(SubCommand::with_name("predict")
-                    .about("Predict merge time for packages listed by 'emerge -p'")
                     .arg(&arg_limit))
         .get_matches();
 
