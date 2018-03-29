@@ -30,7 +30,6 @@ fn main() {
         .long("limit")
         .takes_value(true)
         .default_value("10")
-        .validator(is_posint)
         .help("Use the last N merge times to predict next merge time.");
     let arg_pkg = Arg::with_name("package")
         .takes_value(true)
@@ -60,14 +59,14 @@ String is case-sentitive and matches on whole name, or whole category/name if it
              .takes_value(true)
              .default_value("/var/log/emerge.log")
              .help("Location of emerge log file."))
-        .arg(Arg::with_name("mindate")
+        .arg(Arg::with_name("from")
              .long("from")
              .global(true)
              .takes_value(true)
              .help("Only consider events from that date onward.")
              .long_help("Only consider events from that date onward.\n\
 Currently accepted format is a unix timestamp, get one using `$(date -d 'human-readable date' +%s)`."))
-        .arg(Arg::with_name("maxdate")
+        .arg(Arg::with_name("to")
              .long("to")
              .global(true)
              .takes_value(true)
@@ -108,11 +107,53 @@ Total merge time, total merge count, and next merge time prediction.")
     tw.flush().unwrap_or(());
 }
 
-fn is_posint(v: String) -> Result<(), String> {
-    match u32::from_str(&v) {
-        Ok(id) if id > 0 => Ok(()),
-        _ => Err("Must be an positive integer.".into()),
+/// Parse and return argument from an ArgMatches, exit if parsing fails.
+///
+/// This is similar to clap's `value_t!` except it takes a parsing function instead of a target
+/// type, returns an unwraped value, and exits upon parsing error. It'd be more idiomatic to
+/// implement FromStr trait on a custom struct, but this is simpler to write and use, and we're not
+/// writing a library.
+pub fn value<T,P>(matches: &ArgMatches, name: &str, parse: P) -> T
+    where P: FnOnce(&str) -> Result<T,String>, T: std::str::FromStr {
+    match matches.value_of(name) {
+        None => // Argument should be required by ArgMatch => this is a bug not a user error => panic
+            panic!("Argument {} missing", name),
+        Some(s) =>
+            match parse(s) {
+                Ok(v) => v,
+                Err(e) => clap::Error{message: format!("Invalid argument '--{} {}': {}", name, s, e),
+                                      kind: clap::ErrorKind::InvalidValue,
+                                      info: None}.exit(),
+            },
     }
+}
+
+/// Parse and return optional argument from an ArgMatches, exit if parsing fails.
+///
+/// See [value(m,n,p)->T] for background info.
+///
+/// [value(m,n,p)->T]:      fn.value.html
+pub fn value_opt<T,P>(matches: &ArgMatches, name: &str, parse: P) -> Option<T>
+    where P: FnOnce(&str) -> Result<T,String>, T: std::str::FromStr {
+    match matches.value_of(name) {
+        None =>
+            None,
+        Some(s) =>
+            match parse(s) {
+                Ok(v) => Some(v),
+                Err(e) => clap::Error{message: format!("Invalid argument '--{} {}': {}", name, s, e),
+                                      kind: clap::ErrorKind::InvalidValue,
+                                      info: None}.exit(),
+            },
+    }
+}
+
+pub fn parse_limit(s: &str) -> Result<u16, String> {
+    u16::from_str(&s).map_err(|_| format!("Must be an integer between {} and {}", std::u16::MIN, std::u16::MAX))
+}
+
+pub fn parse_date(s: &str) -> Result<i64, String> {
+    i64::from_str(&s).map_err(|_| format!("Must be an integer between {} and {}", std::u64::MIN, std::u64::MAX))
 }
 
 pub fn fmt_duration(secs: i64) -> String {
