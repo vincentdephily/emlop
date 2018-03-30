@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 atty = "~0.2"
 chrono = "~0.4"
+chrono-english = "~0.1"
 clap = "~2.31"
 regex = "~0.2"
 sysconf = "~0.3"
@@ -14,7 +15,6 @@ tabwriter = "~1.0"
 [dev-dependencies]
 assert_cli = "~0.5"
 indoc = "~0.2"
-
 [profile.release]
 debug = false
 debug-assertions = false

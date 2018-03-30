@@ -2,6 +2,7 @@
 extern crate assert_cli;
 extern crate atty;
 extern crate chrono;
+extern crate chrono_english;
 #[macro_use]
 extern crate clap;
 #[cfg(test)]
@@ -16,6 +17,7 @@ mod parser;
 mod proces;
 
 use chrono::{DateTime, Local, TimeZone};
+use chrono_english::{parse_date_string,Dialect};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::io;
 use std::io::Write;
@@ -53,6 +55,7 @@ String is case-sentitive and matches on whole name, or whole category/name if it
         .after_help("Subcommands can be abbreviated down to a single letter.")
         .help_message("Prints help information. Use --help for more details. Use <subcommand> -h for subcommand help.")
         .arg(Arg::with_name("logfile")
+             .value_name("path/to/file")
              .long("logfile")
              .short("f")
              .global(true)
@@ -60,19 +63,20 @@ String is case-sentitive and matches on whole name, or whole category/name if it
              .default_value("/var/log/emerge.log")
              .help("Location of emerge log file."))
         .arg(Arg::with_name("from")
+             .value_name("date")
              .long("from")
              .global(true)
              .takes_value(true)
-             .help("Only consider events from that date onward.")
-             .long_help("Only consider events from that date onward.\n\
-Currently accepted format is a unix timestamp, get one using `$(date -d 'human-readable date' +%s)`."))
+             .help("Only parse log entries after <date>.")
+             .long_help("Only parse log entries after <date>.\n\
+Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago', '10d ago', and unix timestamps... \
+(see https://docs.rs/chrono-english/0.1.1/chrono_english/#supported-formats)."))
         .arg(Arg::with_name("to")
+             .value_name("date")
              .long("to")
              .global(true)
              .takes_value(true)
-             .help("Only consider events up to that date.")
-             .long_help("Only consider events up to that date.\n\
-Currently accepted format is a unix timestamp, get one using `$(date -d 'human-readable date' +%s)`."))
+             .help("Only parse log entries before <date>."))
         .subcommand(SubCommand::with_name("list")
                     .about("Show list of completed merges.")
                     .long_about("Show list of completed merges.\n\
@@ -153,7 +157,10 @@ pub fn parse_limit(s: &str) -> Result<u16, String> {
 }
 
 pub fn parse_date(s: &str) -> Result<i64, String> {
-    i64::from_str(&s).map_err(|_| format!("Must be an integer between {} and {}", std::u64::MIN, std::u64::MAX))
+    parse_date_string(s, Local::now(), Dialect::Uk)
+        .map(|d| d.timestamp())
+        .or_else(|_| i64::from_str(&s.trim()))
+        .map_err(|_| format!("Couldn't parse as a date or timestamp"))
 }
 
 pub fn fmt_duration(secs: i64) -> String {
@@ -197,5 +204,22 @@ mod tests {
         assert_eq!(       "-1", fmt_duration(-1));
         assert_eq!(    "-1:00", fmt_duration(-60));
         assert_eq!( "-1:00:00", fmt_duration(-3600));
+    }
+
+    #[test]
+    fn date() {
+        // Mainly testing the unix fallback here, as the rest is chrono_english's responsibility
+        let now = epoch_now();
+        assert_eq!(Ok(1522710000), parse_date("1522710000"));
+        assert_eq!(Ok(1522710000), parse_date("   1522710000   "));
+        assert_eq!(Ok(1522710000), parse_date("2018-04-03 00:00:00 +00:00"));
+        assert_eq!(Ok(now),        parse_date("now"));
+        assert_eq!(Ok(now),        parse_date("   now   "));
+        assert_eq!(Ok(now-3600),   parse_date("1 hour ago"));
+        assert!(parse_date("03/30/18").is_err()); // MM/DD/YY is horrible, sorry USA
+        assert!(parse_date("30/03/18").is_ok());  // DD/MM/YY is also bad, switch to YYYY-MM-DD already ;)
+        assert!(parse_date("").is_err());
+        assert!(parse_date("152271000o").is_err());
+        assert!(parse_date("a while ago").is_err());
     }
 }
