@@ -33,15 +33,16 @@ Just a framework at least. Test cases can be added as bugs are found.
 
 ### Refactoring
 #### StructOpt crate
+There's a `structopt` branch doing just that, but the end result is not as convincing as I hoped.
 #### Failure crate
 #### Proper logging
+#### http://casualhacks.net/blog/2018-03-10/exploring-function-overloading/
+For nicer parser implementation ?
 
 ### Features
 #### Optional --headers
 #### `--utc` and `--local`timezone selection date output
 #### Options to format dates and durations differently
-#### `--mindate` and `--maxdate`
-Ideally in both 'YYYY-MM-DD' and 'N days ago' formats.
 #### Add color where it makes sense (if `tty` and not `--no-color`)
 Color-coded durations would be nice.
 #### Automatically run `emerge -rOp` for `predict`

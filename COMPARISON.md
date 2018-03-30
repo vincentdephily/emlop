@@ -31,7 +31,8 @@ compact, more machine-like, less colorful.
 | :------------------------------------------------ | :----: | :----: | :-----: | :----: | :-----: |
 | Output density                                    | sparse | medium | compact | sparse | compact |
 | Colorized output                                  | yes    | yes    | no      | yes    | no      |
-| Select output timezone                            | yes    | no     | no      | no     | no      |
+| Date output options (Utc)                         | utc    | -      | -       | -      | -       |
+| Duration output style (seconds,hh:mm:ss,text)     | text   | s,text | hms     | text   | hms     |
 | Headers                                           | no     | no     | no      | no     | some    |
 
 ## Merge history
@@ -57,7 +58,7 @@ displays one of the possible matches when an ambiguous name is given (like `pkgc
 
 |                                                        | genlop | qlop  | emlop  | pqlop | golop |
 | :----------------------------------------------------- | :----: | :--:  | :----: | :---: | :---: |
-| Limit log parsing by date                              | yes    | yes   | no     | no    | no    |
+| Limit log parsing by date                              | yes    | yes   | yes    | no    | no    |
 | Plaintext exact package search                         | yes    | yes   | yes    | yes   | yes   |
 | Regexp package search                                  | yes    | no    | yes    | no    | no    |
 | Regexp case-sensitivity switch                         | flag   | n/a   | syntax | n/a   | n/a   |
@@ -69,24 +70,26 @@ displays one of the possible matches when an ambiguous name is given (like `pkgc
 Here are timings for some common commands (in seconds, best time of many runs, ~35K emerges in
 emerge.log).
 
-Some feature-related caveat: Only genlop and emlop have an `emerge -p` mode. Emlop and golop always
-calculate the merge time. Pqlop always requires a search term.
+Some timing-related feature differences: {em,go}lop always calculate the merge time in "list"
+mode. {q,pq}lop don't calculate the ETA in "current merge" mode. Filtering by plaintext isn't
+noticeably faster than by case-(in)sensitive regexp ({gen,em}lop only).
 
-|                                                                        | genlop | qlop | emlop | pqlop | golop |
-| :--------------------------------------------------------------------- | :----: | :--: | :---: | :---: | :---: |
-| `genlop -l; qlop -l; emlop l; golop`                                   | 0.9    | 0.1  | 0.4   | n/a   | 1.0   |
-| `genlop -t gcc; qlop -g gcc; emlop l gcc$; golop -t gcc; pqlop -g gcc` | 0.5    | 0.05 | 0.2   | 0.8   | 0.3   |
-| `genlop -e gcc; qlop -l gcc; emlop l gcc$; golop -t gcc; pqlop -l gcc` | 0.3    | 0.05 | 0.2   | 0.8   | 0.3   |
-| `emerge -Op gcc > p;              genlop -p < p; emlop p < p`          | 0.5    | n/a  | 0.2   | n/a   | n/a   |
-| `emerge -Op $(eix -ICc# qt) > p;  genlop -p < p; emlop p < p`          | 13.3   | n/a  | 0.2   | n/a   | n/a   |
-| `emerge -Op $(eix -ICc# kde) > p; genlop -p < p; emlop p < p`          | 92.6   | n/a  | 0.2   | n/a   | n/a   |
+|                                                                          | genlop | qlop | emlop | pqlop | golop |
+| :----------------------------------------------------------------------- | -----: | ---: | ----: | ----: | ----: |
+| `genlop -l; qlop -l; emlop l; golop`                                     | 0.9    | 0.28 | 0.30  | n/a   | 1.0   |
+| `genlop -t gcc; qlop -g gcc; emlop l -e gcc; golop -t gcc; pqlop -g gcc` | 0.5    | 0.05 | 0.09  | 0.8   | 0.3   |
+| `genlop -e gcc; qlop -l gcc; emlop l -e gcc; golop -t gcc; pqlop -l gcc` | 0.3    | 0.06 | 0.09  | 0.8   | 0.3   |
+| `emerge -O1 firefox &;genlop -c;qlop -c;emlop p;pqlop -c;golop -c`       | 0.6    | 0.00 | 0.12  | 0.3   | 0.9   |
+| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`               | 0.5    | n/a  | 0.12  | n/a   | n/a   |
+| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`                | 14.3   | n/a  | 0.12  | n/a   | n/a   |
+| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`               | 99.3   | n/a  | 0.12  | n/a   | n/a   |
 
-Qlop is the fastest, followed by emlop. The other tools are noticably slower but acceptable, except
-for `genlop` in `emerge -p` mode.
+Qlop is fastest, followed closely by emlop. The others are slower but not showstoppers, except for
+`genlop -p` which is muuuch slower than `emlop p` (while {q,pq,go}lop don't implement the feature).
 
-Some bugs (not yet reported) found while benching on my system: `qlop -g gcc` misses 2 merges,
-`golop -t gcc` misses 5, and `golop` misses 2.5% of merges. The emerge logs look fine and
-{gen,em,pq}lop agree with each other.
+Some bugs found while benching on my system: `qlop -g gcc` misses 2 merges, `golop -t gcc` misses 5,
+and `golop` misses 2.5% of merges. The emerge logs look fine and {gen,em,pq}lop agree with each
+other. `golop -c` often [doesn't detect running emerge](https://github.com/klausman/golop/issues/1).
 
 ## Merge time prediction
 

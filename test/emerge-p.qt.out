@@ -1,0 +1,37 @@
+
+These are the packages that would be merged, in order:
+
+[ebuild   R    ] dev-qt/designer-5.9.4 
+[ebuild   R    ] dev-qt/linguist-tools-5.9.4 
+[ebuild   R    ] dev-qt/qdbus-5.9.4 
+[ebuild   R    ] dev-qt/qtchooser-0_p20151008 
+[ebuild   R    ] dev-qt/qtconcurrent-5.9.4 
+[ebuild   R    ] dev-qt/qtcore-5.9.4-r2 
+[ebuild   R    ] dev-qt/qtdbus-5.9.4 
+[ebuild   R    ] dev-qt/qtdeclarative-5.9.4 
+[ebuild   R    ] dev-qt/qtgraphicaleffects-5.9.4 
+[ebuild   R    ] dev-qt/qtgui-5.9.4-r3 
+[ebuild   R    ] dev-qt/qthelp-5.9.4 
+[ebuild   R    ] dev-qt/qtimageformats-5.9.4 
+[ebuild   R    ] dev-qt/qtmultimedia-5.9.4-r1 
+[ebuild   R    ] dev-qt/qtnetwork-5.9.4 
+[ebuild   R    ] dev-qt/qtopengl-5.9.4 
+[ebuild   R    ] dev-qt/qtpaths-5.9.4 
+[ebuild   R    ] dev-qt/qtprintsupport-5.9.4 
+[ebuild   R    ] dev-qt/qtquickcontrols-5.9.4 
+[ebuild   R    ] dev-qt/qtquickcontrols2-5.9.4 
+[ebuild   R    ] dev-qt/qtscript-5.9.4 
+[ebuild   R    ] dev-qt/qtsensors-5.9.4 
+[ebuild   R    ] dev-qt/qtsql-5.9.4-r1 
+[ebuild   R    ] dev-qt/qtsvg-5.9.4-r2 
+[ebuild   R    ] dev-qt/qttest-5.9.4 
+[ebuild  NS    ] dev-qt/qttranslations-5.9.4 [4.8.7] USE="-debug {-test}" 
+[ebuild   R    ] dev-qt/qtvirtualkeyboard-5.9.4 
+[ebuild   R    ] dev-qt/qtwayland-5.9.4-r1 
+[ebuild   R    ] dev-qt/qtwebchannel-5.9.4 
+[ebuild   R    ] dev-qt/qtwebengine-5.9.4 
+[ebuild   R    ] dev-qt/qtwebkit-5.9.1 
+[ebuild   R    ] dev-qt/qtwidgets-5.9.4-r1 
+[ebuild   R    ] dev-qt/qtx11extras-5.9.4 
+[ebuild   R    ] dev-qt/qtxml-5.9.4 
+[ebuild   R    ] dev-qt/qtxmlpatterns-5.9.4 

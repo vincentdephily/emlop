@@ -2,6 +2,10 @@
 
 * Make regexp search case-insensitive: no need to remeber that 'PyQt' is camelcase anymore.
 * Add `--exact`/`-e` (non-regexp) search mode (like the default/only mode of `{gen,q,pq,go}lop`).
+* Add `--from`/`--to` arguments to filter by date.
+* Big speedup: most `emlop` invocations are about twice as fast, now comparable to `qlop`.
+* Fix bug #7 (`emlop p` wrongly interpreted blockers and unmerges as merges).
+* Various refactorings and unittest improvements.
 
 # 0.1 2018-03-07
 
