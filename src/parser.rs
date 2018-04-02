@@ -2,11 +2,19 @@
 //!
 //! Instantiate a `HistParser` or `PretendParser` and iterate over it to retrieve the events.
 
+use ::{fmt_time};
 use regex::{Regex, RegexBuilder};
 use std::io::{BufRead, BufReader, Lines, Read};
 
 /// Create a closure that matches timestamp depending on options.
 fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> Box<Fn(i64) -> bool> {
+    // The match patterns are identical but split for readability
+    match (min, max) {
+        (None,    None) =>    info!("Date filter: None"),
+        (Some(a), None) =>    info!("Date filter: after {}", fmt_time(a)),
+        (None,    Some(b)) => info!("Date filter: before {}", fmt_time(b)),
+        (Some(a), Some(b)) => info!("Date filter: between {} and {}", fmt_time(a), fmt_time(b)),
+    }
     match (min, max) {
         (None,    None) =>    Box::new(|_| true),
         (Some(a), None) =>    Box::new(move |n| n >= a),
@@ -17,22 +25,22 @@ fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> Box<Fn(i64) -> bool> {
 /// Create a closure that matches package depending on options.
 fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
     match (package, exact, package.map_or(false, |p| p.contains("/"))) {
-        // No filter
         (None, _, _) => {
+            info!("Package filter: None");
             Box::new(|_| true)
         },
-        // Filter on exact name
         (Some(search), true, true) => {
+            info!("Package filter: categ/name == {}", search);
             let srch = search.to_string();
             Box::new(move |pkg| pkg == srch)
         },
-        // Filter on exact category/name
         (Some(search), true, false) => {
+            info!("Package filter: name == {}", search);
             let srch = format!("/{}",search);
             Box::new(move |pkg| pkg.ends_with(&srch))
         },
-        // Filter on case-insensitive regexp
         (Some(search), false, _) => {
+            info!("Package filter: categ/name ~= {}", search);
             let re = RegexBuilder::new(search)
                 .case_insensitive(true)
                 .build().unwrap();
@@ -120,6 +128,7 @@ impl<R: Read> Parser<R> {
     }
 
     pub fn new_hist(reader: R, reader_name: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Parser<R> {
+        debug!("new_hist reader={} min={:?} max={:?} str={:?} exact={}", reader_name, min_ts, max_ts, search_str, search_exact);
         Parser{input: reader_name.to_string(),
                lines: BufReader::new(reader).lines(),
                curline: 0,
@@ -131,6 +140,7 @@ impl<R: Read> Parser<R> {
         }
     }
     pub fn new_pretend(reader: R, reader_name: &str) -> Parser<R> {
+        debug!("new_pretend reader={}", reader_name);
         Parser{input: reader_name.to_string(),
                lines: BufReader::new(reader).lines(),
                curline: 0,
@@ -155,7 +165,7 @@ impl<R: Read> Iterator for Parser<R> {
                     if let Some(found) = self.parse_pretend(line) {return Some(found)}
                 },
                 Some(Err(e)) => // Could be invalid UTF8, system read error...
-                    println!("WARN {}:{}: {}", self.input, self.curline, e), // FIXME proper log levels
+                    warn!("{}:{}: {}", self.input, self.curline, e),
                 None => // End of file
                     return None,
             }

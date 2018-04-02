@@ -8,13 +8,16 @@ atty = "~0.2"
 chrono = "~0.4"
 chrono-english = "~0.1"
 clap = "~2.31"
+log = "0.4.1"
 regex = "~0.2"
+stderrlog = "0.3.0"
 sysconf = "~0.3"
 tabwriter = "~1.0"
 
 [dev-dependencies]
 assert_cli = "~0.5"
 indoc = "~0.2"
+
 [profile.release]
 debug = false
 debug-assertions = false

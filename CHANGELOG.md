@@ -3,6 +3,8 @@
 * Make regexp search case-insensitive: no need to remeber that 'PyQt' is camelcase anymore.
 * Add `--exact`/`-e` (non-regexp) search mode (like the default/only mode of `{gen,q,pq,go}lop`).
 * Add `--from`/`--to` arguments to filter by date.
+* Add `-v` flag to specify log level error/warning/info/debug, and make these logs color-coded
+* Add extra logging in some situations (not displayed by default)
 * Big speedup: most `emlop` invocations are about twice as fast, now comparable to `qlop`.
 * Fix bug #7 (`emlop p` wrongly interpreted blockers and unmerges as merges).
 * Various refactorings and unittest improvements.

@@ -1,14 +1,12 @@
-#[cfg(test)]
-extern crate assert_cli;
+#[cfg(test)] extern crate assert_cli;
 extern crate atty;
 extern crate chrono;
 extern crate chrono_english;
-#[macro_use]
-extern crate clap;
-#[cfg(test)]
-#[macro_use]
-extern crate indoc;
+#[macro_use] extern crate clap;
+#[cfg(test)] #[macro_use] extern crate indoc;
+#[macro_use] extern crate log;
 extern crate regex;
+extern crate stderrlog;
 extern crate sysconf;
 extern crate tabwriter;
 
@@ -77,6 +75,11 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
              .global(true)
              .takes_value(true)
              .help("Only parse log entries before <date>."))
+        .arg(Arg::with_name("verbose")
+             .short("v")
+             .global(true)
+             .multiple(true)
+             .help("Show warnings (-v), info (-vv) and debug (-vvv) messages (errors are always displayed)."))
         .subcommand(SubCommand::with_name("list")
                     .about("Show list of completed merges.")
                     .long_about("Show list of completed merges.\n\
@@ -101,6 +104,8 @@ Total merge time, total merge count, and next merge time prediction.")
                     .arg(&arg_limit))
         .get_matches();
 
+    stderrlog::new().verbosity(args.occurrences_of("verbose") as usize).init().unwrap();
+    debug!("{:?}", args);
     let mut tw = TabWriter::new(io::stdout());
     match args.subcommand() {
         ("list",    Some(sub_args)) => cmd_list(&args, sub_args),
