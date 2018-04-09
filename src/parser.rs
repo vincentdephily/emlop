@@ -1,8 +1,9 @@
 //! Handles the actual log parsing.
 //!
-//! Instantiate a `HistParser` or `PretendParser` and iterate over it to retrieve the events.
+//! Instantiate a `Parser` and iterate over it to retrieve the events.
 
-use ::{fmt_time};
+use ::fmt_time;
+use failure::Error;
 use regex::{Regex, RegexBuilder};
 use std::io::{BufRead, BufReader, Lines, Read};
 
@@ -23,28 +24,28 @@ fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> Box<Fn(i64) -> bool> {
     }
 }
 /// Create a closure that matches package depending on options.
-fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Box<Fn(&str) -> bool> {
+fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<Box<Fn(&str) -> bool>, Error> {
     match (package, exact, package.map_or(false, |p| p.contains("/"))) {
         (None, _, _) => {
             info!("Package filter: None");
-            Box::new(|_| true)
+            Ok(Box::new(|_| true))
         },
         (Some(search), true, true) => {
             info!("Package filter: categ/name == {}", search);
             let srch = search.to_string();
-            Box::new(move |pkg| pkg == srch)
+            Ok(Box::new(move |pkg| pkg == srch))
         },
         (Some(search), true, false) => {
             info!("Package filter: name == {}", search);
             let srch = format!("/{}",search);
-            Box::new(move |pkg| pkg.ends_with(&srch))
+            Ok(Box::new(move |pkg| pkg.ends_with(&srch)))
         },
         (Some(search), false, _) => {
             info!("Package filter: categ/name ~= {}", search);
             let re = RegexBuilder::new(search)
                 .case_insensitive(true)
-                .build().unwrap();
-            Box::new(move |pkg| re.is_match(pkg))
+                .build()?;
+            Ok(Box::new(move |pkg| re.is_match(pkg)))
         }
     }
 }
@@ -127,29 +128,29 @@ impl<R: Read> Parser<R> {
                              line: line.to_string()})
     }
 
-    pub fn new_hist(reader: R, reader_name: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Parser<R> {
+    pub fn new_hist(reader: R, reader_name: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Result<Parser<R>, Error> {
         debug!("new_hist reader={} min={:?} max={:?} str={:?} exact={}", reader_name, min_ts, max_ts, search_str, search_exact);
-        Parser{input: reader_name.to_string(),
-               lines: BufReader::new(reader).lines(),
-               curline: 0,
-               filter_pkg: filter_pkg_fn(search_str, search_exact),
-               filter_ts: filter_ts_fn(min_ts, max_ts),
-               out_start: true,
-               out_stop: true,
-               re_pretend: None,
-        }
+        Ok(Parser{input: reader_name.to_string(),
+                  lines: BufReader::new(reader).lines(),
+                  curline: 0,
+                  filter_pkg: filter_pkg_fn(search_str, search_exact)?,
+                  filter_ts: filter_ts_fn(min_ts, max_ts),
+                  out_start: true,
+                  out_stop: true,
+                  re_pretend: None,
+        })
     }
-    pub fn new_pretend(reader: R, reader_name: &str) -> Parser<R> {
+    pub fn new_pretend(reader: R, reader_name: &str) -> Result<Parser<R>, Error> {
         debug!("new_pretend reader={}", reader_name);
-        Parser{input: reader_name.to_string(),
-               lines: BufReader::new(reader).lines(),
-               curline: 0,
-               filter_pkg: filter_pkg_fn(None, true),
-               filter_ts: filter_ts_fn(None, None),
-               out_start: false,
-               out_stop: false,
-               re_pretend: Some(Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap()),
-        }
+        Ok(Parser{input: reader_name.to_string(),
+                  lines: BufReader::new(reader).lines(),
+                  curline: 0,
+                  filter_pkg: filter_pkg_fn(None, true)?,
+                  filter_ts: filter_ts_fn(None, None),
+                  out_start: false,
+                  out_stop: false,
+                  re_pretend: Some(Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)")?),
+        })
     }
 }
 
@@ -187,7 +188,7 @@ mod tests {
                   filter_pkg: Option<&str>, exact: bool,
                   mut expect_counts: Vec<(&str, usize)>) {
         // Setup
-        let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter_mints, filter_maxts, filter_pkg, exact);
+        let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter_mints, filter_maxts, filter_pkg, exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap(); //Should match pattern used in *Parser
@@ -298,7 +299,7 @@ mod tests {
 
     fn parse_pretend(filename: &str, expect: &Vec<(&str, &str)>) {
         // Setup
-        let pretend = Parser::new_pretend(File::open(filename).unwrap(), filename);
+        let pretend = Parser::new_pretend(File::open(filename).unwrap(), filename).unwrap();
         let mut count = 0;
         // Check that all items look valid
         for p in pretend {

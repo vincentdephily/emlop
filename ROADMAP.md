@@ -34,13 +34,10 @@ Just a framework at least. Test cases can be added as bugs are found.
 ### Refactoring
 #### StructOpt crate
 There's a `structopt` branch doing just that, but the end result is not as convincing as I hoped.
-#### Failure crate
 #### http://casualhacks.net/blog/2018-03-10/exploring-function-overloading/
 For nicer parser implementation ?
-#### error!() and exit() instead of panic!() where it makes sense
-* log file not found
-* bad user regex
-* ... ?
+#### parallelize parsing
+https://github.com/alex-shapiro/ditto might help with ordering ?
 
 ### Features
 #### Optional --headers

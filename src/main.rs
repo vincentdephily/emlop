@@ -3,6 +3,8 @@ extern crate atty;
 extern crate chrono;
 extern crate chrono_english;
 #[macro_use] extern crate clap;
+extern crate failure;
+#[macro_use] extern crate failure_derive;
 #[cfg(test)] #[macro_use] extern crate indoc;
 #[macro_use] extern crate log;
 extern crate regex;
@@ -17,6 +19,8 @@ mod proces;
 use chrono::{DateTime, Local, TimeZone};
 use chrono_english::{parse_date_string,Dialect};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use failure::Error;
+use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::str::FromStr;
@@ -50,7 +54,8 @@ String is case-sentitive and matches on whole name, or whole category/name if it
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .setting(AppSettings::VersionlessSubcommands)
         .about("A fast, accurate, ergonnomic EMerge LOg Parser.\nhttps://github.com/vincentdephily/emlop")
-        .after_help("Subcommands can be abbreviated down to a single letter.")
+        .after_help("Subcommands can be abbreviated down to a single letter.\n\
+Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if package search found nothing.")
         .help_message("Prints help information. Use --help for more details. Use <subcommand> -h for subcommand help.")
         .arg(Arg::with_name("logfile")
              .value_name("path/to/file")
@@ -107,13 +112,21 @@ Total merge time, total merge count, and next merge time prediction.")
     stderrlog::new().verbosity(args.occurrences_of("verbose") as usize).init().unwrap();
     debug!("{:?}", args);
     let mut tw = TabWriter::new(io::stdout());
-    match args.subcommand() {
+    let res = match args.subcommand() {
         ("list",    Some(sub_args)) => cmd_list(&args, sub_args),
         ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args),
         ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
-    }.unwrap();
+    };
     tw.flush().unwrap_or(());
+    match res {
+        Ok(true) => ::std::process::exit(0),
+        Ok(false) => ::std::process::exit(2),
+        Err(e) => {
+            error!("{}", e);
+            ::std::process::exit(1)
+        }
+    }
 }
 
 /// Parse and return argument from an ArgMatches, exit if parsing fails.
@@ -188,6 +201,17 @@ pub fn epoch(st: SystemTime) -> i64 {
 
 pub fn epoch_now() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
+}
+
+#[derive(Debug, Fail)]
+#[fail(display = "Cannot open {}: {}", file, reason)]
+struct OpenError {
+    file: String,
+    reason: std::io::Error,
+}
+/// File::open wrapper with a more user-friendly error.
+pub fn myopen(fname: &str) -> Result<File, Error> {
+    File::open(fname).map_err(|e| OpenError{file:fname.into(), reason: e}.into())
 }
 
 

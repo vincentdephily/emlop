@@ -3,17 +3,17 @@ use parser::*;
 use proces::*;
 
 use std::collections::HashMap;
-use std::fs::File;
 use std::io::stdin;
 
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
-    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
+pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> {
+    let hist = Parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                subargs.value_of("package"), subargs.is_present("exact"));
+                                subargs.value_of("package"), subargs.is_present("exact"))?;
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
+    let mut found_one = false;
     for p in hist {
         match p {
             Parsed::Start{ts, ebuild, version, iter, ..} => {
@@ -21,6 +21,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
             Parsed::Stop{ts, ebuild, version, iter, ..} => {
+                found_one = true;
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(prevts) => writeln!(io::stdout(), "{} {:>9} {}-{}",     fmt_time(ts), fmt_duration(ts - prevts), ebuild, version).unwrap_or(()),
                     None =>         writeln!(io::stdout(), "{}  00:00:00 {}-{}", fmt_time(ts), ebuild, version).unwrap_or(()),
@@ -29,20 +30,21 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error
             _ => assert!(false, "unexpected {:?}", p),
         }
     }
-    Ok(())
+    Ok(found_one)
 }
 
 /// Summary display of merge events
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
-    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
+pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> {
+    let hist = Parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                subargs.value_of("package"), subargs.is_present("exact"));
+                                subargs.value_of("package"), subargs.is_present("exact"))?;
     let lim = value(subargs, "limit", parse_limit);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
+    let mut found_one = false;
     for p in hist {
         match p {
             Parsed::Start{ts, ebuild, version, iter, ..} => {
@@ -61,6 +63,7 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
         }
     };
     for (pkg,tv) in times.iter() {
+        found_one = true;
         let (predtime,predcount,tottime,totcount) = tv.iter()
             .fold((0,0,0,0), |(pt,pc,tt,tc), &i| {
                 if tc >= lim {(pt,  pc,  tt+i,tc+1)}
@@ -68,13 +71,13 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
             });
         writeln!(tw, "{}\t{:>9}\t{:>3}\t{:>8}", pkg, fmt_duration(tottime), totcount, fmt_duration(predtime/predcount))?;
     }
-    Ok(())
+    Ok(found_one)
 }
 
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<(), io::Error> {
+pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> {
     let now = epoch_now();
     let lim = value(subargs, "limit", parse_limit);
 
@@ -86,13 +89,13 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
         writeln!(tw, "No ongoing merge found")?;
-        return Ok(())
+        return Ok(false)
     }
 
     // Parse emerge log.
-    let hist = Parser::new_hist(File::open(args.value_of("logfile").unwrap()).unwrap(), args.value_of("logfile").unwrap(),
+    let hist = Parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                None, false);
+                                None, false)?;
     let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     for p in hist {
@@ -114,7 +117,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     // Parse list of pending merges (from stdin or from emerge log filtered by cms).
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
     let pretend: Vec<Parsed> = match atty::is(atty::Stream::Stdin) {
-        false => Parser::new_pretend(stdin(), "STDIN").collect(),
+        false => Parser::new_pretend(stdin(), "STDIN")?.collect(),
         true => started.iter()
             .filter(|&(_,t)| *t > cms)
             .map(|(&(ref e,ref v),_)| Parsed::Pretend{ebuild:e.to_string(), version:v.to_string(), line: String::from("")})
@@ -162,7 +165,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     } else {
         writeln!(tw, "No pretended merge found")?;
     }
-    Ok(())
+    Ok(totcount > 0)
 }
 
 
@@ -175,7 +178,7 @@ mod tests {
         // This depends on there being no currently running emerge.
         // Not a hugely useful test, but it's something.
         let o = "No pretended merge found\n";
-        Assert::main_binary().with_args(&["p"]).stdout().is(o).unwrap();
+        Assert::main_binary().with_args(&["p"]).fails_with(2).stdout().is(o).unwrap();
     }
 
     #[test]
@@ -183,11 +186,13 @@ mod tests {
         let t = vec![
             // Check garbage input
             (indoc!("blah blah\n"),
-             indoc!("No pretended merge found\n")),
+             indoc!("No pretended merge found\n"),
+             2),
             // Check all-unknowns
             (indoc!("[ebuild   R   ~] dev-lang/unknown-1.42\n"),
              indoc!("dev-lang/unknown                               \n\
-                     Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0\n")),
+                     Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0\n"),
+             0),
             // Check that unknown ebuild don't wreck allignment. Remember that times are {:>9}
             (indoc!("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
                      [ebuild   R   ~] dev-lang/unknown-1.42\n\
@@ -195,11 +200,53 @@ mod tests {
              indoc!("dev-qt/qtcore                                       3:44\n\
                      dev-lang/unknown                               \n\
                      dev-qt/qtgui                                        4:36\n\
-                     Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n")),
+                     Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n"),
+             0),
         ];
-        for (i,o) in t {
-            Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
-                .stdin(i).stdout().is(o).unwrap();
+        for (i,o,e) in t {
+            match e { //FIXME: Simplify code once https://github.com/assert-rs/assert_cli/issues/99 is closed
+                0 => Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
+                    .stdin(i).stdout().is(o).unwrap(),
+                _ => Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
+                    .fails_with(e).stdin(i).stdout().is(o).unwrap(),
+            }
+        }
+    }
+
+    #[test]
+    fn exit_status() {
+        // 0: no problem
+        // 1: user or program error
+        // 2: command ran properly but didn't find anything
+        let t: Vec<(&[&str],i32)> = vec![
+            // Help, version, badarg (clap)
+            (&["-h"], 0),
+            (&["-V"], 0),
+            (&["l","-h"], 0),
+            (&[], 1),
+            (&["s","--foo"], 1),
+            (&["badcmd"], 1),
+            // Bad arguments (emlop)
+            (&["l","--logfile","notfound"], 1),
+            (&["s","--logfile","notfound"], 1),
+            (&["p","--logfile","notfound"], 1),
+            (&["l","bad regex [a-z"], 1),
+            (&["s","bad regex [a-z"], 1),
+            (&["p","bad regex [a-z"], 1),
+            // Normal behaviour
+            (&["-f","test/emerge.10000.log","p"], 2),
+            (&["-f","test/emerge.10000.log","l"], 0),
+            (&["-f","test/emerge.10000.log","l","-e","icu"], 0),
+            (&["-f","test/emerge.10000.log","l","-e","unknown"], 2),
+            (&["-f","test/emerge.10000.log","s"], 0),
+            (&["-f","test/emerge.10000.log","s","-e","icu"], 0),
+            (&["-f","test/emerge.10000.log","s","-e","unknown"], 2),
+        ];
+        for (args, exit) in t {
+            match exit {
+                0 => Assert::main_binary().with_args(args).unwrap(),
+                _ => Assert::main_binary().with_args(args).fails_with(exit).unwrap(),
+            }
         }
     }
 }
