@@ -2,7 +2,7 @@ use ::*;
 use parser::*;
 use proces::*;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::stdin;
 
 /// Straightforward display of merge events
@@ -43,7 +43,7 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
     let lim = value(subargs, "limit", parse_limit);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
-    let mut times: HashMap<String, Vec<i64>> = HashMap::new();
+    let mut times: BTreeMap<String, Vec<i64>> = BTreeMap::new();
     let mut found_one = false;
     for p in hist {
         match p {
@@ -209,6 +209,27 @@ mod tests {
                     .stdin(i).stdout().is(o).unwrap(),
                 _ => Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
                     .fails_with(e).stdin(i).stdout().is(o).unwrap(),
+            }
+        }
+    }
+
+    #[test]
+    fn stats() {
+        let t = vec![
+            (&["-f","test/emerge.10000.log","s","client"],
+             indoc!("kde-frameworks/kxmlrpcclient         47    2        23\n\
+                     mail-client/thunderbird         1:23:44    2     41:52\n\
+                     www-client/chromium            21:41:24    3   7:13:48\n\
+                     www-client/falkon                  6:02    1      6:02\n\
+                     www-client/firefox                47:29    1     47:29\n\
+                     www-client/links                     44    1        44\n\
+                     x11-apps/xlsclients                  14    1        14\n"),
+             0),
+        ];
+        for (a,o,e) in t {
+            match e { //FIXME: Simplify code once https://github.com/assert-rs/assert_cli/issues/99 is closed
+                0 => Assert::main_binary().with_args(a).stdout().is(o).unwrap(),
+                _ => Assert::main_binary().with_args(a).fails_with(e).stdout().is(o).unwrap(),
             }
         }
     }
