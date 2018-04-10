@@ -22,10 +22,8 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> 
             },
             Parsed::Stop{ts, ebuild, version, iter, ..} => {
                 found_one = true;
-                match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
-                    Some(prevts) => writeln!(io::stdout(), "{} {:>9} {}-{}",     fmt_time(ts), fmt_duration(ts - prevts), ebuild, version).unwrap_or(()),
-                    None =>         writeln!(io::stdout(), "{}  00:00:00 {}-{}", fmt_time(ts), ebuild, version).unwrap_or(()),
-                }
+                let prevts = started.remove(&(ebuild.clone(), version.clone(), iter.clone())).unwrap_or(ts+1);
+                writeln!(io::stdout(), "{} {:>9} {}-{}", fmt_time(ts), fmt_duration(ts - prevts), ebuild, version).unwrap_or(());
             },
             _ => assert!(false, "unexpected {:?}", p),
         }
@@ -172,6 +170,39 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
 #[cfg(test)]
 mod tests {
     use assert_cli::Assert;
+    //TODO: Simplify fails_with() calls once https://github.com/assert-rs/assert_cli/issues/99 is closed
+
+    #[test]
+    fn list() {
+        let t: Vec<(&[&str],&str,i32)> = vec![
+            // Basic test
+            (&["-f","test/emerge.10000.log","l","client"],
+             indoc!("2018-02-04 04:55:19 +00:00     35:46 mail-client/thunderbird-52.6.0\n\
+                     2018-02-04 05:42:48 +00:00     47:29 www-client/firefox-58.0.1\n\
+                     2018-02-09 11:04:59 +00:00     47:58 mail-client/thunderbird-52.6.0-r1\n\
+                     2018-02-12 10:14:11 +00:00        31 kde-frameworks/kxmlrpcclient-5.43.0\n\
+                     2018-02-16 04:41:39 +00:00   6:03:14 www-client/chromium-64.0.3282.140\n\
+                     2018-02-19 17:35:41 +00:00   7:56:03 www-client/chromium-64.0.3282.167\n\
+                     2018-02-22 13:32:53 +00:00        44 www-client/links-2.14-r1\n\
+                     2018-02-28 09:14:37 +00:00      6:02 www-client/falkon-3.0.0\n\
+                     2018-03-06 04:19:52 +00:00   7:42:07 www-client/chromium-64.0.3282.186\n\
+                     2018-03-12 10:35:22 +00:00        14 x11-apps/xlsclients-1.1.4\n\
+                     2018-03-12 11:03:53 +00:00        16 kde-frameworks/kxmlrpcclient-5.44.0\n"),
+             0),
+            // Check output when duration isn't known
+            (&["-f","test/emerge.10000.log","l","mlt","-e","--from","2018-02-18 12:37:00"],
+             indoc!("2018-02-18 12:37:09 +00:00        -1 media-libs/mlt-6.4.1-r6\n\
+                     2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
+                     2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n"),
+             0),
+        ];
+        for (a,o,e) in t {
+            match e {
+                0 => Assert::main_binary().with_args(a).stdout().is(o).unwrap(),
+                _ => Assert::main_binary().with_args(a).fails_with(e).stdout().is(o).unwrap(),
+            }
+        }
+    }
 
     #[test]
     fn predict_tty() {
@@ -204,7 +235,7 @@ mod tests {
              0),
         ];
         for (i,o,e) in t {
-            match e { //FIXME: Simplify code once https://github.com/assert-rs/assert_cli/issues/99 is closed
+            match e {
                 0 => Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
                     .stdin(i).stdout().is(o).unwrap(),
                 _ => Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
@@ -227,7 +258,7 @@ mod tests {
              0),
         ];
         for (a,o,e) in t {
-            match e { //FIXME: Simplify code once https://github.com/assert-rs/assert_cli/issues/99 is closed
+            match e {
                 0 => Assert::main_binary().with_args(a).stdout().is(o).unwrap(),
                 _ => Assert::main_binary().with_args(a).fails_with(e).stdout().is(o).unwrap(),
             }
