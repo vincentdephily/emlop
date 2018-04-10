@@ -8,7 +8,7 @@ use std::io::stdin;
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> {
+pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
     let hist = Parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
@@ -23,7 +23,9 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> 
             Parsed::Stop{ts, ebuild, version, iter, ..} => {
                 found_one = true;
                 let prevts = started.remove(&(ebuild.clone(), version.clone(), iter.clone())).unwrap_or(ts+1);
-                writeln!(io::stdout(), "{} {:>9} {}-{}", fmt_time(ts), fmt_duration(ts - prevts), ebuild, version).unwrap_or(());
+                writeln!(io::stdout(), "{} {}{:>9} {}{}-{}{}",
+                         fmt_time(ts), st.dur_p, fmt_duration(ts - prevts),
+                         st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
             _ => assert!(false, "unexpected {:?}", p),
         }
@@ -35,7 +37,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> 
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> {
+pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
     let hist = Parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
@@ -67,7 +69,11 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                 if tc >= lim {(pt,  pc,  tt+i,tc+1)}
                 else         {(pt+i,pc+1,tt+i,tc+1)}
             });
-        writeln!(tw, "{}\t{:>9}\t{:>3}\t{:>8}", pkg, fmt_duration(tottime), totcount, fmt_duration(predtime/predcount))?;
+        writeln!(tw, "{}{}\t{}{:>9}\t{}{:>3}{}\t{}{:>8}{}",
+                 st.pkg_p, pkg,
+                 st.dur_p, fmt_duration(tottime),
+                 st.cnt_p, totcount, st.cnt_s,
+                 st.dur_p, fmt_duration(predtime/predcount), st.dur_s)?;
     }
     Ok(found_one)
 }
@@ -75,7 +81,7 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches) -> Result<bool, Error> {
+pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
     let now = epoch_now();
     let lim = value(subargs, "limit", parse_limit);
 
@@ -83,7 +89,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     let mut cms = std::i64::MAX;
     for i in get_all_info(Some("emerge"))? {
         cms = std::cmp::min(cms, i.start);
-        writeln!(tw, "Pid {}: ...{}\t{:>9}", i.pid, &i.cmdline[(i.cmdline.len()-35)..], fmt_duration(now-i.start))?;
+        writeln!(tw, "Pid {}: ...{}\t{}{:>9}{}", i.pid, &i.cmdline[(i.cmdline.len()-35)..], st.dur_p, fmt_duration(now-i.start), st.dur_s)?;
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
         writeln!(tw, "No ongoing merge found")?;
@@ -145,21 +151,28 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
                             // false-positives, but is IMHO no worse than genlop's heuristics.
                             totelapsed += now - start_ts;
                             totpredict -= std::cmp::min(predtime / predcount, now - start_ts);
-                            writeln!(tw, "{}-{}\t{:>9} - {}", ebuild, version, fmt_duration(predtime/predcount), fmt_duration(now-start_ts))?;
+                            writeln!(tw, "{}{}-{}\t{}{:>9}{} - {}{}{}",
+                                     st.pkg_p, ebuild, version,
+                                     st.dur_p, fmt_duration(predtime/predcount), st.dur_s,
+                                     st.dur_p, fmt_duration(now-start_ts), st.dur_s)?;
                         },
                         _ =>
-                            writeln!(tw, "{}-{}\t{:>9}", ebuild, version, fmt_duration(predtime/predcount))?,
+                            writeln!(tw, "{}{}-{}\t{}{:>9}{}", st.pkg_p, ebuild, version, st.dur_p, fmt_duration(predtime/predcount), st.dur_s)?,
                     }
                 } else {
                     totunknown += 1;
-                    writeln!(tw, "{}-{}\t", ebuild, version)?;
+                    writeln!(tw, "{}{}-{}{}\t", st.pkg_p, ebuild, version, st.pkg_s)?;
                 }
             },
             _ => assert!(false, "unexpected {:?}", p),
         }
     }
     if totcount > 0 {
-        writeln!(tw, "Estimate for {} ebuilds ({} unknown, {} elapsed)\t{:>9}", totcount, totunknown, fmt_duration(totelapsed), fmt_duration(totpredict))?;
+        writeln!(tw, "Estimate for {}{}{} ebuilds ({}{}{} unknown, {}{}{} elapsed)\t{}{:>9}{}",
+                 st.cnt_p, totcount, st.cnt_s,
+                 st.cnt_p, totunknown, st.cnt_s,
+                 st.dur_p, fmt_duration(totelapsed), st.dur_s,
+                 st.dur_p, fmt_duration(totpredict), st.dur_s)?;
     } else {
         writeln!(tw, "No pretended merge found")?;
     }

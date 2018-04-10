@@ -23,14 +23,14 @@ thing with `genlop -c` and `genlop -p` which are combined into `emlop p`.
 
 ## Output
 
-Pqlop has a colorful output that is very close (often identical) to genlop. Qlop is also very close
-to genlop, but did make some outputs more compact. Emlop and golop have a more spartan look: more
-compact, more machine-like, less colorful.
+Emlop output aims to be compact, beautiful, and easy to read/parse. Pqlop has a sparse, colored
+output very close (often identical) to genlop. Qlop is also very close to genlop, but did make some
+outputs more compact. Golop has a fairly spartan look: compact, machine-like, no color.
 
 |                                                   | genlop | qlop   | emlop   | pqlop  | golop   |
 | :------------------------------------------------ | :----: | :----: | :-----: | :----: | :-----: |
 | Output density                                    | sparse | medium | compact | sparse | compact |
-| Colorized output                                  | yes    | yes    | no      | yes    | no      |
+| Colorized output                                  | yes    | yes    | yes     | yes    | no      |
 | Date output options (Utc)                         | utc    | -      | -       | -      | -       |
 | Duration output style (seconds,hh:mm:ss,text)     | text   | s,text | hms     | text   | hms     |
 | Headers                                           | no     | no     | no      | no     | some    |

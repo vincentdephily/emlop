@@ -1,3 +1,4 @@
+extern crate ansi_term;
 #[cfg(test)] extern crate assert_cli;
 extern crate atty;
 extern crate chrono;
@@ -16,6 +17,8 @@ mod commands;
 mod parser;
 mod proces;
 
+use ansi_term::Style;
+use ansi_term::Color::*;
 use chrono::{DateTime, Local, TimeZone};
 use chrono_english::{parse_date_string,Dialect};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
@@ -55,7 +58,7 @@ String is case-sentitive and matches on whole name, or whole category/name if it
         .setting(AppSettings::VersionlessSubcommands)
         .about("A fast, accurate, ergonnomic EMerge LOg Parser.\nhttps://github.com/vincentdephily/emlop")
         .after_help("Subcommands can be abbreviated down to a single letter.\n\
-Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if package search found nothing.")
+Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if searched package not found.")
         .help_message("Prints help information. Use --help for more details. Use <subcommand> -h for subcommand help.")
         .arg(Arg::with_name("logfile")
              .value_name("path/to/file")
@@ -85,6 +88,15 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
              .global(true)
              .multiple(true)
              .help("Show warnings (-v), info (-vv) and debug (-vvv) messages (errors are always displayed)."))
+        .arg(Arg::with_name("color")
+             .long("color").alias("colour")
+             .global(true)
+             .takes_value(true)
+             .possible_values(&["auto","always","never","y","n"])
+             .hide_possible_values(true)
+             .default_value("auto")
+             .value_name("when")
+             .help("Enable Color (auto/always/never/y/n)."))
         .subcommand(SubCommand::with_name("list")
                     .about("Show list of completed merges.")
                     .long_about("Show list of completed merges.\n\
@@ -111,11 +123,12 @@ Total merge time, total merge count, and next merge time prediction.")
 
     stderrlog::new().verbosity(args.occurrences_of("verbose") as usize).init().unwrap();
     debug!("{:?}", args);
+    let styles = Styles::new(&args);
     let mut tw = TabWriter::new(io::stdout());
     let res = match args.subcommand() {
-        ("list",    Some(sub_args)) => cmd_list(&args, sub_args),
-        ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args),
-        ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args),
+        ("list",    Some(sub_args)) => cmd_list(&args, sub_args, styles),
+        ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, styles),
+        ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args, styles),
         (other, _) => unimplemented!("{} subcommand", other),
     };
     tw.flush().unwrap_or(());
@@ -201,6 +214,45 @@ pub fn epoch(st: SystemTime) -> i64 {
 
 pub fn epoch_now() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
+}
+
+/// Holds styling preferences (currently just color).
+///
+/// We're using prefix/suffix() instead of paint() because paint() doesn't handle '{:>9}' alignments
+/// properly.
+pub struct Styles {
+    pkg_p: String,
+    pkg_s: String,
+    dur_p: String,
+    dur_s: String,
+    cnt_p: String,
+    cnt_s: String,
+}
+impl Styles {
+    fn new(args: &ArgMatches) -> Self {
+        let enabled = match args.value_of("color") {
+            Some("always") | Some("y") => true,
+            Some("never") | Some("n") => false,
+            _ => atty::is(atty::Stream::Stdout),
+        };
+        if enabled {
+            Styles{pkg_p: Style::new().fg(Green).bold().prefix().to_string(),
+                   pkg_s: Style::new().fg(Green).bold().suffix().to_string(),
+                   dur_p: Style::new().fg(Purple).bold().prefix().to_string(),
+                   dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
+                   cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
+                   cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string(),
+            }
+        } else {
+            Styles{pkg_p: String::new(),
+                   pkg_s: String::new(),
+                   dur_p: String::new(),
+                   dur_s: String::new(),
+                   cnt_p: String::new(),
+                   cnt_s: String::new(),
+            }
+        }
+    }
 }
 
 #[derive(Debug, Fail)]

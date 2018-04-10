@@ -43,8 +43,9 @@ https://github.com/alex-shapiro/ditto might help with ordering ?
 #### Optional --headers
 #### `--utc` and `--local`timezone selection date output
 #### Options to format dates and durations differently
-#### Add color where it makes sense (if `tty` and not `--no-color`)
-Color-coded durations would be nice.
+#### Use colors to carry mmore information
+* Color-code predict durations ?
+* Dark-green for packages not in world file ?
 #### Automatically run `emerge -rOp` for `predict`
 #### Parse and optionaly display sync dates, unmerges, failed merges, etc
 For the `list` command.
