@@ -147,14 +147,14 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
                             // false-positives, but is IMHO no worse than genlop's heuristics.
                             totelapsed += now - start_ts;
                             totpredict -= std::cmp::min(predtime / predcount, now - start_ts);
-                            writeln!(tw, "{}\t{:>9} - {}", ebuild, fmt_duration(predtime/predcount), fmt_duration(now-start_ts))?;
+                            writeln!(tw, "{}-{}\t{:>9} - {}", ebuild, version, fmt_duration(predtime/predcount), fmt_duration(now-start_ts))?;
                         },
                         _ =>
-                            writeln!(tw, "{}\t{:>9}", ebuild, fmt_duration(predtime/predcount))?,
+                            writeln!(tw, "{}-{}\t{:>9}", ebuild, version, fmt_duration(predtime/predcount))?,
                     }
                 } else {
                     totunknown += 1;
-                    writeln!(tw, "{}\t", ebuild)?;
+                    writeln!(tw, "{}-{}\t", ebuild, version)?;
                 }
             },
             _ => assert!(false, "unexpected {:?}", p),
@@ -190,16 +190,16 @@ mod tests {
              2),
             // Check all-unknowns
             (indoc!("[ebuild   R   ~] dev-lang/unknown-1.42\n"),
-             indoc!("dev-lang/unknown                               \n\
+             indoc!("dev-lang/unknown-1.42                          \n\
                      Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0\n"),
              0),
             // Check that unknown ebuild don't wreck allignment. Remember that times are {:>9}
             (indoc!("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
                      [ebuild   R   ~] dev-lang/unknown-1.42\n\
                      [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n"),
-             indoc!("dev-qt/qtcore                                       3:44\n\
-                     dev-lang/unknown                               \n\
-                     dev-qt/qtgui                                        4:36\n\
+             indoc!("dev-qt/qtcore-5.9.4-r2                              3:44\n\
+                     dev-lang/unknown-1.42                          \n\
+                     dev-qt/qtgui-5.9.4-r3                               4:36\n\
                      Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n"),
              0),
         ];
