@@ -22,9 +22,9 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
             },
             Parsed::Stop{ts, ebuild, version, iter, ..} => {
                 found_one = true;
-                let prevts = started.remove(&(ebuild.clone(), version.clone(), iter.clone())).unwrap_or(ts+1);
+                let started = started.remove(&(ebuild.clone(), version.clone(), iter.clone()));
                 writeln!(io::stdout(), "{} {}{:>9} {}{}-{}{}",
-                         fmt_time(ts), st.dur_p, fmt_duration(ts - prevts),
+                         fmt_time(ts), st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(ts-pt)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
             _ => assert!(false, "unexpected {:?}", p),
@@ -208,7 +208,7 @@ mod tests {
              0),
             // Check output when duration isn't known
             (&["-f","test/emerge.10000.log","l","mlt","-e","--from","2018-02-18 12:37:00"],
-             indoc!("2018-02-18 12:37:09 +00:00        -1 media-libs/mlt-6.4.1-r6\n\
+             indoc!("2018-02-18 12:37:09 +00:00         ? media-libs/mlt-6.4.1-r6\n\
                      2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
                      2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n"),
              0),
