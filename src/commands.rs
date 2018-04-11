@@ -136,33 +136,37 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     for p in pretend {
         match p {
             Parsed::Pretend{ebuild, version, ..} => {
+                // Find the elapsed time, if any (heuristic is that emerge process started before
+                // this merge finished, it's not failsafe but IMHO no worse than genlop).
+                let (elapsed,elapsed_fmt) = match started.remove(&(ebuild.clone(), version.clone())) {
+                    Some(s) if s > cms => (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(now-s), st.dur_s)),
+                    _ => (0, "".into())
+                };
+
+                // Find the predicted time and adjust counters
                 totcount += 1;
-                if let Some(tv) = times.get(&ebuild) {
-                    let (predtime,predcount,_) = tv.iter()
-                        .fold((0,0,0), |(pt,pc,tc), &i| {
-                            if tc >= lim {(pt,  pc,  tc+1)}
-                            else         {(pt+i,pc+1,tc+1)}
-                        });
-                    totpredict += predtime / predcount;
-                    match started.remove(&(ebuild.clone(), version.clone())) {
-                        Some(start_ts) if start_ts > cms => {
-                            // There's an emerge process running since before this unfinished merge started,
-                            // so a good guess is that this merge is currently running. This can lead to
-                            // false-positives, but is IMHO no worse than genlop's heuristics.
-                            totelapsed += now - start_ts;
-                            totpredict -= std::cmp::min(predtime / predcount, now - start_ts);
-                            writeln!(tw, "{}{}-{}\t{}{:>9}{} - {}{}{}",
-                                     st.pkg_p, ebuild, version,
-                                     st.dur_p, fmt_duration(predtime/predcount), st.dur_s,
-                                     st.dur_p, fmt_duration(now-start_ts), st.dur_s)?;
-                        },
-                        _ =>
-                            writeln!(tw, "{}{}-{}\t{}{:>9}{}", st.pkg_p, ebuild, version, st.dur_p, fmt_duration(predtime/predcount), st.dur_s)?,
-                    }
-                } else {
-                    totunknown += 1;
-                    writeln!(tw, "{}{}-{}{}\t", st.pkg_p, ebuild, version, st.pkg_s)?;
-                }
+                let pred_fmt = match times.get(&ebuild) {
+                    Some(tv) => {
+                        let (predtime,predcount,_) = tv.iter()
+                            .fold((0,0,0), |(pt,pc,tc), &i| {
+                                if tc >= lim {(pt,  pc,  tc+1)}
+                                else         {(pt+i,pc+1,tc+1)}
+                            });
+                        totpredict += predtime / predcount;
+                        if elapsed > 0 {
+                            totelapsed += elapsed;
+                            totpredict -= std::cmp::min(predtime / predcount, elapsed);
+                        }
+                        fmt_duration(predtime/predcount)
+                    },
+                    None => {
+                        totunknown += 1;
+                        "?".into()
+                    },
+                };
+
+                // Done
+                writeln!(tw, "{}{}-{}\t{}{:>9}{}{}", st.pkg_p, ebuild, version, st.dur_p, pred_fmt, st.dur_s, elapsed_fmt)?;
             },
             _ => assert!(false, "unexpected {:?}", p),
         }
@@ -234,15 +238,15 @@ mod tests {
              2),
             // Check all-unknowns
             (indoc!("[ebuild   R   ~] dev-lang/unknown-1.42\n"),
-             indoc!("dev-lang/unknown-1.42                          \n\
+             indoc!("dev-lang/unknown-1.42                                  ?\n\
                      Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0\n"),
              0),
-            // Check that unknown ebuild don't wreck allignment. Remember that times are {:>9}
+            // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
             (indoc!("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
                      [ebuild   R   ~] dev-lang/unknown-1.42\n\
                      [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n"),
              indoc!("dev-qt/qtcore-5.9.4-r2                              3:44\n\
-                     dev-lang/unknown-1.42                          \n\
+                     dev-lang/unknown-1.42                                  ?\n\
                      dev-qt/qtgui-5.9.4-r3                               4:36\n\
                      Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n"),
              0),
