@@ -1,0 +1,177 @@
+#!/usr/bin/env run-cargo-script
+//! Quick script to benchmark *lop implementations.
+//!
+//! ```cargo
+//! [dependencies]
+//! clap = "*"
+//! stats-cli = "*"
+//! tabwriter = "*"
+//! ```
+
+#[macro_use] extern crate clap;
+extern crate inc_stats;
+extern crate tabwriter;
+
+use clap::{App, AppSettings, Arg};
+use inc_stats::*;
+use std::{collections::{BTreeMap, HashMap}, fs::File, io, io::Write, process::{Command, Stdio}, time::Instant};
+use tabwriter::TabWriter;
+
+fn main() {
+    // Test definitions
+    let tests: Vec<(&str,&str,Option<&str>,&[&str])> = vec![
+        ("gen","h",None,&["genlop","-h"]),
+        ("q",  "h",None,&["qlop",  "-h"]),
+        ("em", "h",None,&["emlop", "-h"]),
+        ("pq", "h",None,&["pqlop", "-h"]),
+        ("go", "h",None,&["golop", "-h"]),
+
+        ("gen","l",None,&["genlop","-l"]),
+        ("q",  "l",None,&["qlop",  "-l"]),
+        ("em", "l",None,&["emlop", "l"]),
+        ("go", "l",None,&["golop"]),
+
+        ("gen","lf",None,&["genlop","-l","-f","test/emerge.10000.log"]),
+        ("q",  "lf",None,&["qlop",  "-l","-f","test/emerge.10000.log"]),
+        ("em", "lf",None,&["emlop", "l", "-f","test/emerge.10000.log"]),
+        ("go", "lf",None,&["golop",      "-l","test/emerge.10000.log"]),
+
+        ("em", "lc",None,&["emlop", "l", "--color=y"]),
+        ("gen","ln",None,&["genlop","-l","-n"]),
+        ("q",  "ln",None,&["qlop",  "-l","--nocolor"]),
+        ("em", "ln",None,&["emlop", "l", "--color=n"]),
+
+        ("gen","tgcc",None,&["genlop","-t","gcc"]),
+        ("q",  "tgcc",None,&["qlop",  "-g","gcc"]),
+        ("em", "tgcc",None,&["emlop", "l", "gcc","-e"]),
+        ("pq", "tgcc",None,&["pqlop", "-g","gcc"]),
+        ("go", "tgcc",None,&["golop", "-t","gcc"]),
+
+        ("gen","egcc",None,&["genlop","-e","gcc"]),
+        ("q",  "egcc",None,&["qlop",  "-l","gcc"]),
+        ("em", "egcc",None,&["emlop", "l", "gcc","-e"]),
+        ("pq", "egcc",None,&["pqlop", "-g","gcc"]),
+        ("go", "egcc",None,&["golop", "-t","gcc"]),
+
+        ("gen","c",None,&["genlop","-c"]),
+        ("q",  "c",None,&["qlop",  "-c"]),
+        ("em", "c",None,&["emlop", "p"]),
+        ("pq", "c",None,&["pqlop", "-c"]),
+        ("go", "c",None,&["golop", "-c"]),
+
+        ("gen","pgcc",Some("test/emerge-p.gcc.out"),&["genlop","-p"]),
+        ("em", "pgcc",Some("test/emerge-p.gcc.out"),&["emlop", "p"]),
+        ("gen","pqt", Some("test/emerge-p.qt.out"), &["genlop","-p"]),
+        ("em", "pqt", Some("test/emerge-p.qt.out"), &["emlop", "p"]),
+        ("gen","pkde",Some("test/emerge-p.kde.out"),&["genlop","-p"]),
+        ("em", "pkde",Some("test/emerge-p.kde.out"),&["emlop", "p"]),
+    ];
+
+    // CLI definition
+    let mut allprogs: Vec<&str> = tests.iter().map(|&(p,_,_,_)| p).collect();
+    allprogs.sort();
+    allprogs.dedup();
+    let mut allsuites: Vec<&str> = tests.iter().map(|&(_,s,_,_)| s).collect();
+    allsuites.sort();
+    allsuites.dedup();
+    let allsuites_str = allsuites.join(",");
+    let args = App::new("emlop-bench")
+        .about("Quick script to benchmark *lop implementations.")
+        .global_setting(AppSettings::ColoredHelp)
+        .global_setting(AppSettings::DeriveDisplayOrder)
+        .after_help("All benchmarks are biased. Some tips to be less wrong:\n\
+ * Make your system is as idle as possible, shutdown unneeded apps (browser, im, cron...).\n\
+ * Don't compare numbers collected at different times or on different machines.\n\
+ * Look at all indicators, not just the mean.\n\
+ * The terminal emulator's speed makes a big difference. Reduce the scroll buffer size and check performance-related settings.\n\
+ * Redirect to /dev/null (the results are on stderr) to ignore terminal overhead.\n\
+ * Pipe to cat to disable colors (see also color-specific suites).")
+        .arg(Arg::with_name("targets")
+             .help("Test targets")
+             .short("t")
+             .takes_value(true)
+             .multiple(true)
+             .use_delimiter(true)
+             .possible_values(&allprogs)
+             .default_value("em"))
+        .arg(Arg::with_name("suites")
+             .help("Test suites (see code for details)")
+             .short("s")
+             .takes_value(true)
+             .multiple(true)
+             .use_delimiter(true)
+             .possible_values(&allsuites)
+             .default_value(&allsuites_str))
+        .arg(Arg::with_name("runs")
+             .help("Number of iterations")
+             .short("r")
+             .takes_value(true)
+             .default_value("10"))
+        .arg(Arg::with_name("samples")
+             .help("Only show first N samples in the final output")
+             .short("S")
+             .takes_value(true)
+             .default_value("25"))
+        .get_matches();
+
+    // CLI parsing
+    let runs = value_t!(args, "runs", usize).unwrap();
+    let samples = value_t!(args, "samples", usize).unwrap();
+    let targets = values_t!(args.values_of("targets"), String).unwrap();
+    let suites = values_t!(args.values_of("suites"), String).unwrap();
+
+    // Construct the test list. We abuse the hashmap behavior to run tests in random order.
+    let mut mytests = HashMap::<usize,(&str,&str,Option<&str>,&[&str])>::new();
+    let mut n = 0;
+    for t in tests.into_iter()
+        .filter(|&(t,s,_,_)| targets.contains(&t.to_string()) && suites.contains(&s.to_string())) {
+            for _ in 0..runs {
+                mytests.insert(n,t.clone());
+                n += 1;
+            }
+        }
+
+    // Load /var/log/emerge.log in the OS cache
+    assert_eq!(0, Command::new("cat")
+               .arg("/var/log/emerge.log")
+               .stdout(Stdio::null())
+               .status().unwrap().code().unwrap());
+
+    // Run the tests and collect the results
+    let mut times: BTreeMap<String,Vec<f64>> = BTreeMap::new();
+    for (_,(target,suite,stdin,args)) in mytests {
+        writeln!(io::stderr(), "{}: {}{}", n, args.join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap();
+        n -= 1;
+        let key = format!("{}\t{}",suite,target);
+        let timevec = times.entry(key.clone()).or_insert(vec![]);
+        let io = match stdin {
+            None => Stdio::inherit(),
+            Some(f) => File::open(f).unwrap().into()
+        };
+        let start = Instant::now();
+        Command::new(args[0])
+            .args(args.into_iter().skip(1))
+            .stdin(io)
+            .status()
+            .expect(&format!("Couldn't run {:?}", args));
+        let elapsed = start.elapsed();
+        timevec.insert(0, (elapsed.as_secs()*1000 + elapsed.subsec_nanos() as u64 / 1_000_000) as f64);
+    }
+
+    // Output the results
+    let mut tw = TabWriter::new(io::stderr());
+    writeln!(tw,"suite\ttarget\tmin\t95%\t75%\tmean\tmax\tstddev\tsamples ({}/{})", std::cmp::min(runs,samples), runs).unwrap();
+    for (key,vals) in times {
+        let ss: SummStats = vals.iter().cloned().collect();
+        let mut pc: Percentiles = vals.iter().cloned().collect();
+        writeln!(tw, "{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{}", key,
+                 ss.min().unwrap(),
+                 pc.percentile(&0.95).unwrap(),
+                 pc.percentile(&0.75).unwrap(),
+                 ss.mean().unwrap(),
+                 ss.max().unwrap(),
+                 ss.standard_deviation().unwrap_or(0.0),
+                 vals.iter().take(samples).map(|f| f.to_string()).collect::<Vec<String>>().join(",")).unwrap();
+    }
+    tw.flush().unwrap();
+}
