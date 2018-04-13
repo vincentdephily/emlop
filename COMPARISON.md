@@ -67,22 +67,25 @@ displays one of the possible matches when an ambiguous name is given (like `pkgc
 
 ## Speed
 
-Here are timings for some common commands (in seconds, best time of many runs, ~35K emerges in
-emerge.log).
+Here are timings for some common commands (in seconds, 95th centile of 50 runs, ~35K emerges in
+emerge.log, output to kde Konsole) measured using `benches/exec_compare.crs`.
 
-Some timing-related feature differences: {em,go}lop always calculate the merge time in "list"
-mode. {q,pq}lop don't calculate the ETA in "current merge" mode. Filtering by plaintext isn't
-noticeably faster than by case-(in)sensitive regexp ({gen,em}lop only).
+Some timing-related feature differences: {em,go}lop always calculate the merge time in "list" mode,
+which takes more work. {q,pq}lop don't calculate the ETA in "current merge" mode, which takes less
+work. Filtering by plaintext isn't noticeably faster than by case-(in)sensitive regexp ({gen,em}lop
+only). Disabling color speeds things up a tiny bit, but that's due to the terminal emulator, not
+*lop.
 
-|                                                                          | genlop | qlop | emlop | pqlop | golop |
-| :----------------------------------------------------------------------- | -----: | ---: | ----: | ----: | ----: |
-| `genlop -l; qlop -l; emlop l; golop`                                     | 0.9    | 0.28 | 0.30  | n/a   | 1.0   |
-| `genlop -t gcc; qlop -g gcc; emlop l -e gcc; golop -t gcc; pqlop -g gcc` | 0.5    | 0.05 | 0.09  | 0.8   | 0.3   |
-| `genlop -e gcc; qlop -l gcc; emlop l -e gcc; golop -t gcc; pqlop -l gcc` | 0.3    | 0.06 | 0.09  | 0.8   | 0.3   |
-| `emerge -O1 firefox &;genlop -c;qlop -c;emlop p;pqlop -c;golop -c`       | 0.6    | 0.00 | 0.12  | 0.3   | 0.9   |
-| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`               | 0.5    | n/a  | 0.12  | n/a   | n/a   |
-| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`                | 14.3   | n/a  | 0.12  | n/a   | n/a   |
-| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`               | 99.3   | n/a  | 0.12  | n/a   | n/a   |
+|                                                                                 | genlop | qlop | emlop | pqlop | golop |
+| :------------------------------------------------------------------------------ | -----: | ---: | ----: | ----: | ----: |
+| `genlop -l; qlop -l; emlop l; golop`                                            |   1.52 | 0.39 |  0.47 |   n/a |  1.10 |
+| `genlop -t gcc; qlop -g gcc; emlop l -e gcc; pqlop -g gcc; golop -t gcc`        |   0.42 | 0.07 |  0.09 |  0.37 |  0.86 |
+| `genlop -e gcc; qlop -l gcc; emlop l -e gcc; pqlop -l gcc; golop -t gcc`        |   0.62 | 0.07 |  0.09 |  0.35 |  0.85 |
+| `MAKEOPTS=-j1 emerge -O1 firefox &;genlop -c;qlop -c;emlop p;pqlop -c;golop -c` |   0.73 | 0.00 |  0.18 |  0.50 |  0.94 |
+| `genlop -c;qlop -c;emlop p;pqlop -c;golop -c`                                   |   0.12 | 0.00 |  0.11 |  0.30 |  0.81 |
+| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`                      |   0.49 | n/a  |  0.12 |   n/a |   n/a |
+| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`                       |  13.96 | n/a  |  0.12 |   n/a |   n/a |
+| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`                      |  96.70 | n/a  |  0.12 |   n/a |   n/a |
 
 Qlop is fastest, followed closely by emlop. The others are slower but not showstoppers, except for
 `genlop -p` which is muuuch slower than `emlop p` (while {q,pq,go}lop don't implement the feature).
