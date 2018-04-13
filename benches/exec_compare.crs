@@ -59,12 +59,12 @@ fn main() {
         ("pq", "c",None,&["pqlop", "-c"]),
         ("go", "c",None,&["golop", "-c"]),
 
-        ("gen","pgcc",Some("test/emerge-p.gcc.out"),&["genlop","-p"]),
-        ("em", "pgcc",Some("test/emerge-p.gcc.out"),&["emlop", "p"]),
-        ("gen","pqt", Some("test/emerge-p.qt.out"), &["genlop","-p"]),
-        ("em", "pqt", Some("test/emerge-p.qt.out"), &["emlop", "p"]),
-        ("gen","pkde",Some("test/emerge-p.kde.out"),&["genlop","-p"]),
-        ("em", "pkde",Some("test/emerge-p.kde.out"),&["emlop", "p"]),
+        ("gen","pgcc",Some("benches/emerge-p.gcc.out"),&["genlop","-p"]),
+        ("em", "pgcc",Some("benches/emerge-p.gcc.out"),&["emlop", "p"]),
+        ("gen","pqt", Some("benches/emerge-p.qt.out"), &["genlop","-p"]),
+        ("em", "pqt", Some("benches/emerge-p.qt.out"), &["emlop", "p"]),
+        ("gen","pkde",Some("benches/emerge-p.kde.out"),&["genlop","-p"]),
+        ("em", "pkde",Some("benches/emerge-p.kde.out"),&["emlop", "p"]),
     ];
 
     // CLI definition
