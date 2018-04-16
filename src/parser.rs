@@ -70,11 +70,11 @@ fn split_atom(atom: &str) -> Option<(&str, &str)> {
 #[derive(Debug)]
 pub enum Parsed {
     /// Emerge started (might never complete)
-    Start{ts: i64, ebuild: String, version: String, iter: String, line: String},
+    Start{ts: i64, ebuild: String, version: String, iter: String},
     /// Emerge completed
-    Stop{ts: i64, ebuild: String, version: String, iter: String, line: String},
+    Stop{ts: i64, ebuild: String, version: String, iter: String},
     /// Pretend output
-    Pretend{ebuild: String, version: String, line: String},
+    Pretend{ebuild: String, version: String},
 }
 
 /// Iterates over input line by line over the input to produce `Parsed` items.
@@ -96,14 +96,14 @@ impl<R: Read> Parser<R> {
         if !rest.starts_with(":  >>> emerge") {return None}
         let ts = ts_str.parse::<i64>().ok()?;
         if !(self.filter_ts)(ts) {return None}
-        let tokens: Vec<&str> = rest.split_whitespace().take(7).collect();
-        let (ebuild,version) = split_atom(tokens.get(6)?)?;
+        let mut tokens = rest.split_whitespace();
+        let (t3,t5,t6) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
+        let (ebuild,version) = split_atom(t6)?;
         if !(self.filter_pkg)(ebuild) {return None}
         Some(Parsed::Start{ts: ts,
                            ebuild: ebuild.to_string(),
-                           iter: format!("{} of {}", &tokens[3][1..], tokens[5].trim_right_matches(')')),
-                           version: version.to_string(),
-                           line: line.to_string()})
+                           iter: format!("{} {}", t3, t5),
+                           version: version.to_string()})
     }
     fn parse_stop(&mut self, line: &str) -> Option<Parsed> {
         if !self.out_stop {return None}
@@ -111,21 +111,20 @@ impl<R: Read> Parser<R> {
         if !rest.starts_with(":  ::: completed") {return None}
         let ts = ts_str.parse::<i64>().ok()?;
         if !(self.filter_ts)(ts) {return None}
-        let tokens: Vec<&str> = rest.split_whitespace().take(8).collect();
-        let (ebuild,version) = split_atom(tokens.get(7)?)?;
+        let mut tokens = rest.split_whitespace();
+        let (t4,t6,t7) = (tokens.nth(4)?, tokens.nth(1)?, tokens.nth(0)?);
+        let (ebuild,version) = split_atom(t7)?;
         if !(self.filter_pkg)(ebuild) {return None}
         Some(Parsed::Stop{ts: ts,
                           ebuild: ebuild.to_string(),
-                          iter: format!("{} of {}", &tokens[4][1..], tokens[6].trim_right_matches(')')),
-                          version: version.to_string(),
-                          line: line.to_string()})
+                          iter: format!("{} {}", t4, t6),
+                          version: version.to_string()})
     }
     fn parse_pretend(&mut self, line: &str) -> Option<Parsed> {
         let re = self.re_pretend.as_ref()?;
         let c = re.captures(line)?;
         Some(Parsed::Pretend{ebuild: c.get(1).unwrap().as_str().to_string(),
-                             version: c.get(2).unwrap().as_str().to_string(),
-                             line: line.to_string()})
+                             version: c.get(2).unwrap().as_str().to_string()})
     }
 
     pub fn new_hist(reader: R, reader_name: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Result<Parser<R>, Error> {
@@ -191,21 +190,21 @@ mod tests {
         let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter_mints, filter_maxts, filter_pkg, exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
-        let re_iter = Regex::new("^[1-9][0-9]* of [1-9][0-9]*$").unwrap(); //Should match pattern used in *Parser
+        let re_iter = Regex::new("^\\([1-9][0-9]* [1-9][0-9]*\\)$").unwrap(); //Should match pattern used in *Parser
         let mut counts: HashMap<String, usize> = HashMap::new();
         // Check that all items look valid
         for p in hist {
-            let (kind, ts, ebuild, version, iter, line) = match p {
-                Parsed::Start{ts, ebuild, version, iter, line} => ("start",   ts, ebuild, version, iter,             line),
-                Parsed::Stop{ts, ebuild, version, iter, line} =>  ("stop",    ts, ebuild, version, iter,             line),
-                Parsed::Pretend{ebuild, version, line} =>         ("pretend", 0,  ebuild, version, String::from(""), line),
+            let (kind, ts, ebuild, version, iter) = match p {
+                Parsed::Start{ts, ebuild, version, iter} => ("start",   ts, ebuild, version, iter),
+                Parsed::Stop{ts, ebuild, version, iter} =>  ("stop",    ts, ebuild, version, iter),
+                Parsed::Pretend{ebuild, version} =>         ("pretend", 0,  ebuild, version, String::new()),
             };
             *counts.entry(kind.to_string()).or_insert(0) += 1;
             *counts.entry(ebuild.clone()).or_insert(0) += 1;
-            assert!(ts >= filter_mints.unwrap_or(mints) && ts <= filter_maxts.unwrap_or(maxts), "Out of bound date {} in {}", fmt_time(ts), line);
-            assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {} in {}", ebuild, line);
-            assert!(re_version.is_match(&version), "Invalid version {} in {}", version, line);
-            assert!(re_iter.is_match(&iter), "Invalid iteration {} in {}", iter, line);
+            assert!(ts >= filter_mints.unwrap_or(mints) && ts <= filter_maxts.unwrap_or(maxts), "Out of bound date {}", fmt_time(ts));
+            assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {}", ebuild);
+            assert!(re_version.is_match(&version), "Invalid version {}", version);
+            assert!(re_iter.is_match(&iter), "Invalid iteration {}", iter);
         }
         // Check that we got the right number of each kind (always expect 0 pretend)
         expect_counts.push(("pretend",0));
@@ -304,9 +303,9 @@ mod tests {
         // Check that all items look valid
         for p in pretend {
             match p {
-                Parsed::Pretend{ebuild, version, line} => {
-                    assert_eq!(ebuild, expect[count].0, "{}", line);
-                    assert_eq!(version, expect[count].1, "{}", line);
+                Parsed::Pretend{ebuild, version} => {
+                    assert_eq!(ebuild, expect[count].0);
+                    assert_eq!(version, expect[count].1);
                 },
                 e => assert!(false, "unexpected {:?}", e),
             }

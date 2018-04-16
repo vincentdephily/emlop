@@ -124,7 +124,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
         false => Parser::new_pretend(stdin(), "STDIN")?.collect(),
         true => started.iter()
             .filter(|&(_,t)| *t > cms)
-            .map(|(&(ref e,ref v),_)| Parsed::Pretend{ebuild:e.to_string(), version:v.to_string(), line: String::from("")})
+            .map(|(&(ref e,ref v),_)| Parsed::Pretend{ebuild:e.to_string(), version:v.to_string()})
             .collect(),
     };
 
