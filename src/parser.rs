@@ -56,11 +56,8 @@ fn split_atom(atom: &str) -> Option<(&str, &str)> {
     loop {
         let pos = atom[start..].find('-')?;
         if atom.len() <= start+pos+1 {return None}
-        //if atom.as_bytes()[start+pos+1].is_ascii_digit() && start+pos > 0 {//FIXME: use that when portage gets rust 1.24
-        let c = atom.as_bytes()[start+pos+1];
-        if  c >= 48 && c <= 57 && start+pos > 0 {
-            let (name,ver) = atom.split_at(pos+start);
-            return Some((name,&ver[1..]))
+        if atom.as_bytes()[start+pos+1].is_ascii_digit() && pos > 0 {
+            return Some((&atom[..start+pos], &atom[start+pos+1..]))
         }
         start += if pos==0 {1} else {pos};
     }
