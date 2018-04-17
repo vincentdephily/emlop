@@ -24,12 +24,8 @@ In no particular order and with no promises. Send a PR if you want one of these 
 ### Testing
 #### Use catname.txt
 To better validate parsed ebuild category/name. Might just use category.
-#### Unittest PretendParser
-#### Unittest commands
-Just a framework at least. Test cases can be added as bugs are found.
 #### Misc
 * More testcases
-* https://github.com/killercup/assert_cli
 
 ### Refactoring
 #### StructOpt crate
@@ -49,8 +45,8 @@ https://github.com/alex-shapiro/ditto might help with ordering ?
 #### Automatically run `emerge -rOp` for `predict`
 #### Parse and optionaly display sync dates, unmerges, failed merges, etc
 For the `list` command.
-#### Write ebuild
-And get it upstreamed ;)
+#### Get ebuild upstreamed
+https://bugs.gentoo.org/649904
 #### Better/selectable prediction algorythm
 Currently is just averaged over the last `--limit` times, but should probably be a weighted average.
 
@@ -79,3 +75,4 @@ AKA more speed. Not a huge issue as all release runs take < 0.5s, but debug runs
 could do with being faster.
 #### Bash completion
 Clap has something builtin.
+#### Allow specifying multiple search strings

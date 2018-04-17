@@ -71,10 +71,10 @@ Here are timings for some common commands (in seconds, 95th centile of 50 runs, 
 emerge.log, output to kde Konsole) measured using `benches/exec_compare.crs`.
 
 Some timing-related feature differences: {em,go}lop always calculate the merge time in "list" mode,
-which takes more work. {q,pq}lop don't calculate the ETA in "current merge" mode, which takes less
-work. Filtering by plaintext isn't noticeably faster than by case-(in)sensitive regexp ({gen,em}lop
-only). Disabling color speeds things up a tiny bit, but that's due to the terminal emulator, not
-*lop.
+which takes some more work. {q,pq}lop don't calculate the ETA in "current merge" mode, which takes
+much less work. Filtering by plaintext isn't noticeably faster than by case-(in)sensitive regexp
+({gen,em}lop only). Disabling color speeds things up a tiny bit, but that's due to the terminal
+emulator, not *lop.
 
 |                                                                                 | genlop | qlop | emlop | pqlop | golop |
 | :------------------------------------------------------------------------------ | -----: | ---: | ----: | ----: | ----: |
@@ -96,45 +96,45 @@ other. `golop -c` often [doesn't detect running emerge](https://github.com/klaus
 
 ## Merge time prediction
 
-Qlop and pqlop don't do any merge time prediction, and golop only predicts the current ebuild.
+Qlop and pqlop don't do any merge time prediction, and golop only predicts the current merge.
 
 `emlop p` uses only the last 10 merges (configurable) for predictions, which makes a big difference
 if you have a long emerge history and a package progressivley takes longer to compile (for example
 chromium) or if you got a hardware upgrade.
 
-`emlop p` checks currently runing emerges even in `emerge -p` mode, to deducts the elapsed time from
-its estimate.
+`emlop p` takes elapsed time into account for `emerge -p` predictions, so the ETA stays accurate
+throughout a long merge.
 
-All tools give pessimistic prediction (if any) when merging multiple packages in parallel, because
-they assume sequential merging. Even if they detected an ongoing parallel merge, it's not clear how
-they would estimate the resulting speedup factor.
+All tools give pessimistic prediction (if any) when packages are merged in parallel, because they
+assume sequential merging. Even if they detected an ongoing parallel merge, it's not clear how they
+would estimate the resulting speedup factor.
 
 |                                                          | genlop | qlop | emlop | pqlop | golop |
 | :------------------------------------------------------- | :----: | :--: | :---: | :---: | :---: |
-| Show current merges                                      | yes    | yes  | yes   | yes   | yes   |
-| Predict from current merges                              | yes    | no   | yes   | no    | yes   |
-| Predict from `emerge -p`                                 | yes    | no   | yes   | no    | no    |
-| Display individial package estimates for `emerge -p`     | no     | n/a  | yes   | n/a   | n/a   |
-| Take current merges into account for `emerge -p`         | no     | n/a  | yes   | n/a   | n/a   |
-| Accuracy of time estimation                              | ok     | n/a  | good  | n/a   | ?     |
-| Query gentoo.linuxhowtos.org for unknown packages        | yes    | n/a  | no    | n/a   | no    |
+| Show current merge                                       | yes    | yes  | yes   | yes   | yes   |
+| Show current merge ETA                                   | yes    | no   | yes   | no    | yes   |
+| Show current merge stage                                 | no     | no   | no    | yes   | no    |
+| Show `emerge -p` merges global ETA                       | yes    | no   | yes   | no    | no    |
+| Show `emerge -p` merges individual ETAs                  | no     | n/a  | yes   | n/a   | n/a   |
+| Accuracy of time estimation                              | ok     | n/a  | good  | n/a   | ok    |
+| Query gentoo.linuxhowtos.org for unknown packages        | yes    | no   | no    | n/a   | no    |
 
 ## misc
 
 Genlop started in 2007 but development seem to have stoped in 2015. Pqlop saw development between
 2011 and 2012, and a lone bugfix in 2016. Portage-utils (qlop) development has slowed down but this
-is probably more a sign of maturity than abandonment. Golop development started and seemingly ended
-in december 2017. Emlop started around the same time as golop, and has seen regular progress so far
-(of course if emlop development stops, this comparison will become stale).
+is more a sign of maturity than abandonment. Golop started in december 2017 but has only seen a
+couple of commits since. Emlop started in december 2017 and has kept relatively busy so far (but
+naturally if emlop development stopped you wouldn't learn about it in this file...).
 
-|                                                          | genlop | qlop | emlop | pqlop | golop |
-| :------------------------------------------------------- | :----: | :--: | :---: | :---: | :---: |
-| Bash completion                                          | yes    | no   | no    | no    | no    |
-| An ebuild in the gentoo portage tree                     | yes    | yes  | no    | yes   | yes   |
-| Support for non-Linux platforms                          | yes    | yes  | no    | yes   | ?     |
-| Unittests                                                | no     | yes  | yes   | no    | no    |
-| Documentation and help                                   | ok     | good | good  | poor  | ok    |
-| Active development                                       | no     | yes  | yes   | no    | no ?  |
+|                                                          | genlop | qlop   | emlop | pqlop | golop |
+| :------------------------------------------------------- | :----: | :----: | :---: | :---: | :---: |
+| Bash completion                                          | yes    | no     | no    | no    | no    |
+| An ebuild in the gentoo portage tree                     | yes    | yes    | no    | yes   | yes   |
+| Support for non-Linux platforms                          | yes    | yes    | no    | yes   | ?     |
+| Unittests                                                | no     | yes    | yes   | no    | no    |
+| Documentation and help                                   | ok     | good   | good  | poor  | ok    |
+| Development pace                                         | dead   | mature | busy  | dead  | low   |
 
 Emlop cannot yet detect current emerge processes on non-Linux; I'm taking an educated guess for the
 other tools.

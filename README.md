@@ -5,15 +5,14 @@ the [Gentoo](https://www.gentoo.org/) package manager) to yield useful info like
 merge time prediction.
 
 It is heavily inspired by [genlop](https://github.com/gentoo-perl/genlop) but aims to be faster,
-more accurate, and more convenient. Other rewrites of Genlop exist, see [COMPARISON](COMPARISON.md)
-doc.
+more accurate, and more ergonomic. Other rewrites of Genlop exist, see [COMPARISON](COMPARISON.md).
 
 
 ## Installation
 
 ### From main portage tree
 
-Not available yet, see [gentoo bug 649904](https://bugs.gentoo.org/649904).
+Not available yet, ask in [gentoo bug 649904](https://bugs.gentoo.org/649904) ;)
 
 ### From portage overlay
 
@@ -40,8 +39,8 @@ emlop system-wide, edit the system `$PATH` or copy/symlink `~/.cargo/bin/emlop` 
 ## Usage
 
 Emlop is split into subcommands like `list` or `predict`, which can be abbreviated by their first
-letter. For a complete list of arguments (this readme doesn't list them all) see `emlop -h` or
-`emlop <sucommand> -h`.
+letter. This file doesn't show everything, see `emlop -h` and `emlop <sucommand> -h` for complete
+and up to date usage info.
 
 ### Show merge history
 
@@ -73,6 +72,14 @@ Same info but filter packages by regexp:
     2017-12-05 12:49:27 +00:00   2:59:33 sys-devel/gcc-6.4.0
     2018-01-12 12:49:17 +00:00   1:48:28 sys-devel/gcc-6.4.0-r1
 
+Options summary:
+
+    emlop list [OPTIONS] [package]
+        <package>         Display only packages matching <package>.
+        -e, --exact       Match package with a string instead of a regex.
+        --from <date>     Only parse log entries after <date>.
+        --to <date>       Only parse log entries before <date>.
+
 ### Predict merge time
 
 Show currently emerging packages, how long they have been running, and predict how long is left:
@@ -80,18 +87,25 @@ Show currently emerging packages, how long they have been running, and predict h
     $ emlop p
     Pid 27455: ...n-exec/python3.5/emerge -O chromium         33
     Pid 27848: ...on-exec/python3.5/emerge -O firefox         29
-    www-client/firefox                                     53:37 - 24
-    www-client/chromium                                  6:01:02 - 28
+    www-client/firefox-58.0.1                              53:37 - 24
+    www-client/chromium-65.0.3325.146                    6:01:02 - 28
     Estimate for 2 ebuilds (0 unknown, 52 elapsed)       6:53:47
 
 Predict merge time from an `emerge --pretend` output, taking currently elapsed time into account:
 
     $ emerge -rOp | emlop p
     Pid 8799: .../emerge -O chromium firefox konqueror   1:14:11
-    www-client/chromium                                  5:49:38 - 1:10:55
-    www-client/firefox                                     53:37
-    kde-apps/konqueror                                      3:46
+    www-client/chromium-65.0.3325.146                    5:49:38 - 1:10:55
+    www-client/firefox-58.0.1                              53:37
+    kde-apps/konqueror-17.12.3                              3:46
     Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06
+
+Options summary:
+
+    emlop predict [OPTIONS]
+        --limit <limit>   Use the last N merge times to predict next merge time. [default: 10]
+        --from <date>     Only parse log entries after <date>.
+        --to <date>       Only parse log entries before <date>.
 
 ### Show merge statistics
 
@@ -113,6 +127,14 @@ Show total merge time, merge count, and average merge time:
     dev-python/pywebkitgtk                 13    1        13
     dev-perl/gtk2-perl                  12:49    8      1:36
 
+Options summary:
+
+    emlop stats [OPTIONS] [package]
+        <package>         Display only packages matching <package>.
+        -e, --exact       Match package with a string instead of a regex.
+        --limit <limit>   Use the last N merge times to predict next merge time. [default: 10]
+        --from <date>     Only parse log entries after <date>.
+        --to <date>       Only parse log entries before <date>.
 
 ## Contributing
 

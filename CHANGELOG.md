@@ -1,13 +1,17 @@
 # master
 
-* Make regexp search case-insensitive: no need to remeber that 'PyQt' is camelcase anymore.
-* Add `--exact`/`-e` (non-regexp) search mode (like the default/only mode of `{gen,q,pq,go}lop`).
-* Add `--from`/`--to` arguments to filter by date.
-* Add `-v` flag to specify log level error/warning/info/debug, and make these logs color-coded
-* Add extra logging in some situations (not displayed by default)
-* Big speedup: most `emlop` invocations are about twice as fast, now comparable to `qlop`.
-* Fix bug #7 (`emlop p` wrongly interpreted blockers and unmerges as merges).
-* Various refactorings and unittest improvements.
+* All output is now colored (controlable via `--color` flag).
+* Regexp search is now case-insensitive: no need to remember the casing of 'PyQt' anymore.
+* New `--exact`/`-e` (non-regexp) search mode (like the default/only mode of `{gen,q,pq,go}lop`).
+* New `--from`/`--to` arguments to filter by date.
+* Predict now displays ebuild versions.
+* Big speedup: `emlop` is about twice as fast, now on par with `qlop`.
+* New `-v` flag to specify log level error/warning/info/debug.
+* Warnings are now hidden by default, while new info/debug messages have been added.
+* Improved inline help and fixed some argument-passing papercuts.
+* Fixed bugs #6, #7, 8 and some unreported ones.
+* Shell exit codes are now well-defined and documented.
+* Various refactorings, unittest improvements, and general polish.
 
 # 0.1 2018-03-07
 
