@@ -75,7 +75,7 @@ fn main() {
     allsuites.sort();
     allsuites.dedup();
     let allsuites_str = allsuites.join(",");
-    let args = App::new("emlop-bench")
+    let cli = App::new("emlop-bench")
         .about("Quick script to benchmark *lop implementations.")
         .global_setting(AppSettings::ColoredHelp)
         .global_setting(AppSettings::DeriveDisplayOrder)
@@ -112,13 +112,21 @@ fn main() {
              .short("S")
              .takes_value(true)
              .default_value("25"))
+        .arg(Arg::with_name("bin")
+             .help("Path to tested binary")
+             .long("bin")
+             .multiple(true)
+             .number_of_values(2)
+             .value_names(&["NAME","PATH"]))
         .get_matches();
 
     // CLI parsing
-    let runs = value_t!(args, "runs", usize).unwrap();
-    let samples = value_t!(args, "samples", usize).unwrap();
-    let targets = values_t!(args.values_of("targets"), String).unwrap();
-    let suites = values_t!(args.values_of("suites"), String).unwrap();
+    let runs = value_t!(cli, "runs", usize).unwrap();
+    let samples = value_t!(cli, "samples", usize).unwrap();
+    let targets = values_t!(cli.values_of("targets"), String).unwrap();
+    let suites = values_t!(cli.values_of("suites"), String).unwrap();
+    let mut bins = HashMap::<String,String>::new();
+    values_t!(cli.values_of("bin"), String).unwrap_or(vec![]).chunks(2).for_each(|c| {bins.insert(c[0].clone(), c[1].clone());});
 
     // Construct the test list. We abuse the hashmap behavior to run tests in random order.
     let mut mytests = HashMap::<usize,(&str,&str,Option<&str>,&[&str])>::new();
@@ -140,7 +148,8 @@ fn main() {
     // Run the tests and collect the results
     let mut times: BTreeMap<String,Vec<f64>> = BTreeMap::new();
     for (_,(target,suite,stdin,args)) in mytests {
-        writeln!(io::stderr(), "{}: {}{}", n, args.join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap();
+        let bin = bins.get(args[0]).unwrap_or(&args[0].to_string()).to_string();
+        writeln!(io::stderr(), "{}: {} {}{}", n, bin, args[1..].join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap();
         n -= 1;
         let key = format!("{}\t{}",suite,target);
         let timevec = times.entry(key.clone()).or_insert(vec![]);
@@ -149,7 +158,7 @@ fn main() {
             Some(f) => File::open(f).unwrap().into()
         };
         let start = Instant::now();
-        Command::new(args[0])
+        Command::new(bin)
             .args(args.into_iter().skip(1))
             .stdin(io)
             .status()
