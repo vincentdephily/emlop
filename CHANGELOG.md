@@ -1,4 +1,11 @@
-# master
+# 0.2.0 2018-04-28
+
+Second release: Filtering, color, speed, and lots of polish.
+
+Improved filtering, added colors, sped up everything, fixed bugs, and
+fixed interface papercuts (see details below). This release fixes many
+first-impression annoyances of the first, so give emlop another try if
+you haven't switched yet ;)
 
 * All output is now colored (controlable via `--color` flag).
 * Regexp search is now case-insensitive: no need to remember the casing of 'PyQt' anymore.
