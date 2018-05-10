@@ -118,6 +118,9 @@ fn main() {
              .multiple(true)
              .number_of_values(2)
              .value_names(&["NAME","PATH"]))
+        .arg(Arg::with_name("nullout")
+             .short("n")
+             .help("Send test program outputs to /dev/null and "))
         .get_matches();
 
     // CLI parsing
@@ -127,6 +130,7 @@ fn main() {
     let suites = values_t!(cli.values_of("suites"), String).unwrap();
     let mut bins = HashMap::<String,String>::new();
     values_t!(cli.values_of("bin"), String).unwrap_or(vec![]).chunks(2).for_each(|c| {bins.insert(c[0].clone(), c[1].clone());});
+    let nullout = cli.is_present("nullout");
 
     // Construct the test list. We abuse the hashmap behavior to run tests in random order.
     let mut mytests = HashMap::<usize,(&str,&str,Option<&str>,&[&str])>::new();
@@ -149,18 +153,26 @@ fn main() {
     let mut times: BTreeMap<String,Vec<f64>> = BTreeMap::new();
     for (_,(target,suite,stdin,args)) in mytests {
         let bin = bins.get(args[0]).unwrap_or(&args[0].to_string()).to_string();
-        writeln!(io::stderr(), "{}: {} {}{}", n, bin, args[1..].join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap();
+        match nullout {
+            true => write!(io::stderr(), "\r{} ", n).unwrap(),
+            false => writeln!(io::stderr(), "{}: {} {}{}", n, bin, args[1..].join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap(),
+        };
         n -= 1;
         let key = format!("{}\t{}",suite,target);
         let timevec = times.entry(key.clone()).or_insert(vec![]);
-        let io = match stdin {
+        let si = match stdin {
             None => Stdio::inherit(),
             Some(f) => File::open(f).unwrap().into()
+        };
+        let so = match nullout {
+            true => Stdio::null(),
+            false => Stdio::inherit(),
         };
         let start = Instant::now();
         Command::new(bin)
             .args(args.into_iter().skip(1))
-            .stdin(io)
+            .stdin(si)
+            .stdout(so)
             .status()
             .expect(&format!("Couldn't run {:?}", args));
         let elapsed = start.elapsed();
