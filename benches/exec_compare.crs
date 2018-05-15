@@ -18,59 +18,56 @@ use std::{collections::{BTreeMap, HashMap}, fs::File, io, io::Write, process::{C
 use tabwriter::TabWriter;
 
 fn main() {
-    // Test definitions
+    // Test definitions: (program name, test suite, stdin, program args)
     let tests: Vec<(&str,&str,Option<&str>,&[&str])> = vec![
-        ("gen","h",None,&["genlop","-h"]),
-        ("q",  "h",None,&["qlop",  "-h"]),
-        ("em", "h",None,&["emlop", "-h"]),
-        ("pq", "h",None,&["pqlop", "-h"]),
-        ("go", "h",None,&["golop", "-h"]),
+        ("genlop","h",None,&["-h"]),
+        ("qlop",  "h",None,&["-h"]),
+        ("emlop", "h",None,&["-h"]),
+        ("pqlop", "h",None,&["-h"]),
+        ("golop", "h",None,&["-h"]),
 
-        ("gen","l",None,&["genlop","-l"]),
-        ("q",  "l",None,&["qlop",  "-l"]),
-        ("em", "l",None,&["emlop", "l"]),
-        ("go", "l",None,&["golop"]),
+        ("genlop","l",None,&["-l"]),
+        ("qlop",  "l",None,&["-l"]),
+        ("emlop", "l",None,&["l"]),
+        ("golop", "l",None,&["golop"]),
 
-        ("gen","lf",None,&["genlop","-l","-f","test/emerge.10000.log"]),
-        ("q",  "lf",None,&["qlop",  "-l","-f","test/emerge.10000.log"]),
-        ("em", "lf",None,&["emlop", "l", "-f","test/emerge.10000.log"]),
-        ("go", "lf",None,&["golop",      "-l","test/emerge.10000.log"]),
+        ("genlop","lf",None,&["-l","-f","test/emerge.10000.log"]),
+        ("qlop",  "lf",None,&["-l","-f","test/emerge.10000.log"]),
+        ("emlop", "lf",None,&["l", "-f","test/emerge.10000.log"]),
+        ("golop", "lf",None,&["-l","test/emerge.10000.log"]),
 
-        ("em", "lc",None,&["emlop", "l", "--color=y"]),
-        ("gen","ln",None,&["genlop","-l","-n"]),
-        ("q",  "ln",None,&["qlop",  "-l","--nocolor"]),
-        ("em", "ln",None,&["emlop", "l", "--color=n"]),
+        ("emlop", "lc",None,&["l", "--color=y"]),
+        ("genlop","ln",None,&["-l","-n"]),
+        ("qlop",  "ln",None,&["-l","--nocolor"]),
+        ("emlop", "ln",None,&["l", "--color=n"]),
 
-        ("gen","tgcc",None,&["genlop","-t","gcc"]),
-        ("q",  "tgcc",None,&["qlop",  "-g","gcc"]),
-        ("em", "tgcc",None,&["emlop", "l", "gcc","-e"]),
-        ("pq", "tgcc",None,&["pqlop", "-g","gcc"]),
-        ("go", "tgcc",None,&["golop", "-t","gcc"]),
+        ("genlop","tgcc",None,&["-t","gcc"]),
+        ("qlop",  "tgcc",None,&["-g","gcc"]),
+        ("emlop", "tgcc",None,&["l", "gcc","-e"]),
+        ("pqlop", "tgcc",None,&["-g","gcc"]),
+        ("golop", "tgcc",None,&["-t","gcc"]),
 
-        ("gen","egcc",None,&["genlop","-e","gcc"]),
-        ("q",  "egcc",None,&["qlop",  "-l","gcc"]),
-        ("em", "egcc",None,&["emlop", "l", "gcc","-e"]),
-        ("pq", "egcc",None,&["pqlop", "-g","gcc"]),
-        ("go", "egcc",None,&["golop", "-t","gcc"]),
+        ("genlop","egcc",None,&["-e","gcc"]),
+        ("qlop",  "egcc",None,&["-l","gcc"]),
+        ("emlop", "egcc",None,&["l", "gcc","-e"]),
+        ("pqlop", "egcc",None,&["-g","gcc"]),
+        ("golop", "egcc",None,&["-t","gcc"]),
 
-        ("gen","c",None,&["genlop","-c"]),
-        ("q",  "c",None,&["qlop",  "-c"]),
-        ("em", "c",None,&["emlop", "p"]),
-        ("pq", "c",None,&["pqlop", "-c"]),
-        ("go", "c",None,&["golop", "-c"]),
+        ("genlop","c",None,&["-c"]),
+        ("qlop",  "c",None,&["-c"]),
+        ("emlop", "c",None,&["p"]),
+        ("pqlop", "c",None,&["-c"]),
+        ("golop", "c",None,&["-c"]),
 
-        ("gen","pgcc",Some("benches/emerge-p.gcc.out"),&["genlop","-p"]),
-        ("em", "pgcc",Some("benches/emerge-p.gcc.out"),&["emlop", "p"]),
-        ("gen","pqt", Some("benches/emerge-p.qt.out"), &["genlop","-p"]),
-        ("em", "pqt", Some("benches/emerge-p.qt.out"), &["emlop", "p"]),
-        ("gen","pkde",Some("benches/emerge-p.kde.out"),&["genlop","-p"]),
-        ("em", "pkde",Some("benches/emerge-p.kde.out"),&["emlop", "p"]),
+        ("genlop","pgcc",Some("benches/emerge-p.gcc.out"),&["-p"]),
+        ("emlop", "pgcc",Some("benches/emerge-p.gcc.out"),&["p"]),
+        ("genlop","pqt", Some("benches/emerge-p.qt.out"), &["-p"]),
+        ("emlop", "pqt", Some("benches/emerge-p.qt.out"), &["p"]),
+        ("genlop","pkde",Some("benches/emerge-p.kde.out"),&["-p"]),
+        ("emlop", "pkde",Some("benches/emerge-p.kde.out"),&["p"]),
     ];
 
     // CLI definition
-    let mut allprogs: Vec<&str> = tests.iter().map(|&(p,_,_,_)| p).collect();
-    allprogs.sort();
-    allprogs.dedup();
     let mut allsuites: Vec<&str> = tests.iter().map(|&(_,s,_,_)| s).collect();
     allsuites.sort();
     allsuites.dedup();
@@ -84,23 +81,24 @@ fn main() {
  * Don't compare numbers collected at different times or on different machines.\n\
  * Look at all indicators, not just the mean.\n\
  * The terminal emulator's speed makes a big difference. Reduce the scroll buffer size and check performance-related settings.\n\
- * Redirect to /dev/null (the results are on stderr) to ignore terminal overhead.\n\
+ * Use -n option (redirect to /dev/null) to ignore terminal overhead.\n\
  * Pipe to cat to disable colors (see also color-specific suites).")
-        .arg(Arg::with_name("targets")
-             .help("Test targets")
-             .short("t")
+        .arg(Arg::with_name("programs")
+             .help("Test programs, formated as 'NAME[:PATH][,...]' (coma-separated list of program \
+name and optional program path, eg 'emlop,emlop:./target/release/emlop,qlop')")
+             .short("p")
              .takes_value(true)
              .multiple(true)
              .use_delimiter(true)
-             .possible_values(&allprogs)
-             .default_value("em"))
+             .default_value("emlop"))
         .arg(Arg::with_name("suites")
-             .help("Test suites (see code for details)")
+             .help("Test suites")
              .short("s")
              .takes_value(true)
              .multiple(true)
              .use_delimiter(true)
              .possible_values(&allsuites)
+             .hide_possible_values(true)
              .default_value(&allsuites_str))
         .arg(Arg::with_name("runs")
              .help("Number of iterations")
@@ -112,36 +110,38 @@ fn main() {
              .short("S")
              .takes_value(true)
              .default_value("25"))
-        .arg(Arg::with_name("bin")
-             .help("Path to tested binary")
-             .long("bin")
-             .multiple(true)
-             .number_of_values(2)
-             .value_names(&["NAME","PATH"]))
         .arg(Arg::with_name("nullout")
              .short("n")
-             .help("Send test program outputs to /dev/null and "))
+             .help("Send test program outputs to /dev/null"))
         .get_matches();
 
     // CLI parsing
     let runs = value_t!(cli, "runs", usize).unwrap();
     let samples = value_t!(cli, "samples", usize).unwrap();
-    let targets = values_t!(cli.values_of("targets"), String).unwrap();
+    let progs = values_t!(cli.values_of("programs"), String).unwrap();
     let suites = values_t!(cli.values_of("suites"), String).unwrap();
-    let mut bins = HashMap::<String,String>::new();
-    values_t!(cli.values_of("bin"), String).unwrap_or(vec![]).chunks(2).for_each(|c| {bins.insert(c[0].clone(), c[1].clone());});
     let nullout = cli.is_present("nullout");
 
     // Construct the test list. We abuse the hashmap behavior to run tests in random order.
-    let mut mytests = HashMap::<usize,(&str,&str,Option<&str>,&[&str])>::new();
+    let mut mytests = HashMap::<usize,(String,Option<&str>,&str,&[&str])>::new();
     let mut n = 0;
-    for t in tests.into_iter()
-        .filter(|&(t,s,_,_)| targets.contains(&t.to_string()) && suites.contains(&s.to_string())) {
+    for p in progs.iter() {
+        let (p1,mut p2) = p.split_at(p.find(':').unwrap_or(p.len()));
+        p2 = match p2.is_empty() {
+            true => p1,
+            false => p2.trim_left_matches(':'),
+        };
+        let tests: Vec<_> = tests.iter().filter(|&(t,s,_,_)| t == &p1 && suites.contains(&s.to_string())).collect();
+        if tests.is_empty() {
+            writeln!(io::stderr(), "No test defined for program '{}' and suites '{}' !", p1, suites.join(",")).unwrap();
+        }
+        for &(_,su,si,ar) in tests {
             for _ in 0..runs {
-                mytests.insert(n,t.clone());
+                mytests.insert(n,(format!("{}\t{}",su,p2), si, p2, ar));
                 n += 1;
             }
         }
+    }
 
     // Load /var/log/emerge.log in the OS cache
     assert_eq!(0, Command::new("cat")
@@ -151,15 +151,13 @@ fn main() {
 
     // Run the tests and collect the results
     let mut times: BTreeMap<String,Vec<f64>> = BTreeMap::new();
-    for (_,(target,suite,stdin,args)) in mytests {
-        let bin = bins.get(args[0]).unwrap_or(&args[0].to_string()).to_string();
+    for (name,stdin,bin,args) in mytests.values() {
         match nullout {
             true => write!(io::stderr(), "\r{} ", n).unwrap(),
-            false => writeln!(io::stderr(), "{}: {} {}{}", n, bin, args[1..].join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap(),
+            false => writeln!(io::stderr(), "{}: {} {}{}", n, bin, args.join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap(),
         };
         n -= 1;
-        let key = format!("{}\t{}",suite,target);
-        let timevec = times.entry(key.clone()).or_insert(vec![]);
+        let timevec = times.entry(name.clone()).or_insert(vec![]);
         let si = match stdin {
             None => Stdio::inherit(),
             Some(f) => File::open(f).unwrap().into()
@@ -170,11 +168,11 @@ fn main() {
         };
         let start = Instant::now();
         Command::new(bin)
-            .args(args.into_iter().skip(1))
+            .args(args.into_iter())
             .stdin(si)
             .stdout(so)
             .status()
-            .expect(&format!("Couldn't run {:?}", args));
+            .expect(&format!("Couldn't run {} {:?}", bin, args));
         let elapsed = start.elapsed();
         timevec.insert(0, (elapsed.as_secs()*1000 + elapsed.subsec_nanos() as u64 / 1_000_000) as f64);
     }
