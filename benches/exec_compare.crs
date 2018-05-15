@@ -105,11 +105,11 @@ name and optional program path, eg 'emlop,emlop:./target/release/emlop,qlop')")
              .short("r")
              .takes_value(true)
              .default_value("10"))
-        .arg(Arg::with_name("samples")
-             .help("Only show first N samples in the final output")
-             .short("S")
+        .arg(Arg::with_name("bucket")
+             .help("Size of histogram buckets")
+             .short("b")
              .takes_value(true)
-             .default_value("25"))
+             .default_value("5"))
         .arg(Arg::with_name("nullout")
              .short("n")
              .help("Send test program outputs to /dev/null"))
@@ -117,7 +117,7 @@ name and optional program path, eg 'emlop,emlop:./target/release/emlop,qlop')")
 
     // CLI parsing
     let runs = value_t!(cli, "runs", usize).unwrap();
-    let samples = value_t!(cli, "samples", usize).unwrap();
+    let bucket = value_t!(cli, "bucket", u64).unwrap();
     let progs = values_t!(cli.values_of("programs"), String).unwrap();
     let suites = values_t!(cli.values_of("suites"), String).unwrap();
     let nullout = cli.is_present("nullout");
@@ -179,18 +179,23 @@ name and optional program path, eg 'emlop,emlop:./target/release/emlop,qlop')")
 
     // Output the results
     let mut tw = TabWriter::new(io::stderr());
-    writeln!(tw,"suite\ttarget\tmin\t95%\t75%\tmean\tmax\tstddev\tsamples ({}/{})", std::cmp::min(runs,samples), runs).unwrap();
+    writeln!(tw,"\nsuite\tbin\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tvalues").unwrap();
     for (key,vals) in times {
         let ss: SummStats = vals.iter().cloned().collect();
         let mut pc: Percentiles = vals.iter().cloned().collect();
-        writeln!(tw, "{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{}", key,
+        let mut hist: BTreeMap<u64,u64> = BTreeMap::new();
+        vals.into_iter().for_each(|v| *hist.entry((v/bucket as f64).round() as u64 * bucket).or_insert(0) += 1);
+        writeln!(tw, "{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}", key,
                  ss.min().unwrap(),
                  pc.percentile(&0.95).unwrap(),
+                 pc.percentile(&0.85).unwrap(),
                  pc.percentile(&0.75).unwrap(),
                  ss.mean().unwrap(),
                  ss.max().unwrap(),
                  ss.standard_deviation().unwrap_or(0.0),
-                 vals.iter().take(samples).map(|f| f.to_string()).collect::<Vec<String>>().join(",")).unwrap();
+                 ss.sum(),
+                 hist.iter().map(|(k,v)| format!("{}:{}",k,v)).collect::<Vec<String>>().join(","),
+        ).unwrap();
     }
     tw.flush().unwrap();
 }
