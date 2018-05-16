@@ -18,57 +18,57 @@ use std::{collections::{BTreeMap, HashMap}, fs::File, io, io::Write, process::{C
 use tabwriter::TabWriter;
 
 fn main() {
-    // Test definitions: (program name, test suite, stdin, program args)
-    let tests: Vec<(&str,&str,Option<&str>,&[&str])> = vec![
-        ("genlop","h",None,&["-h"]),
-        ("qlop",  "h",None,&["-h"]),
-        ("emlop", "h",None,&["-h"]),
-        ("pqlop", "h",None,&["-h"]),
-        ("golop", "h",None,&["-h"]),
+    // Test definitions: (test suite, program name, program args, stdin)
+    let tests: Vec<(&str,&str,&[&str],Option<&str>)> = vec![
+        ("h", "genlop", &["-h"], None),
+        ("h", "qlop",   &["-h"], None),
+        ("h", "emlop",  &["-h"], None),
+        ("h", "pqlop",  &["-h"], None),
+        ("h", "golop",  &["-h"], None),
 
-        ("genlop","l",None,&["-l"]),
-        ("qlop",  "l",None,&["-l"]),
-        ("emlop", "l",None,&["l"]),
-        ("golop", "l",None,&["golop"]),
+        ("l", "genlop", &["-l"], None),
+        ("l", "qlop",   &["-l"], None),
+        ("l", "emlop",  &["l"],  None),
+        ("l", "golop",  &[],     None),
 
-        ("genlop","lf",None,&["-l","-f","test/emerge.10000.log"]),
-        ("qlop",  "lf",None,&["-l","-f","test/emerge.10000.log"]),
-        ("emlop", "lf",None,&["l", "-f","test/emerge.10000.log"]),
-        ("golop", "lf",None,&["-l","test/emerge.10000.log"]),
+        ("lf", "genlop", &["-l","-f","test/emerge.10000.log"], None),
+        ("lf", "qlop",   &["-l","-f","test/emerge.10000.log"], None),
+        ("lf", "emlop",  &["l", "-f","test/emerge.10000.log"], None),
+        ("lf", "golop",  &["-l","test/emerge.10000.log"],      None),
 
-        ("emlop", "lc",None,&["l", "--color=y"]),
-        ("genlop","ln",None,&["-l","-n"]),
-        ("qlop",  "ln",None,&["-l","--nocolor"]),
-        ("emlop", "ln",None,&["l", "--color=n"]),
+        ("lc", "emlop",  &["l","--color=y"],  None),
+        ("ln", "genlop", &["-l","-n"],        None),
+        ("ln", "qlop",   &["-l","--nocolor"], None),
+        ("ln", "emlop",  &["l","--color=n"],  None),
 
-        ("genlop","tgcc",None,&["-t","gcc"]),
-        ("qlop",  "tgcc",None,&["-g","gcc"]),
-        ("emlop", "tgcc",None,&["l", "gcc","-e"]),
-        ("pqlop", "tgcc",None,&["-g","gcc"]),
-        ("golop", "tgcc",None,&["-t","gcc"]),
+        ("tgcc", "genlop", &["-t","gcc"],     None),
+        ("tgcc", "qlop",   &["-g","gcc"],     None),
+        ("tgcc", "emlop",  &["l","gcc","-e"], None),
+        ("tgcc", "pqlop",  &["-g","gcc"],     None),
+        ("tgcc", "golop",  &["-t","gcc"],     None),
 
-        ("genlop","egcc",None,&["-e","gcc"]),
-        ("qlop",  "egcc",None,&["-l","gcc"]),
-        ("emlop", "egcc",None,&["l", "gcc","-e"]),
-        ("pqlop", "egcc",None,&["-g","gcc"]),
-        ("golop", "egcc",None,&["-t","gcc"]),
+        ("egcc", "genlop", &["-e","gcc"],     None),
+        ("egcc", "qlop",   &["-l","gcc"],     None),
+        ("egcc", "emlop",  &["l","gcc","-e"], None),
+        ("egcc", "pqlop",  &["-g","gcc"],     None),
+        ("egcc", "golop",  &["-t","gcc"],     None),
 
-        ("genlop","c",None,&["-c"]),
-        ("qlop",  "c",None,&["-c"]),
-        ("emlop", "c",None,&["p"]),
-        ("pqlop", "c",None,&["-c"]),
-        ("golop", "c",None,&["-c"]),
+        ("c", "genlop", &["-c"], None),
+        ("c", "qlop",   &["-c"], None),
+        ("c", "emlop",  &["p"],  None),
+        ("c", "pqlop",  &["-c"], None),
+        ("c", "golop",  &["-c"], None),
 
-        ("genlop","pgcc",Some("benches/emerge-p.gcc.out"),&["-p"]),
-        ("emlop", "pgcc",Some("benches/emerge-p.gcc.out"),&["p"]),
-        ("genlop","pqt", Some("benches/emerge-p.qt.out"), &["-p"]),
-        ("emlop", "pqt", Some("benches/emerge-p.qt.out"), &["p"]),
-        ("genlop","pkde",Some("benches/emerge-p.kde.out"),&["-p"]),
-        ("emlop", "pkde",Some("benches/emerge-p.kde.out"),&["p"]),
+        ("pgcc", "genlop", &["-p"], Some("benches/emerge-p.kde.out")),
+        ("pgcc", "emlop",  &["p"],  Some("benches/emerge-p.kde.out")),
+        ("pqt",  "genlop", &["-p"], Some("benches/emerge-p.kde.out")),
+        ("pqt",  "emlop",  &["p"],  Some("benches/emerge-p.kde.out")),
+        ("pkde", "genlop", &["-p"], Some("benches/emerge-p.kde.out")),
+        ("pkde", "emlop",  &["p"],  Some("benches/emerge-p.kde.out")),
     ];
 
     // CLI definition
-    let mut allsuites: Vec<&str> = tests.iter().map(|&(_,s,_,_)| s).collect();
+    let mut allsuites: Vec<&str> = tests.iter().map(|&(s,_,_,_)| s).collect();
     allsuites.sort();
     allsuites.dedup();
     let allsuites_str = allsuites.join(",");
@@ -123,7 +123,7 @@ name and optional program path, eg 'emlop,emlop:./target/release/emlop,qlop')")
     let nullout = cli.is_present("nullout");
 
     // Construct the test list. We abuse the hashmap behavior to run tests in random order.
-    let mut mytests = HashMap::<usize,(String,Option<&str>,&str,&[&str])>::new();
+    let mut mytests = HashMap::<usize,(String,&str,&[&str],Option<&str>)>::new();
     let mut n = 0;
     for p in progs.iter() {
         let (p1,mut p2) = p.split_at(p.find(':').unwrap_or(p.len()));
@@ -131,13 +131,13 @@ name and optional program path, eg 'emlop,emlop:./target/release/emlop,qlop')")
             true => p1,
             false => p2.trim_left_matches(':'),
         };
-        let tests: Vec<_> = tests.iter().filter(|&(t,s,_,_)| t == &p1 && suites.contains(&s.to_string())).collect();
+        let tests: Vec<_> = tests.iter().filter(|&(s,t,_,_)| t == &p1 && suites.contains(&s.to_string())).collect();
         if tests.is_empty() {
             writeln!(io::stderr(), "No test defined for program '{}' and suites '{}' !", p1, suites.join(",")).unwrap();
         }
-        for &(_,su,si,ar) in tests {
+        for &(su,_,ar,si) in tests {
             for _ in 0..runs {
-                mytests.insert(n,(format!("{}\t{}",su,p2), si, p2, ar));
+                mytests.insert(n,(format!("{}\t{}",su,p2), p2, ar, si));
                 n += 1;
             }
         }
@@ -151,7 +151,7 @@ name and optional program path, eg 'emlop,emlop:./target/release/emlop,qlop')")
 
     // Run the tests and collect the results
     let mut times: BTreeMap<String,Vec<f64>> = BTreeMap::new();
-    for (name,stdin,bin,args) in mytests.values() {
+    for (name,bin,args,stdin) in mytests.values() {
         match nullout {
             true => write!(io::stderr(), "\r{} ", n).unwrap(),
             false => writeln!(io::stderr(), "{}: {} {}{}", n, bin, args.join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap(),
@@ -179,7 +179,7 @@ name and optional program path, eg 'emlop,emlop:./target/release/emlop,qlop')")
 
     // Output the results
     let mut tw = TabWriter::new(io::stderr());
-    writeln!(tw,"\nsuite\tbin\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tvalues").unwrap();
+    writeln!(tw,"\nsuite\tprog\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tvalues").unwrap();
     for (key,vals) in times {
         let ss: SummStats = vals.iter().cloned().collect();
         let mut pc: Percentiles = vals.iter().cloned().collect();
