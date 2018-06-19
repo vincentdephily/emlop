@@ -9,7 +9,7 @@ use std::io::stdin;
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
-    let hist = Parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
+    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
@@ -38,7 +38,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
-    let hist = Parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
+    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
     let lim = value(subargs, "limit", parse_limit);
@@ -97,7 +97,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     }
 
     // Parse emerge log.
-    let hist = Parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
+    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 None, false)?;
     let mut started: HashMap<(String, String), i64> = HashMap::new();
@@ -121,7 +121,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     // Parse list of pending merges (from stdin or from emerge log filtered by cms).
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
     let pretend: Vec<Parsed> = match atty::is(atty::Stream::Stdin) {
-        false => Parser::new_pretend(stdin(), "STDIN")?.collect(),
+        false => parser::new_pretend(stdin(), "STDIN"),
         true => started.iter()
             .filter(|&(_,t)| *t > cms)
             .map(|(&(ref e,ref v),_)| Parsed::Pretend{ebuild:e.to_string(), version:v.to_string()})

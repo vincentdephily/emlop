@@ -4,6 +4,7 @@ extern crate atty;
 extern crate chrono;
 extern crate chrono_english;
 #[macro_use] extern crate clap;
+extern crate crossbeam_channel;
 extern crate failure;
 #[macro_use] extern crate failure_derive;
 #[cfg(test)] #[macro_use] extern crate indoc;
@@ -24,8 +25,7 @@ use chrono_english::{parse_date_string,Dialect};
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use failure::Error;
 use std::fs::File;
-use std::io;
-use std::io::Write;
+use std::{io, io::{Read, Write}};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tabwriter::TabWriter;
@@ -262,7 +262,7 @@ struct OpenError {
     reason: std::io::Error,
 }
 /// File::open wrapper with a more user-friendly error.
-pub fn myopen(fname: &str) -> Result<File, Error> {
+pub fn myopen(fname: &str) -> Result<impl Read, Error> {
     File::open(fname).map_err(|e| OpenError{file:fname.into(), reason: e}.into())
 }
 

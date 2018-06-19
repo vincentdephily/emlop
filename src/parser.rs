@@ -3,12 +3,15 @@
 //! Instantiate a `Parser` and iterate over it to retrieve the events.
 
 use ::fmt_time;
+
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use failure::Error;
 use regex::{Regex, RegexBuilder};
-use std::io::{BufRead, BufReader, Lines, Read};
+use std;
+use std::{io::{BufRead, BufReader, Read}, thread};
 
 /// Create a closure that matches timestamp depending on options.
-fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> Box<Fn(i64) -> bool> {
+fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> impl Fn(i64) -> bool {
     // The match patterns are identical but split for readability
     match (min, max) {
         (None,    None) =>    info!("Date filter: None"),
@@ -16,38 +19,45 @@ fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> Box<Fn(i64) -> bool> {
         (None,    Some(b)) => info!("Date filter: before {}", fmt_time(b)),
         (Some(a), Some(b)) => info!("Date filter: between {} and {}", fmt_time(a), fmt_time(b)),
     }
-    match (min, max) {
-        (None,    None) =>    Box::new(|_| true),
-        (Some(a), None) =>    Box::new(move |n| n >= a),
-        (None,    Some(b)) => Box::new(move |n| n <= b),
-        (Some(a), Some(b)) => Box::new(move |n| n >= a && n <= b),
-    }
+    let mi = min.unwrap_or(std::i64::MIN);
+    let ma = max.unwrap_or(std::i64::MAX);
+    move |n| { n >= mi && n <= ma }
 }
+
 /// Create a closure that matches package depending on options.
-fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<Box<Fn(&str) -> bool>, Error> {
-    match (package, exact, package.map_or(false, |p| p.contains("/"))) {
+fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<impl Fn(&str) -> bool, Error> {
+    enum FilterPkg {
+        True,
+        Eq{e: String},
+        Ends{e: String},
+        Re{r: Regex},
+    }
+    let fp = match (&package, exact, package.as_ref().map_or(false, |p| p.contains("/"))) {
         (None, _, _) => {
             info!("Package filter: None");
-            Ok(Box::new(|_| true))
+            FilterPkg::True
         },
         (Some(search), true, true) => {
             info!("Package filter: categ/name == {}", search);
-            let srch = search.to_string();
-            Ok(Box::new(move |pkg| pkg == srch))
+            FilterPkg::Eq{e:search.to_string()}
         },
         (Some(search), true, false) => {
             info!("Package filter: name == {}", search);
-            let srch = format!("/{}",search);
-            Ok(Box::new(move |pkg| pkg.ends_with(&srch)))
+            FilterPkg::Ends{e:format!("/{}",search)}
         },
         (Some(search), false, _) => {
             info!("Package filter: categ/name ~= {}", search);
-            let re = RegexBuilder::new(search)
-                .case_insensitive(true)
-                .build()?;
-            Ok(Box::new(move |pkg| re.is_match(pkg)))
+            FilterPkg::Re{r:RegexBuilder::new(&search)
+                          .case_insensitive(true)
+                          .build()?}
         }
-    }
+    };
+    Ok(move |s: &str| match &fp {
+        FilterPkg::True => true,
+        FilterPkg::Eq{e} => e == s,
+        FilterPkg::Ends{e} => s.ends_with(e),
+        FilterPkg::Re{r} => r.is_match(s),
+    })
 }
 
 /// Split "categ/name-version" into "categ/name" and "version"
@@ -74,106 +84,82 @@ pub enum Parsed {
     Pretend{ebuild: String, version: String},
 }
 
-/// Iterates over input line by line over the input to produce `Parsed` items.
-pub struct Parser<R: Read> {
-    input: String,
-    lines: Lines<BufReader<R>>,
-    curline: u64,
-    filter_pkg: Box<Fn(&str) -> bool>,
-    filter_ts: Box<Fn(i64) -> bool>,
-    out_start: bool,
-    out_stop: bool,
-    re_pretend: Option<Regex>,
+fn parse_start(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(&str) -> bool) -> Option<Parsed> {
+    let (ts_str,rest) = line.split_at(line.find(':')?);
+    if !rest.starts_with(":  >>> emerge") {return None}
+    let ts = ts_str.parse::<i64>().ok()?;
+    if !(filter_ts)(ts) {return None}
+    let mut tokens = rest.split_whitespace();
+    let (t3,t5,t6) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
+    let (ebuild,version) = split_atom(t6)?;
+    if !(filter_pkg)(ebuild) {return None}
+    Some(Parsed::Start{ts: ts,
+                       ebuild: ebuild.to_string(),
+                       iter: format!("{} {}", t3, t5),
+                       version: version.to_string()})
+}
+fn parse_stop(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(&str) -> bool) -> Option<Parsed> {
+    let (ts_str,rest) = line.split_at(line.find(':')?);
+    if !rest.starts_with(":  ::: completed") {return None}
+    let ts = ts_str.parse::<i64>().ok()?;
+    if !(filter_ts)(ts) {return None}
+    let mut tokens = rest.split_whitespace();
+    let (t4,t6,t7) = (tokens.nth(4)?, tokens.nth(1)?, tokens.nth(0)?);
+    let (ebuild,version) = split_atom(t7)?;
+    if !(filter_pkg)(ebuild) {return None}
+    Some(Parsed::Stop{ts: ts,
+                      ebuild: ebuild.to_string(),
+                      iter: format!("{} {}", t4, t6),
+                      version: version.to_string()})
+}
+fn parse_pretend(line: &str, re: &Regex) -> Option<Parsed> {
+    let c = re.captures(line)?;
+    Some(Parsed::Pretend{ebuild: c.get(1).unwrap().as_str().to_string(),
+                         version: c.get(2).unwrap().as_str().to_string()})
 }
 
-impl<R: Read> Parser<R> {
-    fn parse_start(&mut self, line: &str) -> Option<Parsed> {
-        if !self.out_start {return None}
-        let (ts_str,rest) = line.split_at(line.find(':')?);
-        if !rest.starts_with(":  >>> emerge") {return None}
-        let ts = ts_str.parse::<i64>().ok()?;
-        if !(self.filter_ts)(ts) {return None}
-        let mut tokens = rest.split_whitespace();
-        let (t3,t5,t6) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
-        let (ebuild,version) = split_atom(t6)?;
-        if !(self.filter_pkg)(ebuild) {return None}
-        Some(Parsed::Start{ts: ts,
-                           ebuild: ebuild.to_string(),
-                           iter: format!("{} {}", t3, t5),
-                           version: version.to_string()})
-    }
-    fn parse_stop(&mut self, line: &str) -> Option<Parsed> {
-        if !self.out_stop {return None}
-        let (ts_str,rest) = line.split_at(line.find(':')?);
-        if !rest.starts_with(":  ::: completed") {return None}
-        let ts = ts_str.parse::<i64>().ok()?;
-        if !(self.filter_ts)(ts) {return None}
-        let mut tokens = rest.split_whitespace();
-        let (t4,t6,t7) = (tokens.nth(4)?, tokens.nth(1)?, tokens.nth(0)?);
-        let (ebuild,version) = split_atom(t7)?;
-        if !(self.filter_pkg)(ebuild) {return None}
-        Some(Parsed::Stop{ts: ts,
-                          ebuild: ebuild.to_string(),
-                          iter: format!("{} {}", t4, t6),
-                          version: version.to_string()})
-    }
-    fn parse_pretend(&mut self, line: &str) -> Option<Parsed> {
-        let re = self.re_pretend.as_ref()?;
-        let c = re.captures(line)?;
-        Some(Parsed::Pretend{ebuild: c.get(1).unwrap().as_str().to_string(),
-                             version: c.get(2).unwrap().as_str().to_string()})
-    }
-
-    pub fn new_hist(reader: R, reader_name: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Result<Parser<R>, Error> {
-        debug!("new_hist reader={} min={:?} max={:?} str={:?} exact={}", reader_name, min_ts, max_ts, search_str, search_exact);
-        Ok(Parser{input: reader_name.to_string(),
-                  lines: BufReader::new(reader).lines(),
-                  curline: 0,
-                  filter_pkg: filter_pkg_fn(search_str, search_exact)?,
-                  filter_ts: filter_ts_fn(min_ts, max_ts),
-                  out_start: true,
-                  out_stop: true,
-                  re_pretend: None,
-        })
-    }
-    pub fn new_pretend(reader: R, reader_name: &str) -> Result<Parser<R>, Error> {
-        debug!("new_pretend reader={}", reader_name);
-        Ok(Parser{input: reader_name.to_string(),
-                  lines: BufReader::new(reader).lines(),
-                  curline: 0,
-                  filter_pkg: filter_pkg_fn(None, true)?,
-                  filter_ts: filter_ts_fn(None, None),
-                  out_start: false,
-                  out_stop: false,
-                  re_pretend: Some(Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)")?),
-        })
-    }
-}
-
-impl<R: Read> Iterator for Parser<R> {
-    type Item = Parsed;
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            self.curline += 1;
-            match self.lines.next() {
-                Some(Ok(ref line)) => { // Got a line, see if one of the funs match it
-                    if let Some(found) = self.parse_start(line) {return Some(found)}
-                    if let Some(found) = self.parse_stop(line) {return Some(found)}
-                    if let Some(found) = self.parse_pretend(line) {return Some(found)}
+/// Parse emerge log into a channel of `Parsed` enums.
+pub fn new_hist<R: Read>(reader: R, filename: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Result<Receiver<Parsed>, Error> where R: std::marker::Send+'static {
+    debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}", filename, min_ts, max_ts, search_str, search_exact);
+    let (tx, rx): (Sender<Parsed>, Receiver<Parsed>) = unbounded();
+    let filter_ts = filter_ts_fn(min_ts, max_ts);
+    let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
+    let filename = filename.to_string();
+    thread::spawn(move || {
+        for (curline,l) in BufReader::new(reader).lines().enumerate() {
+            match l {
+                Ok(ref line) => { // Got a line, see if one of the funs match it
+                    if let Some(found) = parse_start(line, &filter_ts, &filter_pkg) {tx.send(found)}
+                    else if let Some(found) = parse_stop(line, &filter_ts, &filter_pkg) {tx.send(found)}
                 },
-                Some(Err(e)) => // Could be invalid UTF8, system read error...
-                    warn!("{}:{}: {}", self.input, self.curline, e),
-                None => // End of file
-                    return None,
+                Err(e) => // Could be invalid UTF8, system read error...
+                    warn!("{}:{}: {}", filename, curline, e),
             }
         }
+    });
+    Ok(rx)
+}
+
+/// Parse portage pretend output into a Vec of `Parsed` enums.
+pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<Parsed> where R: std::marker::Send+'static {
+    debug!("new_pretend input={}", filename);
+    let mut out: Vec<Parsed> = vec![];
+    let re = Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap();
+    for (curline,l) in BufReader::new(reader).lines().enumerate() {
+        match l {
+            Ok(ref line) => { // Got a line, see if one of the funs match it
+                if let Some(found) = parse_pretend(line, &re) {out.push(found)}
+            },
+            Err(e) => // Could be invalid UTF8, system read error...
+                warn!("{}:{}: {}", filename, curline, e),
+        }
     }
+    out
 }
 
 
 #[cfg(test)]
 mod tests {
-    use ::*;
     use parser::*;
     use std::collections::HashMap;
     use std::fs::File;
@@ -184,7 +170,7 @@ mod tests {
                   filter_pkg: Option<&str>, exact: bool,
                   mut expect_counts: Vec<(&str, usize)>) {
         // Setup
-        let hist = Parser::new_hist(File::open(filename).unwrap(), filename, filter_mints, filter_maxts, filter_pkg, exact).unwrap();
+        let hist = new_hist(File::open(filename).unwrap(), filename.into(), filter_mints, filter_maxts, filter_pkg, exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^\\([1-9][0-9]* [1-9][0-9]*\\)$").unwrap(); //Should match pattern used in *Parser
@@ -295,7 +281,7 @@ mod tests {
 
     fn parse_pretend(filename: &str, expect: &Vec<(&str, &str)>) {
         // Setup
-        let pretend = Parser::new_pretend(File::open(filename).unwrap(), filename).unwrap();
+        let pretend = new_pretend(File::open(filename).unwrap(), filename);
         let mut count = 0;
         // Check that all items look valid
         for p in pretend {
