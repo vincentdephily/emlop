@@ -1,7 +1,15 @@
 [package]
-authors = ["Vincent de Phily <moltonel@gmail.com>"]
 name = "emlop"
 version = "0.2.0"
+description = "A fast, accurate, ergonomic emerge.log parser"
+keywords = ["gentoo", "portage", "emerge"]
+categories = ["command-line-utilities", "parsing"]
+readme = "README.md"
+license = "GPL-3.0-only"
+homepage = "https://github.com/vincentdephily/emlop"
+repository = "https://github.com/vincentdephily/emlop"
+authors = ["Vincent de Phily <moltonel@gmail.com>",
+           "Illia Shestakov <ishestakov@airmail.cc>"]
 
 [dependencies]
 ansi_term = "~0.11"
