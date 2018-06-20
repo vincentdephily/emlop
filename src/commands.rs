@@ -16,18 +16,17 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
     let mut found_one = false;
     for p in hist {
         match p {
-            Parsed::Start{ts, ebuild, version, iter, ..} => {
+            ParsedHist::Start{ts, ebuild, version, iter, ..} => {
                 // This'll overwrite any previous entry, if a build started but never finished
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            Parsed::Stop{ts, ebuild, version, iter, ..} => {
+            ParsedHist::Stop{ts, ebuild, version, iter, ..} => {
                 found_one = true;
                 let started = started.remove(&(ebuild.clone(), version.clone(), iter.clone()));
                 writeln!(io::stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts), st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(ts-pt)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
-            _ => assert!(false, "unexpected {:?}", p),
         }
     }
     Ok(found_one)
@@ -47,10 +46,10 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
     let mut found_one = false;
     for p in hist {
         match p {
-            Parsed::Start{ts, ebuild, version, iter, ..} => {
+            ParsedHist::Start{ts, ebuild, version, iter, ..} => {
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            Parsed::Stop{ts, ebuild, version, iter, ..} => {
+            ParsedHist::Stop{ts, ebuild, version, iter, ..} => {
                 match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
                     Some(start_ts) => {
                         let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
@@ -59,7 +58,6 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                     None => (),
                 }
             },
-            _ => assert!(false, "unexpected {:?}", p),
         }
     };
     for (pkg,tv) in times.iter() {
@@ -105,26 +103,25 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     for p in hist {
         match p {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
-            Parsed::Start{ts, ebuild, version, ..} => {
+            ParsedHist::Start{ts, ebuild, version, ..} => {
                 started.insert((ebuild.clone(), version.clone()), ts);
             }
-            Parsed::Stop{ts, ebuild, version, ..} => {
+            ParsedHist::Stop{ts, ebuild, version, ..} => {
                 if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone())) {
                     let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
                     timevec.insert(0, ts-start_ts);
                 }
             }
-            _ => assert!(false, "unexpected {:?}", p),
         }
     }
 
     // Parse list of pending merges (from stdin or from emerge log filtered by cms).
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
-    let pretend: Vec<Parsed> = match atty::is(atty::Stream::Stdin) {
+    let pretend: Vec<ParsedPretend> = match atty::is(atty::Stream::Stdin) {
         false => parser::new_pretend(stdin(), "STDIN"),
         true => started.iter()
             .filter(|&(_,t)| *t > cms)
-            .map(|(&(ref e,ref v),_)| Parsed::Pretend{ebuild:e.to_string(), version:v.to_string()})
+            .map(|(&(ref e,ref v),_)| ParsedPretend{ebuild:e.to_string(), version:v.to_string()})
             .collect(),
     };
 
@@ -133,43 +130,38 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     let mut totunknown = 0;
     let mut totpredict = 0;
     let mut totelapsed = 0;
-    for p in pretend {
-        match p {
-            Parsed::Pretend{ebuild, version, ..} => {
-                // Find the elapsed time, if any (heuristic is that emerge process started before
-                // this merge finished, it's not failsafe but IMHO no worse than genlop).
-                let (elapsed,elapsed_fmt) = match started.remove(&(ebuild.clone(), version.clone())) {
-                    Some(s) if s > cms => (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(now-s), st.dur_s)),
-                    _ => (0, "".into())
-                };
+    for ParsedPretend{ebuild, version} in pretend {
+        // Find the elapsed time, if any (heuristic is that emerge process started before
+        // this merge finished, it's not failsafe but IMHO no worse than genlop).
+        let (elapsed,elapsed_fmt) = match started.remove(&(ebuild.clone(), version.clone())) {
+            Some(s) if s > cms => (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(now-s), st.dur_s)),
+            _ => (0, "".into())
+        };
 
-                // Find the predicted time and adjust counters
-                totcount += 1;
-                let pred_fmt = match times.get(&ebuild) {
-                    Some(tv) => {
-                        let (predtime,predcount,_) = tv.iter()
-                            .fold((0,0,0), |(pt,pc,tc), &i| {
-                                if tc >= lim {(pt,  pc,  tc+1)}
-                                else         {(pt+i,pc+1,tc+1)}
-                            });
-                        totpredict += predtime / predcount;
-                        if elapsed > 0 {
-                            totelapsed += elapsed;
-                            totpredict -= std::cmp::min(predtime / predcount, elapsed);
-                        }
-                        fmt_duration(predtime/predcount)
-                    },
-                    None => {
-                        totunknown += 1;
-                        "?".into()
-                    },
-                };
-
-                // Done
-                writeln!(tw, "{}{}-{}\t{}{:>9}{}{}", st.pkg_p, ebuild, version, st.dur_p, pred_fmt, st.dur_s, elapsed_fmt)?;
+        // Find the predicted time and adjust counters
+        totcount += 1;
+        let pred_fmt = match times.get(&ebuild) {
+            Some(tv) => {
+                let (predtime,predcount,_) = tv.iter()
+                    .fold((0,0,0), |(pt,pc,tc), &i| {
+                        if tc >= lim {(pt,  pc,  tc+1)}
+                        else         {(pt+i,pc+1,tc+1)}
+                    });
+                totpredict += predtime / predcount;
+                if elapsed > 0 {
+                    totelapsed += elapsed;
+                    totpredict -= std::cmp::min(predtime / predcount, elapsed);
+                }
+                fmt_duration(predtime/predcount)
             },
-            _ => assert!(false, "unexpected {:?}", p),
-        }
+            None => {
+                totunknown += 1;
+                "?".into()
+            },
+        };
+
+        // Done
+        writeln!(tw, "{}{}-{}\t{}{:>9}{}{}", st.pkg_p, ebuild, version, st.dur_p, pred_fmt, st.dur_s, elapsed_fmt)?;
     }
     if totcount > 0 {
         writeln!(tw, "Estimate for {}{}{} ebuilds ({}{}{} unknown, {}{}{} elapsed)\t{}{:>9}{}",
