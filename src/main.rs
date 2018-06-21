@@ -191,7 +191,7 @@ pub fn parse_date(s: &str) -> Result<i64, String> {
     parse_date_string(s, Local::now(), Dialect::Uk)
         .map(|d| d.timestamp())
         .or_else(|_| i64::from_str(&s.trim()))
-        .map_err(|_| format!("Couldn't parse as a date or timestamp"))
+        .map_err(|_| "Couldn't parse as a date or timestamp".into())
 }
 
 pub fn fmt_duration(secs: i64) -> String {

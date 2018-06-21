@@ -34,7 +34,7 @@ fn get_proc_info(filter: Option<&str>, entry: fs::DirEntry, clocktick: i64, time
     let statfields: Vec<&str> = statstr.split(' ').collect();
     let mut parse_offset = 0;
     let mut comm = statfields[1].trim_left_matches('(').to_string();
-    while !comm.ends_with(")") {
+    while !comm.ends_with(')') {
         parse_offset += 1;
         comm = format!("{} {}", comm, statfields[1 + parse_offset]);
     }
@@ -49,11 +49,10 @@ fn get_proc_info(filter: Option<&str>, entry: fs::DirEntry, clocktick: i64, time
     fs::File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
     cmdline = cmdline.replace("\0", " ").trim().into();
     // Done
-    Some(Info{comm: comm,
-              cmdline: cmdline,
+    Some(Info{comm,
+              cmdline,
               start: time_ref + (start_time / clocktick) as i64,
-              pid: pid,
-    })
+              pid})
 }
 
 /// Get command name, arguments, start time, and pid for all processes.

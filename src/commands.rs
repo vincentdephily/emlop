@@ -43,25 +43,21 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
     let lim = value(subargs, "limit", parse_limit);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut times: BTreeMap<String, Vec<i64>> = BTreeMap::new();
-    let mut found_one = false;
     for p in hist {
         match p {
             ParsedHist::Start{ts, ebuild, version, iter, ..} => {
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
             ParsedHist::Stop{ts, ebuild, version, iter, ..} => {
-                match started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
-                    Some(start_ts) => {
-                        let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
-                        timevec.insert(0, ts-start_ts);
-                    },
-                    None => (),
+                if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
+                    let timevec = times.entry(ebuild.clone()).or_insert_with(|| vec![]);
+                    timevec.insert(0, ts-start_ts);
                 }
             },
         }
     };
-    for (pkg,tv) in times.iter() {
-        found_one = true;
+    let found_one = !times.is_empty();
+    for (pkg,tv) in times {
         let (predtime,predcount,tottime,totcount) = tv.iter()
             .fold((0,0,0,0), |(pt,pc,tt,tc), &i| {
                 if tc >= lim {(pt,  pc,  tt+i,tc+1)}
@@ -108,7 +104,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
             }
             ParsedHist::Stop{ts, ebuild, version, ..} => {
                 if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone())) {
-                    let timevec = times.entry(ebuild.clone()).or_insert(vec![]);
+                    let timevec = times.entry(ebuild.clone()).or_insert_with(|| vec![]);
                     timevec.insert(0, ts-start_ts);
                 }
             }
@@ -117,12 +113,13 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
 
     // Parse list of pending merges (from stdin or from emerge log filtered by cms).
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
-    let pretend: Vec<ParsedPretend> = match atty::is(atty::Stream::Stdin) {
-        false => parser::new_pretend(stdin(), "STDIN"),
-        true => started.iter()
+    let pretend: Vec<ParsedPretend> = if atty::is(atty::Stream::Stdin) {
+        started.iter()
             .filter(|&(_,t)| *t > cms)
             .map(|(&(ref e,ref v),_)| ParsedPretend{ebuild:e.to_string(), version:v.to_string()})
-            .collect(),
+            .collect()
+    } else {
+        parser::new_pretend(stdin(), "STDIN")
     };
 
     // Gather and print per-package and indivudual stats.

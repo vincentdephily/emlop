@@ -85,7 +85,7 @@ fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<impl Fn(&str) -> 
         Ends{e: String},
         Re{r: Regex},
     }
-    let fp = match (&package, exact, package.as_ref().map_or(false, |p| p.contains("/"))) {
+    let fp = match (&package, exact, package.as_ref().map_or(false, |p| p.contains('/'))) {
         (None, _, _) => {
             info!("Package filter: None");
             FilterPkg::True
@@ -126,6 +126,7 @@ fn split_atom(atom: &str) -> Option<(&str, &str)> {
     }
 }
 
+//fn parse_start(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: &Box<Fn(&str) -> bool+Send>) -> Option<ParsedHist> {
 fn parse_start(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
     let (ts_str,rest) = line.split_at(line.find(':')?);
     if !rest.starts_with(":  >>> emerge") {return None}
@@ -135,11 +136,12 @@ fn parse_start(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(
     let (t3,t5,t6) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t6)?;
     if !(filter_pkg)(ebuild) {return None}
-    Some(ParsedHist::Start{ts: ts,
+    Some(ParsedHist::Start{ts,
                            ebuild: ebuild.to_string(),
                            iter: format!("{} {}", t3, t5),
                            version: version.to_string()})
 }
+//fn parse_stop(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: &Box<Fn(&str) -> bool+Send>) -> Option<ParsedHist> {
 fn parse_stop(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
     let (ts_str,rest) = line.split_at(line.find(':')?);
     if !rest.starts_with(":  ::: completed") {return None}
@@ -149,7 +151,7 @@ fn parse_stop(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(&
     let (t4,t6,t7) = (tokens.nth(4)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t7)?;
     if !(filter_pkg)(ebuild) {return None}
-    Some(ParsedHist::Stop{ts: ts,
+    Some(ParsedHist::Stop{ts,
                           ebuild: ebuild.to_string(),
                           iter: format!("{} {}", t4, t6),
                           version: version.to_string()})
