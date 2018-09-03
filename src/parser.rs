@@ -34,8 +34,10 @@ pub fn new_hist<R: Read>(reader: R, filename: &str, min_ts: Option<i64>, max_ts:
         for (curline,l) in BufReader::new(reader).lines().enumerate() {
             match l {
                 Ok(ref line) => { // Got a line, see if one of the funs match it
-                    if let Some(found) = parse_start(line, &filter_ts, &filter_pkg) {tx.send(found)}
-                    else if let Some(found) = parse_stop(line, &filter_ts, &filter_pkg) {tx.send(found)}
+                    if let Some((t,s)) = parse_ts(line, &filter_ts) {
+                        if let Some(found) = parse_start(t, s, &filter_pkg) {tx.send(found)}
+                        else if let Some(found) = parse_stop(t, s, &filter_pkg) {tx.send(found)}
+                    }
                 },
                 Err(e) => // Could be invalid UTF8, system read error...
                     warn!("{}:{}: {}", filename, curline, e),
@@ -126,14 +128,16 @@ fn split_atom(atom: &str) -> Option<(&str, &str)> {
     }
 }
 
-//fn parse_start(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: &Box<Fn(&str) -> bool+Send>) -> Option<ParsedHist> {
-fn parse_start(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
+fn parse_ts(line: &str, filter_ts: impl Fn(i64) -> bool) -> Option<(i64,&str)> {
     let (ts_str,rest) = line.split_at(line.find(':')?);
-    if !rest.starts_with(":  >>> emerge") {return None}
     let ts = ts_str.parse::<i64>().ok()?;
     if !(filter_ts)(ts) {return None}
-    let mut tokens = rest.split_whitespace();
-    let (t3,t5,t6) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
+    Some((ts,&rest[1..]))
+}
+fn parse_start(ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
+    if !line.starts_with("  >>> emer") {return None}
+    let mut tokens = line.split_whitespace(); //https://github.com/rust-lang/rust/issues/48656
+    let (t3,t5,t6) = (tokens.nth(2)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t6)?;
     if !(filter_pkg)(ebuild) {return None}
     Some(ParsedHist::Start{ts,
@@ -141,14 +145,10 @@ fn parse_start(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(
                            iter: format!("{} {}", t3, t5),
                            version: version.to_string()})
 }
-//fn parse_stop(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: &Box<Fn(&str) -> bool+Send>) -> Option<ParsedHist> {
-fn parse_stop(line: &str, filter_ts: impl Fn(i64) -> bool, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
-    let (ts_str,rest) = line.split_at(line.find(':')?);
-    if !rest.starts_with(":  ::: completed") {return None}
-    let ts = ts_str.parse::<i64>().ok()?;
-    if !(filter_ts)(ts) {return None}
-    let mut tokens = rest.split_whitespace();
-    let (t4,t6,t7) = (tokens.nth(4)?, tokens.nth(1)?, tokens.nth(0)?);
+fn parse_stop(ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
+    if !line.starts_with("  ::: comp") {return None}
+    let mut tokens = line.split_whitespace();
+    let (t4,t6,t7) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t7)?;
     if !(filter_pkg)(ebuild) {return None}
     Some(ParsedHist::Stop{ts,
