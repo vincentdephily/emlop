@@ -10,21 +10,29 @@ use regex::{Regex, RegexBuilder};
 use std;
 use std::{io::{BufRead, BufReader, Read}, thread};
 
-/// Items returned by `new_hist()`.
+/// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
 pub enum ParsedHist {
-    /// Emerge started (might never complete)
+    /// Merge started (might never complete).
     Start{ts: i64, ebuild: String, version: String, iter: String},
-    /// Emerge completed
+    /// Merge completed.
     Stop{ts: i64, ebuild: String, version: String, iter: String},
+    /// Sync started (might never complete).
+    SyncStart{ts: i64},
+    /// Sync completed.
+    SyncStop{ts: i64},
 }
 
-/// Items returned by `new_pretend()`.
+/// Items sent on the channel returned by `new_pretend()`.
 #[derive(Debug)]
 pub struct ParsedPretend{pub ebuild: String, pub version: String}
 
 /// Parse emerge log into a channel of `Parsed` enums.
-pub fn new_hist<R: Read>(reader: R, filename: &str, min_ts: Option<i64>, max_ts: Option<i64>, search_str: Option<&str>, search_exact: bool) -> Result<Receiver<ParsedHist>, Error> where R: std::marker::Send+'static {
+pub fn new_hist<R: Read>(reader: R, filename: &str,
+                         min_ts: Option<i64>, max_ts: Option<i64>,
+                         parse_merge: bool, parse_sync: bool,
+                         search_str: Option<&str>, search_exact: bool)
+                         -> Result<Receiver<ParsedHist>, Error> where R: std::marker::Send+'static {
     debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}", filename, min_ts, max_ts, search_str, search_exact);
     let (tx, rx): (Sender<ParsedHist>, Receiver<ParsedHist>) = unbounded();
     let filter_ts = filter_ts_fn(min_ts, max_ts);
@@ -35,8 +43,10 @@ pub fn new_hist<R: Read>(reader: R, filename: &str, min_ts: Option<i64>, max_ts:
             match l {
                 Ok(ref line) => { // Got a line, see if one of the funs match it
                     if let Some((t,s)) = parse_ts(line, &filter_ts) {
-                        if let Some(found) = parse_start(t, s, &filter_pkg) {tx.send(found)}
-                        else if let Some(found) = parse_stop(t, s, &filter_pkg) {tx.send(found)}
+                        if let Some(found) = parse_start(parse_merge, t, s, &filter_pkg) {tx.send(found)}
+                        else if let Some(found) = parse_stop(parse_merge, t, s, &filter_pkg) {tx.send(found)}
+                        else if let Some(found) = parse_syncstart(parse_sync, t, s) {tx.send(found)}
+                        else if let Some(found) = parse_syncstop(parse_sync, t, s) {tx.send(found)}
                     }
                 },
                 Err(e) => // Could be invalid UTF8, system read error...
@@ -134,8 +144,8 @@ fn parse_ts(line: &str, filter_ts: impl Fn(i64) -> bool) -> Option<(i64,&str)> {
     if !(filter_ts)(ts) {return None}
     Some((ts,&rest[1..]))
 }
-fn parse_start(ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
-    if !line.starts_with("  >>> emer") {return None}
+fn parse_start(enabled: bool, ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
+    if !enabled || !line.starts_with("  >>> emer") {return None}
     let mut tokens = line.split_whitespace(); //https://github.com/rust-lang/rust/issues/48656
     let (t3,t5,t6) = (tokens.nth(2)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t6)?;
@@ -145,8 +155,8 @@ fn parse_start(ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option
                            iter: format!("{} {}", t3, t5),
                            version: version.to_string()})
 }
-fn parse_stop(ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
-    if !line.starts_with("  ::: comp") {return None}
+fn parse_stop(enabled: bool, ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
+    if !enabled || !line.starts_with("  ::: comp") {return None}
     let mut tokens = line.split_whitespace();
     let (t4,t6,t7) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t7)?;
@@ -155,6 +165,15 @@ fn parse_stop(ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<
                           ebuild: ebuild.to_string(),
                           iter: format!("{} {}", t4, t6),
                           version: version.to_string()})
+}
+fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<ParsedHist> {
+    if !enabled || line != "  === sync" {return None}
+    Some(ParsedHist::SyncStart{ts})
+}
+fn parse_syncstop(enabled: bool, ts: i64, line: &str) -> Option<ParsedHist> {
+    // Old portage logs 'completed with <source>', new portage logs 'completed for <destination>'
+    if !enabled || !line.starts_with(" === Sync completed") {return None}
+    Some(ParsedHist::SyncStop{ts})
 }
 fn parse_pretend(line: &str, re: &Regex) -> Option<ParsedPretend> {
     let c = re.captures(line)?;
@@ -172,10 +191,11 @@ mod tests {
     /// This checks parsing the given emerge.log.
     fn parse_hist(filename: &str, mints: i64, maxts: i64,
                   filter_mints: Option<i64>, filter_maxts: Option<i64>,
+                  parse_merge: bool, parse_sync: bool,
                   filter_pkg: Option<&str>, exact: bool,
                   expect_counts: Vec<(&str, usize)>) {
         // Setup
-        let hist = new_hist(File::open(filename).unwrap(), filename.into(), filter_mints, filter_maxts, filter_pkg, exact).unwrap();
+        let hist = new_hist(File::open(filename).unwrap(), filename.into(), filter_mints, filter_maxts, parse_merge, parse_sync, filter_pkg, exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^\\([1-9][0-9]* [1-9][0-9]*\\)$").unwrap(); //Should match pattern used in *Parser
@@ -185,6 +205,8 @@ mod tests {
             let (kind, ts, ebuild, version, iter) = match p {
                 ParsedHist::Start{ts, ebuild, version, iter} => ("start", ts, ebuild, version, iter),
                 ParsedHist::Stop{ts, ebuild, version, iter} =>  ("stop",  ts, ebuild, version, iter),
+                ParsedHist::SyncStart{ts} => ("syncstart", ts, "c/e".into(), "1".into(), "(1 1)".into()),
+                ParsedHist::SyncStop{ts} => ("syncstop", ts, "c/e".into(), "1".into(), "(1 1)".into()),
             };
             *counts.entry(kind.to_string()).or_insert(0) += 1;
             *counts.entry(ebuild.clone()).or_insert(0) += 1;
@@ -204,41 +226,46 @@ mod tests {
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
         parse_hist("test/emerge.all.log", 1483228800, 1483747200,
-                   None, None, None, false, vec![("start",37415),("stop",37415)]);
+                   None, None, true, false, None, false,
+                   vec![("start",37415),("stop",37415)]);
     }
 
     #[test]
     /// Emerge log with various invalid data
     fn parse_hist_nullbytes() {
         parse_hist("test/emerge.nullbytes.log", 1327867709, 1327871057,
-                   None, None, None, false, vec![("start",14),("stop",14)]);
+                   None, None, true, false, None, false,
+                   vec![("start",14),("stop",14)]);
     }
     #[test]
     /// Emerge log with various invalid data
     fn parse_hist_badtimestamp() {
         parse_hist("test/emerge.badtimestamp.log", 1327867709, 1327871057,
-                   None, None, None, false, vec![("start",2),("stop",3),
-                                                 ("media-libs/jpeg",1),    //letter in timestamp
-                                                 ("dev-libs/libical",2),
-                                                 ("media-libs/libpng",2)]);
+                   None, None, true, false, None, false,
+                   vec![("start",2),("stop",3),
+                        ("media-libs/jpeg",1),    //letter in timestamp
+                        ("dev-libs/libical",2),
+                        ("media-libs/libpng",2)]);
     }
     #[test]
     /// Emerge log with various invalid data
     fn parse_hist_badversion() {
         parse_hist("test/emerge.badversion.log", 1327867709, 1327871057,
-                   None, None, None, false, vec![("start",3),("stop",2),
-                                                 ("media-libs/jpeg",2),
-                                                 ("dev-libs/libical",2),
-                                                 ("media-libs/libpng",1)]); //missing version
+                   None, None, true, false, None, false,
+                   vec![("start",3),("stop",2),
+                        ("media-libs/jpeg",2),
+                        ("dev-libs/libical",2),
+                        ("media-libs/libpng",1)]); //missing version
     }
     #[test]
     /// Emerge log with various invalid data
     fn parse_hist_shortline() {
         parse_hist("test/emerge.shortline.log", 1327867709, 1327871057,
-                   None, None, None, false, vec![("start",3),("stop",2),
-                                                 ("media-libs/jpeg",2),
-                                                 ("dev-libs/libical",1),    //missing end of line and spaces in iter
-                                                 ("media-libs/libpng",2)]);
+                   None, None, true, false, None, false,
+                   vec![("start",3),("stop",2),
+                        ("media-libs/jpeg",2),
+                        ("dev-libs/libical",1),    //missing end of line and spaces in iter
+                        ("media-libs/libpng",2)]);
     }
 
     #[test]
@@ -256,7 +283,8 @@ mod tests {
                                 (Some("File-Next"),                  true,    1,   1), // case-sensitive
         ] {
             parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
-                       None, None, f, e, vec![("start",c1),("stop",c2)]);
+                       None, None, true, false, f, e,
+                       vec![("start",c1),("stop",c2)]);
         }
     }
 
@@ -278,7 +306,22 @@ mod tests {
                                     (Some(1517959010), Some(1518176159), 24, 21),
         ] {
             parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
-                       min, max, None, true, vec![("start",c1),("stop",c2)]);
+                       min, max, true, false, None, true,
+                       vec![("start",c1),("stop",c2)]);
+        }
+    }
+
+    #[test]
+    /// Enabling and disabling sync
+    fn parse_hist_sync_merge() {
+        for (m,s,c1,c2,c3,c4) in vec![(true,   true, 889, 832, 163, 150),
+                                      (false,  true,   0,   0, 163, 150),
+                                      (true,  false, 889, 832,   0,   0),
+                                      (false, false,   0,   0,   0,   0),
+        ] {
+            parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
+                       None, None, m, s, None, false,
+                       vec![("start",c1),("stop",c2),("syncstart",c3),("syncstop",c4)]);
         }
     }
 

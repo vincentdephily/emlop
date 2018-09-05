@@ -11,9 +11,11 @@ use std::io::stdin;
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
+                                true, subargs.is_present("sync"),
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut found_one = false;
+    let mut syncstart: i64 = 0;
     for p in hist {
         match p {
             ParsedHist::Start{ts, ebuild, version, iter, ..} => {
@@ -27,6 +29,12 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
                          fmt_time(ts), st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(ts-pt)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
+            ParsedHist::SyncStart{ts} => {
+                syncstart = ts;
+            },
+            ParsedHist::SyncStop{ts} => {
+                writeln!(io::stdout(), "{} {}{:>9}{} Sync", fmt_time(ts), st.dur_p, fmt_duration(ts-syncstart), st.dur_s).unwrap_or(());
+            },
         }
     }
     Ok(found_one)
@@ -39,6 +47,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
 pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
+                                true, false,
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
     let lim = value(subargs, "limit", parse_limit);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
@@ -54,6 +63,8 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                     timevec.insert(0, ts-start_ts);
                 }
             },
+            ParsedHist::SyncStart{..} => (),
+            ParsedHist::SyncStop{..} => (),
         }
     };
     let found_one = !times.is_empty();
@@ -93,6 +104,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     // Parse emerge log.
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
+                                true, false,
                                 None, false)?;
     let mut started: HashMap<(String, String), i64> = HashMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
@@ -101,13 +113,15 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
             ParsedHist::Start{ts, ebuild, version, ..} => {
                 started.insert((ebuild.clone(), version.clone()), ts);
-            }
+            },
             ParsedHist::Stop{ts, ebuild, version, ..} => {
                 if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone())) {
                     let timevec = times.entry(ebuild.clone()).or_insert_with(|| vec![]);
                     timevec.insert(0, ts-start_ts);
                 }
-            }
+            },
+            ParsedHist::SyncStart{..} => (),
+            ParsedHist::SyncStop{..} => (),
         }
     }
 
@@ -200,6 +214,14 @@ mod tests {
              indoc!("2018-02-18 12:37:09 +00:00         ? media-libs/mlt-6.4.1-r6\n\
                      2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
                      2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n"),
+             0),
+            // Check output of sync events
+            (&["-f","test/emerge.10000.log","l","--sync","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
+             indoc!("2018-03-07 10:43:10 +00:00        14 sys-apps/the_silver_searcher-2.0.0\n\
+                     2018-03-07 11:37:05 +00:00        38 Sync\n\
+                     2018-03-07 12:49:13 +00:00      1:01 sys-apps/util-linux-2.30.2-r1\n\
+                     2018-03-07 13:56:09 +00:00        40 Sync\n\
+                     2018-03-07 13:59:41 +00:00        24 dev-libs/nspr-4.18\n"),
              0),
         ];
         for (a,o,e) in t {

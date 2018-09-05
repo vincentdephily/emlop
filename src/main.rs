@@ -48,6 +48,11 @@ fn main() {
         .long_help("Match package with a string instead of a regex. \
 Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/0.2.10/regex/index.html#syntax). \
 String is case-sentitive and matches on whole name, or whole category/name if it contains a /.");//FIXME auto crate version
+    let arg_sync = Arg::with_name("sync")
+        .short("s")
+        .long("sync")
+        .help("Display sync history.")
+        .long_help("Display portage tree sync history in addition to package merges.");
     let args = App::new("emlop")
         .version(crate_version!())
         .global_setting(AppSettings::ColoredHelp)
@@ -102,6 +107,7 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
                     .long_about("Show list of completed merges.\n\
 Merge date, merge time, package name-version.")
                     .help_message("Prints help information. Use --help for more details.")
+                    .arg(&arg_sync)
                     .arg(&arg_exact)
                     .arg(&arg_pkg))
         .subcommand(SubCommand::with_name("predict")

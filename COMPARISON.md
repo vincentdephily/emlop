@@ -40,9 +40,12 @@ outputs more compact. Golop has a fairly spartan look: compact, machine-like, no
 Emlop has a specific mode deticated to stats whereas {q,pq,go}lop include that at the end of other
 outputs.
 
+Pqlop doesn't handle newer log format for sync events.
+
 |                                                                    | genlop | qlop | emlop | pqlop | golop |
 | :----------------------------------------------------------------- | :----: | :--: | :---: | :---: | :---: |
-| Display sync and unmerges                                          | yes    | yes  | no    | yes   | no    |
+| Display sync                                                       | yes    | yes  | yes   | buggy | no    |
+| Display unmerges                                                   | yes    | yes  | no    | yes   | no    |
 | Display interrupted merges                                         | no     | no   | no    | yes   | no    |
 | Display info about currently installed package like USE, CFLAGS... | yes    | no   | no    | no    | no    |
 | Display extra merge stats like total time/count, average...        | no     | yes  | yes   | yes   | yes   |
@@ -114,10 +117,11 @@ would estimate the resulting speedup factor.
 | Show current merge                                       | yes    | yes  | yes   | yes   | yes   |
 | Show current merge ETA                                   | yes    | no   | yes   | no    | yes   |
 | Show current merge stage                                 | no     | no   | no    | yes   | no    |
-| Show `emerge -p` merges global ETA                       | yes    | no   | yes   | no    | no    |
+| Show `emerge -p` merges                                  | yes    | no   | yes   | no    | no    |
+| Show `emerge -p` merges global ETA                       | yes    | n/a  | yes   | n/a   | n/a   |
 | Show `emerge -p` merges individual ETAs                  | no     | n/a  | yes   | n/a   | n/a   |
 | Accuracy of time estimation                              | ok     | n/a  | good  | n/a   | ok    |
-| Query gentoo.linuxhowtos.org for unknown packages        | yes    | no   | no    | n/a   | no    |
+| Query gentoo.linuxhowtos.org for unknown packages        | yes    | n/a  | no    | n/a   | no    |
 
 ## misc
 
