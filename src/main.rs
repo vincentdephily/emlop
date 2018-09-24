@@ -46,7 +46,7 @@ fn main() {
         .long("exact")
         .help("Match package with a string instead of a regex.")
         .long_help("Match package with a string instead of a regex. \
-Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/0.2.10/regex/index.html#syntax). \
+Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/1.0.5/regex/#syntax). \
 String is case-sentitive and matches on whole name, or whole category/name if it contains a /.");//FIXME auto crate version
     let arg_sync = Arg::with_name("sync")
         .short("s")
@@ -81,7 +81,7 @@ Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if searche
              .help("Only parse log entries after <date>.")
              .long_help("Only parse log entries after <date>.\n\
 Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago', '10d ago', and unix timestamps... \
-(see https://docs.rs/chrono-english/0.1.2/chrono_english/#supported-formats)."))
+(see https://docs.rs/chrono-english/0.1.3/chrono_english/#supported-formats)."))
         .arg(Arg::with_name("to")
              .value_name("date")
              .long("to")
@@ -299,7 +299,7 @@ mod tests {
         let now = epoch_now();
         assert_eq!(Ok(1522710000), parse_date("1522710000"));
         assert_eq!(Ok(1522710000), parse_date("   1522710000   "));
-        assert_eq!(Ok(1522710000), parse_date("2018-04-03 00:00:00 +00:00"));
+        assert_eq!(Ok(1522713661), parse_date("2018-04-03 01:01:01"));
         assert_eq!(Ok(now),        parse_date("now"));
         assert_eq!(Ok(now),        parse_date("   now   "));
         assert_eq!(Ok(now-3600),   parse_date("1 hour ago"));

@@ -16,7 +16,7 @@ ansi_term = "~0.11"
 atty = "~0.2"
 chrono = "~0.4"
 chrono-english = "~0.1"
-clap = "~2.31"
+clap = "~2.32"
 failure = "~0.1"
 failure_derive = "~0.1"
 log = "~0.4"
@@ -27,7 +27,7 @@ crossbeam-channel = "~0.2"
 
 [dependencies.tabwriter]
 features = ["ansi_formatting"]
-version = "~1.0"
+version = "~1.1"
 
 [dev-dependencies]
 assert_cli = "~0.6"
