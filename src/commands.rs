@@ -9,9 +9,13 @@ use std::io::stdin;
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
+    let (show_merge, show_sync) = match (subargs.is_present("sync"), subargs.values_of("types").unwrap().collect::<Vec<&str>>()) {
+        (true, _) => (false, true),
+        (false, t) => (t.contains(&"m"), t.contains(&"s")),
+    };
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                true, subargs.is_present("sync"),
+                                show_merge, show_sync,
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut found_one = false;
@@ -33,6 +37,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
                 syncstart = ts;
             },
             ParsedHist::SyncStop{ts} => {
+                found_one = true;
                 writeln!(io::stdout(), "{} {}{:>9}{} Sync", fmt_time(ts), st.dur_p, fmt_duration(ts-syncstart), st.dur_s).unwrap_or(());
             },
         }
@@ -210,13 +215,17 @@ mod tests {
                      2018-03-12 11:03:53 +00:00        16 kde-frameworks/kxmlrpcclient-5.44.0\n"),
              0),
             // Check output when duration isn't known
-            (&["-f","test/emerge.10000.log","l","mlt","-e","--from","2018-02-18 12:37:00"],
+            (&["-f","test/emerge.10000.log","l","-t","m","mlt","-e","--from","2018-02-18 12:37:00"],
              indoc!("2018-02-18 12:37:09 +00:00         ? media-libs/mlt-6.4.1-r6\n\
                      2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
                      2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n"),
              0),
             // Check output of sync events
             (&["-f","test/emerge.10000.log","l","--sync","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
+             indoc!("2018-03-07 11:37:05 +00:00        38 Sync\n\
+                     2018-03-07 13:56:09 +00:00        40 Sync\n"),
+             0),
+            (&["-f","test/emerge.10000.log","l","--types","m,s","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
              indoc!("2018-03-07 10:43:10 +00:00        14 sys-apps/the_silver_searcher-2.0.0\n\
                      2018-03-07 11:37:05 +00:00        38 Sync\n\
                      2018-03-07 12:49:13 +00:00      1:01 sys-apps/util-linux-2.30.2-r1\n\
@@ -316,8 +325,11 @@ mod tests {
             // Normal behaviour
             (&["-f","test/emerge.10000.log","p"], 2),
             (&["-f","test/emerge.10000.log","l"], 0),
+            (&["-f","test/emerge.10000.log","l","-s"], 0),
             (&["-f","test/emerge.10000.log","l","-e","icu"], 0),
             (&["-f","test/emerge.10000.log","l","-e","unknown"], 2),
+            (&["-f","test/emerge.10000.log","l","--from","2018-09-28"], 2),
+            (&["-f","test/emerge.10000.log","l","-s","--from","2018-09-28"], 2),
             (&["-f","test/emerge.10000.log","s"], 0),
             (&["-f","test/emerge.10000.log","s","-e","icu"], 0),
             (&["-f","test/emerge.10000.log","s","-e","unknown"], 2),

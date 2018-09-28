@@ -48,11 +48,22 @@ fn main() {
         .long_help("Match package with a string instead of a regex. \
 Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/1.0.5/regex/#syntax). \
 String is case-sentitive and matches on whole name, or whole category/name if it contains a /.");//FIXME auto crate version
+    let arg_type = Arg::with_name("types")
+        .short("t")
+        .long("types")
+        .value_name("m,s")
+        .possible_values(&["m","s"])
+        .use_delimiter(true)
+        .hide_possible_values(true)
+        .default_value("m")
+        .help("Show (m)erges, and/or (s)yncs.")
+        .long_help("Show history of package (m)erges and/or portage tree (s)yncs (comma-delimited list).");
     let arg_sync = Arg::with_name("sync")
         .short("s")
         .long("sync")
-        .help("Display sync history.")
-        .long_help("Display portage tree sync history in addition to package merges.");
+        .conflicts_with("types")
+        .help("Show only syncs.")
+        .long_help("Show only history of portage tree sync (overrides --types).");
     let args = App::new("emlop")
         .version(crate_version!())
         .global_setting(AppSettings::ColoredHelp)
@@ -63,7 +74,7 @@ String is case-sentitive and matches on whole name, or whole category/name if it
         .setting(AppSettings::VersionlessSubcommands)
         .about("A fast, accurate, ergonnomic EMerge LOg Parser.\nhttps://github.com/vincentdephily/emlop")
         .after_help("Subcommands can be abbreviated down to a single letter.\n\
-Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if searched package not found.")
+Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if search found nothing.")
         .help_message("Prints help information. Use --help for more details. Use <subcommand> -h for subcommand help.")
         .arg(Arg::with_name("logfile")
              .value_name("path/to/file")
@@ -107,6 +118,7 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
                     .long_about("Show list of completed merges.\n\
 Merge date, merge time, package name-version.")
                     .help_message("Prints help information. Use --help for more details.")
+                    .arg(&arg_type)
                     .arg(&arg_sync)
                     .arg(&arg_exact)
                     .arg(&arg_pkg))
