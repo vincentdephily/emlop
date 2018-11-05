@@ -48,22 +48,14 @@ fn main() {
         .long_help("Match package with a string instead of a regex. \
 Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/1.0.5/regex/#syntax). \
 String is case-sentitive and matches on whole name, or whole category/name if it contains a /.");//FIXME auto crate version
-    let arg_type = Arg::with_name("types")
-        .short("t")
-        .long("types")
-        .value_name("m,s")
-        .possible_values(&["m","s"])
-        .use_delimiter(true)
-        .hide_possible_values(true)
-        .default_value("m")
-        .help("Show (m)erges, and/or (s)yncs.")
-        .long_help("Show history of package (m)erges and/or portage tree (s)yncs (comma-delimited list).");
-    let arg_sync = Arg::with_name("sync")
+    let arg_show = Arg::with_name("show")
         .short("s")
-        .long("sync")
-        .conflicts_with("types")
-        .help("Show only syncs.")
-        .long_help("Show only history of portage tree sync (overrides --types).");
+        .long("show")
+        .value_name("m,s,a")
+        .validator(|s| match s.chars().find(|&c| !("msa".contains(c))) {None => Ok(()), Some(e) => Err(e.to_string())})
+        .default_value("m")
+        .help("Show (m)erges, (s)yncs, and/or (a)ll.")
+        .long_help("Show package (m)erges, portage tree (s)yncs, and/or (a)ll possible info (multiple choices possible).");
     let args = App::new("emlop")
         .version(crate_version!())
         .global_setting(AppSettings::ColoredHelp)
@@ -118,8 +110,7 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
                     .long_about("Show list of completed merges.\n\
 Merge date, merge time, package name-version.")
                     .help_message("Prints help information. Use --help for more details.")
-                    .arg(&arg_type)
-                    .arg(&arg_sync)
+                    .arg(&arg_show)
                     .arg(&arg_exact)
                     .arg(&arg_pkg))
         .subcommand(SubCommand::with_name("predict")
@@ -134,8 +125,7 @@ If input is a pipe (for example by running `emerge -rOp|emlop p`), predict time 
                     .long_about("Show statistics for completed merges.\n\
 Total merge time, total merge count, and next merge time prediction.")
                     .help_message("Prints help information. Use --help for more details.")
-                    .arg(&arg_type)
-                    .arg(&arg_sync)
+                    .arg(&arg_show)
                     .arg(&arg_exact)
                     .arg(&arg_pkg)
                     .arg(&arg_limit))

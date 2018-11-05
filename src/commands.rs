@@ -9,10 +9,9 @@ use std::io::stdin;
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
-    let (show_merge, show_sync) = match (subargs.is_present("sync"), subargs.values_of("types").unwrap().collect::<Vec<&str>>()) {
-        (true, _) => (false, true),
-        (false, t) => (t.contains(&"m"), t.contains(&"s")),
-    };
+    let show = subargs.value_of("show").unwrap();
+    let show_merge = show.contains(&"m") || show.contains(&"a");
+    let show_sync = show.contains(&"s") || show.contains(&"a");
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 show_merge, show_sync,
@@ -50,10 +49,9 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
-    let (show_merge, show_sync) = match (subargs.is_present("sync"), subargs.values_of("types").unwrap().collect::<Vec<&str>>()) {
-        (true, _) => (false, true),
-        (false, t) => (t.contains(&"m"), t.contains(&"s")),
-    };
+    let show = subargs.value_of("show").unwrap();
+    let show_merge = show.contains(&"m") || show.contains(&"a");
+    let show_sync = show.contains(&"s") || show.contains(&"a");
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 show_merge, show_sync,
