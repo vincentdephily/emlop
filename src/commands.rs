@@ -50,13 +50,19 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
+    let (show_merge, show_sync) = match (subargs.is_present("sync"), subargs.values_of("types").unwrap().collect::<Vec<&str>>()) {
+        (true, _) => (false, true),
+        (false, t) => (t.contains(&"m"), t.contains(&"s")),
+    };
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                true, false,
+                                show_merge, show_sync,
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
     let lim = value(subargs, "limit", parse_limit);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
+    let mut syncs: Vec<i64> = vec![];
     let mut times: BTreeMap<String, Vec<i64>> = BTreeMap::new();
+    let mut syncstart: i64 = 0;
     for p in hist {
         match p {
             ParsedHist::Start{ts, ebuild, version, iter, ..} => {
@@ -68,22 +74,37 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                     timevec.insert(0, ts-start_ts);
                 }
             },
-            ParsedHist::SyncStart{..} => (),
-            ParsedHist::SyncStop{..} => (),
+            ParsedHist::SyncStart{ts} => {
+                syncstart = ts;
+            },
+            ParsedHist::SyncStop{ts} => {
+                syncs.push(ts-syncstart);
+            },
         }
     };
-    let found_one = !times.is_empty();
-    for (pkg,tv) in times {
-        let (predtime,predcount,tottime,totcount) = tv.iter()
-            .fold((0,0,0,0), |(pt,pc,tt,tc), &i| {
-                if tc >= lim {(pt,  pc,  tt+i,tc+1)}
-                else         {(pt+i,pc+1,tt+i,tc+1)}
-            });
-        writeln!(tw, "{}{}\t{}{:>9}\t{}{:>3}{}\t{}{:>8}{}",
-                 st.pkg_p, pkg,
-                 st.dur_p, fmt_duration(tottime),
-                 st.cnt_p, totcount, st.cnt_s,
-                 st.dur_p, fmt_duration(predtime/predcount), st.dur_s)?;
+    let found_one = !times.is_empty() || !syncs.is_empty();
+    if show_merge {
+        for (pkg,tv) in &times {
+            let (predtime,predcount,tottime,totcount) = tv.iter()
+                .fold((0,0,0,0), |(pt,pc,tt,tc), &i| {
+                    if tc >= lim {(pt,  pc,  tt+i,tc+1)}
+                    else         {(pt+i,pc+1,tt+i,tc+1)}
+                });
+            writeln!(tw, "{}{}\t{}{:>10}\t{}{:>5}{}\t{}{:>8}{}",
+                     st.pkg_p, pkg,
+                     st.dur_p, fmt_duration(tottime),
+                     st.cnt_p, totcount, st.cnt_s,
+                     st.dur_p, fmt_duration(predtime/predcount), st.dur_s)?;
+        }
+    }
+    if show_sync {
+        let synctime = syncs.iter().fold(0,|a,t|t+a);
+        let synccount = syncs.len() as i64;
+        let syncavg = if synccount > 0 {synctime/synccount} else {0};
+        writeln!(tw, "{}Sync\t{}{:>10}\t{}{:>5}{}\t{}{:>8}{}",
+                 st.pkg_p, st.dur_p, fmt_duration(synctime),
+                 st.cnt_p, synccount, st.cnt_s,
+                 st.dur_p, fmt_duration(syncavg), st.dur_s)?;
     }
     Ok(found_one)
 }

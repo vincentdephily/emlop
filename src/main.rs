@@ -134,6 +134,8 @@ If input is a pipe (for example by running `emerge -rOp|emlop p`), predict time 
                     .long_about("Show statistics for completed merges.\n\
 Total merge time, total merge count, and next merge time prediction.")
                     .help_message("Prints help information. Use --help for more details.")
+                    .arg(&arg_type)
+                    .arg(&arg_sync)
                     .arg(&arg_exact)
                     .arg(&arg_pkg)
                     .arg(&arg_limit))
