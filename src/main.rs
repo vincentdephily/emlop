@@ -52,10 +52,10 @@ String is case-sentitive and matches on whole name, or whole category/name if it
         .short("s")
         .long("show")
         .value_name("m,s,a")
-        .validator(|s| match s.chars().find(|&c| !("msa".contains(c))) {None => Ok(()), Some(e) => Err(e.to_string())})
+        .validator(|s| match s.chars().find(|&c| !("mtsa".contains(c))) {None => Ok(()), Some(e) => Err(e.to_string())})
         .default_value("m")
-        .help("Show (m)erges, (s)yncs, and/or (a)ll.")
-        .long_help("Show package (m)erges, portage tree (s)yncs, and/or (a)ll possible info (multiple choices possible).");
+        .help("Show (m)erges, (t)otals, (s)yncs, and/or (a)ll.")
+        .long_help("Show individual (m)erges, (t)otal merges, portage tree (s)yncs, or (a)ll of these (multiple choices possible).");
     let args = App::new("emlop")
         .version(crate_version!())
         .global_setting(AppSettings::ColoredHelp)

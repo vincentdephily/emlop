@@ -51,10 +51,11 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
 pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
     let show = subargs.value_of("show").unwrap();
     let show_merge = show.contains(&"m") || show.contains(&"a");
+    let show_tot = show.contains(&"t") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                show_merge, show_sync,
+                                show_merge || show_tot, show_sync,
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
     let lim = value(subargs, "limit", parse_limit);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
@@ -94,6 +95,21 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                      st.cnt_p, totcount, st.cnt_s,
                      st.dur_p, fmt_duration(predtime/predcount), st.dur_s)?;
         }
+    }
+    if show_tot {
+        let mut tottime = 0;
+        let mut totcount = 0;
+        for tv in times.values() {
+            for t in tv {
+                tottime += t;
+                totcount += 1
+            }
+        }
+        writeln!(tw, "{}Merge\t{}{:>10}\t{}{:>5}{}\t{}{:>8}{}",
+                 st.pkg_p,
+                 st.dur_p, fmt_duration(tottime),
+                 st.cnt_p, totcount, st.cnt_s,
+                 st.dur_p, fmt_duration(tottime/totcount), st.dur_s)?;
     }
     if show_sync {
         let synctime = syncs.iter().fold(0,|a,t|t+a);
@@ -234,17 +250,17 @@ mod tests {
                      2018-03-12 11:03:53 +00:00        16 kde-frameworks/kxmlrpcclient-5.44.0\n"),
              0),
             // Check output when duration isn't known
-            (&["-f","test/emerge.10000.log","l","-t","m","mlt","-e","--from","2018-02-18 12:37:00"],
+            (&["-f","test/emerge.10000.log","l","-s","m","mlt","-e","--from","2018-02-18 12:37:00"],
              indoc!("2018-02-18 12:37:09 +00:00         ? media-libs/mlt-6.4.1-r6\n\
                      2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
                      2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n"),
              0),
             // Check output of sync events
-            (&["-f","test/emerge.10000.log","l","--sync","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
+            (&["-f","test/emerge.10000.log","l","-ss","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
              indoc!("2018-03-07 11:37:05 +00:00        38 Sync\n\
                      2018-03-07 13:56:09 +00:00        40 Sync\n"),
              0),
-            (&["-f","test/emerge.10000.log","l","--types","m,s","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
+            (&["-f","test/emerge.10000.log","l","--show","ms","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
              indoc!("2018-03-07 10:43:10 +00:00        14 sys-apps/the_silver_searcher-2.0.0\n\
                      2018-03-07 11:37:05 +00:00        38 Sync\n\
                      2018-03-07 12:49:13 +00:00      1:01 sys-apps/util-linux-2.30.2-r1\n\
@@ -302,15 +318,33 @@ mod tests {
 
     #[test]
     fn stats() {
-        let t = vec![
+        let t: Vec<(&[&str],&str,i32)> = vec![
             (&["-f","test/emerge.10000.log","s","client"],
-             indoc!("kde-frameworks/kxmlrpcclient         47    2        23\n\
-                     mail-client/thunderbird         1:23:44    2     41:52\n\
-                     www-client/chromium            21:41:24    3   7:13:48\n\
-                     www-client/falkon                  6:02    1      6:02\n\
-                     www-client/firefox                47:29    1     47:29\n\
-                     www-client/links                     44    1        44\n\
-                     x11-apps/xlsclients                  14    1        14\n"),
+             indoc!("kde-frameworks/kxmlrpcclient          47      2        23\n\
+                     mail-client/thunderbird          1:23:44      2     41:52\n\
+                     www-client/chromium             21:41:24      3   7:13:48\n\
+                     www-client/falkon                   6:02      1      6:02\n\
+                     www-client/firefox                 47:29      1     47:29\n\
+                     www-client/links                      44      1        44\n\
+                     x11-apps/xlsclients                   14      1        14\n"),
+             0),
+            (&["-f","test/emerge.10000.log","s","client","-ss"],
+             indoc!("Sync     1:19:28    150        31\n"),
+             0),
+            (&["-f","test/emerge.10000.log","s","client","-sst"],
+             indoc!("Merge    24:00:24     11   2:10:56\n\
+                     Sync      1:19:28    150        31\n"),
+             0),
+            (&["-f","test/emerge.10000.log","s","client","-sa"],
+             indoc!("kde-frameworks/kxmlrpcclient          47      2        23\n\
+                     mail-client/thunderbird          1:23:44      2     41:52\n\
+                     www-client/chromium             21:41:24      3   7:13:48\n\
+                     www-client/falkon                   6:02      1      6:02\n\
+                     www-client/firefox                 47:29      1     47:29\n\
+                     www-client/links                      44      1        44\n\
+                     x11-apps/xlsclients                   14      1        14\n\
+                     Merge                           24:00:24     11   2:10:56\n\
+                     Sync                             1:19:28    150        31\n"),
              0),
         ];
         for (a,o,e) in t {
