@@ -28,7 +28,7 @@ pub enum ParsedHist {
 pub struct ParsedPretend{pub ebuild: String, pub version: String}
 
 /// Parse emerge log into a channel of `Parsed` enums.
-pub fn new_hist<R: Read>(reader: R, filename: &str,
+pub fn new_hist<R: Read>(reader: R, filename: String,
                          min_ts: Option<i64>, max_ts: Option<i64>,
                          parse_merge: bool, parse_sync: bool,
                          search_str: Option<&str>, search_exact: bool)
@@ -37,7 +37,6 @@ pub fn new_hist<R: Read>(reader: R, filename: &str,
     let (tx, rx): (Sender<ParsedHist>, Receiver<ParsedHist>) = unbounded();
     let filter_ts = filter_ts_fn(min_ts, max_ts);
     let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
-    let filename = filename.to_string();
     thread::spawn(move || {
         for (curline,l) in BufReader::new(reader).lines().enumerate() {
             match l {
@@ -77,7 +76,6 @@ pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<ParsedPretend> whe
 
 /// Create a closure that matches timestamp depending on options.
 fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> impl Fn(i64) -> bool {
-    // The match patterns are identical but split for readability
     match (min, max) {
         (None,    None) =>    info!("Date filter: None"),
         (Some(a), None) =>    info!("Date filter: after {}", fmt_time(a)),
@@ -146,7 +144,7 @@ fn parse_ts(line: &str, filter_ts: impl Fn(i64) -> bool) -> Option<(i64,&str)> {
 }
 fn parse_start(enabled: bool, ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
     if !enabled || !line.starts_with("  >>> emer") {return None}
-    let mut tokens = line.split_whitespace(); //https://github.com/rust-lang/rust/issues/48656
+    let mut tokens = line.split_whitespace(); // https://github.com/rust-lang/rust/issues/48656
     let (t3,t5,t6) = (tokens.nth(2)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t6)?;
     if !(filter_pkg)(ebuild) {return None}

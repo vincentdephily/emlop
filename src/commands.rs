@@ -12,7 +12,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
     let show = subargs.value_of("show").unwrap();
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
-    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
+    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap().into(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 show_merge, show_sync,
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
@@ -53,7 +53,7 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_tot = show.contains(&"t") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
-    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
+    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap().into(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 show_merge || show_tot, show_sync,
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
@@ -142,7 +142,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
     }
 
     // Parse emerge log.
-    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap(),
+    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap().into(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 true, false,
                                 None, false)?;
