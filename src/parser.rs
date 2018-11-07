@@ -2,13 +2,14 @@
 //!
 //! Instantiate a `Parser` and iterate over it to retrieve the events.
 
-use crate::fmt_time;
-
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use failure::Error;
+use log::*;
 use regex::{Regex, RegexBuilder};
-use std;
-use std::{io::{BufRead, BufReader, Read}, thread};
+use std::io::{BufRead, BufReader, Read};
+use std::thread;
+
+use crate::fmt_time;
 
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
@@ -32,7 +33,7 @@ pub fn new_hist<R: Read>(reader: R, filename: String,
                          min_ts: Option<i64>, max_ts: Option<i64>,
                          parse_merge: bool, parse_sync: bool,
                          search_str: Option<&str>, search_exact: bool)
-                         -> Result<Receiver<ParsedHist>, Error> where R: std::marker::Send+'static {
+                         -> Result<Receiver<ParsedHist>, Error> where R: Send+'static {
     debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}", filename, min_ts, max_ts, search_str, search_exact);
     let (tx, rx): (Sender<ParsedHist>, Receiver<ParsedHist>) = unbounded();
     let filter_ts = filter_ts_fn(min_ts, max_ts);
@@ -57,7 +58,7 @@ pub fn new_hist<R: Read>(reader: R, filename: String,
 }
 
 /// Parse portage pretend output into a Vec of `Parsed` enums.
-pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<ParsedPretend> where R: std::marker::Send+'static {
+pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<ParsedPretend> where R: Send+'static {
     debug!("new_pretend input={}", filename);
     let mut out: Vec<ParsedPretend> = vec![];
     let re = Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap();

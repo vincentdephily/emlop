@@ -3,12 +3,12 @@ extern crate ansi_term;
 extern crate atty;
 extern crate chrono;
 extern crate chrono_english;
-#[macro_use] extern crate clap;
+extern crate clap;
 extern crate crossbeam_channel;
 extern crate failure;
-#[macro_use] extern crate failure_derive;
-#[cfg(test)] #[macro_use] extern crate indoc;
-#[macro_use] extern crate log;
+extern crate failure_derive;
+#[cfg(test)] extern crate indoc;
+extern crate log;
 extern crate regex;
 extern crate stderrlog;
 extern crate sysconf;
@@ -18,16 +18,18 @@ mod commands;
 mod parser;
 mod proces;
 
-use ansi_term::Style;
 use ansi_term::Color::*;
+use ansi_term::Style;
 use chrono::{DateTime, Local, TimeZone};
 use chrono_english::{parse_date_string,Dialect};
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand, crate_version, ErrorKind, Error as ClapError};
 use failure::Error;
+use failure_derive::Fail;
+use log::*;
 use std::fs::File;
-use std::{io, io::{Read, Write}};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::io::{Read, Write, stdout};
 use tabwriter::TabWriter;
 
 use crate::commands::*;
@@ -134,7 +136,7 @@ Total merge time, total merge count, and next merge time prediction.")
     stderrlog::new().verbosity(args.occurrences_of("verbose") as usize).init().unwrap();
     debug!("{:?}", args);
     let styles = Styles::new(&args);
-    let mut tw = TabWriter::new(io::stdout());
+    let mut tw = TabWriter::new(stdout());
     let res = match args.subcommand() {
         ("list",    Some(sub_args)) => cmd_list(&args, sub_args, styles),
         ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, styles),
@@ -159,16 +161,16 @@ Total merge time, total merge count, and next merge time prediction.")
 /// implement FromStr trait on a custom struct, but this is simpler to write and use, and we're not
 /// writing a library.
 pub fn value<T,P>(matches: &ArgMatches, name: &str, parse: P) -> T
-    where P: FnOnce(&str) -> Result<T,String>, T: std::str::FromStr {
+    where P: FnOnce(&str) -> Result<T,String>, T: FromStr {
     match matches.value_of(name) {
         None => // Argument should be required by ArgMatch => this is a bug not a user error => panic
             panic!("Argument {} missing", name),
         Some(s) =>
             match parse(s) {
                 Ok(v) => v,
-                Err(e) => clap::Error{message: format!("Invalid argument '--{} {}': {}", name, s, e),
-                                      kind: clap::ErrorKind::InvalidValue,
-                                      info: None}.exit(),
+                Err(e) => ClapError{message: format!("Invalid argument '--{} {}': {}", name, s, e),
+                                    kind: ErrorKind::InvalidValue,
+                                    info: None}.exit(),
             },
     }
 }
@@ -179,16 +181,16 @@ pub fn value<T,P>(matches: &ArgMatches, name: &str, parse: P) -> T
 ///
 /// [value(m,n,p)->T]:      fn.value.html
 pub fn value_opt<T,P>(matches: &ArgMatches, name: &str, parse: P) -> Option<T>
-    where P: FnOnce(&str) -> Result<T,String>, T: std::str::FromStr {
+    where P: FnOnce(&str) -> Result<T,String>, T: FromStr {
     match matches.value_of(name) {
         None =>
             None,
         Some(s) =>
             match parse(s) {
                 Ok(v) => Some(v),
-                Err(e) => clap::Error{message: format!("Invalid argument '--{} {}': {}", name, s, e),
-                                      kind: clap::ErrorKind::InvalidValue,
-                                      info: None}.exit(),
+                Err(e) => ClapError{message: format!("Invalid argument '--{} {}': {}", name, s, e),
+                                    kind: ErrorKind::InvalidValue,
+                                    info: None}.exit(),
             },
     }
 }

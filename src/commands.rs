@@ -1,9 +1,9 @@
+use std::collections::{BTreeMap, HashMap};
+use std::io::{stdin, stdout, Stdout};
+
 use crate::*;
 use crate::parser::*;
 use crate::proces::*;
-
-use std::collections::{BTreeMap, HashMap};
-use std::io::stdin;
 
 /// Straightforward display of merge events
 ///
@@ -28,7 +28,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
             ParsedHist::Stop{ts, ebuild, version, iter, ..} => {
                 found_one = true;
                 let started = started.remove(&(ebuild.clone(), version.clone(), iter.clone()));
-                writeln!(io::stdout(), "{} {}{:>9} {}{}-{}{}",
+                writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts), st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(ts-pt)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
@@ -37,7 +37,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
             },
             ParsedHist::SyncStop{ts} => {
                 found_one = true;
-                writeln!(io::stdout(), "{} {}{:>9}{} Sync", fmt_time(ts), st.dur_p, fmt_duration(ts-syncstart), st.dur_s).unwrap_or(());
+                writeln!(stdout(), "{} {}{:>9}{} Sync", fmt_time(ts), st.dur_p, fmt_duration(ts-syncstart), st.dur_s).unwrap_or(());
             },
         }
     }
@@ -48,7 +48,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
+pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
     let show = subargs.value_of("show").unwrap();
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_tot = show.contains(&"t") || show.contains(&"a");
@@ -127,7 +127,7 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
+pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
     let now = epoch_now();
     let lim = value(subargs, "limit", parse_limit);
 
@@ -231,6 +231,7 @@ pub fn cmd_predict(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &
 #[cfg(test)]
 mod tests {
     use assert_cli::Assert;
+    use indoc::*;
     //TODO: Simplify fails_with() calls once https://github.com/assert-rs/assert_cli/issues/99 is closed
 
     #[test]
