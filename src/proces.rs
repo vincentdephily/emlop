@@ -11,7 +11,7 @@ use std::io;
 use std::io::prelude::*;
 use sysconf::raw::{sysconf, SysconfVariable};
 
-use ::*;
+use crate::*;
 
 #[derive(Debug)]
 pub struct Info {
@@ -83,8 +83,8 @@ mod tests {
     use std::collections::BTreeMap;
     use std::process::Command;
 
-    use ::*;
-    use proces::*;
+    use crate::*;
+    use crate::proces::*;
 
     fn parse_ps_time(s: &str) -> i64 {
         DateTime::parse_from_str(&format!("{} +0000", s), "%b %d %T %Y %z")//we run ps with TZ=UTC

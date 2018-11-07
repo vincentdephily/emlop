@@ -2,7 +2,7 @@
 //!
 //! Instantiate a `Parser` and iterate over it to retrieve the events.
 
-use ::fmt_time;
+use crate::fmt_time;
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use failure::Error;
@@ -182,7 +182,7 @@ fn parse_pretend(line: &str, re: &Regex) -> Option<ParsedPretend> {
 
 #[cfg(test)]
 mod tests {
-    use parser::*;
+    use crate::parser::*;
     use std::collections::HashMap;
     use std::fs::File;
 

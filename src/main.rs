@@ -30,7 +30,7 @@ use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tabwriter::TabWriter;
 
-use commands::*;
+use crate::commands::*;
 
 fn main() {
     let arg_limit = Arg::with_name("limit")
@@ -279,7 +279,7 @@ pub fn myopen(fname: &str) -> Result<impl Read, Error> {
 
 #[cfg(test)]
 mod tests {
-    use ::*;
+    use crate::*;
 
     #[test]
     fn duration() {

@@ -1,6 +1,6 @@
-use ::*;
-use parser::*;
-use proces::*;
+use crate::*;
+use crate::parser::*;
+use crate::proces::*;
 
 use std::collections::{BTreeMap, HashMap};
 use std::io::stdin;
