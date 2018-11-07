@@ -140,10 +140,10 @@ fn parse_ts(line: &str, filter_ts: impl Fn(i64) -> bool) -> Option<(i64,&str)> {
     let (ts_str,rest) = line.split_at(line.find(':')?);
     let ts = ts_str.parse::<i64>().ok()?;
     if !(filter_ts)(ts) {return None}
-    Some((ts,&rest[1..]))
+    Some((ts,&rest[2..]))
 }
 fn parse_start(enabled: bool, ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
-    if !enabled || !line.starts_with("  >>> emer") {return None}
+    if !enabled || !line.starts_with(" >>> emer") {return None}
     let mut tokens = line.split_whitespace(); // https://github.com/rust-lang/rust/issues/48656
     let (t3,t5,t6) = (tokens.nth(2)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t6)?;
@@ -154,7 +154,7 @@ fn parse_start(enabled: bool, ts: i64, line: &str, filter_pkg: impl Fn(&str) -> 
                            version: version.to_string()})
 }
 fn parse_stop(enabled: bool, ts: i64, line: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<ParsedHist> {
-    if !enabled || !line.starts_with("  ::: comp") {return None}
+    if !enabled || !line.starts_with(" ::: comp") {return None}
     let mut tokens = line.split_whitespace();
     let (t4,t6,t7) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild,version) = split_atom(t7)?;
@@ -165,12 +165,12 @@ fn parse_stop(enabled: bool, ts: i64, line: &str, filter_pkg: impl Fn(&str) -> b
                           version: version.to_string()})
 }
 fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<ParsedHist> {
-    if !enabled || line != "  === sync" {return None}
+    if !enabled || line != " === sync" {return None}
     Some(ParsedHist::SyncStart{ts})
 }
 fn parse_syncstop(enabled: bool, ts: i64, line: &str) -> Option<ParsedHist> {
     // Old portage logs 'completed with <source>', new portage logs 'completed for <destination>'
-    if !enabled || !line.starts_with(" === Sync completed") {return None}
+    if !enabled || !line.starts_with("=== Sync completed") {return None}
     Some(ParsedHist::SyncStop{ts})
 }
 fn parse_pretend(line: &str, re: &Regex) -> Option<ParsedPretend> {
