@@ -89,10 +89,10 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                     if tc >= lim {(pt,  pc,  tt+i,tc+1)}
                     else         {(pt+i,pc+1,tt+i,tc+1)}
                 });
-            writeln!(tw, "{}{}\t{}{:>10}\t{}{:>5}{}\t{}{:>8}{}",
+            writeln!(tw, "{}{}\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                      st.pkg_p, pkg,
                      st.dur_p, fmt_duration(tottime),
-                     st.cnt_p, totcount, st.cnt_s,
+                     st.cnt_p, totcount,
                      st.dur_p, fmt_duration(predtime/predcount), st.dur_s)?;
         }
     }
@@ -105,19 +105,20 @@ pub fn cmd_stats(tw: &mut TabWriter<io::Stdout>, args: &ArgMatches, subargs: &Ar
                 totcount += 1
             }
         }
-        writeln!(tw, "{}Merge\t{}{:>10}\t{}{:>5}{}\t{}{:>8}{}",
+        writeln!(tw, "{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  st.pkg_p,
                  st.dur_p, fmt_duration(tottime),
-                 st.cnt_p, totcount, st.cnt_s,
+                 st.cnt_p, totcount,
                  st.dur_p, fmt_duration(tottime/totcount), st.dur_s)?;
     }
     if show_sync {
         let synctime = syncs.iter().fold(0,|a,t|t+a);
         let synccount = syncs.len() as i64;
         let syncavg = if synccount > 0 {synctime/synccount} else {0};
-        writeln!(tw, "{}Sync\t{}{:>10}\t{}{:>5}{}\t{}{:>8}{}",
-                 st.pkg_p, st.dur_p, fmt_duration(synctime),
-                 st.cnt_p, synccount, st.cnt_s,
+        writeln!(tw, "{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+                 st.pkg_p,
+                 st.dur_p, fmt_duration(synctime),
+                 st.cnt_p, synccount,
                  st.dur_p, fmt_duration(syncavg), st.dur_s)?;
     }
     Ok(found_one)
