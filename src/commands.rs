@@ -105,11 +105,12 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
                 totcount += 1
             }
         }
+        let totavg = if totcount > 0 {tottime/totcount} else {0};
         writeln!(tw, "{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  st.pkg_p,
                  st.dur_p, fmt_duration(tottime),
                  st.cnt_p, totcount,
-                 st.dur_p, fmt_duration(tottime/totcount), st.dur_s)?;
+                 st.dur_p, fmt_duration(totavg), st.dur_s)?;
     }
     if show_sync {
         let synctime = syncs.iter().fold(0,|a,t|t+a);
@@ -235,7 +236,7 @@ mod tests {
     //TODO: Simplify fails_with() calls once https://github.com/assert-rs/assert_cli/issues/99 is closed
 
     #[test]
-    fn list() {
+    fn log() {
         let t: Vec<(&[&str],&str,i32)> = vec![
             // Basic test
             (&["-f","test/emerge.10000.log","l","client"],
@@ -348,6 +349,10 @@ mod tests {
                      Merge                           24:00:24     11   2:10:56\n\
                      Sync                             1:19:28    150        31\n"),
              0),
+            (&["-f","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
+             indoc!("Merge           0      0         0\n\
+                     Sync            0      0         0\n"),
+             2),
         ];
         for (a,o,e) in t {
             match e {
