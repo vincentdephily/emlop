@@ -42,7 +42,7 @@ fn main() {
         .help("Use the last N merge times to predict next merge time.");
     let arg_pkg = Arg::with_name("package")
         .takes_value(true)
-        .help("Display only packages matching <package>.");
+        .help("Show only packages matching <package>.");
     let arg_exact = Arg::with_name("exact")
         .short("e")
         .long("exact")
@@ -50,18 +50,27 @@ fn main() {
         .long_help("Match package with a string instead of a regex. \
 Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/1.0.5/regex/#syntax). \
 String is case-sentitive and matches on whole name, or whole category/name if it contains a /.");//FIXME auto crate version
-    let arg_show = Arg::with_name("show")
+    let arg_show_l = Arg::with_name("show")
         .short("s")
         .long("show")
         .value_name("m,s,a")
-        .validator(|s| match s.chars().find(|&c| !("mtsa".contains(c))) {None => Ok(()), Some(e) => Err(e.to_string())})
+        .validator(|s| find_invalid("msa", &s))
+        .default_value("m")
+        .help("Show (m)erges, (s)yncs, and/or (a)ll.")
+        .long_help("Show individual (m)erges, portage tree (s)yncs, or (a)ll of these (any letters combination).");
+    let arg_show_s = Arg::with_name("show")
+        .short("s")
+        .long("show")
+        .value_name("m,t,s,a")
+        .validator(|s| find_invalid("msta", &s))
         .default_value("m")
         .help("Show (m)erges, (t)otals, (s)yncs, and/or (a)ll.")
-        .long_help("Show individual (m)erges, (t)otal merges, portage tree (s)yncs, or (a)ll of these (multiple choices possible).");
+        .long_help("Show individual (m)erges, (t)otal merges, portage tree (s)yncs, or (a)ll of these (any letters combination).");
     let args = App::new("emlop")
         .version(crate_version!())
         .global_setting(AppSettings::ColoredHelp)
         .global_setting(AppSettings::DeriveDisplayOrder)
+        .global_setting(AppSettings::UnifiedHelpMessage)
         .setting(AppSettings::DisableHelpSubcommand)
         .setting(AppSettings::InferSubcommands)
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -69,9 +78,9 @@ String is case-sentitive and matches on whole name, or whole category/name if it
         .about("A fast, accurate, ergonnomic EMerge LOg Parser.\nhttps://github.com/vincentdephily/emlop")
         .after_help("Subcommands can be abbreviated down to a single letter.\n\
 Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if search found nothing.")
-        .help_message("Prints help information. Use --help for more details. Use <subcommand> -h for subcommand help.")
+        .help_message("Show short (-h) or detailed (--help) help. Use <subcommand> -h/--help for subcommand help.")
         .arg(Arg::with_name("logfile")
-             .value_name("path/to/file")
+             .value_name("file")
              .long("logfile")
              .short("f")
              .global(true)
@@ -107,27 +116,31 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
              .default_value("auto")
              .value_name("when")
              .help("Enable color (auto/always/never/y/n)."))
-        .subcommand(SubCommand::with_name("list")
-                    .about("Show list of completed merges.")
-                    .long_about("Show list of completed merges.\n\
-Merge date, merge time, package name-version.")
-                    .help_message("Prints help information. Use --help for more details.")
-                    .arg(&arg_show)
+        .subcommand(SubCommand::with_name("log")
+                    .alias("list")
+                    .about("Show log of sucessful merges and syncs.")
+                    .long_about("Show log of sucessful merges and syncs.\n\
+* Merges: date, duration, package name-version.\n\
+* Syncs:  date, duration.")
+                    .help_message("Show short (-h) or detailed (--help) help.")
+                    .arg(&arg_show_l)
                     .arg(&arg_exact)
                     .arg(&arg_pkg))
         .subcommand(SubCommand::with_name("predict")
                     .about("Predict merge time for current or pretended merges.")
                     .long_about("Predict merge time for current or pretended merges.\n\
-If input is a terminal, predict time for the current merge (if any).\n\
-If input is a pipe (for example by running `emerge -rOp|emlop p`), predict time for those merges.")
-                    .help_message("Prints help information. Use --help for more details.")
+* If input is a terminal, predict time for the current merge (if any).\n\
+* If input is a pipe (for example by running `emerge -rOp|emlop p`), predict time for those merges.")
+                    .help_message("Show short (-h) or detailed (--help) help.")
                     .arg(&arg_limit))
         .subcommand(SubCommand::with_name("stats")
-                    .about("Show statistics for completed merges.")
-                    .long_about("Show statistics for completed merges.\n\
-Total merge time, total merge count, and next merge time prediction.")
-                    .help_message("Prints help information. Use --help for more details.")
-                    .arg(&arg_show)
+                    .about("Show statistics about sucessful merges and syncs.")
+                    .long_about("Show statistics about sucessful merges (total or per package) merges and syncs.\n\
+* Per-package: total merge time, total merge count, next merge time prediction.\n\
+* Merges:      total merge time, total merge count, average merge time\n\
+* Syncs:       total sync time,  total sync count,  average sync time")
+                    .help_message("Show short (-h) or detailed (--help) help.")
+                    .arg(&arg_show_s)
                     .arg(&arg_exact)
                     .arg(&arg_pkg)
                     .arg(&arg_limit))
@@ -138,7 +151,7 @@ Total merge time, total merge count, and next merge time prediction.")
     let styles = Styles::new(&args);
     let mut tw = TabWriter::new(stdout());
     let res = match args.subcommand() {
-        ("list",    Some(sub_args)) => cmd_list(&args, sub_args, styles),
+        ("log",     Some(sub_args)) => cmd_list(&args, sub_args, styles),
         ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, styles),
         ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args, styles),
         (other, _) => unimplemented!("{} subcommand", other),
@@ -204,6 +217,15 @@ pub fn parse_date(s: &str) -> Result<i64, String> {
         .map(|d| d.timestamp())
         .or_else(|_| i64::from_str(&s.trim()))
         .map_err(|_| "Couldn't parse as a date or timestamp".into())
+}
+
+/// Clap validation helper that checks that all chars are valid.
+fn find_invalid(valid: &'static str, s: &str) -> Result<(), String> {
+    debug_assert!(valid.is_ascii()); // Because we use `chars()` we need to stick to ascii for `valid`.
+    match s.chars().find(|&c| !(valid.contains(c))) {
+        None => Ok(()),
+        Some(p) => Err(p.to_string()),
+    }
 }
 
 pub fn fmt_duration(secs: i64) -> String {
