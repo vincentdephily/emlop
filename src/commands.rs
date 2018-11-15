@@ -1,3 +1,4 @@
+use chrono::{Datelike, Duration, Timelike, Weekday};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{stdin, stdout, Stdout};
 
@@ -44,6 +45,50 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<b
     Ok(found_one)
 }
 
+/// Given a unix timestamp, truncate it to midnight and advance by the given number of years/months/days.
+/// We avoid DST issues by switching to 12:00.
+/// See https://github.com/chronotope/chrono/issues/290
+fn timespan_next(ts: i64, add: &Timespan) -> i64 {
+    let mut d = Local.timestamp(ts, 0).with_minute(0).unwrap().with_second(0).unwrap();
+    match add {
+        Timespan::Year => {
+            d = d.with_year(d.year() + 1).unwrap().with_month(1).unwrap().with_day(1).unwrap()
+        },
+        Timespan::Month => {
+            d = d.with_month0((d.month0() + 1) % 12)
+                 .unwrap()
+                 .with_year(if d.month() == 12 { d.year() + 1 } else { d.year() })
+                 .unwrap()
+                 .with_day(1)
+                 .unwrap()
+        },
+        Timespan::Week => {
+            let till_monday = match d.weekday() {
+                Weekday::Mon => 7,
+                Weekday::Tue => 6,
+                Weekday::Wed => 5,
+                Weekday::Thu => 4,
+                Weekday::Fri => 3,
+                Weekday::Sat => 2,
+                Weekday::Sun => 1,
+            };
+            d = d.with_hour(12).unwrap() + Duration::days(till_monday)
+        },
+        Timespan::Day => d = d.with_hour(12).unwrap() + Duration::days(1),
+    }
+    let res = d.with_hour(0).unwrap().timestamp();
+    debug!("{} + {:?} = {}", fmt_time(ts), add, fmt_time(res));
+    res
+}
+fn timespan_header(ts: i64, timespan: &Timespan) -> String {
+    match timespan {
+        Timespan::Year => format!("{}",Local.timestamp(ts, 0).format("%Y ")),
+        Timespan::Month => format!("{}",Local.timestamp(ts, 0).format("%Y-%m ")),
+        Timespan::Week => format!("{}",Local.timestamp(ts, 0).format("%Y-%W ")),
+        Timespan::Day => format!("{}",Local.timestamp(ts, 0).format("%Y-%m-%d ")),
+    }
+}
+
 /// Summary display of merge events
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
@@ -53,6 +98,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_tot = show.contains(&"t") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
+    let timespan_opt = value_opt(subargs, "group", parse_timespan);
     let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap().into(),
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 show_merge || show_tot, show_sync,
@@ -62,7 +108,22 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
     let mut syncs: Vec<i64> = vec![];
     let mut times: BTreeMap<String, Vec<i64>> = BTreeMap::new();
     let mut syncstart: i64 = 0;
+    let mut nextts =  0;
+    let mut curts = 0;
     for p in hist {
+        if let Some(ref timespan) = timespan_opt {
+            let t = p.ts();
+            if nextts == 0 {
+                nextts = timespan_next(t, timespan);
+                curts = t;
+            } else if t > nextts {
+                cmd_stats_group(tw, &st, lim, show_merge, show_tot, show_sync, timespan_header(curts, timespan), &syncs, &times)?;
+                syncs.clear();
+                times.clear();
+                nextts = timespan_next(t, timespan);
+                curts = t;
+            }
+        }
         match p {
             ParsedHist::Start{ts, ebuild, version, iter, ..} => {
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
@@ -81,15 +142,32 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
             },
         }
     };
-    let found_one = !times.is_empty() || !syncs.is_empty();
+    let group_by = match timespan_opt {
+        Some(ref timespan) => timespan_header(curts, timespan),
+        None => String::new(),
+    };
+    cmd_stats_group(tw, &st, lim, show_merge, show_tot, show_sync, group_by, &syncs, &times)?;
+    Ok(!times.is_empty() || !syncs.is_empty())
+}
+
+fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
+                   st: &Styles,
+                   lim: u16,
+                   show_merge: bool,
+                   show_tot: bool,
+                   show_sync: bool,
+                   group_by: String,
+                   syncs: &Vec<i64>,
+                   times: &BTreeMap<String, Vec<i64>>) ->Result<(), Error> {
     if show_merge {
-        for (pkg,tv) in &times {
+        for (pkg,tv) in times {
             let (predtime,predcount,tottime,totcount) = tv.iter()
                 .fold((0,0,0,0), |(pt,pc,tt,tc), &i| {
                     if tc >= lim {(pt,  pc,  tt+i,tc+1)}
                     else         {(pt+i,pc+1,tt+i,tc+1)}
                 });
-            writeln!(tw, "{}{}\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+            writeln!(tw, "{}{}{}\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+                     group_by,
                      st.pkg_p, pkg,
                      st.dur_p, fmt_duration(tottime),
                      st.cnt_p, totcount,
@@ -106,7 +184,8 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
             }
         }
         let totavg = if totcount > 0 {tottime/totcount} else {0};
-        writeln!(tw, "{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+        writeln!(tw, "{}{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+                 group_by,
                  st.pkg_p,
                  st.dur_p, fmt_duration(tottime),
                  st.cnt_p, totcount,
@@ -116,13 +195,14 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
         let synctime = syncs.iter().fold(0,|a,t|t+a);
         let synccount = syncs.len() as i64;
         let syncavg = if synccount > 0 {synctime/synccount} else {0};
-        writeln!(tw, "{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+        writeln!(tw, "{}{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+                 group_by,
                  st.pkg_p,
                  st.dur_p, fmt_duration(synctime),
                  st.cnt_p, synccount,
                  st.dur_p, fmt_duration(syncavg), st.dur_s)?;
     }
-    Ok(found_one)
+    Ok(())
 }
 
 /// Predict future merge time

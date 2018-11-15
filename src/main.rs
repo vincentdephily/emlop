@@ -66,6 +66,15 @@ String is case-sentitive and matches on whole name, or whole category/name if it
         .default_value("m")
         .help("Show (m)erges, (t)otals, (s)yncs, and/or (a)ll.")
         .long_help("Show individual (m)erges, (t)otal merges, portage tree (s)yncs, or (a)ll of these (any letters combination).");
+    let arg_group = Arg::with_name("group")
+        .short("g")
+        .long("groupby")
+        .value_name("y,m,w,d")
+        .possible_values(&["y","m","w","d"])
+        .hide_possible_values(true)
+        .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay.")
+        .long_help("Group by (y)ear, (m)onth, (w)eek, or (d)ay.\n\
+The grouping key is displayed in the first column. Weeks start on monday and are formated as 'year-weeknumber'.");
     let args = App::new("emlop")
         .version(crate_version!())
         .global_setting(AppSettings::ColoredHelp)
@@ -75,7 +84,7 @@ String is case-sentitive and matches on whole name, or whole category/name if it
         .setting(AppSettings::InferSubcommands)
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .setting(AppSettings::VersionlessSubcommands)
-        .about("A fast, accurate, ergonnomic EMerge LOg Parser.\nhttps://github.com/vincentdephily/emlop")
+        .about("A fast, accurate, ergonomic EMerge LOg Parser.\nhttps://github.com/vincentdephily/emlop")
         .after_help("Subcommands can be abbreviated down to a single letter.\n\
 Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if search found nothing.")
         .help_message("Show short (-h) or detailed (--help) help. Use <subcommand> -h/--help for subcommand help.")
@@ -141,6 +150,7 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
 * Syncs:       total sync time,  total sync count,  average sync time")
                     .help_message("Show short (-h) or detailed (--help) help.")
                     .arg(&arg_show_s)
+                    .arg(&arg_group)
                     .arg(&arg_exact)
                     .arg(&arg_pkg)
                     .arg(&arg_limit))
@@ -174,7 +184,7 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
 /// implement FromStr trait on a custom struct, but this is simpler to write and use, and we're not
 /// writing a library.
 pub fn value<T,P>(matches: &ArgMatches, name: &str, parse: P) -> T
-    where P: FnOnce(&str) -> Result<T,String>, T: FromStr {
+    where P: FnOnce(&str) -> Result<T,String> {
     match matches.value_of(name) {
         None => // Argument should be required by ArgMatch => this is a bug not a user error => panic
             panic!("Argument {} missing", name),
@@ -194,7 +204,7 @@ pub fn value<T,P>(matches: &ArgMatches, name: &str, parse: P) -> T
 ///
 /// [value(m,n,p)->T]:      fn.value.html
 pub fn value_opt<T,P>(matches: &ArgMatches, name: &str, parse: P) -> Option<T>
-    where P: FnOnce(&str) -> Result<T,String>, T: FromStr {
+    where P: FnOnce(&str) -> Result<T,String> {
     match matches.value_of(name) {
         None =>
             None,
@@ -217,6 +227,23 @@ pub fn parse_date(s: &str) -> Result<i64, String> {
         .map(|d| d.timestamp())
         .or_else(|_| i64::from_str(&s.trim()))
         .map_err(|_| "Couldn't parse as a date or timestamp".into())
+}
+
+#[derive(Debug)]
+pub enum Timespan {
+    Year,
+    Month,
+    Week,
+    Day,
+}
+pub fn parse_timespan(s: &str) -> Result<Timespan, String> {
+    match s {
+        "y" => Ok(Timespan::Year),
+        "m" => Ok(Timespan::Month),
+        "w" => Ok(Timespan::Week),
+        "d" => Ok(Timespan::Day),
+        _ => Err("Valid values are y(ear), m(onth), w(eek), d(ay)".into()),
+    }
 }
 
 /// Clap validation helper that checks that all chars are valid.

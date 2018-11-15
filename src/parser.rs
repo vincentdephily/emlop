@@ -23,6 +23,17 @@ pub enum ParsedHist {
     /// Sync completed.
     SyncStop{ts: i64},
 }
+impl ParsedHist {
+    pub fn ts(&self) -> i64 {
+        match self {
+            ParsedHist::Start{ts, ..} => ts.clone(),
+            ParsedHist::Stop{ts, ..} => ts.clone(),
+            ParsedHist::SyncStart{ts, ..} => ts.clone(),
+            ParsedHist::SyncStop{ts, ..} => ts.clone(),
+        }
+    }
+}
+
 
 /// Items sent on the channel returned by `new_pretend()`.
 #[derive(Debug)]
