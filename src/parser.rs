@@ -54,10 +54,10 @@ pub fn new_hist<R: Read>(reader: R, filename: String,
             match l {
                 Ok(ref line) => { // Got a line, see if one of the funs match it
                     if let Some((t,s)) = parse_ts(line, &filter_ts) {
-                        if let Some(found) = parse_start(parse_merge, t, s, &filter_pkg) {tx.send(found)}
-                        else if let Some(found) = parse_stop(parse_merge, t, s, &filter_pkg) {tx.send(found)}
-                        else if let Some(found) = parse_syncstart(parse_sync, t, s) {tx.send(found)}
-                        else if let Some(found) = parse_syncstop(parse_sync, t, s) {tx.send(found)}
+                        if let Some(found) = parse_start(parse_merge, t, s, &filter_pkg) {tx.send(found).unwrap()}
+                        else if let Some(found) = parse_stop(parse_merge, t, s, &filter_pkg) {tx.send(found).unwrap()}
+                        else if let Some(found) = parse_syncstart(parse_sync, t, s) {tx.send(found).unwrap()}
+                        else if let Some(found) = parse_syncstop(parse_sync, t, s) {tx.send(found).unwrap()}
                     }
                 },
                 Err(e) => // Could be invalid UTF8, system read error...
