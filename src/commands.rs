@@ -9,7 +9,7 @@ use crate::proces::*;
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
+pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
     let show = subargs.value_of("show").unwrap();
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
@@ -93,7 +93,7 @@ fn timespan_header(ts: i64, timespan: &Timespan) -> String {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
+pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
     let show = subargs.value_of("show").unwrap();
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_tot = show.contains(&"t") || show.contains(&"a");
@@ -117,7 +117,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
                 nextts = timespan_next(t, timespan);
                 curts = t;
             } else if t > nextts {
-                cmd_stats_group(tw, &st, lim, show_merge, show_tot, show_sync, timespan_header(curts, timespan), &syncs, &times)?;
+                cmd_stats_group(tw, &st, lim, show_merge, show_tot, show_sync, &timespan_header(curts, timespan), &syncs, &times)?;
                 syncs.clear();
                 times.clear();
                 nextts = timespan_next(t, timespan);
@@ -138,15 +138,12 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
                 syncstart = ts;
             },
             ParsedHist::SyncStop{ts} => {
-                syncs.push(ts-syncstart);
+                syncs.push(ts - syncstart);
             },
         }
     };
-    let group_by = match timespan_opt {
-        Some(ref timespan) => timespan_header(curts, timespan),
-        None => String::new(),
-    };
-    cmd_stats_group(tw, &st, lim, show_merge, show_tot, show_sync, group_by, &syncs, &times)?;
+    let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, &t));
+    cmd_stats_group(tw, &st, lim, show_merge, show_tot, show_sync, &group_by, &syncs, &times)?;
     Ok(!times.is_empty() || !syncs.is_empty())
 }
 
@@ -156,8 +153,8 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    show_merge: bool,
                    show_tot: bool,
                    show_sync: bool,
-                   group_by: String,
-                   syncs: &Vec<i64>,
+                   group_by: &str,
+                   syncs: &[i64],
                    times: &BTreeMap<String, Vec<i64>>) ->Result<(), Error> {
     if show_merge {
         for (pkg,tv) in times {
@@ -208,7 +205,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: Styles) -> Result<bool, Error> {
+pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
     let now = epoch_now();
     let lim = value(subargs, "limit", parse_limit);
 

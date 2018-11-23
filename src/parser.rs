@@ -26,10 +26,10 @@ pub enum ParsedHist {
 impl ParsedHist {
     pub fn ts(&self) -> i64 {
         match self {
-            ParsedHist::Start{ts, ..} => ts.clone(),
-            ParsedHist::Stop{ts, ..} => ts.clone(),
-            ParsedHist::SyncStart{ts, ..} => ts.clone(),
-            ParsedHist::SyncStop{ts, ..} => ts.clone(),
+            ParsedHist::Start{ts, ..} => *ts,
+            ParsedHist::Stop{ts, ..} => *ts,
+            ParsedHist::SyncStart{ts, ..} => *ts,
+            ParsedHist::SyncStop{ts, ..} => *ts,
         }
     }
 }

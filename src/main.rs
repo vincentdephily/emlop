@@ -1,5 +1,6 @@
 extern crate ansi_term;
-#[cfg(test)] extern crate assert_cli;
+#[cfg(test)]
+extern crate assert_cli;
 extern crate atty;
 extern crate chrono;
 extern crate chrono_english;
@@ -7,7 +8,8 @@ extern crate clap;
 extern crate crossbeam_channel;
 extern crate failure;
 extern crate failure_derive;
-#[cfg(test)] extern crate indoc;
+#[cfg(test)]
+extern crate indoc;
 extern crate log;
 extern crate regex;
 extern crate stderrlog;
@@ -21,15 +23,17 @@ mod proces;
 use ansi_term::Color::*;
 use ansi_term::Style;
 use chrono::{DateTime, Local, TimeZone};
-use chrono_english::{parse_date_string,Dialect};
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand, crate_version, ErrorKind, Error as ClapError};
+use chrono_english::{parse_date_string, Dialect};
+use clap::{
+    crate_version, App, AppSettings, Arg, ArgMatches, Error as ClapError, ErrorKind, SubCommand,
+};
 use failure::Error;
 use failure_derive::Fail;
 use log::*;
 use std::fs::File;
+use std::io::{stdout, Read, Write};
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::io::{Read, Write, stdout};
 use tabwriter::TabWriter;
 
 use crate::commands::*;
@@ -161,9 +165,9 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
     let styles = Styles::new(&args);
     let mut tw = TabWriter::new(stdout());
     let res = match args.subcommand() {
-        ("log",     Some(sub_args)) => cmd_list(&args, sub_args, styles),
-        ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, styles),
-        ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args, styles),
+        ("log",     Some(sub_args)) => cmd_list(&args, sub_args, &styles),
+        ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, &styles),
+        ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args, &styles),
         (other, _) => unimplemented!("{} subcommand", other),
     };
     tw.flush().unwrap_or(());

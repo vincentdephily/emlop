@@ -6,7 +6,7 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
-use std::fs;
+use std::fs::{read_dir, DirEntry, File};
 use std::io;
 use std::io::prelude::*;
 use sysconf::raw::{sysconf, SysconfVariable};
@@ -22,7 +22,11 @@ pub struct Info {
 }
 
 /// Get command name, arguments, start time, and pid for one process.
-fn get_proc_info(filter: Option<&str>, entry: fs::DirEntry, clocktick: i64, time_ref: i64) -> Option<Info> {
+fn get_proc_info(filter: Option<&str>,
+                 entry: &DirEntry,
+                 clocktick: i64,
+                 time_ref: i64)
+                 -> Option<Info> {
     // Parse pid.
     // At this stage we expect `entry` to not always correspond to a process.
     let pid = i32::from_str(&entry.file_name().to_string_lossy()).ok()?;
@@ -30,7 +34,7 @@ fn get_proc_info(filter: Option<&str>, entry: fs::DirEntry, clocktick: i64, time
     // See linux/Documentation/filesystems/proc.txt Table 1-4: Contents of the stat files.
     // The command name is surrounded by parens and may contain spaces. Parsing will fail if it contains a closing paren followed by a space.
     let mut statstr = String::new();
-    fs::File::open(entry.path().join("stat")).ok()?.read_to_string(&mut statstr).ok()?;
+    File::open(entry.path().join("stat")).ok()?.read_to_string(&mut statstr).ok()?;
     let statfields: Vec<&str> = statstr.split(' ').collect();
     let mut parse_offset = 0;
     let mut comm = statfields[1].trim_left_matches('(').to_string();
@@ -46,13 +50,10 @@ fn get_proc_info(filter: Option<&str>, entry: fs::DirEntry, clocktick: i64, time
     }
     // Parse arguments
     let mut cmdline = String::new();
-    fs::File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
+    File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
     cmdline = cmdline.replace("\0", " ").trim().into();
     // Done
-    Some(Info{comm,
-              cmdline,
-              start: time_ref + (start_time / clocktick) as i64,
-              pid})
+    Some(Info { comm, cmdline, start: time_ref + (start_time / clocktick) as i64, pid })
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
@@ -61,14 +62,13 @@ pub fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     let clocktick = sysconf(SysconfVariable::ScClkTck).unwrap() as i64;
     let mut uptimestr = String::new();
-    fs::File::open("/proc/uptime")?.read_to_string(&mut uptimestr)?;
+    File::open("/proc/uptime")?.read_to_string(&mut uptimestr)?;
     let uptime = i64::from_str(uptimestr.split('.').nth(0).unwrap()).unwrap();
     let time_ref = epoch_now() - uptime;
     // Now iterate through /proc/<pid>
     let mut ret: Vec<Info> = Vec::new();
-    for entry in fs::read_dir("/proc/")? {
-        let entry = entry?;
-        if let Some(i) = get_proc_info(filter, entry, clocktick, time_ref) {
+    for entry in read_dir("/proc/")? {
+        if let Some(i) = get_proc_info(filter, &entry?, clocktick, time_ref) {
             ret.push(i)
         }
     }
@@ -83,7 +83,6 @@ mod tests {
     use std::collections::BTreeMap;
     use std::process::Command;
 
-    use crate::*;
     use crate::proces::*;
 
     fn parse_ps_time(s: &str) -> i64 {
