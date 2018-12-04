@@ -440,6 +440,65 @@ mod tests {
     }
 
     #[test]
+    fn stats_grouped() {
+        // TODO: automatically test that y/m/w/d totcount/tottime add up to the same.
+        let t: Vec<(&[&str],&str)> = vec![
+            (&["-f","test/emerge.10000.log","s","-sm","gentoo-sources","-gy"],
+             indoc!("2018 sys-kernel/gentoo-sources       15:04     10      1:30\n")),
+            (&["-f","test/emerge.10000.log","s","-sm","gentoo-sources","-gm"],
+             indoc!("2018-02 sys-kernel/gentoo-sources       11:42      8      1:27\n\
+                     2018-03 sys-kernel/gentoo-sources        3:22      2      1:41\n")),
+            (&["-f","test/emerge.10000.log","s","-sm","gentoo-sources","-gw"],
+             indoc!("2018-05 sys-kernel/gentoo-sources        1:21      1      1:21\n\
+                     2018-06 sys-kernel/gentoo-sources        3:12      2      1:36\n\
+                     2018-07 sys-kernel/gentoo-sources        3:18      2      1:39\n\
+                     2018-08 sys-kernel/gentoo-sources        1:17      1      1:17\n\
+                     2018-09 sys-kernel/gentoo-sources        3:56      3      1:18\n\
+                     2018-11 sys-kernel/gentoo-sources        2:00      1      2:00\n")),
+            (&["-f","test/emerge.10000.log","s","-sm","gentoo-sources","-gd"],
+             indoc!("2018-02-04 sys-kernel/gentoo-sources        1:21      1      1:21\n\
+                     2018-02-05 sys-kernel/gentoo-sources        1:35      1      1:35\n\
+                     2018-02-08 sys-kernel/gentoo-sources        1:37      1      1:37\n\
+                     2018-02-12 sys-kernel/gentoo-sources        1:20      1      1:20\n\
+                     2018-02-18 sys-kernel/gentoo-sources        1:58      1      1:58\n\
+                     2018-02-23 sys-kernel/gentoo-sources        1:17      1      1:17\n\
+                     2018-02-26 sys-kernel/gentoo-sources        1:19      1      1:19\n\
+                     2018-02-28 sys-kernel/gentoo-sources        1:15      1      1:15\n\
+                     2018-03-01 sys-kernel/gentoo-sources        1:22      1      1:22\n\
+                     2018-03-12 sys-kernel/gentoo-sources        2:00      1      2:00\n")),
+            (&["-f","test/emerge.10000.log","s","-st","-gy"],
+             indoc!("2018 Merge    60:07:06    831      4:20\n")),
+            (&["-f","test/emerge.10000.log","s","-st","-gm"],
+             indoc!("2018-02 Merge    43:58:32    533      4:57\n\
+                     2018-03 Merge    16:08:34    298      3:15\n")),
+            (&["-f","test/emerge.10000.log","s","-st","-gw"],
+             indoc!("2018-05 Merge     9:19:37     63      8:52\n\
+                     2018-06 Merge     2:47:50     74      2:16\n\
+                     2018-07 Merge    16:16:44    281      3:28\n\
+                     2018-08 Merge    14:14:36     65     13:08\n\
+                     2018-09 Merge     4:05:37     71      3:27\n\
+                     2018-10 Merge    12:09:42    182      4:00\n\
+                     2018-11 Merge     1:13:00     95        46\n")),
+            (&["-f","test/emerge.10000.log","s","-ss","-gy"],
+             indoc!("2018 Sync     1:19:28    150        31\n")),
+            (&["-f","test/emerge.10000.log","s","-ss","-gm"],
+             indoc!("2018-02 Sync       40:29     90        26\n\
+                     2018-03 Sync       38:59     60        38\n")),
+            (&["-f","test/emerge.10000.log","s","-ss","-gw"],
+             indoc!("2018-05 Sync        2:42      3        54\n\
+                     2018-06 Sync       15:57     31        30\n\
+                     2018-07 Sync        6:31     17        23\n\
+                     2018-08 Sync        8:23     20        25\n\
+                     2018-09 Sync       31:46     39        48\n\
+                     2018-10 Sync       12:08     36        20\n\
+                     2018-11 Sync        2:01      4        30\n")),
+        ];
+        for (a,o) in t {
+            Assert::main_binary().with_args(a).stdout().is(o).unwrap();
+        }
+    }
+
+    #[test]
     fn exit_status() {
         // 0: no problem
         // 1: user or program error
