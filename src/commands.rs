@@ -314,6 +314,8 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
 mod tests {
     use assert_cli::Assert;
     use indoc::*;
+    use regex::Regex;
+    use std::collections::HashMap;
     //TODO: Simplify fails_with() calls once https://github.com/assert-rs/assert_cli/issues/99 is closed
 
     #[test]
@@ -443,63 +445,145 @@ mod tests {
         }
     }
 
+    /// Test grouped stats. In addition to the usual check that the actual output matches the
+    /// expected one, we check that the expected outputs are consistent (y/m/w/d totals are the
+    /// same, and avg*count==tot).
     #[test]
     fn stats_grouped() {
-        // TODO: automatically test that y/m/w/d totcount/tottime add up to the same.
         let t: Vec<(&[&str],&str)> = vec![
-            (&["-f","test/emerge.10000.log","s","-sm","gentoo-sources","-gy"],
-             indoc!("2018 sys-kernel/gentoo-sources       15:04     10      1:30\n")),
-            (&["-f","test/emerge.10000.log","s","-sm","gentoo-sources","-gm"],
-             indoc!("2018-02 sys-kernel/gentoo-sources       11:42      8      1:27\n\
-                     2018-03 sys-kernel/gentoo-sources        3:22      2      1:41\n")),
-            (&["-f","test/emerge.10000.log","s","-sm","gentoo-sources","-gw"],
-             indoc!("2018-05 sys-kernel/gentoo-sources        1:21      1      1:21\n\
-                     2018-06 sys-kernel/gentoo-sources        3:12      2      1:36\n\
-                     2018-07 sys-kernel/gentoo-sources        3:18      2      1:39\n\
-                     2018-08 sys-kernel/gentoo-sources        1:17      1      1:17\n\
-                     2018-09 sys-kernel/gentoo-sources        3:56      3      1:18\n\
-                     2018-11 sys-kernel/gentoo-sources        2:00      1      2:00\n")),
-            (&["-f","test/emerge.10000.log","s","-sm","gentoo-sources","-gd"],
-             indoc!("2018-02-04 sys-kernel/gentoo-sources        1:21      1      1:21\n\
-                     2018-02-05 sys-kernel/gentoo-sources        1:35      1      1:35\n\
-                     2018-02-08 sys-kernel/gentoo-sources        1:37      1      1:37\n\
-                     2018-02-12 sys-kernel/gentoo-sources        1:20      1      1:20\n\
-                     2018-02-18 sys-kernel/gentoo-sources        1:58      1      1:58\n\
-                     2018-02-23 sys-kernel/gentoo-sources        1:17      1      1:17\n\
-                     2018-02-26 sys-kernel/gentoo-sources        1:19      1      1:19\n\
-                     2018-02-28 sys-kernel/gentoo-sources        1:15      1      1:15\n\
-                     2018-03-01 sys-kernel/gentoo-sources        1:22      1      1:22\n\
-                     2018-03-12 sys-kernel/gentoo-sources        2:00      1      2:00\n")),
-            (&["-f","test/emerge.10000.log","s","-st","-gy"],
-             indoc!("2018 Merge    60:07:06    831      4:20\n")),
-            (&["-f","test/emerge.10000.log","s","-st","-gm"],
-             indoc!("2018-02 Merge    43:58:32    533      4:57\n\
-                     2018-03 Merge    16:08:34    298      3:15\n")),
-            (&["-f","test/emerge.10000.log","s","-st","-gw"],
-             indoc!("2018-05 Merge     9:19:37     63      8:52\n\
-                     2018-06 Merge     2:47:50     74      2:16\n\
-                     2018-07 Merge    16:16:44    281      3:28\n\
-                     2018-08 Merge    14:14:36     65     13:08\n\
-                     2018-09 Merge     4:05:37     71      3:27\n\
-                     2018-10 Merge    12:09:42    182      4:00\n\
-                     2018-11 Merge     1:13:00     95        46\n")),
-            (&["-f","test/emerge.10000.log","s","-ss","-gy"],
-             indoc!("2018 Sync     1:19:28    150        31\n")),
-            (&["-f","test/emerge.10000.log","s","-ss","-gm"],
-             indoc!("2018-02 Sync       40:29     90        26\n\
-                     2018-03 Sync       38:59     60        38\n")),
-            (&["-f","test/emerge.10000.log","s","-ss","-gw"],
-             indoc!("2018-05 Sync        2:42      3        54\n\
-                     2018-06 Sync       15:57     31        30\n\
-                     2018-07 Sync        6:31     17        23\n\
-                     2018-08 Sync        8:23     20        25\n\
-                     2018-09 Sync       31:46     39        48\n\
-                     2018-10 Sync       12:08     36        20\n\
-                     2018-11 Sync        2:01      4        30\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gy"],
+             indoc!("2018 sys-kernel/gentoo-sources         904     10        90\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gm"],
+             indoc!("2018-02 sys-kernel/gentoo-sources         702      8        87\n\
+                     2018-03 sys-kernel/gentoo-sources         202      2       101\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gw"],
+             indoc!("2018-05 sys-kernel/gentoo-sources          81      1        81\n\
+                     2018-06 sys-kernel/gentoo-sources         192      2        96\n\
+                     2018-07 sys-kernel/gentoo-sources         198      2        99\n\
+                     2018-08 sys-kernel/gentoo-sources          77      1        77\n\
+                     2018-09 sys-kernel/gentoo-sources         236      3        78\n\
+                     2018-11 sys-kernel/gentoo-sources         120      1       120\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gd"],
+             indoc!("2018-02-04 sys-kernel/gentoo-sources          81      1        81\n\
+                     2018-02-05 sys-kernel/gentoo-sources          95      1        95\n\
+                     2018-02-08 sys-kernel/gentoo-sources          97      1        97\n\
+                     2018-02-12 sys-kernel/gentoo-sources          80      1        80\n\
+                     2018-02-18 sys-kernel/gentoo-sources         118      1       118\n\
+                     2018-02-23 sys-kernel/gentoo-sources          77      1        77\n\
+                     2018-02-26 sys-kernel/gentoo-sources          79      1        79\n\
+                     2018-02-28 sys-kernel/gentoo-sources          75      1        75\n\
+                     2018-03-01 sys-kernel/gentoo-sources          82      1        82\n\
+                     2018-03-12 sys-kernel/gentoo-sources         120      1       120\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gy"],
+             indoc!("2018 Merge      216426    831       260\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gm"],
+             indoc!("2018-02 Merge      158312    533       297\n\
+                     2018-03 Merge       58114    298       195\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gw"],
+             indoc!("2018-05 Merge       33577     63       532\n\
+                     2018-06 Merge       10070     74       136\n\
+                     2018-07 Merge       58604    281       208\n\
+                     2018-08 Merge       51276     65       788\n\
+                     2018-09 Merge       14737     71       207\n\
+                     2018-10 Merge       43782    182       240\n\
+                     2018-11 Merge        4380     95        46\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gd"],
+             indoc!("2018-02-03 Merge        2741     32        85\n\
+                     2018-02-04 Merge       30836     31       994\n\
+                     2018-02-05 Merge         158      4        39\n\
+                     2018-02-06 Merge        4288     44        97\n\
+                     2018-02-07 Merge         857     15        57\n\
+                     2018-02-08 Merge         983      5       196\n\
+                     2018-02-09 Merge        3784      6       630\n\
+                     2018-02-12 Merge       29239    208       140\n\
+                     2018-02-13 Merge          19      1        19\n\
+                     2018-02-14 Merge        4795     44       108\n\
+                     2018-02-15 Merge         137      3        45\n\
+                     2018-02-16 Merge       23914     21      1138\n\
+                     2018-02-18 Merge         500      4       125\n\
+                     2018-02-19 Merge       28977      2     14488\n\
+                     2018-02-20 Merge         488      2       244\n\
+                     2018-02-21 Merge        5522     37       149\n\
+                     2018-02-22 Merge       15396     16       962\n\
+                     2018-02-23 Merge         854      6       142\n\
+                     2018-02-24 Merge          39      2        19\n\
+                     2018-02-26 Merge        2730     10       273\n\
+                     2018-02-27 Merge        1403     35        40\n\
+                     2018-02-28 Merge         652      5       130\n\
+                     2018-03-01 Merge        9355     13       719\n\
+                     2018-03-02 Merge         510      5       102\n\
+                     2018-03-03 Merge          87      3        29\n\
+                     2018-03-05 Merge         168      9        18\n\
+                     2018-03-06 Merge       27746      3      9248\n\
+                     2018-03-07 Merge        2969     46        64\n\
+                     2018-03-08 Merge        5441     74        73\n\
+                     2018-03-09 Merge        7458     50       149\n\
+                     2018-03-12 Merge        4380     95        46\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gy"],
+             indoc!("2018 Sync        4768    150        31\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gm"],
+             indoc!("2018-02 Sync        2429     90        26\n\
+                     2018-03 Sync        2339     60        38\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gw"],
+             indoc!("2018-05 Sync         162      3        54\n\
+                     2018-06 Sync         957     31        30\n\
+                     2018-07 Sync         391     17        23\n\
+                     2018-08 Sync         503     20        25\n\
+                     2018-09 Sync        1906     39        48\n\
+                     2018-10 Sync         728     36        20\n\
+                     2018-11 Sync         121      4        30\n")),
+            (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gd"],
+             indoc!("2018-02-03 Sync          69      1        69\n\
+                     2018-02-04 Sync          93      2        46\n\
+                     2018-02-05 Sync         188      7        26\n\
+                     2018-02-06 Sync         237      7        33\n\
+                     2018-02-07 Sync         223      7        31\n\
+                     2018-02-08 Sync         217      7        31\n\
+                     2018-02-09 Sync          92      3        30\n\
+                     2018-02-12 Sync          87      4        21\n\
+                     2018-02-13 Sync          46      2        23\n\
+                     2018-02-14 Sync          85      3        28\n\
+                     2018-02-15 Sync          77      4        19\n\
+                     2018-02-16 Sync          68      3        22\n\
+                     2018-02-18 Sync          28      1        28\n\
+                     2018-02-19 Sync          61      2        30\n\
+                     2018-02-20 Sync         120      5        24\n\
+                     2018-02-21 Sync          90      4        22\n\
+                     2018-02-22 Sync          51      2        25\n\
+                     2018-02-23 Sync         158      6        26\n\
+                     2018-02-24 Sync          23      1        23\n\
+                     2018-02-26 Sync          69      4        17\n\
+                     2018-02-27 Sync         211      8        26\n\
+                     2018-02-28 Sync         136      7        19\n\
+                     2018-03-01 Sync         569      8        71\n\
+                     2018-03-02 Sync         548     10        54\n\
+                     2018-03-03 Sync         373      2       186\n\
+                     2018-03-05 Sync          46      9         5\n\
+                     2018-03-06 Sync         183      8        22\n\
+                     2018-03-07 Sync         120      4        30\n\
+                     2018-03-08 Sync         157      8        19\n\
+                     2018-03-09 Sync         222      7        31\n\
+                     2018-03-12 Sync         121      4        30\n")),
         ];
+        let re = Regex::new("([0-9]+) +([0-9]+) +([0-9]+)$").unwrap();
+        let mut tots_t: HashMap<&str, i32> = HashMap::new();
+        let mut tots_c: HashMap<&str, i32> = HashMap::new();
         for (a,o) in t {
+            for l in o.lines() {
+                let cap = re.captures(&l).expect("Line doesn't match regex");
+                let cap_t = cap.get(1).unwrap().as_str().parse::<i32>().expect("Can't parse tottime");
+                let cap_c = cap.get(2).unwrap().as_str().parse::<i32>().expect("Can't parse count");
+                let cap_a = cap.get(3).unwrap().as_str().parse::<i32>().expect("Can't parse avgtime");
+                assert!((cap_t - cap_c * cap_a).abs() < cap_c, "Average*count should match total: {}", l);
+                let tot_t = tots_t.entry(a.last().unwrap()).or_insert(0);
+                *tot_t += cap_t;
+                let tot_c = tots_c.entry(a.last().unwrap()).or_insert(0);
+                *tot_c += cap_c;
+            }
             Assert::main_binary().with_args(a).stdout().is(o).unwrap();
         }
+        assert!(tots_c.iter().all(|(_,c)| c == tots_c.get("-gy").unwrap()), "Total count should match {:?}", tots_c);
+        assert!(tots_t.iter().all(|(_,t)| t == tots_t.get("-gy").unwrap()), "Total times should match {:?}", tots_t);
     }
 
     #[test]
