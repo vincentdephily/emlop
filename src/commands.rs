@@ -17,6 +17,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 show_merge, show_sync,
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
+    let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut found_one = false;
     let mut syncstart: i64 = 0;
@@ -30,7 +31,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 found_one = true;
                 let started = started.remove(&(ebuild.clone(), version.clone(), iter.clone()));
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
-                         fmt_time(ts), st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(ts-pt)),
+                         fmt_time(ts), st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(&fmtd, ts-pt)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
             ParsedHist::SyncStart{ts} => {
@@ -38,7 +39,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
             },
             ParsedHist::SyncStop{ts} => {
                 found_one = true;
-                writeln!(stdout(), "{} {}{:>9}{} Sync", fmt_time(ts), st.dur_p, fmt_duration(ts-syncstart), st.dur_s).unwrap_or(());
+                writeln!(stdout(), "{} {}{:>9}{} Sync", fmt_time(ts), st.dur_p, fmt_duration(&fmtd, ts-syncstart), st.dur_s).unwrap_or(());
             },
         }
     }
@@ -103,6 +104,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 show_merge || show_tot, show_sync,
                                 subargs.value_of("package"), subargs.is_present("exact"))?;
+    let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
     let lim = value(subargs, "limit", parse_limit);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut syncs: Vec<i64> = vec![];
@@ -117,7 +119,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
                 nextts = timespan_next(t, timespan);
                 curts = t;
             } else if t > nextts {
-                cmd_stats_group(tw, &st, lim, show_merge, show_tot, show_sync, &timespan_header(curts, timespan), &syncs, &times)?;
+                cmd_stats_group(tw, &st, &fmtd, lim, show_merge, show_tot, show_sync, &timespan_header(curts, timespan), &syncs, &times)?;
                 syncs.clear();
                 times.clear();
                 nextts = timespan_next(t, timespan);
@@ -143,12 +145,13 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
         }
     };
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, &t));
-    cmd_stats_group(tw, &st, lim, show_merge, show_tot, show_sync, &group_by, &syncs, &times)?;
+    cmd_stats_group(tw, &st, &fmtd, lim, show_merge, show_tot, show_sync, &group_by, &syncs, &times)?;
     Ok(!times.is_empty() || !syncs.is_empty())
 }
 
 fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    st: &Styles,
+                   fmtd: &DurationStyle,
                    lim: u16,
                    show_merge: bool,
                    show_tot: bool,
@@ -166,9 +169,9 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
             writeln!(tw, "{}{}{}\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                      group_by,
                      st.pkg_p, pkg,
-                     st.dur_p, fmt_duration(tottime),
+                     st.dur_p, fmt_duration(&fmtd, tottime),
                      st.cnt_p, totcount,
-                     st.dur_p, fmt_duration(predtime/predcount), st.dur_s)?;
+                     st.dur_p, fmt_duration(&fmtd, predtime/predcount), st.dur_s)?;
         }
     }
     if show_tot {
@@ -184,9 +187,9 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "{}{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  group_by,
                  st.pkg_p,
-                 st.dur_p, fmt_duration(tottime),
+                 st.dur_p, fmt_duration(&fmtd, tottime),
                  st.cnt_p, totcount,
-                 st.dur_p, fmt_duration(totavg), st.dur_s)?;
+                 st.dur_p, fmt_duration(&fmtd, totavg), st.dur_s)?;
     }
     if show_sync {
         let synctime = syncs.iter().fold(0,|a,t|t+a);
@@ -195,9 +198,9 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "{}{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  group_by,
                  st.pkg_p,
-                 st.dur_p, fmt_duration(synctime),
+                 st.dur_p, fmt_duration(&fmtd, synctime),
                  st.cnt_p, synccount,
-                 st.dur_p, fmt_duration(syncavg), st.dur_s)?;
+                 st.dur_p, fmt_duration(&fmtd, syncavg), st.dur_s)?;
     }
     Ok(())
 }
@@ -208,12 +211,13 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
 pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
     let now = epoch_now();
     let lim = value(subargs, "limit", parse_limit);
+    let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
     for i in get_all_info(Some("emerge"))? {
         cms = std::cmp::min(cms, i.start);
-        writeln!(tw, "Pid {}: ...{}\t{}{:>9}{}", i.pid, &i.cmdline[(i.cmdline.len()-35)..], st.dur_p, fmt_duration(now-i.start), st.dur_s)?;
+        writeln!(tw, "Pid {}: ...{}\t{}{:>9}{}", i.pid, &i.cmdline[(i.cmdline.len()-35)..], st.dur_p, fmt_duration(&fmtd, now-i.start), st.dur_s)?;
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
         writeln!(tw, "No ongoing merge found")?;
@@ -225,7 +229,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
                                 value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
                                 true, false,
                                 None, false)?;
-    let mut started: HashMap<(String, String), i64> = HashMap::new();
+    let mut started: BTreeMap<(String, String), i64> = BTreeMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     for p in hist {
         match p {
@@ -264,7 +268,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
         let (elapsed,elapsed_fmt) = match started.remove(&(ebuild.clone(), version.clone())) {
-            Some(s) if s > cms => (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(now-s), st.dur_s)),
+            Some(s) if s > cms => (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(&fmtd, now-s), st.dur_s)),
             _ => (0, "".into())
         };
 
@@ -282,7 +286,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
                     totelapsed += elapsed;
                     totpredict -= std::cmp::min(predtime / predcount, elapsed);
                 }
-                fmt_duration(predtime/predcount)
+                fmt_duration(&fmtd, predtime/predcount)
             },
             None => {
                 totunknown += 1;
@@ -297,8 +301,8 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
         writeln!(tw, "Estimate for {}{}{} ebuilds ({}{}{} unknown, {}{}{} elapsed)\t{}{:>9}{}",
                  st.cnt_p, totcount, st.cnt_s,
                  st.cnt_p, totunknown, st.cnt_s,
-                 st.dur_p, fmt_duration(totelapsed), st.dur_s,
-                 st.dur_p, fmt_duration(totpredict), st.dur_s)?;
+                 st.dur_p, fmt_duration(&fmtd, totelapsed), st.dur_s,
+                 st.dur_p, fmt_duration(&fmtd, totpredict), st.dur_s)?;
     } else {
         writeln!(tw, "No pretended merge found")?;
     }

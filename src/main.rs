@@ -25,7 +25,7 @@ use ansi_term::Style;
 use chrono::{DateTime, Local, TimeZone};
 use chrono_english::{parse_date_string, Dialect};
 use clap::{
-    crate_version, App, AppSettings, Arg, ArgMatches, Error as ClapError, ErrorKind, SubCommand,
+    crate_version, App, AppSettings, Arg, ArgMatches, Error as ClapError, ErrorKind, SubCommand, value_t,
 };
 use failure::Error;
 use failure_derive::Fail;
@@ -115,6 +115,14 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
              .global(true)
              .takes_value(true)
              .help("Only parse log entries before <date>."))
+        .arg(Arg::with_name("duration")
+             .value_name("hms,s")
+             .long("duration")
+             .global(true)
+             .possible_values(&["hms","s"])
+             .hide_possible_values(true)
+             .default_value("hms")
+             .help("Format durations in hours:minutes:seconds or in seconds."))
         .arg(Arg::with_name("verbose")
              .short("v")
              .global(true)
@@ -259,14 +267,36 @@ fn find_invalid(valid: &'static str, s: &str) -> Result<(), String> {
     }
 }
 
-pub fn fmt_duration(secs: i64) -> String {
-    let neg = if secs < 0 { "-" } else { "" };
-    let h = (secs / 3600).abs();
-    let m = (secs % 3600 / 60).abs();
-    let s = (secs % 60).abs();
-    if h > 0      { format!("{}{}:{:02}:{:02}", neg, h, m, s) }
-    else if m > 0 { format!(      "{}{}:{:02}", neg, m, s) }
-    else          { format!(            "{}{}", neg, s) }
+pub enum DurationStyle {
+    HMS,
+    S,
+}
+impl FromStr for DurationStyle {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "hms" => Ok(DurationStyle::HMS),
+            "s" => Ok(DurationStyle::S),
+            _ => Err("Valid values are 'hms', 's'.".into())
+        }
+    }
+}
+#[rustfmt::skip]
+pub fn fmt_duration(style: &DurationStyle, secs: i64) -> String {
+    match style {
+        DurationStyle::HMS => {
+            let neg = if secs < 0 { "-" } else { "" };
+            let h = (secs / 3600).abs();
+            let m = (secs % 3600 / 60).abs();
+            let s = (secs % 60).abs();
+            if h > 0      { format!("{}{}:{:02}:{:02}", neg, h, m, s) }
+            else if m > 0 { format!(      "{}{}:{:02}", neg, m, s) }
+            else          { format!(            "{}{}", neg, s) }
+        },
+        DurationStyle::S => {
+            format!("{}", secs)
+        }
+    }
 }
 
 pub fn fmt_time(ts: i64) -> DateTime<Local> {
@@ -336,20 +366,20 @@ pub fn myopen(fname: &str) -> Result<impl Read, Error> {
 mod tests {
     use crate::*;
 
-    #[test]
+    #[test] #[rustfmt::skip]
     fn duration() {
-        assert_eq!(        "0", fmt_duration(0));
-        assert_eq!(        "1", fmt_duration(1));
-        assert_eq!(       "59", fmt_duration(59));
-        assert_eq!(     "1:00", fmt_duration(60));
-        assert_eq!(     "1:01", fmt_duration(61));
-        assert_eq!(    "59:59", fmt_duration(3599));
-        assert_eq!(  "1:00:00", fmt_duration(3600));
-        assert_eq!( "99:59:59", fmt_duration(359999));
-        assert_eq!("100:00:00", fmt_duration(360000));
-        assert_eq!(       "-1", fmt_duration(-1));
-        assert_eq!(    "-1:00", fmt_duration(-60));
-        assert_eq!( "-1:00:00", fmt_duration(-3600));
+        assert_eq!(        "0", fmt_duration(&DurationStyle::HMS, 0));
+        assert_eq!(        "1", fmt_duration(&DurationStyle::HMS, 1));
+        assert_eq!(       "59", fmt_duration(&DurationStyle::HMS, 59));
+        assert_eq!(     "1:00", fmt_duration(&DurationStyle::HMS, 60));
+        assert_eq!(     "1:01", fmt_duration(&DurationStyle::HMS, 61));
+        assert_eq!(    "59:59", fmt_duration(&DurationStyle::HMS, 3599));
+        assert_eq!(  "1:00:00", fmt_duration(&DurationStyle::HMS, 3600));
+        assert_eq!( "99:59:59", fmt_duration(&DurationStyle::HMS, 359999));
+        assert_eq!("100:00:00", fmt_duration(&DurationStyle::HMS, 360000));
+        assert_eq!(       "-1", fmt_duration(&DurationStyle::HMS, -1));
+        assert_eq!(    "-1:00", fmt_duration(&DurationStyle::HMS, -60));
+        assert_eq!( "-1:00:00", fmt_duration(&DurationStyle::HMS, -3600));
     }
 
     #[test]
