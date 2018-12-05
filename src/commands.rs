@@ -13,10 +13,14 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
     let show = subargs.value_of("show").unwrap();
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
-    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap().into(),
-                                value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                show_merge, show_sync,
-                                subargs.value_of("package"), subargs.is_present("exact"))?;
+    let hist = new_hist(myopen(args.value_of("logfile").unwrap())?,
+                        args.value_of("logfile").unwrap().into(),
+                        value_opt(args, "from", parse_date),
+                        value_opt(args, "to", parse_date),
+                        show_merge,
+                        show_sync,
+                        subargs.value_of("package"),
+                        subargs.is_present("exact"))?;
     let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
     let mut found_one = false;
@@ -100,10 +104,14 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
     let show_tot = show.contains(&"t") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
     let timespan_opt = value_opt(subargs, "group", parse_timespan);
-    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap().into(),
-                                value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                show_merge || show_tot, show_sync,
-                                subargs.value_of("package"), subargs.is_present("exact"))?;
+    let hist = new_hist(myopen(args.value_of("logfile").unwrap())?,
+                        args.value_of("logfile").unwrap().into(),
+                        value_opt(args, "from", parse_date),
+                        value_opt(args, "to", parse_date),
+                        show_merge || show_tot,
+                        show_sync,
+                        subargs.value_of("package"),
+                        subargs.is_present("exact"))?;
     let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
     let lim = value(subargs, "limit", parse_limit);
     let mut started: HashMap<(String, String, String), i64> = HashMap::new();
@@ -119,7 +127,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
                 nextts = timespan_next(t, timespan);
                 curts = t;
             } else if t > nextts {
-                cmd_stats_group(tw, &st, &fmtd, lim, show_merge, show_tot, show_sync, &timespan_header(curts, timespan), &syncs, &times)?;
+                cmd_stats_group(tw, &st, &fmtd, false, lim, show_merge, show_tot, show_sync, &timespan_header(curts, timespan), &syncs, &times)?;
                 syncs.clear();
                 times.clear();
                 nextts = timespan_next(t, timespan);
@@ -145,13 +153,14 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
         }
     };
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, &t));
-    cmd_stats_group(tw, &st, &fmtd, lim, show_merge, show_tot, show_sync, &group_by, &syncs, &times)?;
+    cmd_stats_group(tw, &st, &fmtd, true, lim, show_merge, show_tot, show_sync, &group_by, &syncs, &times)?;
     Ok(!times.is_empty() || !syncs.is_empty())
 }
 
 fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    st: &Styles,
                    fmtd: &DurationStyle,
+                   print_zeros: bool,
                    lim: u16,
                    show_merge: bool,
                    show_tot: bool,
@@ -159,7 +168,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    group_by: &str,
                    syncs: &[i64],
                    times: &BTreeMap<String, Vec<i64>>) ->Result<(), Error> {
-    if show_merge {
+    if show_merge && (print_zeros || !times.is_empty()) {
         for (pkg,tv) in times {
             let (predtime,predcount,tottime,totcount) = tv.iter()
                 .fold((0,0,0,0), |(pt,pc,tt,tc), &i| {
@@ -174,7 +183,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                      st.dur_p, fmt_duration(&fmtd, predtime/predcount), st.dur_s)?;
         }
     }
-    if show_tot {
+    if show_tot && (print_zeros || !times.is_empty()) {
         let mut tottime = 0;
         let mut totcount = 0;
         for tv in times.values() {
@@ -191,7 +200,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                  st.cnt_p, totcount,
                  st.dur_p, fmt_duration(&fmtd, totavg), st.dur_s)?;
     }
-    if show_sync {
+    if show_sync && (print_zeros || !syncs.is_empty()) {
         let synctime = syncs.iter().fold(0,|a,t|t+a);
         let synccount = syncs.len() as i64;
         let syncavg = if synccount > 0 {synctime/synccount} else {0};
@@ -225,10 +234,14 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
     }
 
     // Parse emerge log.
-    let hist = parser::new_hist(myopen(args.value_of("logfile").unwrap())?, args.value_of("logfile").unwrap().into(),
-                                value_opt(args, "from", parse_date), value_opt(args, "to", parse_date),
-                                true, false,
-                                None, false)?;
+    let hist = new_hist(myopen(args.value_of("logfile").unwrap())?,
+                        args.value_of("logfile").unwrap().into(),
+                        value_opt(args, "from", parse_date),
+                        value_opt(args, "to", parse_date),
+                        true,
+                        false,
+                        None,
+                        false)?;
     let mut started: BTreeMap<(String, String), i64> = BTreeMap::new();
     let mut times: HashMap<String, Vec<i64>> = HashMap::new();
     for p in hist {
@@ -256,7 +269,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
             .map(|(&(ref e,ref v),_)| ParsedPretend{ebuild:e.to_string(), version:v.to_string()})
             .collect()
     } else {
-        parser::new_pretend(stdin(), "STDIN")
+        new_pretend(stdin(), "STDIN")
     };
 
     // Gather and print per-package and indivudual stats.
