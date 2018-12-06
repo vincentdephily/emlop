@@ -59,12 +59,18 @@ fn main() {
         ("c", "pqlop",  &["-c"], None),
         ("c", "golop",  &["-c"], None),
 
-        ("pgcc", "genlop", &["-p"], Some("benches/emerge-p.kde.out")),
-        ("pgcc", "emlop",  &["p"],  Some("benches/emerge-p.kde.out")),
-        ("pqt",  "genlop", &["-p"], Some("benches/emerge-p.kde.out")),
-        ("pqt",  "emlop",  &["p"],  Some("benches/emerge-p.kde.out")),
+        ("pgcc", "genlop", &["-p"], Some("benches/emerge-p.gcc.out")),
+        ("pgcc", "emlop",  &["p"],  Some("benches/emerge-p.gcc.out")),
+        ("pqt",  "genlop", &["-p"], Some("benches/emerge-p.qt.out")),
+        ("pqt",  "emlop",  &["p"],  Some("benches/emerge-p.qt.out")),
         ("pkde", "genlop", &["-p"], Some("benches/emerge-p.kde.out")),
         ("pkde", "emlop",  &["p"],  Some("benches/emerge-p.kde.out")),
+
+        ("i", "genlop", &["-i","gcc"], None),
+        ("i", "qlop",   &["-g","gcc"], None),
+        ("i", "emlop",  &["s","gcc","-e"],  None),
+        ("i", "pqlop",  &["-g","gcc"], None),
+        ("i", "golop",  &["-t","gcc"], None),
     ];
 
     // CLI definition
