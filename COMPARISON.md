@@ -23,32 +23,47 @@ thing with `genlop -c` and `genlop -p` which are combined into `emlop p`.
 
 ## Output
 
-Emlop output aims to be compact, beautiful, and easy to read/parse. Pqlop has a sparse, colored
-output very close (often identical) to genlop. Qlop is also very close to genlop, but did make some
-outputs more compact. Golop has a fairly spartan look: compact, machine-like, no color.
+Emlop output aims to be compact, beautiful, and easy to read/parse. Qlop is very close to genlop,
+but did make some outputs more compact. Pqlop has a sparse, colored output very close (often
+identical) to genlop. Golop has a fairly spartan look: compact, machine-like, no color.
 
 |                                                   | genlop | qlop   | emlop   | pqlop  | golop   |
 | :------------------------------------------------ | :----: | :----: | :-----: | :----: | :-----: |
 | Output density                                    | sparse | medium | compact | sparse | compact |
 | Colorized output                                  | yes    | yes    | yes     | yes    | no      |
-| Date output options (Utc)                         | utc    | -      | -       | -      | -       |
-| Duration output style (seconds,hh:mm:ss,text)     | text   | s,text | hms     | text   | hms     |
+| Date output options                               | utc    | -      | -       | -      | -       |
+| Duration output style (seconds,hh:mm:ss,text)     | text   | s,text | hms,s   | text   | hms     |
+| Aligned output                                    | some   | all    | all     | some   | some    |
 | Headers                                           | no     | no     | no      | no     | some    |
 
-## Merge history
+## Merge log
 
-Emlop has a specific mode deticated to stats whereas {q,pq,go}lop include that at the end of other
-outputs.
+|                                                       | genlop | qlop    | emlop | pqlop | golop |
+| :---------------------------------------------------- | :----: | :-----: | :---: | :---: | :---: |
+| Display merges                                        | yes    | yes     | yes   | yes   | yes   |
+| Display syncs                                         | yes    | yes     | yes   | buggy | no    |
+| Display unmerges                                      | yes    | yes     | no    | yes   | no    |
+| Display interrupted merges                            | no     | no      | no    | yes   | no    |
+| Display currently installed package's USE/CFLAGS/date | yes    | no      | no    | no    | no    |
+| Display merge begin time or end time                  | end    | depends | end   | begin | begin |
 
-Pqlop doesn't handle newer log format for sync events.
+Pqlop doesn't handle newer log format for sync events. Qlop displays begin time when it displays
+duration, end time otherwise.
 
-|                                                                    | genlop | qlop | emlop | pqlop | golop |
-| :----------------------------------------------------------------- | :----: | :--: | :---: | :---: | :---: |
-| Display sync                                                       | yes    | yes  | yes   | buggy | no    |
-| Display unmerges                                                   | yes    | yes  | no    | yes   | no    |
-| Display interrupted merges                                         | no     | no   | no    | yes   | no    |
-| Display info about currently installed package like USE, CFLAGS... | yes    | no   | no    | no    | no    |
-| Display extra merge stats like total time/count, average...        | no     | yes  | yes   | yes   | yes   |
+## Merge stats
+
+Emlop has a dedicated stats mode, whereas {q,pq,go}lop show aggregate data in various places, often
+after sequential data.
+
+|                                                          | genlop | qlop | emlop | pqlop | golop |
+| :------------------------------------------------------- | :----: | :--: | :---: | :---: | :---: |
+| Individual merge count/total/average/prediction          | c,t,a  | c,a  | c,t,p | c     | c,a   |
+| Total merge count/total/average                          | -      | -    | c,t,a | -     | c     |
+| Total sync count/total/average                           | -      | -    | c,t,a | c,a   | -     |
+| Group stats by year/month/week/day                       | no     | no   | any   | one   | no    |
+
+Pqlop gives the overall number of syncs per week. It tries to give the total sync time, but that's
+buggy.
 
 ## Filtering
 
@@ -67,35 +82,6 @@ displays one of the possible matches when an ambiguous name is given (like `pkgc
 | Regexp case-sensitivity switch                         | flag   | n/a   | syntax | n/a   | n/a   |
 | Default search mode                                    | plain  | plain | regexp | plain | plain |
 | Unfiltered package listing                             | yes    | yes   | yes    | no    | yes   |
-
-## Speed
-
-Here are timings for some common commands (in seconds, 95th centile of 50 runs, ~35K emerges in
-emerge.log, output to kde Konsole) measured using `benches/exec_compare.crs`.
-
-Some timing-related feature differences: {em,go}lop always calculate the merge time in "list" mode,
-which takes some more work. {q,pq}lop don't calculate the ETA in "current merge" mode, which takes
-much less work. Filtering by plaintext isn't noticeably faster than by case-(in)sensitive regexp
-({gen,em}lop only). Disabling color speeds things up a tiny bit, but that's due to the terminal
-emulator, not *lop.
-
-|                                                                                 | genlop | qlop | emlop | pqlop | golop |
-| :------------------------------------------------------------------------------ | -----: | ---: | ----: | ----: | ----: |
-| `genlop -l; qlop -l; emlop l; golop`                                            |   1.52 | 0.39 |  0.47 |   n/a |  1.10 |
-| `genlop -t gcc; qlop -g gcc; emlop l -e gcc; pqlop -g gcc; golop -t gcc`        |   0.42 | 0.07 |  0.09 |  0.37 |  0.86 |
-| `genlop -e gcc; qlop -l gcc; emlop l -e gcc; pqlop -l gcc; golop -t gcc`        |   0.62 | 0.07 |  0.09 |  0.35 |  0.85 |
-| `MAKEOPTS=-j1 emerge -O1 firefox &;genlop -c;qlop -c;emlop p;pqlop -c;golop -c` |   0.73 | 0.00 |  0.18 |  0.50 |  0.94 |
-| `genlop -c;qlop -c;emlop p;pqlop -c;golop -c`                                   |   0.12 | 0.00 |  0.11 |  0.30 |  0.81 |
-| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`                      |   0.49 | n/a  |  0.12 |   n/a |   n/a |
-| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`                       |  13.96 | n/a  |  0.12 |   n/a |   n/a |
-| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`                      |  96.70 | n/a  |  0.12 |   n/a |   n/a |
-
-Qlop is fastest, followed closely by emlop. The others are slower but not showstoppers, except for
-`genlop -p` which is muuuch slower than `emlop p` (while {q,pq,go}lop don't implement the feature).
-
-Some bugs found while benching on my system: `qlop -g gcc` misses 2 merges, `golop -t gcc` misses 5,
-and `golop` misses 2.5% of merges. The emerge logs look fine and {gen,em,pq}lop agree with each
-other. `golop -c` often [doesn't detect running emerge](https://github.com/klausman/golop/issues/1).
 
 ## Merge time prediction
 
@@ -117,28 +103,55 @@ would estimate the resulting speedup factor.
 | Show current merge                                       | yes    | yes  | yes   | yes   | yes   |
 | Show current merge ETA                                   | yes    | no   | yes   | no    | yes   |
 | Show current merge stage                                 | no     | no   | no    | yes   | no    |
-| Show `emerge -p` merges                                  | yes    | no   | yes   | no    | no    |
-| Show `emerge -p` merges global ETA                       | yes    | n/a  | yes   | n/a   | n/a   |
-| Show `emerge -p` merges individual ETAs                  | no     | n/a  | yes   | n/a   | n/a   |
+| Show `emerge -p` merges global ETA                       | yes    | no   | yes   | no    | no    |
+| Show `emerge -p` merges individual ETAs                  | no     | no   | yes   | no    | no    |
 | Accuracy of time estimation                              | ok     | n/a  | good  | n/a   | ok    |
 | Query gentoo.linuxhowtos.org for unknown packages        | yes    | n/a  | no    | n/a   | no    |
 
+## Speed
+
+Here are timings for some common commands (in seconds, 95th centile of 25 runs, output to Alacritty
+terminal, ~40K emerges in emerge.log, SSD, Intel i7-4800MQ) measured using
+`benches/exec_compare.crs`.
+
+The commands were selected to be comparable, but Some differences do influence timings: {em,go}lop
+always calculate the merge time in "log" mode, which takes some more work. {q,pq}lop don't calculate
+the ETA in "current merge" mode, which takes much less work. Filtering by plaintext isn't noticeably
+faster than by case-(in)sensitive regexp ({gen,em}lop only).
+
+|                                                                                 | genlop | qlop | emlop | pqlop | golop |
+| :------------------------------------------------------------------------------ | -----: | ---: | ----: | ----: | ----: |
+| `genlop -l; qlop -l; emlop l; golop`                                            |   2.21 | 0.42 |  0.35 |   n/a |  1.79 |
+| `genlop -t gcc; qlop -g gcc; emlop l -e gcc; pqlop -g gcc; golop -t gcc`        |   1.55 | 0.11 |  0.14 |  0.57 |  1.60 |
+| `genlop -e gcc; qlop -l gcc; emlop l -e gcc; pqlop -l gcc; golop -t gcc`        |   1.26 | 0.11 |  0.14 |  0.58 |  1.61 |
+| `MAKEOPTS=-j1 emerge -O1 firefox &;genlop -c;qlop -c;emlop p;pqlop -c;golop -c` |   1.57 | 0.00 |  0.20 |  0.59 |  1.95 |
+| `genlop -c;qlop -c;emlop p;pqlop -c;golop -c`                                   |   0.70 | 0.00 |  0.01 |  0.57 |  1.64 |
+| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`                      |   1.48 | n/a  |  0.18 |   n/a |   n/a |
+| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`                       |  28.75 | n/a  |  0.18 |   n/a |   n/a |
+| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`                      | 196.37 | n/a  |  0.18 |   n/a |   n/a |
+
+Emlop and Qlop are similarly fast. The others are slower but not showstoppers, except for `genlop
+-p` which is muuuch slower than `emlop p` (while {q,pq,go}lop don't implement the feature).
+
+Some bugs found while benching on my system: `qlop -g gcc` misses 2 merges, `golop -t gcc` misses 5,
+and `golop` misses 2.5% of merges. The emerge logs look fine and {gen,em,pq}lop agree with each
+other. `golop -c` often [doesn't detect running emerge](https://github.com/klausman/golop/issues/1).
+
 ## misc
 
-Genlop started in 2007 but development seem to have stoped in 2015. Pqlop saw development between
-2011 and 2012, and a lone bugfix in 2016. Portage-utils (qlop) development has slowed down but this
-is more a sign of maturity than abandonment. Golop started in december 2017 but has only seen a
-couple of commits since. Emlop started in december 2017 and has kept relatively busy so far (but
-naturally if emlop development stopped you wouldn't learn about it in this file...).
+Genlop is the original from 2007; mature but development has stoped in 2015. Qlop started in 2011 as
+part of the broader portage-utils; is is less featureful than genlop/emlop, but mature and
+maintained. Emlop started in december 2017, it is now mature but still adding features. Pqlop and
+Golop started in 2011 and 2017 respectively, but seem to be abandonned experiments.
 
-|                                                          | genlop | qlop   | emlop | pqlop | golop |
-| :------------------------------------------------------- | :----: | :----: | :---: | :---: | :---: |
-| Bash completion                                          | yes    | no     | no    | no    | no    |
-| An ebuild in the gentoo portage tree                     | yes    | yes    | no    | yes   | yes   |
-| Support for non-Linux platforms                          | yes    | yes    | no    | yes   | ?     |
-| Unittests                                                | no     | yes    | yes   | no    | no    |
-| Documentation and help                                   | ok     | good   | good  | poor  | ok    |
-| Development pace                                         | dead   | mature | busy  | dead  | low   |
+|                                                       | genlop | qlop   | emlop  | pqlop | golop |
+| :---------------------------------------------------- | :----: | :----: | :----: | :---: | :---: |
+| Bash completion                                       | yes    | no     | no     | no    | no    |
+| An ebuild in the gentoo portage tree                  | yes    | yes    | no     | yes   | yes   |
+| Support for non-Linux platforms                       | yes    | yes    | no     | yes   | ?     |
+| Unittests                                             | no     | yes    | yes    | no    | no    |
+| Documentation and help                                | ok     | good   | good   | poor  | ok    |
+| Development activity                                  | dead   | mature | active | dead  | dead  |
 
 Emlop cannot yet detect current emerge processes on non-Linux; I'm taking an educated guess for the
 other tools.

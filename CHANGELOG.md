@@ -1,3 +1,15 @@
+# Unreleased
+
+* Renamed `list` subcommand to `log` (kept `list` as a hidden alias).
+* Added option to show `Sync` in log and stat commands.
+* Added option to show `Total` in stat command.
+* Added option to group stats by year/month/week/day.
+* Added option to format durations in seconds instead of hours:minutes:seconds.
+* Various CLI and online help improvements.
+* Now using a separate thread for parsing, speeding things up a bit.
+* Bumped minimum rust version to 1.30.
+* A bunch of of small bugfixes, QA fixes, and optimisations.
+
 # 0.2.0 2018-04-28
 
 Second release: Filtering, color, speed, and lots of polish.

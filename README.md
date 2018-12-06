@@ -10,43 +10,78 @@ more accurate, and more ergonomic. Other rewrites of Genlop exist, see [COMPARIS
 
 ## Installation
 
-### From main portage tree
+### Using portage
 
-Not available yet, ask in [gentoo bug 649904](https://bugs.gentoo.org/649904) ;)
+Not available in main portage tree yet, see [gentoo bug 649904](https://bugs.gentoo.org/649904). In
+the meantime, get it from the `moltonel` overlay : install
+[layman](https://wiki.gentoo.org/wiki/Layman) and run `layman -a moltonel` before running `emerge
+emlop` as ususal.
 
-### From portage overlay
+### Using cargo
 
-If you do not have [layman](https://wiki.gentoo.org/wiki/Layman) already, install and configure it.
-Then run `layman -a moltonel` to add the overlay with the emlop ebuild. Then run `emerge emlop` as
-ususal.
+Install [Rust](https://www.rust-lang.org/) using `emerge rust` (if you simply want to install Emlop)
+or [rustup](https://www.rust-lang.org/en-US/install.html) (if you want the latest Rust or plan to
+develop in Rust). Emlop releases should always work with portage's stable rust version.
 
-### From source
+Cargo installs binaries into `~/.cargo/bin/`, which should be in your `$PATH`. If you wish to
+install them system-wide, edit the system `$PATH` or copy/symlink `~/.cargo/bin/*` somewhere in
+`$PATH`.
 
-If you do not have [Rust](https://www.rust-lang.org/) already, install it with `emerge rust` or
-[rustup](https://www.rust-lang.org/en-US/install.html). Emlop should always work with the latest
-version of rust from portage, but the version from rustup might be more recent and performant.
+#### From crates.io
+
+    cargo install -f emlop
+
+#### From git
 
     git clone https://github.com/vincentdephily/emlop
     cd emlop
     cargo test
     cargo install -f
 
-This installs emlop into `~/.cargo/bin/`, which should be in your `$PATH`. If you wish to install
-emlop system-wide, edit the system `$PATH` or copy/symlink `~/.cargo/bin/emlop` somewhere in
-`$PATH`.
-
-
 ## Usage
 
-Emlop is split into subcommands like `list` or `predict`, which can be abbreviated by their first
-letter. This file doesn't show everything, see `emlop -h` and `emlop <sucommand> -h` for complete
-and up to date usage info.
+Emlop is split into `log`, `predict` and `stats` subcommands, which can be abbreviated by their
+first letter. This file doesn't show everything, see `emlop --help` and `emlop <sucommand> --help`
+for complete and up to date usage info.
 
-### Show merge history
+### Subcommands and arguments
 
-Show merge date, merge time, and package name:
+Show log of sucessful merges and syncs:
 
-    $ emlop list | tail
+    emlop log [OPTIONS] [package]
+        <package>                 Display only packages matching <package>.
+        -s, --show <m,s,a>        Show (m)erges, (s)yncs, and/or (a)ll. [default: m]
+        -e, --exact               Match package with a string instead of a regex.
+
+Predict merge time for current or pretended merges:
+
+    emlop predict [OPTIONS]
+        --limit <limit>   Use the last N merge times to predict next merge time. [default: 10]
+
+Show statistics about sucessful merges and syncs:
+
+    emlop stats [OPTIONS] [package]
+        <package>                  Show only packages matching <package>.
+        -s, --show <m,t,s,a>       Show (m)erges, (t)otals, (s)yncs, and/or (a)ll. [default: m]
+        -g, --groupby <y,m,w,d>    Group by (y)ear, (m)onth, (w)eek, or (d)ay.
+        -e, --exact                Match package with a string instead of a regex.
+            --limit <limit>        Use the last N merge times to predict next merge time. [default: 10]
+
+Options common to all subcommands:
+
+        --from <date>         Only parse log entries after <date>.
+        --to <date>           Only parse log entries before <date>.
+        --duration <hms,s>    Format durations in hours:minutes:seconds or in seconds. [default: hms]
+    -f, --logfile <file>      Location of emerge log file. [default: /var/log/emerge.log]
+    -v                        Show warnings (-v), info (-vv) and debug (-vvv) messages (errors are always displayed).
+        --color <when>        Enable color (auto/always/never/y/n). [default: auto]
+    -h, --help                Show short (-h) or detailed (--help) help.
+
+### Examples
+
+Show merge log with date, time, and package name:
+
+    $ emlop log | tail
     2018-01-29 10:20:52 +00:00        13 net-wireless/iw-4.9
     2018-01-29 10:21:21 +00:00        29 dev-libs/librdkafka-0.11.3
     2018-01-29 10:22:27 +00:00      1:06 net-misc/curl-7.58.0
@@ -58,7 +93,7 @@ Show merge date, merge time, and package name:
     2018-01-29 12:37:08 +00:00        16 virtual/rust-1.23.0
     2018-01-29 12:41:54 +00:00      4:46 dev-util/cargo-0.24.0
 
-Same info but filter packages by regexp:
+Show same merge log but filter packages by regexp:
 
     $ emlop l gcc | tail
     2017-10-04 18:43:31 +01:00         8 sys-devel/gcc-config-1.8-r1
@@ -72,15 +107,16 @@ Same info but filter packages by regexp:
     2017-12-05 12:49:27 +00:00   2:59:33 sys-devel/gcc-6.4.0
     2018-01-12 12:49:17 +00:00   1:48:28 sys-devel/gcc-6.4.0-r1
 
-Options summary:
+Show syncs of the last 7 days:
 
-    emlop list [OPTIONS] [package]
-        <package>         Display only packages matching <package>.
-        -e, --exact       Match package with a string instead of a regex.
-        --from <date>     Only parse log entries after <date>.
-        --to <date>       Only parse log entries before <date>.
-
-### Predict merge time
+    $ emlop l --from '1 week ago' -ss
+    2018-11-28 21:53:42 +00:00        13 Sync
+    2018-11-30 09:18:43 +00:00         7 Sync
+    2018-12-01 17:48:37 +00:00         3 Sync
+    2018-12-03 09:30:02 +00:00        11 Sync
+    2018-12-04 09:52:12 +00:00         8 Sync
+    2018-12-04 17:01:06 +00:00         8 Sync
+    2018-12-05 09:43:17 +00:00         4 Sync
 
 Show currently emerging packages, how long they have been running, and predict how long is left:
 
@@ -100,15 +136,6 @@ Predict merge time from an `emerge --pretend` output, taking currently elapsed t
     kde-apps/konqueror-17.12.3                              3:46
     Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06
 
-Options summary:
-
-    emlop predict [OPTIONS]
-        --limit <limit>   Use the last N merge times to predict next merge time. [default: 10]
-        --from <date>     Only parse log entries after <date>.
-        --to <date>       Only parse log entries before <date>.
-
-### Show merge statistics
-
 Show total merge time, merge count, and average merge time:
 
     $ emlop s gtk
@@ -127,15 +154,55 @@ Show total merge time, merge count, and average merge time:
     dev-python/pywebkitgtk                 13    1        13
     dev-perl/gtk2-perl                  12:49    8      1:36
 
-Options summary:
+Show monthly merge stats for this year:
 
-    emlop stats [OPTIONS] [package]
-        <package>         Display only packages matching <package>.
-        -e, --exact       Match package with a string instead of a regex.
-        --limit <limit>   Use the last N merge times to predict next merge time. [default: 10]
-        --from <date>     Only parse log entries after <date>.
-        --to <date>       Only parse log entries before <date>.
+    $ emlop s -gm -st --from '1 year ago'
+    2017-12 Merge    53:49:26    915      3:31
+    2018-01 Merge    42:15:12    531      4:46
+    2018-02 Merge    44:36:38    539      4:57
+    2018-03 Merge    25:36:50    527      2:54
+    2018-04 Merge    67:32:12   2114      1:55
+    2018-05 Merge    23:53:21    502      2:51
+    2018-06 Merge    35:16:01    442      4:47
+    2018-07 Merge    31:45:27    452      4:12
+    2018-08 Merge    28:36:45    260      6:36
+    2018-09 Merge    28:36:53    386      4:26
+    2018-10 Merge    31:15:24    515      3:38
+    2018-11 Merge    21:12:51    422      3:00
+    2018-12 Merge    12:18:01     42     17:34
+
+Show yearly evolution of a package's average merge time:
+
+    $ emlop s -gy chromium
+    2013 www-client/chromium       33:37      1     33:37
+    2014 www-client/chromium    18:11:23     21   1:04:35
+    2015 www-client/chromium    41:52:19     20   2:46:10
+    2016 www-client/chromium    92:21:29     21   5:21:21
+    2017 www-client/chromium   125:26:42     22   5:20:28
+    2018 www-client/chromium   106:06:47     19   5:37:57
+
+Show number of syncs per week:
+
+    $ emlop s -gw -ss | tail
+    2018-40 Sync        1:35      8        11
+    2018-41 Sync        1:22     10         8
+    2018-42 Sync        1:26     11         7
+    2018-43 Sync        1:02      9         6
+    2018-44 Sync        1:23     13         6
+    2018-45 Sync        1:06      9         7
+    2018-46 Sync        1:27     11         7
+    2018-47 Sync        1:14      8         9
+    2018-48 Sync          31      4         7
+    2018-49 Sync          31      4         7
 
 ## Contributing
 
-Thanks, and welcome :) See [CONTRIBUTING](CONTRIBUTING.md). Emlop is licensed as GPLv3.
+Thank you for taking the time to contribute. We're especially looking for
+
+* bug reports
+* feature requests
+* testing in non-gentoo/linux/amd64/portage environements
+* patches
+* praise and encouragements ;)
+
+See [CONTRIBUTING](CONTRIBUTING.md). Emlop is licensed as GPLv3.
