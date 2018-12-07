@@ -92,14 +92,6 @@ The grouping key is displayed in the first column. Weeks start on monday and are
         .after_help("Subcommands can be abbreviated down to a single letter.\n\
 Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if search found nothing.")
         .help_message("Show short (-h) or detailed (--help) help. Use <subcommand> -h/--help for subcommand help.")
-        .arg(Arg::with_name("logfile")
-             .value_name("file")
-             .long("logfile")
-             .short("f")
-             .global(true)
-             .takes_value(true)
-             .default_value("/var/log/emerge.log")
-             .help("Location of emerge log file."))
         .arg(Arg::with_name("from")
              .value_name("date")
              .long("from")
@@ -123,6 +115,14 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
              .hide_possible_values(true)
              .default_value("hms")
              .help("Format durations in hours:minutes:seconds or in seconds."))
+        .arg(Arg::with_name("logfile")
+             .value_name("file")
+             .long("logfile")
+             .short("f")
+             .global(true)
+             .takes_value(true)
+             .default_value("/var/log/emerge.log")
+             .help("Location of emerge log file."))
         .arg(Arg::with_name("verbose")
              .short("v")
              .global(true)
@@ -156,10 +156,10 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
                     .arg(&arg_limit))
         .subcommand(SubCommand::with_name("stats")
                     .about("Show statistics about sucessful merges and syncs.")
-                    .long_about("Show statistics about sucessful merges (total or per package) merges and syncs.\n\
-* Per-package: total merge time, total merge count, next merge time prediction.\n\
-* Merges:      total merge time, total merge count, average merge time\n\
-* Syncs:       total sync time,  total sync count,  average sync time")
+                    .long_about("Show statistics about sucessful merges (overall or per package) and syncs.\n\
+* package: total merge time, total merge count, next merge time prediction.\n\
+* Merges:  total merge time, total merge count, average merge time\n\
+* Syncs:   total sync time,  total sync count,  average sync time")
                     .help_message("Show short (-h) or detailed (--help) help.")
                     .arg(&arg_show_s)
                     .arg(&arg_group)
