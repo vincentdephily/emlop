@@ -2,9 +2,9 @@ use chrono::{Datelike, Duration, Timelike, Weekday};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{stdin, stdout, Stdout};
 
-use crate::*;
 use crate::parser::*;
 use crate::proces::*;
+use crate::*;
 
 /// Straightforward display of merge events
 ///
@@ -27,23 +27,28 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
     let mut syncstart: i64 = 0;
     for p in hist {
         match p {
-            ParsedHist::Start{ts, ebuild, version, iter, ..} => {
+            ParsedHist::Start { ts, ebuild, version, iter, .. } => {
                 // This'll overwrite any previous entry, if a build started but never finished
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            ParsedHist::Stop{ts, ebuild, version, iter, ..} => {
+            ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
                 found_one = true;
                 let started = started.remove(&(ebuild.clone(), version.clone(), iter.clone()));
+                #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
-                         fmt_time(ts), st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(&fmtd, ts-pt)),
+                         fmt_time(ts),
+                         st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(&fmtd, ts-pt)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
-            ParsedHist::SyncStart{ts} => {
+            ParsedHist::SyncStart { ts } => {
                 syncstart = ts;
             },
-            ParsedHist::SyncStop{ts} => {
+            ParsedHist::SyncStop { ts } => {
                 found_one = true;
-                writeln!(stdout(), "{} {}{:>9}{} Sync", fmt_time(ts), st.dur_p, fmt_duration(&fmtd, ts-syncstart), st.dur_s).unwrap_or(());
+                #[rustfmt::skip]
+                writeln!(stdout(), "{} {}{:>9}{} Sync",
+                         fmt_time(ts),
+                         st.dur_p, fmt_duration(&fmtd, ts-syncstart), st.dur_s).unwrap_or(());
             },
         }
     }
@@ -87,10 +92,10 @@ fn timespan_next(ts: i64, add: &Timespan) -> i64 {
 }
 fn timespan_header(ts: i64, timespan: &Timespan) -> String {
     match timespan {
-        Timespan::Year => format!("{}",Local.timestamp(ts, 0).format("%Y ")),
-        Timespan::Month => format!("{}",Local.timestamp(ts, 0).format("%Y-%m ")),
-        Timespan::Week => format!("{}",Local.timestamp(ts, 0).format("%Y-%W ")),
-        Timespan::Day => format!("{}",Local.timestamp(ts, 0).format("%Y-%m-%d ")),
+        Timespan::Year => format!("{}", Local.timestamp(ts, 0).format("%Y ")),
+        Timespan::Month => format!("{}", Local.timestamp(ts, 0).format("%Y-%m ")),
+        Timespan::Week => format!("{}", Local.timestamp(ts, 0).format("%Y-%W ")),
+        Timespan::Day => format!("{}", Local.timestamp(ts, 0).format("%Y-%m-%d ")),
     }
 }
 
@@ -98,7 +103,11 @@ fn timespan_header(ts: i64, timespan: &Timespan) -> String {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
+pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
+                 args: &ArgMatches,
+                 subargs: &ArgMatches,
+                 st: &Styles)
+                 -> Result<bool, Error> {
     let show = subargs.value_of("show").unwrap();
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_tot = show.contains(&"t") || show.contains(&"a");
@@ -118,7 +127,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
     let mut syncs: Vec<i64> = vec![];
     let mut times: BTreeMap<String, Vec<i64>> = BTreeMap::new();
     let mut syncstart: i64 = 0;
-    let mut nextts =  0;
+    let mut nextts = 0;
     let mut curts = 0;
     for p in hist {
         if let Some(ref timespan) = timespan_opt {
@@ -127,7 +136,9 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
                 nextts = timespan_next(t, timespan);
                 curts = t;
             } else if t > nextts {
-                cmd_stats_group(tw, &st, &fmtd, false, lim, show_merge, show_tot, show_sync, &timespan_header(curts, timespan), &syncs, &times)?;
+                let group_by = timespan_header(curts, timespan);
+                cmd_stats_group(tw, &st, &fmtd, false, lim, show_merge, show_tot, show_sync,
+                                &group_by, &syncs, &times)?;
                 syncs.clear();
                 times.clear();
                 nextts = timespan_next(t, timespan);
@@ -135,25 +146,28 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMat
             }
         }
         match p {
-            ParsedHist::Start{ts, ebuild, version, iter, ..} => {
+            ParsedHist::Start { ts, ebuild, version, iter, .. } => {
                 started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
-            ParsedHist::Stop{ts, ebuild, version, iter, ..} => {
-                if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone(), iter.clone())) {
+            ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
+                if let Some(start_ts) =
+                    started.remove(&(ebuild.clone(), version.clone(), iter.clone()))
+                {
                     let timevec = times.entry(ebuild.clone()).or_insert_with(|| vec![]);
-                    timevec.insert(0, ts-start_ts);
+                    timevec.insert(0, ts - start_ts);
                 }
             },
-            ParsedHist::SyncStart{ts} => {
+            ParsedHist::SyncStart { ts } => {
                 syncstart = ts;
             },
-            ParsedHist::SyncStop{ts} => {
+            ParsedHist::SyncStop { ts } => {
                 syncs.push(ts - syncstart);
             },
         }
-    };
+    }
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, &t));
-    cmd_stats_group(tw, &st, &fmtd, true, lim, show_merge, show_tot, show_sync, &group_by, &syncs, &times)?;
+    cmd_stats_group(tw, &st, &fmtd, true, lim, show_merge, show_tot, show_sync, &group_by,
+                    &syncs, &times)?;
     Ok(!times.is_empty() || !syncs.is_empty())
 }
 
@@ -167,14 +181,19 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    show_sync: bool,
                    group_by: &str,
                    syncs: &[i64],
-                   times: &BTreeMap<String, Vec<i64>>) ->Result<(), Error> {
+                   times: &BTreeMap<String, Vec<i64>>)
+                   -> Result<(), Error> {
     if show_merge && (print_zeros || !times.is_empty()) {
-        for (pkg,tv) in times {
-            let (predtime,predcount,tottime,totcount) = tv.iter()
-                .fold((0,0,0,0), |(pt,pc,tt,tc), &i| {
-                    if tc >= lim {(pt,  pc,  tt+i,tc+1)}
-                    else         {(pt+i,pc+1,tt+i,tc+1)}
-                });
+        for (pkg, tv) in times {
+            let (predtime, predcount, tottime, totcount) =
+                tv.iter().fold((0, 0, 0, 0), |(pt, pc, tt, tc), &i| {
+                             if tc >= lim {
+                                 (pt, pc, tt + i, tc + 1)
+                             } else {
+                                 (pt + i, pc + 1, tt + i, tc + 1)
+                             }
+                         });
+            #[rustfmt::skip]
             writeln!(tw, "{}{}{}\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                      group_by,
                      st.pkg_p, pkg,
@@ -192,7 +211,8 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                 totcount += 1
             }
         }
-        let totavg = if totcount > 0 {tottime/totcount} else {0};
+        let totavg = if totcount > 0 { tottime / totcount } else { 0 };
+        #[rustfmt::skip]
         writeln!(tw, "{}{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  group_by,
                  st.pkg_p,
@@ -201,9 +221,10 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                  st.dur_p, fmt_duration(&fmtd, totavg), st.dur_s)?;
     }
     if show_sync && (print_zeros || !syncs.is_empty()) {
-        let synctime = syncs.iter().fold(0,|a,t|t+a);
+        let synctime = syncs.iter().fold(0, |a, t| t + a);
         let synccount = syncs.len() as i64;
-        let syncavg = if synccount > 0 {synctime/synccount} else {0};
+        let syncavg = if synccount > 0 { synctime / synccount } else { 0 };
+        #[rustfmt::skip]
         writeln!(tw, "{}{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  group_by,
                  st.pkg_p,
@@ -217,7 +238,11 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
+pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
+                   args: &ArgMatches,
+                   subargs: &ArgMatches,
+                   st: &Styles)
+                   -> Result<bool, Error> {
     let now = epoch_now();
     let lim = value(subargs, "limit", parse_limit);
     let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
@@ -226,11 +251,15 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
     let mut cms = std::i64::MAX;
     for i in get_all_info(Some("emerge"))? {
         cms = std::cmp::min(cms, i.start);
-        writeln!(tw, "Pid {}: ...{}\t{}{:>9}{}", i.pid, &i.cmdline[(i.cmdline.len()-35)..], st.dur_p, fmt_duration(&fmtd, now-i.start), st.dur_s)?;
+        #[rustfmt::skip]
+        writeln!(tw, "Pid {}: ...{}\t{}{:>9}{}",
+                 i.pid,
+                 &i.cmdline[(i.cmdline.len()-35)..],
+                 st.dur_p, fmt_duration(&fmtd, now-i.start), st.dur_s)?;
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
         writeln!(tw, "No ongoing merge found")?;
-        return Ok(false)
+        return Ok(false);
     }
 
     // Parse emerge log.
@@ -247,17 +276,17 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
     for p in hist {
         match p {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
-            ParsedHist::Start{ts, ebuild, version, ..} => {
+            ParsedHist::Start { ts, ebuild, version, .. } => {
                 started.insert((ebuild.clone(), version.clone()), ts);
             },
-            ParsedHist::Stop{ts, ebuild, version, ..} => {
+            ParsedHist::Stop { ts, ebuild, version, .. } => {
                 if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone())) {
                     let timevec = times.entry(ebuild.clone()).or_insert_with(|| vec![]);
-                    timevec.insert(0, ts-start_ts);
+                    timevec.insert(0, ts - start_ts);
                 }
             },
-            ParsedHist::SyncStart{..} => (),
-            ParsedHist::SyncStop{..} => (),
+            ParsedHist::SyncStart { .. } => (),
+            ParsedHist::SyncStop { .. } => (),
         }
     }
 
@@ -265,9 +294,10 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
     let pretend: Vec<ParsedPretend> = if atty::is(atty::Stream::Stdin) {
         started.iter()
-            .filter(|&(_,t)| *t > cms)
-            .map(|(&(ref e,ref v),_)| ParsedPretend{ebuild:e.to_string(), version:v.to_string()})
-            .collect()
+               .filter(|&(_, t)| *t > cms)
+               .map(|(&(ref e, ref v), _)| ParsedPretend { ebuild: e.to_string(),
+                                                           version: v.to_string() })
+               .collect()
     } else {
         new_pretend(stdin(), "STDIN")
     };
@@ -277,29 +307,33 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
     let mut totunknown = 0;
     let mut totpredict = 0;
     let mut totelapsed = 0;
-    for ParsedPretend{ebuild, version} in pretend {
+    for ParsedPretend { ebuild, version } in pretend {
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
-        let (elapsed,elapsed_fmt) = match started.remove(&(ebuild.clone(), version.clone())) {
-            Some(s) if s > cms => (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(&fmtd, now-s), st.dur_s)),
-            _ => (0, "".into())
+        let (elapsed, elapsed_fmt) = match started.remove(&(ebuild.clone(), version.clone())) {
+            Some(s) if s > cms => {
+                (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(&fmtd, now - s), st.dur_s))
+            },
+            _ => (0, "".into()),
         };
 
         // Find the predicted time and adjust counters
         totcount += 1;
         let pred_fmt = match times.get(&ebuild) {
             Some(tv) => {
-                let (predtime,predcount,_) = tv.iter()
-                    .fold((0,0,0), |(pt,pc,tc), &i| {
-                        if tc >= lim {(pt,  pc,  tc+1)}
-                        else         {(pt+i,pc+1,tc+1)}
-                    });
+                let (predtime, predcount, _) = tv.iter().fold((0, 0, 0), |(pt, pc, tc), &i| {
+                                                            if tc >= lim {
+                                                                (pt, pc, tc + 1)
+                                                            } else {
+                                                                (pt + i, pc + 1, tc + 1)
+                                                            }
+                                                        });
                 totpredict += predtime / predcount;
                 if elapsed > 0 {
                     totelapsed += elapsed;
                     totpredict -= std::cmp::min(predtime / predcount, elapsed);
                 }
-                fmt_duration(&fmtd, predtime/predcount)
+                fmt_duration(&fmtd, predtime / predcount)
             },
             None => {
                 totunknown += 1;
@@ -308,9 +342,14 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>, args: &ArgMatches, subargs: &ArgM
         };
 
         // Done
-        writeln!(tw, "{}{}-{}\t{}{:>9}{}{}", st.pkg_p, ebuild, version, st.dur_p, pred_fmt, st.dur_s, elapsed_fmt)?;
+        #[rustfmt::skip]
+        writeln!(tw, "{}{}-{}\t{}{:>9}{}{}",
+                 st.pkg_p, ebuild, version,
+                 st.dur_p, pred_fmt,
+                 st.dur_s, elapsed_fmt)?;
     }
     if totcount > 0 {
+        #[rustfmt::skip]
         writeln!(tw, "Estimate for {}{}{} ebuilds ({}{}{} unknown, {}{}{} elapsed)\t{}{:>9}{}",
                  st.cnt_p, totcount, st.cnt_s,
                  st.cnt_p, totunknown, st.cnt_s,
@@ -367,7 +406,7 @@ mod tests {
                      2018-03-07 13:59:41 +00:00        24 dev-libs/nspr-4.18\n"),
              0),
         ];
-        for (a,o,e) in t {
+        for (a, o, e) in t {
             match e {
                 0 => Assert::main_binary().with_args(a).stdout().is(o).unwrap(),
                 _ => Assert::main_binary().with_args(a).fails_with(e).stdout().is(o).unwrap(),
@@ -383,7 +422,7 @@ mod tests {
         Assert::main_binary().with_args(&["p"]).fails_with(2).stdout().is(o).unwrap();
     }
 
-    #[test]
+    #[test] #[rustfmt::skip]
     fn predict_emerge_p() {
         let t = vec![
             // Check garbage input
@@ -405,7 +444,7 @@ mod tests {
                      Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n"),
              0),
         ];
-        for (i,o,e) in t {
+        for (i, o, e) in t {
             match e {
                 0 => Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
                     .stdin(i).stdout().is(o).unwrap(),
@@ -415,7 +454,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[test] #[rustfmt::skip]
     fn stats() {
         let t: Vec<(&[&str],&str,i32)> = vec![
             (&["-f","test/emerge.10000.log","s","client"],
@@ -450,7 +489,7 @@ mod tests {
                      Sync            0      0         0\n"),
              2),
         ];
-        for (a,o,e) in t {
+        for (a, o, e) in t {
             match e {
                 0 => Assert::main_binary().with_args(a).stdout().is(o).unwrap(),
                 _ => Assert::main_binary().with_args(a).fails_with(e).stdout().is(o).unwrap(),
@@ -461,7 +500,7 @@ mod tests {
     /// Test grouped stats. In addition to the usual check that the actual output matches the
     /// expected one, we check that the expected outputs are consistent (y/m/w/d totals are the
     /// same, and avg*count==tot).
-    #[test]
+    #[test] #[rustfmt::skip]
     fn stats_grouped() {
         let t: Vec<(&[&str],&str)> = vec![
             (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gy"],
@@ -581,7 +620,7 @@ mod tests {
         let re = Regex::new("([0-9]+) +([0-9]+) +([0-9]+)$").unwrap();
         let mut tots_t: HashMap<&str, i32> = HashMap::new();
         let mut tots_c: HashMap<&str, i32> = HashMap::new();
-        for (a,o) in t {
+        for (a, o) in t {
             for l in o.lines() {
                 let cap = re.captures(&l).expect("Line doesn't match regex");
                 let cap_t = cap.get(1).unwrap().as_str().parse::<i32>().expect("Can't parse tottime");
@@ -604,33 +643,32 @@ mod tests {
         // 0: no problem
         // 1: user or program error
         // 2: command ran properly but didn't find anything
-        let t: Vec<(&[&str],i32)> = vec![
-            // Help, version, badarg (clap)
-            (&["-h"], 0),
-            (&["-V"], 0),
-            (&["l","-h"], 0),
-            (&[], 1),
-            (&["s","--foo"], 1),
-            (&["badcmd"], 1),
-            // Bad arguments (emlop)
-            (&["l","--logfile","notfound"], 1),
-            (&["s","--logfile","notfound"], 1),
-            (&["p","--logfile","notfound"], 1),
-            (&["l","bad regex [a-z"], 1),
-            (&["s","bad regex [a-z"], 1),
-            (&["p","bad regex [a-z"], 1),
-            // Normal behaviour
-            (&["-f","test/emerge.10000.log","p"], 2),
-            (&["-f","test/emerge.10000.log","l"], 0),
-            (&["-f","test/emerge.10000.log","l","-s"], 0),
-            (&["-f","test/emerge.10000.log","l","-e","icu"], 0),
-            (&["-f","test/emerge.10000.log","l","-e","unknown"], 2),
-            (&["-f","test/emerge.10000.log","l","--from","2018-09-28"], 2),
-            (&["-f","test/emerge.10000.log","l","-s","--from","2018-09-28"], 2),
-            (&["-f","test/emerge.10000.log","s"], 0),
-            (&["-f","test/emerge.10000.log","s","-e","icu"], 0),
-            (&["-f","test/emerge.10000.log","s","-e","unknown"], 2),
-        ];
+        let t: Vec<(&[&str], i32)> =
+            vec![// Help, version, badarg (clap)
+                 (&["-h"], 0),
+                 (&["-V"], 0),
+                 (&["l", "-h"], 0),
+                 (&[], 1),
+                 (&["s", "--foo"], 1),
+                 (&["badcmd"], 1),
+                 // Bad arguments (emlop)
+                 (&["l", "--logfile", "notfound"], 1),
+                 (&["s", "--logfile", "notfound"], 1),
+                 (&["p", "--logfile", "notfound"], 1),
+                 (&["l", "bad regex [a-z"], 1),
+                 (&["s", "bad regex [a-z"], 1),
+                 (&["p", "bad regex [a-z"], 1),
+                 // Normal behaviour
+                 (&["-f", "test/emerge.10000.log", "p"], 2),
+                 (&["-f", "test/emerge.10000.log", "l"], 0),
+                 (&["-f", "test/emerge.10000.log", "l", "-s"], 0),
+                 (&["-f", "test/emerge.10000.log", "l", "-e", "icu"], 0),
+                 (&["-f", "test/emerge.10000.log", "l", "-e", "unknown"], 2),
+                 (&["-f", "test/emerge.10000.log", "l", "--from", "2018-09-28"], 2),
+                 (&["-f", "test/emerge.10000.log", "l", "-s", "--from", "2018-09-28"], 2),
+                 (&["-f", "test/emerge.10000.log", "s"], 0),
+                 (&["-f", "test/emerge.10000.log", "s", "-e", "icu"], 0),
+                 (&["-f", "test/emerge.10000.log", "s", "-e", "unknown"], 2),];
         for (args, exit) in t {
             match exit {
                 0 => Assert::main_binary().with_args(args).unwrap(),

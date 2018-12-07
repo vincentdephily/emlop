@@ -91,7 +91,7 @@ mod tests {
             .timestamp()
     }
 
-    #[test]
+    #[test] #[rustfmt::skip]
     fn start_time() {
         // First get the system's process start times using our implementation
         let mut info: BTreeMap<i32,(String,Option<i64>,Option<i64>)> = //pid => (cmd, rust_time, ps_time)
@@ -102,21 +102,24 @@ mod tests {
         // Then get them using the ps implementation (merging them into the same data structure)
         let ps_start = epoch_now();
         let re = Regex::new("^ *([0-9]+) [A-Za-z]+ ([a-zA-Z0-9: ]+)$").unwrap();
-        let cmd = Command::new("ps")
-            .env("TZ", "UTC").env("LC_ALL", "C") // Use a consistent format for datetimes
-            .args(&["-o", "pid,lstart", // Output pid and start time
-                    "-ax", // All processes including those "not associated with a terminal"
-                    "-h"]) // No headers
-            .output()
-            .expect("failed to execute ps");
+        let cmd = Command::new("ps").env("TZ", "UTC")
+                                    .env("LC_ALL", "C") // Use a consistent format for datetimes
+                                    .args(&["-o",
+                                            "pid,lstart", // Output pid and start time
+                                            "-ax", // All processes including those "not associated with a terminal"
+                                            "-h"]) // No headers
+                                    .output()
+                                    .expect("failed to execute ps");
         for lineres in cmd.stdout.lines() {
             if let Ok(line) = lineres {
                 match re.captures(&line) {
                     Some(c) => {
                         let pid = c.get(1).unwrap().as_str().parse::<i32>().unwrap();
                         let time = parse_ps_time(c.get(2).unwrap().as_str());
-                        if let Some((comm,t,None)) = info.insert(pid,("?".into(),None,Some(time))) {
-                            info.insert(pid,(comm,t,Some(time)));
+                        if let Some((comm, t, None)) =
+                            info.insert(pid, ("?".into(), None, Some(time)))
+                        {
+                            info.insert(pid, (comm, t, Some(time)));
                         }
                     },
                     None => assert!(false, "Couldn't parse {}", line),

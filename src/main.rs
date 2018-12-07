@@ -25,7 +25,8 @@ use ansi_term::Style;
 use chrono::{DateTime, Local, TimeZone};
 use chrono_english::{parse_date_string, Dialect};
 use clap::{
-    crate_version, App, AppSettings, Arg, ArgMatches, Error as ClapError, ErrorKind, SubCommand, value_t,
+    crate_version, value_t, App, AppSettings, Arg, ArgMatches, Error as ClapError, ErrorKind,
+    SubCommand,
 };
 use failure::Error;
 use failure_derive::Fail;
@@ -39,21 +40,20 @@ use tabwriter::TabWriter;
 use crate::commands::*;
 
 fn main() {
-    let arg_limit = Arg::with_name("limit")
-        .long("limit")
-        .takes_value(true)
-        .default_value("10")
-        .help("Use the last N merge times to predict next merge time.");
-    let arg_pkg = Arg::with_name("package")
-        .takes_value(true)
-        .help("Show only packages matching <package>.");
+    let arg_limit =
+        Arg::with_name("limit").long("limit")
+                               .takes_value(true)
+                               .default_value("10")
+                               .help("Use the last N merge times to predict next merge time.");
+    let arg_pkg =
+        Arg::with_name("package").takes_value(true).help("Show only packages matching <package>.");
     let arg_exact = Arg::with_name("exact")
         .short("e")
         .long("exact")
         .help("Match package with a string instead of a regex.")
         .long_help("Match package with a string instead of a regex. \
 Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/1.0.5/regex/#syntax). \
-String is case-sentitive and matches on whole name, or whole category/name if it contains a /.");//FIXME auto crate version
+String is case-sentitive and matches on whole name, or whole category/name if it contains a /."); //FIXME auto crate version
     let arg_show_l = Arg::with_name("show")
         .short("s")
         .long("show")
@@ -173,8 +173,8 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
     let styles = Styles::new(&args);
     let mut tw = TabWriter::new(stdout());
     let res = match args.subcommand() {
-        ("log",     Some(sub_args)) => cmd_list(&args, sub_args, &styles),
-        ("stats",   Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, &styles),
+        ("log", Some(sub_args)) => cmd_list(&args, sub_args, &styles),
+        ("stats", Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, &styles),
         ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args, &styles),
         (other, _) => unimplemented!("{} subcommand", other),
     };
@@ -185,53 +185,52 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
         Err(e) => {
             error!("{}", e);
             ::std::process::exit(1)
-        }
+        },
     }
 }
 
 /// Parse and return argument from an ArgMatches, exit if parsing fails.
 ///
-/// This is similar to clap's `value_t!` except it takes a parsing function instead of a target
-/// type, returns an unwraped value, and exits upon parsing error. It'd be more idiomatic to
-/// implement FromStr trait on a custom struct, but this is simpler to write and use, and we're not
-/// writing a library.
-pub fn value<T,P>(matches: &ArgMatches, name: &str, parse: P) -> T
-    where P: FnOnce(&str) -> Result<T,String> {
-    match matches.value_of(name) {
-        None => // Argument should be required by ArgMatch => this is a bug not a user error => panic
-            panic!("Argument {} missing", name),
-        Some(s) =>
-            match parse(s) {
-                Ok(v) => v,
-                Err(e) => ClapError{message: format!("Invalid argument '--{} {}': {}", name, s, e),
-                                    kind: ErrorKind::InvalidValue,
-                                    info: None}.exit(),
-            },
+/// This is the same as [value_opt(m,n,p)->Option<T>] except that we expect `name` to have a
+/// value. Note the nice exit for user error vs panic for emlop bug.
+///
+/// [value_opt(m,n,p)->Option<T>]: fn.value_opt.html
+pub fn value<T, P>(matches: &ArgMatches, name: &str, parse: P) -> T
+    where P: FnOnce(&str) -> Result<T, String>
+{
+    let s = matches.value_of(name).expect(&format!("Argument {} missing", name));
+    match parse(s) {
+        Ok(v) => v,
+        Err(e) => ClapError { message: format!("Invalid argument '--{} {}': {}", name, s, e),
+                              kind: ErrorKind::InvalidValue,
+                              info: None }.exit(),
     }
 }
 
 /// Parse and return optional argument from an ArgMatches, exit if parsing fails.
 ///
-/// See [value(m,n,p)->T] for background info.
-///
-/// [value(m,n,p)->T]:      fn.value.html
-pub fn value_opt<T,P>(matches: &ArgMatches, name: &str, parse: P) -> Option<T>
-    where P: FnOnce(&str) -> Result<T,String> {
-    match matches.value_of(name) {
-        None =>
-            None,
-        Some(s) =>
-            match parse(s) {
-                Ok(v) => Some(v),
-                Err(e) => ClapError{message: format!("Invalid argument '--{} {}': {}", name, s, e),
-                                    kind: ErrorKind::InvalidValue,
-                                    info: None}.exit(),
-            },
+/// This is similar to clap's `value_t!` except it takes a parsing function instead of a target
+/// type, returns an unwraped value, and exits upon parsing error. It'd be more idiomatic to
+/// implement FromStr trait on a custom struct, but this is simpler to write and use, and we're not
+/// writing a library.
+pub fn value_opt<T, P>(matches: &ArgMatches, name: &str, parse: P) -> Option<T>
+    where P: FnOnce(&str) -> Result<T, String>
+{
+    let s = matches.value_of(name)?;
+    match parse(s) {
+        Ok(v) => Some(v),
+        Err(e) => ClapError { message: format!("Invalid argument '--{} {}': {}", name, s, e),
+                              kind: ErrorKind::InvalidValue,
+                              info: None }.exit(),
     }
 }
 
 pub fn parse_limit(s: &str) -> Result<u16, String> {
-    u16::from_str(&s).map_err(|_| format!("Must be an integer between {} and {}", std::u16::MIN, std::u16::MAX))
+    u16::from_str(&s).map_err(|_| {
+                         format!("Must be an integer between {} and {}",
+                                 std::u16::MIN,
+                                 std::u16::MAX)
+                     })
 }
 
 pub fn parse_date(s: &str) -> Result<i64, String> {
@@ -277,11 +276,10 @@ impl FromStr for DurationStyle {
         match s {
             "hms" => Ok(DurationStyle::HMS),
             "s" => Ok(DurationStyle::S),
-            _ => Err("Valid values are 'hms', 's'.".into())
+            _ => Err("Valid values are 'hms', 's'.".into()),
         }
     }
 }
-#[rustfmt::skip]
 pub fn fmt_duration(style: &DurationStyle, secs: i64) -> String {
     match style {
         DurationStyle::HMS => {
@@ -289,13 +287,15 @@ pub fn fmt_duration(style: &DurationStyle, secs: i64) -> String {
             let h = (secs / 3600).abs();
             let m = (secs % 3600 / 60).abs();
             let s = (secs % 60).abs();
-            if h > 0      { format!("{}{}:{:02}:{:02}", neg, h, m, s) }
-            else if m > 0 { format!(      "{}{}:{:02}", neg, m, s) }
-            else          { format!(            "{}{}", neg, s) }
+            if h > 0 {
+                format!("{}{}:{:02}:{:02}", neg, h, m, s)
+            } else if m > 0 {
+                format!("{}{}:{:02}", neg, m, s)
+            } else {
+                format!("{}{}", neg, s)
+            }
         },
-        DurationStyle::S => {
-            format!("{}", secs)
-        }
+        DurationStyle::S => format!("{}", secs),
     }
 }
 
@@ -331,21 +331,19 @@ impl Styles {
             _ => atty::is(atty::Stream::Stdout),
         };
         if enabled {
-            Styles{pkg_p: Style::new().fg(Green).bold().prefix().to_string(),
-                   pkg_s: Style::new().fg(Green).bold().suffix().to_string(),
-                   dur_p: Style::new().fg(Purple).bold().prefix().to_string(),
-                   dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
-                   cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
-                   cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string(),
-            }
+            Styles { pkg_p: Style::new().fg(Green).bold().prefix().to_string(),
+                     pkg_s: Style::new().fg(Green).bold().suffix().to_string(),
+                     dur_p: Style::new().fg(Purple).bold().prefix().to_string(),
+                     dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
+                     cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
+                     cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string() }
         } else {
-            Styles{pkg_p: String::new(),
-                   pkg_s: String::new(),
-                   dur_p: String::new(),
-                   dur_s: String::new(),
-                   cnt_p: String::new(),
-                   cnt_s: String::new(),
-            }
+            Styles { pkg_p: String::new(),
+                     pkg_s: String::new(),
+                     dur_p: String::new(),
+                     dur_s: String::new(),
+                     cnt_p: String::new(),
+                     cnt_s: String::new() }
         }
     }
 }
@@ -358,7 +356,7 @@ struct OpenError {
 }
 /// File::open wrapper with a more user-friendly error.
 pub fn myopen(fname: &str) -> Result<impl Read, Error> {
-    File::open(fname).map_err(|e| OpenError{file:fname.into(), reason: e}.into())
+    File::open(fname).map_err(|e| OpenError { file: fname.into(), reason: e }.into())
 }
 
 
@@ -366,20 +364,20 @@ pub fn myopen(fname: &str) -> Result<impl Read, Error> {
 mod tests {
     use crate::*;
 
-    #[test] #[rustfmt::skip]
+    #[test]
     fn duration() {
-        assert_eq!(        "0", fmt_duration(&DurationStyle::HMS, 0));
-        assert_eq!(        "1", fmt_duration(&DurationStyle::HMS, 1));
-        assert_eq!(       "59", fmt_duration(&DurationStyle::HMS, 59));
-        assert_eq!(     "1:00", fmt_duration(&DurationStyle::HMS, 60));
-        assert_eq!(     "1:01", fmt_duration(&DurationStyle::HMS, 61));
-        assert_eq!(    "59:59", fmt_duration(&DurationStyle::HMS, 3599));
-        assert_eq!(  "1:00:00", fmt_duration(&DurationStyle::HMS, 3600));
-        assert_eq!( "99:59:59", fmt_duration(&DurationStyle::HMS, 359999));
+        assert_eq!("0", fmt_duration(&DurationStyle::HMS, 0));
+        assert_eq!("1", fmt_duration(&DurationStyle::HMS, 1));
+        assert_eq!("59", fmt_duration(&DurationStyle::HMS, 59));
+        assert_eq!("1:00", fmt_duration(&DurationStyle::HMS, 60));
+        assert_eq!("1:01", fmt_duration(&DurationStyle::HMS, 61));
+        assert_eq!("59:59", fmt_duration(&DurationStyle::HMS, 3599));
+        assert_eq!("1:00:00", fmt_duration(&DurationStyle::HMS, 3600));
+        assert_eq!("99:59:59", fmt_duration(&DurationStyle::HMS, 359999));
         assert_eq!("100:00:00", fmt_duration(&DurationStyle::HMS, 360000));
-        assert_eq!(       "-1", fmt_duration(&DurationStyle::HMS, -1));
-        assert_eq!(    "-1:00", fmt_duration(&DurationStyle::HMS, -60));
-        assert_eq!( "-1:00:00", fmt_duration(&DurationStyle::HMS, -3600));
+        assert_eq!("-1", fmt_duration(&DurationStyle::HMS, -1));
+        assert_eq!("-1:00", fmt_duration(&DurationStyle::HMS, -60));
+        assert_eq!("-1:00:00", fmt_duration(&DurationStyle::HMS, -3600));
     }
 
     #[test]
@@ -389,11 +387,11 @@ mod tests {
         assert_eq!(Ok(1522710000), parse_date("1522710000"));
         assert_eq!(Ok(1522710000), parse_date("   1522710000   "));
         assert_eq!(Ok(1522713661), parse_date("2018-04-03 01:01:01"));
-        assert_eq!(Ok(now),        parse_date("now"));
-        assert_eq!(Ok(now),        parse_date("   now   "));
-        assert_eq!(Ok(now-3600),   parse_date("1 hour ago"));
+        assert_eq!(Ok(now), parse_date("now"));
+        assert_eq!(Ok(now), parse_date("   now   "));
+        assert_eq!(Ok(now - 3600), parse_date("1 hour ago"));
         assert!(parse_date("03/30/18").is_err()); // MM/DD/YY is horrible, sorry USA
-        assert!(parse_date("30/03/18").is_ok());  // DD/MM/YY is also bad, switch to YYYY-MM-DD already ;)
+        assert!(parse_date("30/03/18").is_ok()); // DD/MM/YY is also bad, switch to YYYY-MM-DD already ;)
         assert!(parse_date("").is_err());
         assert!(parse_date("152271000o").is_err());
         assert!(parse_date("a while ago").is_err());
