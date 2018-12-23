@@ -52,7 +52,7 @@ fn main() {
         .long("exact")
         .help("Match package with a string instead of a regex.")
         .long_help("Match package with a string instead of a regex. \
-Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/1.0.5/regex/#syntax). \
+Regex is case-insensitive and matches on category/name (see https://docs.rs/regex/1.1.0/regex/#syntax). \
 String is case-sentitive and matches on whole name, or whole category/name if it contains a /."); //FIXME auto crate version
     let arg_show_l = Arg::with_name("show")
         .short("s")
