@@ -1,4 +1,10 @@
-# Unreleased
+# 0.3.0 2018-12-24
+
+Feature release: Sync support, improved stats, and optimisations.
+
+The two highlights are support for displaying Sync events, and support for grouping stats by
+timespan. Other niceties include a `Total` stats row, displaying durations in seconds, and threaded
+parsing. Happy Christams to those who celebraye it :)
 
 * Renamed `list` subcommand to `log` (kept `list` as a hidden alias).
 * Added option to show `Sync` in log and stat commands.
@@ -8,16 +14,16 @@
 * Various CLI and online help improvements.
 * Now using a separate thread for parsing, speeding things up a bit.
 * Bumped minimum rust version to 1.30.
+* Code is now formated using rustfmt.
 * A bunch of of small bugfixes, QA fixes, and optimisations.
 
 # 0.2.0 2018-04-28
 
-Second release: Filtering, color, speed, and lots of polish.
+Feature release: Filtering, color, speed, and lots of polish.
 
-Improved filtering, added colors, sped up everything, fixed bugs, and
-fixed interface papercuts (see details below). This release fixes many
-first-impression annoyances of the first, so give emlop another try if
-you haven't switched yet ;)
+Improved filtering, added colors, sped up everything, fixed bugs, and fixed interface papercuts (see
+details below). This release fixes many first-impression annoyances of the first, so give emlop
+another try if you haven't switched yet ;)
 
 * All output is now colored (controlable via `--color` flag).
 * Regexp search is now case-insensitive: no need to remember the casing of 'PyQt' anymore.
