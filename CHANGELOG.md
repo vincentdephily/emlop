@@ -1,3 +1,7 @@
+# master
+
+* Fixed potential panic when grouping stats by month.
+
 # 0.3.0 2018-12-24
 
 Feature release: Sync support, improved stats, and optimisations.

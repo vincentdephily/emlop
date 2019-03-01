@@ -62,14 +62,14 @@ fn timespan_next(ts: i64, add: &Timespan) -> i64 {
     let mut d = Local.timestamp(ts, 0).with_minute(0).unwrap().with_second(0).unwrap();
     match add {
         Timespan::Year => {
-            d = d.with_year(d.year() + 1).unwrap().with_month(1).unwrap().with_day(1).unwrap()
+            d = d.with_day(1).unwrap().with_month(1).unwrap().with_year(d.year() + 1).unwrap()
         },
         Timespan::Month => {
-            d = d.with_month0((d.month0() + 1) % 12)
+            d = d.with_day(1)
+                 .unwrap()
+                 .with_month0((d.month0() + 1) % 12)
                  .unwrap()
                  .with_year(if d.month() == 12 { d.year() + 1 } else { d.year() })
-                 .unwrap()
-                 .with_day(1)
                  .unwrap()
         },
         Timespan::Week => {
@@ -364,7 +364,9 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
 
 #[cfg(test)]
 mod tests {
+    use super::{timespan_next, Timespan};
     use assert_cli::Assert;
+    use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
     use indoc::*;
     use regex::Regex;
     use std::collections::HashMap;
@@ -674,6 +676,30 @@ mod tests {
                 0 => Assert::main_binary().with_args(args).unwrap(),
                 _ => Assert::main_binary().with_args(args).fails_with(exit).unwrap(),
             }
+        }
+    }
+
+    #[test]
+    fn timespan_next_() {
+        for t in &[// input                   year       month      week       day
+                   "2019-01-01T00:00:00+00:00 2020-01-01 2019-02-01 2019-01-07 2019-01-02",
+                   "2019-01-01T23:59:59+00:00 2020-01-01 2019-02-01 2019-01-07 2019-01-02",
+                   "2019-01-30T00:00:00+00:00 2020-01-01 2019-02-01 2019-02-04 2019-01-31",
+                   "2019-01-31T00:00:00+00:00 2020-01-01 2019-02-01 2019-02-04 2019-02-01",
+                   "2019-12-31T00:00:00+00:00 2020-01-01 2020-01-01 2020-01-06 2020-01-01",
+                   "2020-02-28T12:34:00+00:00 2021-01-01 2020-03-01 2020-03-02 2020-02-29"]
+        {
+            let v: Vec<&str> = t.split_whitespace().collect();
+            let i = DateTime::parse_from_rfc3339(v[0]).unwrap().timestamp();
+            let y = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[1])).unwrap();
+            let m = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[2])).unwrap();
+            let w = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[3])).unwrap();
+            let d = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[4])).unwrap();
+            assert_eq!(y, Utc.timestamp(timespan_next(i, &Timespan::Year), 0), "year {}", v[0]);
+            assert_eq!(m, Utc.timestamp(timespan_next(i, &Timespan::Month), 0), "month {}", v[0]);
+            assert_eq!(w, Utc.timestamp(timespan_next(i, &Timespan::Week), 0), "week {}", v[0]);
+            assert_eq!(Weekday::Mon, Utc.timestamp(timespan_next(i, &Timespan::Week), 0).weekday());
+            assert_eq!(d, Utc.timestamp(timespan_next(i, &Timespan::Day), 0), "day {}", v[0]);
         }
     }
 }
