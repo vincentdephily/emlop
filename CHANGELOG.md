@@ -1,6 +1,7 @@
 # master
 
 * Fixed potential panic when grouping stats by month.
+* Switched to rust2018 (raises minimum rust version to 1.31).
 
 # 0.3.0 2018-12-24
 
