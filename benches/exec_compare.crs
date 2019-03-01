@@ -31,6 +31,16 @@ fn main() {
         ("l", "emlop",  &["l"],  None),
         ("l", "golop",  &[],     None),
 
+        ("ld1", "genlop", &["-l","--date","2015-01-01","--date","2015-01-10"], None),
+        ("ld1", "qlop",   &["-l","--date","2015-01-01","--date","2015-01-10"], None),
+        ("ld1", "emlop",  &["l","--from","2015-01-01","--to","2015-01-10"],  None),
+        ("ld2", "genlop", &["-l","--date","2018-01-01","--date","2018-12-31"], None),
+        ("ld2", "qlop",   &["-l","--date","2018-01-01","--date","2018-12-31"], None),
+        ("ld2", "emlop",  &["l","--from","2018-01-01","--to","2018-12-31"],  None),
+        ("ld3", "genlop", &["-l","--date","2016-01-01","--date","2018-12-31"], None),
+        ("ld3", "qlop",   &["-l","--date","2016-01-01","--date","2018-12-31"], None),
+        ("ld3", "emlop",  &["l","--from","2016-01-01","--to","2018-12-31"],  None),
+
         ("lf", "genlop", &["-l","-f","test/emerge.10000.log"], None),
         ("lf", "qlop",   &["-l","-f","test/emerge.10000.log"], None),
         ("lf", "emlop",  &["l", "-f","test/emerge.10000.log"], None),
