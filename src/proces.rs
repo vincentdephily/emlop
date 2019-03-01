@@ -35,12 +35,12 @@ fn get_proc_info(filter: Option<&str>,
     File::open(entry.path().join("stat")).ok()?.read_to_string(&mut statstr).ok()?;
     let statfields: Vec<&str> = statstr.split(' ').collect();
     let mut parse_offset = 0;
-    let mut comm = statfields[1].trim_left_matches('(').to_string();
+    let mut comm = statfields[1].trim_start_matches('(').to_string();
     while !comm.ends_with(')') {
         parse_offset += 1;
         comm = format!("{} {}", comm, statfields[1 + parse_offset]);
     }
-    comm = comm.trim_right_matches(')').to_string();
+    comm = comm.trim_end_matches(')').to_string();
     let start_time = i64::from_str(statfields[21 + parse_offset]).ok()?;
     // Bail out now if the command name doesn't match.
     if filter.map_or(false, |f| f != comm) {
