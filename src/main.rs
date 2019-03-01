@@ -176,7 +176,7 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
 pub fn value<T, P>(matches: &ArgMatches, name: &str, parse: P) -> T
     where P: FnOnce(&str) -> Result<T, String>
 {
-    let s = matches.value_of(name).expect(&format!("Argument {} missing", name));
+    let s = matches.value_of(name).unwrap_or_else(|| panic!("Argument {} missing", name));
     match parse(s) {
         Ok(v) => v,
         Err(e) => ClapError { message: format!("Invalid argument '--{} {}': {}", name, s, e),
