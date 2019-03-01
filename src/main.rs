@@ -1,21 +1,3 @@
-extern crate ansi_term;
-#[cfg(test)]
-extern crate assert_cli;
-extern crate atty;
-extern crate chrono;
-extern crate chrono_english;
-extern crate clap;
-extern crate crossbeam_channel;
-extern crate failure;
-extern crate failure_derive;
-#[cfg(test)]
-extern crate indoc;
-extern crate log;
-extern crate regex;
-extern crate stderrlog;
-extern crate sysconf;
-extern crate tabwriter;
-
 mod commands;
 mod parser;
 mod proces;
