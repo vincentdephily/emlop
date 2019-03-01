@@ -2,14 +2,13 @@
 //!
 //! Instantiate a `Parser` and iterate over it to retrieve the events.
 
+use crate::fmt_time;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use failure::Error;
 use log::*;
 use regex::{Regex, RegexBuilder};
-use std::io::{BufRead, BufReader, Read};
-use std::thread;
-
-use crate::fmt_time;
+use std::{io::{BufRead, BufReader, Read},
+          thread};
 
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
@@ -242,8 +241,7 @@ fn parse_pretend(line: &str, re: &Regex) -> Option<ParsedPretend> {
 #[cfg(test)]
 mod tests {
     use crate::parser::*;
-    use std::collections::HashMap;
-    use std::fs::File;
+    use std::{collections::HashMap, fs::File};
 
     /// This checks parsing the given emerge.log.
     fn parse_hist(filename: &str,

@@ -1,10 +1,7 @@
+use crate::{parser::*, proces::*, *};
 use chrono::{Datelike, Duration, Timelike, Weekday};
-use std::collections::{BTreeMap, HashMap};
-use std::io::{stdin, stdout, Stdout};
-
-use crate::parser::*;
-use crate::proces::*;
-use crate::*;
+use std::{collections::{BTreeMap, HashMap},
+          io::{stdin, stdout, Stdout}};
 
 /// Straightforward display of merge events
 ///

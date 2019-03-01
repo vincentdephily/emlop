@@ -1,4 +1,6 @@
 indent_style = "Visual"
+imports_indent = "Visual"
+merge_imports = true
 use_small_heuristics = "Max"
 blank_lines_upper_bound = 2
 match_block_trailing_comma = true

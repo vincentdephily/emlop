@@ -2,24 +2,20 @@ mod commands;
 mod parser;
 mod proces;
 
-use ansi_term::Color::*;
-use ansi_term::Style;
+use crate::commands::*;
+use ansi_term::{Color::*, Style};
 use chrono::{DateTime, Local, TimeZone};
 use chrono_english::{parse_date_string, Dialect};
-use clap::{
-    crate_version, value_t, App, AppSettings, Arg, ArgMatches, Error as ClapError, ErrorKind,
-    SubCommand,
-};
+use clap::{crate_version, value_t, App, AppSettings, Arg, ArgMatches, Error as ClapError,
+           ErrorKind, SubCommand};
 use failure::Error;
 use failure_derive::Fail;
 use log::*;
-use std::fs::File;
-use std::io::{stdout, Read, Write};
-use std::str::FromStr;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{fs::File,
+          io::{stdout, Read, Write},
+          str::FromStr,
+          time::{SystemTime, UNIX_EPOCH}};
 use tabwriter::TabWriter;
-
-use crate::commands::*;
 
 fn main() {
     let arg_limit =

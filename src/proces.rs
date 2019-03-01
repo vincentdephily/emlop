@@ -6,12 +6,10 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
-use std::fs::{read_dir, DirEntry, File};
-use std::io;
-use std::io::prelude::*;
-use sysconf::raw::{sysconf, SysconfVariable};
-
 use crate::*;
+use std::{fs::{read_dir, DirEntry, File},
+          io::{self, prelude::*}};
+use sysconf::raw::{sysconf, SysconfVariable};
 
 #[derive(Debug)]
 pub struct Info {
@@ -80,8 +78,7 @@ pub fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
 mod tests {
     use chrono::DateTime;
     use regex::Regex;
-    use std::collections::BTreeMap;
-    use std::process::Command;
+    use std::{collections::BTreeMap, process::Command};
 
     use crate::proces::*;
 
