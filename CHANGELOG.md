@@ -1,7 +1,15 @@
-# master
+# 0.3.1 2019-06-10
+
+Maintenance release: Fix a panic and do some code maintenance.
+
+Not much development since the bugfix in march, so might as well release it now :) I've been busy
+with other things this year, but more emlop feature releases are comming.
 
 * Fixed potential panic when grouping stats by month.
 * Switched to rust2018 (raises minimum rust version to 1.31).
+* Switched to a faster split function (raises minimum rust version to 1.34).
+* Minor code cleanups.
+* Deps refresh; the compiled binary is a bit smaller.
 
 # 0.3.0 2018-12-24
 
@@ -47,7 +55,7 @@ another try if you haven't switched yet ;)
 
 First release, huzza !
 
-The core commands `list`, `predict`, ans `stats` are here and emlop already feels like a worthy
+The core commands `list`, `predict`, and `stats` are here and emlop already feels like a worthy
 replacement for genlop (by being faster) or qlop (by having a predict mode and regexp search).
 
 Thanks to singul0 for fixing a panic when outputing to a closed pipe.

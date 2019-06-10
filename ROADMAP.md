@@ -24,6 +24,8 @@ https://deterministic.space/secret-life-of-cows.html ?
 Use `flame` and `flamer` crates ?
 Use a single regex for all ParsedHist types ?
 Would be cool to beat qlop more consistently.
+### Remove utf8 validation overhead
+https://github.com/BurntSushi/bstr
 
 ## Features
 ### Optional --headers
