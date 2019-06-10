@@ -56,6 +56,7 @@ pub fn new_hist<R: Read>(reader: R,
     debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}",
            filename, min_ts, max_ts, search_str, search_exact);
     let (tx, rx): (Sender<ParsedHist>, Receiver<ParsedHist>) = unbounded();
+    // https://docs.rs/crossbeam/0.7.1/crossbeam/thread/index.html
     let filter_ts = filter_ts_fn(min_ts, max_ts);
     let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
     thread::spawn(move || {
@@ -188,7 +189,7 @@ fn parse_start(enabled: bool,
     if !enabled || !line.starts_with(" >>> emer") {
         return None;
     }
-    let mut tokens = line.split_whitespace(); // https://github.com/rust-lang/rust/issues/48656
+    let mut tokens = line.split_ascii_whitespace();
     let (t3, t5, t6) = (tokens.nth(2)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild, version) = split_atom(t6)?;
     if !(filter_pkg)(ebuild) {
