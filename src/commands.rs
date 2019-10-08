@@ -34,7 +34,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, started.map_or(String::from("?"), |pt| fmt_duration(&fmtd, ts-pt)),
+                         st.dur_p, fmt_duration(&fmtd, ts-started.unwrap_or(ts+1)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
             ParsedHist::SyncStart { ts } => {

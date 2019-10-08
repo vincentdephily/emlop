@@ -41,11 +41,11 @@ fn get_proc_info(filter: Option<&str>,
         comm = format!("{} {}", comm, statfields[1 + parse_offset]);
     }
     comm = comm.trim_end_matches(')').to_string();
-    let start_time = i64::from_str(statfields[21 + parse_offset]).ok()?;
     // Bail out now if the command name doesn't match.
     if filter.map_or(false, |f| f != comm) {
         return None;
     }
+    let start_time = i64::from_str(statfields[21 + parse_offset]).ok()?;
     // Parse arguments
     let mut cmdline = String::new();
     File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
