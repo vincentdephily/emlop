@@ -259,18 +259,20 @@ impl FromStr for DurationStyle {
     }
 }
 pub fn fmt_duration(style: &DurationStyle, secs: i64) -> String {
+    if secs < 0 {
+        return String::from("?");
+    }
     match style {
         DurationStyle::HMS => {
-            let neg = if secs < 0 { "-" } else { "" };
             let h = (secs / 3600).abs();
             let m = (secs % 3600 / 60).abs();
             let s = (secs % 60).abs();
             if h > 0 {
-                format!("{}{}:{:02}:{:02}", neg, h, m, s)
+                format!("{}:{:02}:{:02}", h, m, s)
             } else if m > 0 {
-                format!("{}{}:{:02}", neg, m, s)
+                format!("{}:{:02}", m, s)
             } else {
-                format!("{}{}", neg, s)
+                format!("{}", s)
             }
         },
         DurationStyle::S => format!("{}", secs),
@@ -344,18 +346,21 @@ mod tests {
 
     #[test]
     fn duration() {
-        assert_eq!("0", fmt_duration(&DurationStyle::HMS, 0));
-        assert_eq!("1", fmt_duration(&DurationStyle::HMS, 1));
-        assert_eq!("59", fmt_duration(&DurationStyle::HMS, 59));
-        assert_eq!("1:00", fmt_duration(&DurationStyle::HMS, 60));
-        assert_eq!("1:01", fmt_duration(&DurationStyle::HMS, 61));
-        assert_eq!("59:59", fmt_duration(&DurationStyle::HMS, 3599));
-        assert_eq!("1:00:00", fmt_duration(&DurationStyle::HMS, 3600));
-        assert_eq!("99:59:59", fmt_duration(&DurationStyle::HMS, 359999));
-        assert_eq!("100:00:00", fmt_duration(&DurationStyle::HMS, 360000));
-        assert_eq!("-1", fmt_duration(&DurationStyle::HMS, -1));
-        assert_eq!("-1:00", fmt_duration(&DurationStyle::HMS, -60));
-        assert_eq!("-1:00:00", fmt_duration(&DurationStyle::HMS, -3600));
+        for (hms, s, i) in &[("0", "0", 0),
+                             ("1", "1", 1),
+                             ("59", "59", 59),
+                             ("1:00", "60", 60),
+                             ("1:01", "61", 61),
+                             ("59:59", "3599", 3599),
+                             ("1:00:00", "3600", 3600),
+                             ("99:59:59", "359999", 359999),
+                             ("100:00:00", "360000", 360000),
+                             ("?", "?", -1),
+                             ("?", "?", -123456)]
+        {
+            assert_eq!(*hms, fmt_duration(&DurationStyle::HMS, *i));
+            assert_eq!(*s, fmt_duration(&DurationStyle::S, *i));
+        }
     }
 
     #[test]

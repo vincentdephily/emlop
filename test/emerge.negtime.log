@@ -1,0 +1,69 @@
+1559723461: Started emerge on: Jun 05, 2019 09:31:01
+1559723461:  *** emerge --quiet-build=y --sync
+1559723461:  === sync
+1559723461: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1559723464: >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
+1559723530: === Sync completed for gentoo
+1559723531:  *** terminating.
+1559727384: Started emerge on: Jun 05, 2019 10:36:24
+1559727384:  *** emerge --jobs=2 --quiet-build=y --verbose firefox plasma-meta
+1559733658:  >>> emerge (275 of 290) kde-plasma/kwin-5.15.5 to /
+1559733658:  === (275 of 290) Cleaning (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1559733658:  === (275 of 290) Compiling/Merging (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1559734006:  === (275 of 290) Merging (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1559734010:  >>> AUTOCLEAN: kde-plasma/kwin:5
+1559734014:  === (275 of 290) Post-Build Cleaning (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1559734014:  ::: completed emerge (275 of 290) kde-plasma/kwin-5.15.5 to /
+1559784855: Started emerge on: Jun 06, 2019 02:34:14
+1559784855:  *** emerge --newuse --update --deep --jobs=2 --quiet-build=y --verbose world
+1559787053:  >>> emerge (75 of 75) kde-plasma/kwin-5.15.5 to /
+1559787053:  === (75 of 75) Cleaning (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1559787053:  === (75 of 75) Compiling/Merging (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1559787082:  >>> emerge (45 of 85) kde-apps/libktnef-19.04.1 to /
+1559787082:  === (45 of 85) Cleaning (kde-apps/libktnef-19.04.1::/usr/portage/kde-apps/libktnef/libktnef-19.04.1.ebuild)
+1559787082:  === (45 of 85) Compiling/Merging (kde-apps/libktnef-19.04.1::/usr/portage/kde-apps/libktnef/libktnef-19.04.1.ebuild)
+1559787105:  === (45 of 85) Merging (kde-apps/libktnef-19.04.1::/usr/portage/kde-apps/libktnef/libktnef-19.04.1.ebuild)
+1559787106:  >>> AUTOCLEAN: kde-apps/libktnef:5
+1559787108:  === (45 of 85) Post-Build Cleaning (kde-apps/libktnef-19.04.1::/usr/portage/kde-apps/libktnef/libktnef-19.04.1.ebuild)
+1559787108:  ::: completed emerge (45 of 85) kde-apps/libktnef-19.04.1 to /
+1559787317: Started emerge on: Jun 06, 2019 03:15:17
+1559787317:  *** emerge --ask --quiet-build=y --verbose chrony
+1559787327:  >>> emerge (1 of 1) net-misc/chrony-3.3 to /
+1559787327:  === (1 of 1) Cleaning (net-misc/chrony-3.3::/usr/portage/net-misc/chrony/chrony-3.3.ebuild)
+1559787330:  === sync
+1559787330: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1559787330: >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
+1559787330:  === (1 of 1) Compiling/Merging (net-misc/chrony-3.3::/usr/portage/net-misc/chrony/chrony-3.3.ebuild)
+1559787357:  === (1 of 1) Merging (net-misc/chrony-3.3::/usr/portage/net-misc/chrony/chrony-3.3.ebuild)
+1559787359:  >>> AUTOCLEAN: net-misc/chrony:0
+1559787361:  === (1 of 1) Updating world file (net-misc/chrony-3.3)
+1559787361:  === (1 of 1) Post-Build Cleaning (net-misc/chrony-3.3::/usr/portage/net-misc/chrony/chrony-3.3.ebuild)
+1559787361:  ::: completed emerge (1 of 1) net-misc/chrony-3.3 to /
+1559787361:  *** Finished. Cleaning up...
+1559787362:  *** exiting successfully.
+1559787364:  *** terminating.
+1559729908: === Sync completed for gentoo
+1559729908:  *** terminating.
+1559730056:  === (75 of 75) Merging (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1559730058:  >>> AUTOCLEAN: kde-plasma/kwin:5
+1559730058:  === Unmerging... (kde-plasma/kwin-5.15.5)
+1559730059:  >>> unmerge success: kde-plasma/kwin-5.15.5
+1559730062:  === (75 of 75) Post-Build Cleaning (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1559730062:  ::: completed emerge (75 of 75) kde-plasma/kwin-5.15.5 to /
+1559730062:  *** Finished. Cleaning up...
+1559730062:  *** exiting successfully.
+1559730064:  *** terminating.
+1560027913: Started emerge on: Jun 08, 2019 22:05:13
+1560027913:  *** emerge --newuse --update --ask --deep --jobs=2 --quiet-build=y --verbose world
+1560029426:  >>> emerge (77 of 77) kde-plasma/kwin-5.15.5 to /
+1560029426:  === (77 of 77) Cleaning (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1560029427:  === (77 of 77) Compiling/Merging (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1560029611:  === (77 of 77) Merging (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1560029613:  >>> AUTOCLEAN: kde-plasma/kwin:5
+1560029613:  === Unmerging... (kde-plasma/kwin-5.15.5)
+1560029615:  >>> unmerge success: kde-plasma/kwin-5.15.5
+1560029616:  === (77 of 77) Post-Build Cleaning (kde-plasma/kwin-5.15.5::/usr/portage/kde-plasma/kwin/kwin-5.15.5.ebuild)
+1560029616:  ::: completed emerge (77 of 77) kde-plasma/kwin-5.15.5 to /
+1560029616:  *** Finished. Cleaning up...
+1560029617:  *** exiting successfully.
+1560029617:  *** terminating.

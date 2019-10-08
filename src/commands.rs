@@ -184,7 +184,9 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         for (pkg, tv) in times {
             let (predtime, predcount, tottime, totcount) =
                 tv.iter().fold((0, 0, 0, 0), |(pt, pc, tt, tc), &i| {
-                             if tc >= lim {
+                             if i < 0 {
+                                 (pt, pc, tt, tc + 1)
+                             } else if tc >= lim {
                                  (pt, pc, tt + i, tc + 1)
                              } else {
                                  (pt + i, pc + 1, tt + i, tc + 1)
@@ -204,7 +206,9 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         let mut totcount = 0;
         for tv in times.values() {
             for t in tv {
-                tottime += t;
+                if *t > 0 {
+                    tottime += t;
+                }
                 totcount += 1
             }
         }
@@ -218,16 +222,21 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                  st.dur_p, fmt_duration(&fmtd, totavg), st.dur_s)?;
     }
     if show_sync && (print_zeros || !syncs.is_empty()) {
-        let synctime = syncs.iter().fold(0, |a, t| t + a);
-        let synccount = syncs.len() as i64;
-        let syncavg = if synccount > 0 { synctime / synccount } else { 0 };
+        let (time, avgcount, totcount) = syncs.iter().fold((0, 0, 0), |(tt, ac, tc), &t| {
+                                                         if t < 0 {
+                                                             (tt, ac, tc + 1)
+                                                         } else {
+                                                             (tt + t, ac + 1, tc + 1)
+                                                         }
+                                                     });
+        let avg = if avgcount > 0 { time / avgcount } else { 0 };
         #[rustfmt::skip]
         writeln!(tw, "{}{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  group_by,
                  st.pkg_p,
-                 st.dur_p, fmt_duration(&fmtd, synctime),
-                 st.cnt_p, synccount,
-                 st.dur_p, fmt_duration(&fmtd, syncavg), st.dur_s)?;
+                 st.dur_p, fmt_duration(&fmtd, time),
+                 st.cnt_p, totcount,
+                 st.dur_p, fmt_duration(&fmtd, avg), st.dur_s)?;
     }
     Ok(())
 }
@@ -319,7 +328,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         let pred_fmt = match times.get(&ebuild) {
             Some(tv) => {
                 let (predtime, predcount, _) = tv.iter().fold((0, 0, 0), |(pt, pc, tc), &i| {
-                                                            if tc >= lim {
+                                                            if tc >= lim || i < 0 {
                                                                 (pt, pc, tc + 1)
                                                             } else {
                                                                 (pt + i, pc + 1, tc + 1)
@@ -635,6 +644,39 @@ mod tests {
         }
         assert!(tots_c.iter().all(|(_,c)| c == tots_c.get("-gy").unwrap()), "Total count should match {:?}", tots_c);
         assert!(tots_t.iter().all(|(_,t)| t == tots_t.get("-gy").unwrap()), "Total times should match {:?}", tots_t);
+    }
+
+    /// Test behaviour when clock goes backward between merge start and merge end. Likely to happen
+    /// when you're bootstrapping an Gentoo and setting the time halfway through.
+    #[test] #[rustfmt::skip]
+    fn negative_merge_time() {
+        for (a, i, o) in vec![
+            // For `log` we show an unknown time.
+            (vec!["-f", "test/emerge.negtime.log", "l", "-sa"],
+            "",
+            indoc!("2019-06-05 09:32:10 +01:00      1:09 Sync
+                    2019-06-05 12:26:54 +01:00      5:56 kde-plasma/kwin-5.15.5
+                    2019-06-06 03:11:48 +01:00        26 kde-apps/libktnef-19.04.1
+                    2019-06-06 03:16:01 +01:00        34 net-misc/chrony-3.3
+                    2019-06-05 11:18:28 +01:00         ? Sync
+                    2019-06-05 11:21:02 +01:00         ? kde-plasma/kwin-5.15.5
+                    2019-06-08 22:33:36 +01:00      3:10 kde-plasma/kwin-5.15.5")),
+            // For `pred` the negative merge time is ignored.
+            (vec!["-f", "test/emerge.negtime.log", "p"],
+             indoc!("[ebuild   R   ~] kde-plasma/kwin-5.15.5\n"),
+             indoc!("kde-plasma/kwin-5.15.5                              4:33\n\
+                     Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33\n")),
+            // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
+            (vec!["-f", "test/emerge.negtime.log", "s", "-sa"],
+            "",
+             indoc!("kde-apps/libktnef          26      1        26
+                     kde-plasma/kwin          9:06      3      4:33
+                     net-misc/chrony            34      1        34
+                     Merge                   10:06      5      2:01
+                     Sync                     1:09      2      1:09")),
+        ] {
+            Assert::main_binary().with_args(&a).stdin(i).stdout().is(o).unwrap();
+        }
     }
 
     #[test]
