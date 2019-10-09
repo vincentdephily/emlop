@@ -373,45 +373,44 @@ mod tests {
     use super::{timespan_next, Timespan};
     use assert_cli::Assert;
     use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
-    use indoc::*;
     use regex::Regex;
     use std::collections::HashMap;
     //TODO: Simplify fails_with() calls once https://github.com/assert-rs/assert_cli/issues/99 is closed
 
-    #[test]
+    #[test] #[rustfmt::skip]
     fn log() {
-        let t: Vec<(&[&str],&str,i32)> = vec![
+        let t: Vec<(&[&str], &str, i32)> = vec![
             // Basic test
-            (&["-f","test/emerge.10000.log","l","client"],
-             indoc!("2018-02-04 04:55:19 +00:00     35:46 mail-client/thunderbird-52.6.0\n\
-                     2018-02-04 05:42:48 +00:00     47:29 www-client/firefox-58.0.1\n\
-                     2018-02-09 11:04:59 +00:00     47:58 mail-client/thunderbird-52.6.0-r1\n\
-                     2018-02-12 10:14:11 +00:00        31 kde-frameworks/kxmlrpcclient-5.43.0\n\
-                     2018-02-16 04:41:39 +00:00   6:03:14 www-client/chromium-64.0.3282.140\n\
-                     2018-02-19 17:35:41 +00:00   7:56:03 www-client/chromium-64.0.3282.167\n\
-                     2018-02-22 13:32:53 +00:00        44 www-client/links-2.14-r1\n\
-                     2018-02-28 09:14:37 +00:00      6:02 www-client/falkon-3.0.0\n\
-                     2018-03-06 04:19:52 +00:00   7:42:07 www-client/chromium-64.0.3282.186\n\
-                     2018-03-12 10:35:22 +00:00        14 x11-apps/xlsclients-1.1.4\n\
-                     2018-03-12 11:03:53 +00:00        16 kde-frameworks/kxmlrpcclient-5.44.0\n"),
+            (&["-f", "test/emerge.10000.log", "l", "client"],
+             "2018-02-04 04:55:19 +00:00     35:46 mail-client/thunderbird-52.6.0\n\
+              2018-02-04 05:42:48 +00:00     47:29 www-client/firefox-58.0.1\n\
+              2018-02-09 11:04:59 +00:00     47:58 mail-client/thunderbird-52.6.0-r1\n\
+              2018-02-12 10:14:11 +00:00        31 kde-frameworks/kxmlrpcclient-5.43.0\n\
+              2018-02-16 04:41:39 +00:00   6:03:14 www-client/chromium-64.0.3282.140\n\
+              2018-02-19 17:35:41 +00:00   7:56:03 www-client/chromium-64.0.3282.167\n\
+              2018-02-22 13:32:53 +00:00        44 www-client/links-2.14-r1\n\
+              2018-02-28 09:14:37 +00:00      6:02 www-client/falkon-3.0.0\n\
+              2018-03-06 04:19:52 +00:00   7:42:07 www-client/chromium-64.0.3282.186\n\
+              2018-03-12 10:35:22 +00:00        14 x11-apps/xlsclients-1.1.4\n\
+              2018-03-12 11:03:53 +00:00        16 kde-frameworks/kxmlrpcclient-5.44.0\n",
              0),
             // Check output when duration isn't known
-            (&["-f","test/emerge.10000.log","l","-s","m","mlt","-e","--from","2018-02-18 12:37:00"],
-             indoc!("2018-02-18 12:37:09 +00:00         ? media-libs/mlt-6.4.1-r6\n\
-                     2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
-                     2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n"),
+            (&["-f", "test/emerge.10000.log", "l", "-s", "m", "mlt", "-e", "--from", "2018-02-18 12:37:00"],
+             "2018-02-18 12:37:09 +00:00         ? media-libs/mlt-6.4.1-r6\n\
+              2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
+              2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n",
              0),
             // Check output of sync events
-            (&["-f","test/emerge.10000.log","l","-ss","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
-             indoc!("2018-03-07 11:37:05 +00:00        38 Sync\n\
-                     2018-03-07 13:56:09 +00:00        40 Sync\n"),
+            (&["-f", "test/emerge.10000.log", "l", "-ss", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
+             "2018-03-07 11:37:05 +00:00        38 Sync\n\
+              2018-03-07 13:56:09 +00:00        40 Sync\n",
              0),
-            (&["-f","test/emerge.10000.log","l","--show","ms","--from","2018-03-07 10:42:00","--to","2018-03-07 14:00:00"],
-             indoc!("2018-03-07 10:43:10 +00:00        14 sys-apps/the_silver_searcher-2.0.0\n\
-                     2018-03-07 11:37:05 +00:00        38 Sync\n\
-                     2018-03-07 12:49:13 +00:00      1:01 sys-apps/util-linux-2.30.2-r1\n\
-                     2018-03-07 13:56:09 +00:00        40 Sync\n\
-                     2018-03-07 13:59:41 +00:00        24 dev-libs/nspr-4.18\n"),
+            (&["-f", "test/emerge.10000.log", "l", "--show", "ms", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
+             "2018-03-07 10:43:10 +00:00        14 sys-apps/the_silver_searcher-2.0.0\n\
+              2018-03-07 11:37:05 +00:00        38 Sync\n\
+              2018-03-07 12:49:13 +00:00      1:01 sys-apps/util-linux-2.30.2-r1\n\
+              2018-03-07 13:56:09 +00:00        40 Sync\n\
+              2018-03-07 13:59:41 +00:00        24 dev-libs/nspr-4.18\n",
              0),
         ];
         for (a, o, e) in t {
@@ -430,34 +429,37 @@ mod tests {
         Assert::main_binary().with_args(&["p"]).fails_with(2).stdout().is(o).unwrap();
     }
 
-    #[test] #[rustfmt::skip]
+    #[test]
     fn predict_emerge_p() {
-        let t = vec![
-            // Check garbage input
-            (indoc!("blah blah\n"),
-             indoc!("No pretended merge found\n"),
-             2),
-            // Check all-unknowns
-            (indoc!("[ebuild   R   ~] dev-lang/unknown-1.42\n"),
-             indoc!("dev-lang/unknown-1.42                                  ?\n\
-                     Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0\n"),
-             0),
-            // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
-            (indoc!("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
-                     [ebuild   R   ~] dev-lang/unknown-1.42\n\
-                     [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n"),
-             indoc!("dev-qt/qtcore-5.9.4-r2                              3:44\n\
-                     dev-lang/unknown-1.42                                  ?\n\
-                     dev-qt/qtgui-5.9.4-r3                               4:36\n\
-                     Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n"),
-             0),
-        ];
+        let t = vec![// Check garbage input
+                     ("blah blah\n", "No pretended merge found\n", 2),
+                     // Check all-unknowns
+                     ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
+                      "dev-lang/unknown-1.42                                  ?\n\
+                       Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0\n",
+                      0),
+                     // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
+                     ("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
+                       [ebuild   R   ~] dev-lang/unknown-1.42\n\
+                       [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
+                      "dev-qt/qtcore-5.9.4-r2                              3:44\n\
+                       dev-lang/unknown-1.42                                  ?\n\
+                       dev-qt/qtgui-5.9.4-r3                               4:36\n\
+                       Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n",
+                      0),];
         for (i, o, e) in t {
             match e {
-                0 => Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
-                    .stdin(i).stdout().is(o).unwrap(),
-                _ => Assert::main_binary().with_args(&["-f","test/emerge.10000.log","p"])
-                    .fails_with(e).stdin(i).stdout().is(o).unwrap(),
+                0 => Assert::main_binary().with_args(&["-f", "test/emerge.10000.log", "p"])
+                                          .stdin(i)
+                                          .stdout()
+                                          .is(o)
+                                          .unwrap(),
+                _ => Assert::main_binary().with_args(&["-f", "test/emerge.10000.log", "p"])
+                                          .fails_with(e)
+                                          .stdin(i)
+                                          .stdout()
+                                          .is(o)
+                                          .unwrap(),
             }
         }
     }
@@ -466,35 +468,35 @@ mod tests {
     fn stats() {
         let t: Vec<(&[&str],&str,i32)> = vec![
             (&["-f","test/emerge.10000.log","s","client"],
-             indoc!("kde-frameworks/kxmlrpcclient          47      2        23\n\
-                     mail-client/thunderbird          1:23:44      2     41:52\n\
-                     www-client/chromium             21:41:24      3   7:13:48\n\
-                     www-client/falkon                   6:02      1      6:02\n\
-                     www-client/firefox                 47:29      1     47:29\n\
-                     www-client/links                      44      1        44\n\
-                     x11-apps/xlsclients                   14      1        14\n"),
+             "kde-frameworks/kxmlrpcclient          47      2        23\n\
+              mail-client/thunderbird          1:23:44      2     41:52\n\
+              www-client/chromium             21:41:24      3   7:13:48\n\
+              www-client/falkon                   6:02      1      6:02\n\
+              www-client/firefox                 47:29      1     47:29\n\
+              www-client/links                      44      1        44\n\
+              x11-apps/xlsclients                   14      1        14\n",
              0),
             (&["-f","test/emerge.10000.log","s","client","-ss"],
-             indoc!("Sync     1:19:28    150        31\n"),
+             "Sync     1:19:28    150        31\n",
              0),
             (&["-f","test/emerge.10000.log","s","client","-sst"],
-             indoc!("Merge    24:00:24     11   2:10:56\n\
-                     Sync      1:19:28    150        31\n"),
+             "Merge    24:00:24     11   2:10:56\n\
+              Sync      1:19:28    150        31\n",
              0),
             (&["-f","test/emerge.10000.log","s","client","-sa"],
-             indoc!("kde-frameworks/kxmlrpcclient          47      2        23\n\
-                     mail-client/thunderbird          1:23:44      2     41:52\n\
-                     www-client/chromium             21:41:24      3   7:13:48\n\
-                     www-client/falkon                   6:02      1      6:02\n\
-                     www-client/firefox                 47:29      1     47:29\n\
-                     www-client/links                      44      1        44\n\
-                     x11-apps/xlsclients                   14      1        14\n\
-                     Merge                           24:00:24     11   2:10:56\n\
-                     Sync                             1:19:28    150        31\n"),
+             "kde-frameworks/kxmlrpcclient          47      2        23\n\
+              mail-client/thunderbird          1:23:44      2     41:52\n\
+              www-client/chromium             21:41:24      3   7:13:48\n\
+              www-client/falkon                   6:02      1      6:02\n\
+              www-client/firefox                 47:29      1     47:29\n\
+              www-client/links                      44      1        44\n\
+              x11-apps/xlsclients                   14      1        14\n\
+              Merge                           24:00:24     11   2:10:56\n\
+              Sync                             1:19:28    150        31\n",
              0),
             (&["-f","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
-             indoc!("Merge           0      0         0\n\
-                     Sync            0      0         0\n"),
+             "Merge           0      0         0\n\
+              Sync            0      0         0\n",
              2),
         ];
         for (a, o, e) in t {
@@ -512,118 +514,118 @@ mod tests {
     fn stats_grouped() {
         let t: Vec<(&[&str],&str)> = vec![
             (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gy"],
-             indoc!("2018 sys-kernel/gentoo-sources         904     10        90\n")),
+             "2018 sys-kernel/gentoo-sources         904     10        90\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gm"],
-             indoc!("2018-02 sys-kernel/gentoo-sources         702      8        87\n\
-                     2018-03 sys-kernel/gentoo-sources         202      2       101\n")),
+             "2018-02 sys-kernel/gentoo-sources         702      8        87\n\
+              2018-03 sys-kernel/gentoo-sources         202      2       101\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gw"],
-             indoc!("2018-05 sys-kernel/gentoo-sources          81      1        81\n\
-                     2018-06 sys-kernel/gentoo-sources         192      2        96\n\
-                     2018-07 sys-kernel/gentoo-sources         198      2        99\n\
-                     2018-08 sys-kernel/gentoo-sources          77      1        77\n\
-                     2018-09 sys-kernel/gentoo-sources         236      3        78\n\
-                     2018-11 sys-kernel/gentoo-sources         120      1       120\n")),
+             "2018-05 sys-kernel/gentoo-sources          81      1        81\n\
+              2018-06 sys-kernel/gentoo-sources         192      2        96\n\
+              2018-07 sys-kernel/gentoo-sources         198      2        99\n\
+              2018-08 sys-kernel/gentoo-sources          77      1        77\n\
+              2018-09 sys-kernel/gentoo-sources         236      3        78\n\
+              2018-11 sys-kernel/gentoo-sources         120      1       120\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gd"],
-             indoc!("2018-02-04 sys-kernel/gentoo-sources          81      1        81\n\
-                     2018-02-05 sys-kernel/gentoo-sources          95      1        95\n\
-                     2018-02-08 sys-kernel/gentoo-sources          97      1        97\n\
-                     2018-02-12 sys-kernel/gentoo-sources          80      1        80\n\
-                     2018-02-18 sys-kernel/gentoo-sources         118      1       118\n\
-                     2018-02-23 sys-kernel/gentoo-sources          77      1        77\n\
-                     2018-02-26 sys-kernel/gentoo-sources          79      1        79\n\
-                     2018-02-28 sys-kernel/gentoo-sources          75      1        75\n\
-                     2018-03-01 sys-kernel/gentoo-sources          82      1        82\n\
-                     2018-03-12 sys-kernel/gentoo-sources         120      1       120\n")),
+             "2018-02-04 sys-kernel/gentoo-sources          81      1        81\n\
+              2018-02-05 sys-kernel/gentoo-sources          95      1        95\n\
+              2018-02-08 sys-kernel/gentoo-sources          97      1        97\n\
+              2018-02-12 sys-kernel/gentoo-sources          80      1        80\n\
+              2018-02-18 sys-kernel/gentoo-sources         118      1       118\n\
+              2018-02-23 sys-kernel/gentoo-sources          77      1        77\n\
+              2018-02-26 sys-kernel/gentoo-sources          79      1        79\n\
+              2018-02-28 sys-kernel/gentoo-sources          75      1        75\n\
+              2018-03-01 sys-kernel/gentoo-sources          82      1        82\n\
+              2018-03-12 sys-kernel/gentoo-sources         120      1       120\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gy"],
-             indoc!("2018 Merge      216426    831       260\n")),
+             "2018 Merge      216426    831       260\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gm"],
-             indoc!("2018-02 Merge      158312    533       297\n\
-                     2018-03 Merge       58114    298       195\n")),
+             "2018-02 Merge      158312    533       297\n\
+              2018-03 Merge       58114    298       195\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gw"],
-             indoc!("2018-05 Merge       33577     63       532\n\
-                     2018-06 Merge       10070     74       136\n\
-                     2018-07 Merge       58604    281       208\n\
-                     2018-08 Merge       51276     65       788\n\
-                     2018-09 Merge       14737     71       207\n\
-                     2018-10 Merge       43782    182       240\n\
-                     2018-11 Merge        4380     95        46\n")),
+             "2018-05 Merge       33577     63       532\n\
+              2018-06 Merge       10070     74       136\n\
+              2018-07 Merge       58604    281       208\n\
+              2018-08 Merge       51276     65       788\n\
+              2018-09 Merge       14737     71       207\n\
+              2018-10 Merge       43782    182       240\n\
+              2018-11 Merge        4380     95        46\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gd"],
-             indoc!("2018-02-03 Merge        2741     32        85\n\
-                     2018-02-04 Merge       30836     31       994\n\
-                     2018-02-05 Merge         158      4        39\n\
-                     2018-02-06 Merge        4288     44        97\n\
-                     2018-02-07 Merge         857     15        57\n\
-                     2018-02-08 Merge         983      5       196\n\
-                     2018-02-09 Merge        3784      6       630\n\
-                     2018-02-12 Merge       29239    208       140\n\
-                     2018-02-13 Merge          19      1        19\n\
-                     2018-02-14 Merge        4795     44       108\n\
-                     2018-02-15 Merge         137      3        45\n\
-                     2018-02-16 Merge       23914     21      1138\n\
-                     2018-02-18 Merge         500      4       125\n\
-                     2018-02-19 Merge       28977      2     14488\n\
-                     2018-02-20 Merge         488      2       244\n\
-                     2018-02-21 Merge        5522     37       149\n\
-                     2018-02-22 Merge       15396     16       962\n\
-                     2018-02-23 Merge         854      6       142\n\
-                     2018-02-24 Merge          39      2        19\n\
-                     2018-02-26 Merge        2730     10       273\n\
-                     2018-02-27 Merge        1403     35        40\n\
-                     2018-02-28 Merge         652      5       130\n\
-                     2018-03-01 Merge        9355     13       719\n\
-                     2018-03-02 Merge         510      5       102\n\
-                     2018-03-03 Merge          87      3        29\n\
-                     2018-03-05 Merge         168      9        18\n\
-                     2018-03-06 Merge       27746      3      9248\n\
-                     2018-03-07 Merge        2969     46        64\n\
-                     2018-03-08 Merge        5441     74        73\n\
-                     2018-03-09 Merge        7458     50       149\n\
-                     2018-03-12 Merge        4380     95        46\n")),
+             "2018-02-03 Merge        2741     32        85\n\
+              2018-02-04 Merge       30836     31       994\n\
+              2018-02-05 Merge         158      4        39\n\
+              2018-02-06 Merge        4288     44        97\n\
+              2018-02-07 Merge         857     15        57\n\
+              2018-02-08 Merge         983      5       196\n\
+              2018-02-09 Merge        3784      6       630\n\
+              2018-02-12 Merge       29239    208       140\n\
+              2018-02-13 Merge          19      1        19\n\
+              2018-02-14 Merge        4795     44       108\n\
+              2018-02-15 Merge         137      3        45\n\
+              2018-02-16 Merge       23914     21      1138\n\
+              2018-02-18 Merge         500      4       125\n\
+              2018-02-19 Merge       28977      2     14488\n\
+              2018-02-20 Merge         488      2       244\n\
+              2018-02-21 Merge        5522     37       149\n\
+              2018-02-22 Merge       15396     16       962\n\
+              2018-02-23 Merge         854      6       142\n\
+              2018-02-24 Merge          39      2        19\n\
+              2018-02-26 Merge        2730     10       273\n\
+              2018-02-27 Merge        1403     35        40\n\
+              2018-02-28 Merge         652      5       130\n\
+              2018-03-01 Merge        9355     13       719\n\
+              2018-03-02 Merge         510      5       102\n\
+              2018-03-03 Merge          87      3        29\n\
+              2018-03-05 Merge         168      9        18\n\
+              2018-03-06 Merge       27746      3      9248\n\
+              2018-03-07 Merge        2969     46        64\n\
+              2018-03-08 Merge        5441     74        73\n\
+              2018-03-09 Merge        7458     50       149\n\
+              2018-03-12 Merge        4380     95        46\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gy"],
-             indoc!("2018 Sync        4768    150        31\n")),
+             "2018 Sync        4768    150        31\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gm"],
-             indoc!("2018-02 Sync        2429     90        26\n\
-                     2018-03 Sync        2339     60        38\n")),
+             "2018-02 Sync        2429     90        26\n\
+              2018-03 Sync        2339     60        38\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gw"],
-             indoc!("2018-05 Sync         162      3        54\n\
-                     2018-06 Sync         957     31        30\n\
-                     2018-07 Sync         391     17        23\n\
-                     2018-08 Sync         503     20        25\n\
-                     2018-09 Sync        1906     39        48\n\
-                     2018-10 Sync         728     36        20\n\
-                     2018-11 Sync         121      4        30\n")),
+             "2018-05 Sync         162      3        54\n\
+              2018-06 Sync         957     31        30\n\
+              2018-07 Sync         391     17        23\n\
+              2018-08 Sync         503     20        25\n\
+              2018-09 Sync        1906     39        48\n\
+              2018-10 Sync         728     36        20\n\
+              2018-11 Sync         121      4        30\n"),
             (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gd"],
-             indoc!("2018-02-03 Sync          69      1        69\n\
-                     2018-02-04 Sync          93      2        46\n\
-                     2018-02-05 Sync         188      7        26\n\
-                     2018-02-06 Sync         237      7        33\n\
-                     2018-02-07 Sync         223      7        31\n\
-                     2018-02-08 Sync         217      7        31\n\
-                     2018-02-09 Sync          92      3        30\n\
-                     2018-02-12 Sync          87      4        21\n\
-                     2018-02-13 Sync          46      2        23\n\
-                     2018-02-14 Sync          85      3        28\n\
-                     2018-02-15 Sync          77      4        19\n\
-                     2018-02-16 Sync          68      3        22\n\
-                     2018-02-18 Sync          28      1        28\n\
-                     2018-02-19 Sync          61      2        30\n\
-                     2018-02-20 Sync         120      5        24\n\
-                     2018-02-21 Sync          90      4        22\n\
-                     2018-02-22 Sync          51      2        25\n\
-                     2018-02-23 Sync         158      6        26\n\
-                     2018-02-24 Sync          23      1        23\n\
-                     2018-02-26 Sync          69      4        17\n\
-                     2018-02-27 Sync         211      8        26\n\
-                     2018-02-28 Sync         136      7        19\n\
-                     2018-03-01 Sync         569      8        71\n\
-                     2018-03-02 Sync         548     10        54\n\
-                     2018-03-03 Sync         373      2       186\n\
-                     2018-03-05 Sync          46      9         5\n\
-                     2018-03-06 Sync         183      8        22\n\
-                     2018-03-07 Sync         120      4        30\n\
-                     2018-03-08 Sync         157      8        19\n\
-                     2018-03-09 Sync         222      7        31\n\
-                     2018-03-12 Sync         121      4        30\n")),
+             "2018-02-03 Sync          69      1        69\n\
+              2018-02-04 Sync          93      2        46\n\
+              2018-02-05 Sync         188      7        26\n\
+              2018-02-06 Sync         237      7        33\n\
+              2018-02-07 Sync         223      7        31\n\
+              2018-02-08 Sync         217      7        31\n\
+              2018-02-09 Sync          92      3        30\n\
+              2018-02-12 Sync          87      4        21\n\
+              2018-02-13 Sync          46      2        23\n\
+              2018-02-14 Sync          85      3        28\n\
+              2018-02-15 Sync          77      4        19\n\
+              2018-02-16 Sync          68      3        22\n\
+              2018-02-18 Sync          28      1        28\n\
+              2018-02-19 Sync          61      2        30\n\
+              2018-02-20 Sync         120      5        24\n\
+              2018-02-21 Sync          90      4        22\n\
+              2018-02-22 Sync          51      2        25\n\
+              2018-02-23 Sync         158      6        26\n\
+              2018-02-24 Sync          23      1        23\n\
+              2018-02-26 Sync          69      4        17\n\
+              2018-02-27 Sync         211      8        26\n\
+              2018-02-28 Sync         136      7        19\n\
+              2018-03-01 Sync         569      8        71\n\
+              2018-03-02 Sync         548     10        54\n\
+              2018-03-03 Sync         373      2       186\n\
+              2018-03-05 Sync          46      9         5\n\
+              2018-03-06 Sync         183      8        22\n\
+              2018-03-07 Sync         120      4        30\n\
+              2018-03-08 Sync         157      8        19\n\
+              2018-03-09 Sync         222      7        31\n\
+              2018-03-12 Sync         121      4        30\n"),
         ];
         let re = Regex::new("([0-9]+) +([0-9]+) +([0-9]+)$").unwrap();
         let mut tots_t: HashMap<&str, i32> = HashMap::new();
@@ -648,33 +650,32 @@ mod tests {
 
     /// Test behaviour when clock goes backward between merge start and merge end. Likely to happen
     /// when you're bootstrapping an Gentoo and setting the time halfway through.
-    #[test] #[rustfmt::skip]
+    #[test]
     fn negative_merge_time() {
-        for (a, i, o) in vec![
-            // For `log` we show an unknown time.
-            (vec!["-f", "test/emerge.negtime.log", "l", "-sa"],
-            "",
-            indoc!("2019-06-05 09:32:10 +01:00      1:09 Sync
-                    2019-06-05 12:26:54 +01:00      5:56 kde-plasma/kwin-5.15.5
-                    2019-06-06 03:11:48 +01:00        26 kde-apps/libktnef-19.04.1
-                    2019-06-06 03:16:01 +01:00        34 net-misc/chrony-3.3
-                    2019-06-05 11:18:28 +01:00         ? Sync
-                    2019-06-05 11:21:02 +01:00         ? kde-plasma/kwin-5.15.5
-                    2019-06-08 22:33:36 +01:00      3:10 kde-plasma/kwin-5.15.5")),
-            // For `pred` the negative merge time is ignored.
-            (vec!["-f", "test/emerge.negtime.log", "p"],
-             indoc!("[ebuild   R   ~] kde-plasma/kwin-5.15.5\n"),
-             indoc!("kde-plasma/kwin-5.15.5                              4:33\n\
-                     Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33\n")),
-            // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
-            (vec!["-f", "test/emerge.negtime.log", "s", "-sa"],
-            "",
-             indoc!("kde-apps/libktnef          26      1        26
-                     kde-plasma/kwin          9:06      3      4:33
-                     net-misc/chrony            34      1        34
-                     Merge                   10:06      5      2:01
-                     Sync                     1:09      2      1:09")),
-        ] {
+        for (a, i, o) in vec![// For `log` we show an unknown time.
+                 (vec!["-f", "test/emerge.negtime.log", "l", "-sa"],
+                  "",
+                  "2019-06-05 09:32:10 +01:00      1:09 Sync\n\
+                   2019-06-05 12:26:54 +01:00      5:56 kde-plasma/kwin-5.15.5\n\
+                   2019-06-06 03:11:48 +01:00        26 kde-apps/libktnef-19.04.1\n\
+                   2019-06-06 03:16:01 +01:00        34 net-misc/chrony-3.3\n\
+                   2019-06-05 11:18:28 +01:00         ? Sync\n\
+                   2019-06-05 11:21:02 +01:00         ? kde-plasma/kwin-5.15.5\n\
+                   2019-06-08 22:33:36 +01:00      3:10 kde-plasma/kwin-5.15.5\n"),
+                 // For `pred` the negative merge time is ignored.
+                 (vec!["-f", "test/emerge.negtime.log", "p"],
+                  "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n",
+                  "kde-plasma/kwin-5.15.5                              4:33\n\
+                   Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33\n"),
+                 // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
+                 (vec!["-f", "test/emerge.negtime.log", "s", "-sa"],
+                  "",
+                  "kde-apps/libktnef          26      1        26\n\
+                   kde-plasma/kwin          9:06      3      4:33\n\
+                   net-misc/chrony            34      1        34\n\
+                   Merge                   10:06      5      2:01\n\
+                   Sync                     1:09      2      1:09\n"),]
+        {
             Assert::main_binary().with_args(&a).stdin(i).stdout().is(o).unwrap();
         }
     }
