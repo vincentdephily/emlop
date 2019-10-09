@@ -356,11 +356,12 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     }
     if totcount > 0 {
         #[rustfmt::skip]
-        writeln!(tw, "Estimate for {}{}{} ebuilds ({}{}{} unknown, {}{}{} elapsed)\t{}{:>9}{}",
+        writeln!(tw, "Estimate for {}{}{} ebuilds ({}{}{} unknown, {}{}{} elapsed)\t{}{:>9}{} @ {}{}{}",
                  st.cnt_p, totcount, st.cnt_s,
                  st.cnt_p, totunknown, st.cnt_s,
                  st.dur_p, fmt_duration(&fmtd, totelapsed), st.dur_s,
-                 st.dur_p, fmt_duration(&fmtd, totpredict), st.dur_s)?;
+                 st.dur_p, fmt_duration(&fmtd, totpredict), st.dur_s,
+                 st.dur_p, fmt_time(now + totpredict), st.dur_s)?;
     } else {
         writeln!(tw, "No pretended merge found")?;
     }
@@ -370,12 +371,26 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
 
 #[cfg(test)]
 mod tests {
-    use super::{timespan_next, Timespan};
+    use super::{fmt_time, timespan_next, Timespan};
     use assert_cli::Assert;
-    use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
+    use chrono::{DateTime, Datelike, Local, TimeZone, Utc, Weekday};
     use regex::Regex;
-    use std::collections::HashMap;
+    use std::{collections::HashMap,
+              thread,
+              time::{Duration, SystemTime, UNIX_EPOCH}};
     //TODO: Simplify fails_with() calls once https://github.com/assert-rs/assert_cli/issues/99 is closed
+
+    /// Return the current time + offset. To make tests more reproducible, we wait until we're close
+    /// to the start of a whole second before returning.
+    fn ts(secs: i64) -> DateTime<Local> {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        if now.subsec_millis() > 100 {
+            thread::sleep(Duration::from_millis(25));
+            ts(secs)
+        } else {
+            fmt_time(now.as_secs() as i64 + secs)
+        }
+    }
 
     #[test] #[rustfmt::skip]
     fn log() {
@@ -411,7 +426,7 @@ mod tests {
               2018-03-07 12:49:13 +00:00      1:01 sys-apps/util-linux-2.30.2-r1\n\
               2018-03-07 13:56:09 +00:00        40 Sync\n\
               2018-03-07 13:59:41 +00:00        24 dev-libs/nspr-4.18\n",
-             0),
+             0)
         ];
         for (a, o, e) in t {
             match e {
@@ -432,33 +447,35 @@ mod tests {
     #[test]
     fn predict_emerge_p() {
         let t = vec![// Check garbage input
-                     ("blah blah\n", "No pretended merge found\n", 2),
+                     ("blah blah\n", format!("No pretended merge found\n"), 2),
                      // Check all-unknowns
                      ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
-                      "dev-lang/unknown-1.42                                  ?\n\
-                       Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0\n",
+                      format!("dev-lang/unknown-1.42                                  ?\n\
+                               Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0 @ {}\n",
+                              ts(0)),
                       0),
                      // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
                      ("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
                        [ebuild   R   ~] dev-lang/unknown-1.42\n\
                        [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
-                      "dev-qt/qtcore-5.9.4-r2                              3:44\n\
-                       dev-lang/unknown-1.42                                  ?\n\
-                       dev-qt/qtgui-5.9.4-r3                               4:36\n\
-                       Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20\n",
+                      format!("dev-qt/qtcore-5.9.4-r2                              3:44\n\
+                               dev-lang/unknown-1.42                                  ?\n\
+                               dev-qt/qtgui-5.9.4-r3                               4:36\n\
+                               Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20 @ {}\n",
+                              ts(8 * 60 + 20)),
                       0),];
         for (i, o, e) in t {
             match e {
                 0 => Assert::main_binary().with_args(&["-f", "test/emerge.10000.log", "p"])
                                           .stdin(i)
                                           .stdout()
-                                          .is(o)
+                                          .is(o.as_str())
                                           .unwrap(),
                 _ => Assert::main_binary().with_args(&["-f", "test/emerge.10000.log", "p"])
                                           .fails_with(e)
                                           .stdin(i)
                                           .stdout()
-                                          .is(o)
+                                          .is(o.as_str())
                                           .unwrap(),
             }
         }
@@ -655,28 +672,29 @@ mod tests {
         for (a, i, o) in vec![// For `log` we show an unknown time.
                  (vec!["-f", "test/emerge.negtime.log", "l", "-sa"],
                   "",
-                  "2019-06-05 09:32:10 +01:00      1:09 Sync\n\
-                   2019-06-05 12:26:54 +01:00      5:56 kde-plasma/kwin-5.15.5\n\
-                   2019-06-06 03:11:48 +01:00        26 kde-apps/libktnef-19.04.1\n\
-                   2019-06-06 03:16:01 +01:00        34 net-misc/chrony-3.3\n\
-                   2019-06-05 11:18:28 +01:00         ? Sync\n\
-                   2019-06-05 11:21:02 +01:00         ? kde-plasma/kwin-5.15.5\n\
-                   2019-06-08 22:33:36 +01:00      3:10 kde-plasma/kwin-5.15.5\n"),
+                  format!("2019-06-05 09:32:10 +01:00      1:09 Sync\n\
+                           2019-06-05 12:26:54 +01:00      5:56 kde-plasma/kwin-5.15.5\n\
+                           2019-06-06 03:11:48 +01:00        26 kde-apps/libktnef-19.04.1\n\
+                           2019-06-06 03:16:01 +01:00        34 net-misc/chrony-3.3\n\
+                           2019-06-05 11:18:28 +01:00         ? Sync\n\
+                           2019-06-05 11:21:02 +01:00         ? kde-plasma/kwin-5.15.5\n\
+                           2019-06-08 22:33:36 +01:00      3:10 kde-plasma/kwin-5.15.5\n")),
                  // For `pred` the negative merge time is ignored.
                  (vec!["-f", "test/emerge.negtime.log", "p"],
                   "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n",
-                  "kde-plasma/kwin-5.15.5                              4:33\n\
-                   Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33\n"),
+                  format!("kde-plasma/kwin-5.15.5                              4:33\n\
+                           Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33 @ {}\n",
+                          ts(4 * 60 + 33))),
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
                  (vec!["-f", "test/emerge.negtime.log", "s", "-sa"],
                   "",
-                  "kde-apps/libktnef          26      1        26\n\
-                   kde-plasma/kwin          9:06      3      4:33\n\
-                   net-misc/chrony            34      1        34\n\
-                   Merge                   10:06      5      2:01\n\
-                   Sync                     1:09      2      1:09\n"),]
+                  format!("kde-apps/libktnef          26      1        26\n\
+                           kde-plasma/kwin          9:06      3      4:33\n\
+                           net-misc/chrony            34      1        34\n\
+                           Merge                   10:06      5      2:01\n\
+                           Sync                     1:09      2      1:09\n")),]
         {
-            Assert::main_binary().with_args(&a).stdin(i).stdout().is(o).unwrap();
+            Assert::main_binary().with_args(&a).stdin(i).stdout().is(o.as_str()).unwrap();
         }
     }
 
