@@ -60,11 +60,20 @@ pub fn new_hist<R: Read>(reader: R,
     let filter_ts = filter_ts_fn(min_ts, max_ts);
     let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
     thread::spawn(move || {
+        let mut prev_t = 0;
         for (curline, l) in BufReader::new(reader).lines().enumerate() {
             match l {
                 Ok(ref line) => {
                     // Got a line, see if one of the funs match it
                     if let Some((t, s)) = parse_ts(line, &filter_ts) {
+                        if prev_t > t {
+                            warn!("{}:{}: System clock jump: {} -> {}",
+                                  filename,
+                                  curline,
+                                  fmt_time(prev_t),
+                                  fmt_time(t));
+                        }
+                        prev_t = t;
                         if let Some(found) = parse_start(parse_merge, t, s, &filter_pkg) {
                             tx.send(found).unwrap()
                         } else if let Some(found) = parse_stop(parse_merge, t, s, &filter_pkg) {
