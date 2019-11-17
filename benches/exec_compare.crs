@@ -43,7 +43,7 @@ fn main() {
 
         ("lf", "genlop", &["-l","-f","test/emerge.10000.log"], None),
         ("lf", "qlop",   &["-l","-f","test/emerge.10000.log"], None),
-        ("lf", "emlop",  &["l", "-f","test/emerge.10000.log"], None),
+        ("lf", "emlop",  &["l", "-F","test/emerge.10000.log"], None),
         ("lf", "golop",  &["-l","test/emerge.10000.log"],      None),
 
         ("lc", "emlop",  &["l","--color=y"],  None),

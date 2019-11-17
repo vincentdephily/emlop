@@ -396,7 +396,7 @@ mod tests {
     fn log() {
         let t: Vec<(&[&str], &str, i32)> = vec![
             // Basic test
-            (&["-f", "test/emerge.10000.log", "l", "client"],
+            (&["-F", "test/emerge.10000.log", "l", "client"],
              "2018-02-04 04:55:19 +00:00     35:46 mail-client/thunderbird-52.6.0\n\
               2018-02-04 05:42:48 +00:00     47:29 www-client/firefox-58.0.1\n\
               2018-02-09 11:04:59 +00:00     47:58 mail-client/thunderbird-52.6.0-r1\n\
@@ -410,17 +410,17 @@ mod tests {
               2018-03-12 11:03:53 +00:00        16 kde-frameworks/kxmlrpcclient-5.44.0\n",
              0),
             // Check output when duration isn't known
-            (&["-f", "test/emerge.10000.log", "l", "-s", "m", "mlt", "-e", "--from", "2018-02-18 12:37:00"],
+            (&["-F", "test/emerge.10000.log", "l", "-s", "m", "mlt", "-e", "--from", "2018-02-18 12:37:00"],
              "2018-02-18 12:37:09 +00:00         ? media-libs/mlt-6.4.1-r6\n\
               2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
               2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n",
              0),
             // Check output of sync events
-            (&["-f", "test/emerge.10000.log", "l", "-ss", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
+            (&["-F", "test/emerge.10000.log", "l", "-ss", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
              "2018-03-07 11:37:05 +00:00        38 Sync\n\
               2018-03-07 13:56:09 +00:00        40 Sync\n",
              0),
-            (&["-f", "test/emerge.10000.log", "l", "--show", "ms", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
+            (&["-F", "test/emerge.10000.log", "l", "--show", "ms", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
              "2018-03-07 10:43:10 +00:00        14 sys-apps/the_silver_searcher-2.0.0\n\
               2018-03-07 11:37:05 +00:00        38 Sync\n\
               2018-03-07 12:49:13 +00:00      1:01 sys-apps/util-linux-2.30.2-r1\n\
@@ -466,12 +466,12 @@ mod tests {
                       0),];
         for (i, o, e) in t {
             match e {
-                0 => Assert::main_binary().with_args(&["-f", "test/emerge.10000.log", "p"])
+                0 => Assert::main_binary().with_args(&["-F", "test/emerge.10000.log", "p"])
                                           .stdin(i)
                                           .stdout()
                                           .is(o.as_str())
                                           .unwrap(),
-                _ => Assert::main_binary().with_args(&["-f", "test/emerge.10000.log", "p"])
+                _ => Assert::main_binary().with_args(&["-F", "test/emerge.10000.log", "p"])
                                           .fails_with(e)
                                           .stdin(i)
                                           .stdout()
@@ -484,7 +484,7 @@ mod tests {
     #[test] #[rustfmt::skip]
     fn stats() {
         let t: Vec<(&[&str],&str,i32)> = vec![
-            (&["-f","test/emerge.10000.log","s","client"],
+            (&["-F","test/emerge.10000.log","s","client"],
              "kde-frameworks/kxmlrpcclient          47      2        23\n\
               mail-client/thunderbird          1:23:44      2     41:52\n\
               www-client/chromium             21:41:24      3   7:13:48\n\
@@ -493,14 +493,14 @@ mod tests {
               www-client/links                      44      1        44\n\
               x11-apps/xlsclients                   14      1        14\n",
              0),
-            (&["-f","test/emerge.10000.log","s","client","-ss"],
+            (&["-F","test/emerge.10000.log","s","client","-ss"],
              "Sync     1:19:28    150        31\n",
              0),
-            (&["-f","test/emerge.10000.log","s","client","-sst"],
+            (&["-F","test/emerge.10000.log","s","client","-sst"],
              "Merge    24:00:24     11   2:10:56\n\
               Sync      1:19:28    150        31\n",
              0),
-            (&["-f","test/emerge.10000.log","s","client","-sa"],
+            (&["-F","test/emerge.10000.log","s","client","-sa"],
              "kde-frameworks/kxmlrpcclient          47      2        23\n\
               mail-client/thunderbird          1:23:44      2     41:52\n\
               www-client/chromium             21:41:24      3   7:13:48\n\
@@ -511,7 +511,7 @@ mod tests {
               Merge                           24:00:24     11   2:10:56\n\
               Sync                             1:19:28    150        31\n",
              0),
-            (&["-f","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
+            (&["-F","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
              "Merge           0      0         0\n\
               Sync            0      0         0\n",
              2),
@@ -530,19 +530,19 @@ mod tests {
     #[test] #[rustfmt::skip]
     fn stats_grouped() {
         let t: Vec<(&[&str],&str)> = vec![
-            (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gy"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gy"],
              "2018 sys-kernel/gentoo-sources         904     10        90\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gm"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gm"],
              "2018-02 sys-kernel/gentoo-sources         702      8        87\n\
               2018-03 sys-kernel/gentoo-sources         202      2       101\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gw"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gw"],
              "2018-05 sys-kernel/gentoo-sources          81      1        81\n\
               2018-06 sys-kernel/gentoo-sources         192      2        96\n\
               2018-07 sys-kernel/gentoo-sources         198      2        99\n\
               2018-08 sys-kernel/gentoo-sources          77      1        77\n\
               2018-09 sys-kernel/gentoo-sources         236      3        78\n\
               2018-11 sys-kernel/gentoo-sources         120      1       120\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gd"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gd"],
              "2018-02-04 sys-kernel/gentoo-sources          81      1        81\n\
               2018-02-05 sys-kernel/gentoo-sources          95      1        95\n\
               2018-02-08 sys-kernel/gentoo-sources          97      1        97\n\
@@ -553,12 +553,12 @@ mod tests {
               2018-02-28 sys-kernel/gentoo-sources          75      1        75\n\
               2018-03-01 sys-kernel/gentoo-sources          82      1        82\n\
               2018-03-12 sys-kernel/gentoo-sources         120      1       120\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gy"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gy"],
              "2018 Merge      216426    831       260\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gm"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gm"],
              "2018-02 Merge      158312    533       297\n\
               2018-03 Merge       58114    298       195\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gw"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gw"],
              "2018-05 Merge       33577     63       532\n\
               2018-06 Merge       10070     74       136\n\
               2018-07 Merge       58604    281       208\n\
@@ -566,7 +566,7 @@ mod tests {
               2018-09 Merge       14737     71       207\n\
               2018-10 Merge       43782    182       240\n\
               2018-11 Merge        4380     95        46\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-st","-gd"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gd"],
              "2018-02-03 Merge        2741     32        85\n\
               2018-02-04 Merge       30836     31       994\n\
               2018-02-05 Merge         158      4        39\n\
@@ -598,12 +598,12 @@ mod tests {
               2018-03-08 Merge        5441     74        73\n\
               2018-03-09 Merge        7458     50       149\n\
               2018-03-12 Merge        4380     95        46\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gy"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gy"],
              "2018 Sync        4768    150        31\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gm"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gm"],
              "2018-02 Sync        2429     90        26\n\
               2018-03 Sync        2339     60        38\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gw"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gw"],
              "2018-05 Sync         162      3        54\n\
               2018-06 Sync         957     31        30\n\
               2018-07 Sync         391     17        23\n\
@@ -611,7 +611,7 @@ mod tests {
               2018-09 Sync        1906     39        48\n\
               2018-10 Sync         728     36        20\n\
               2018-11 Sync         121      4        30\n"),
-            (&["-f","test/emerge.10000.log","s","--duration","s","-ss","-gd"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gd"],
              "2018-02-03 Sync          69      1        69\n\
               2018-02-04 Sync          93      2        46\n\
               2018-02-05 Sync         188      7        26\n\
@@ -670,7 +670,7 @@ mod tests {
     #[test]
     fn negative_merge_time() {
         for (a, i, o) in vec![// For `log` we show an unknown time.
-                 (vec!["-f", "test/emerge.negtime.log", "l", "-sa"],
+                 (vec!["-F", "test/emerge.negtime.log", "l", "-sa"],
                   "",
                   format!("2019-06-05 09:32:10 +01:00      1:09 Sync\n\
                            2019-06-05 12:26:54 +01:00      5:56 kde-plasma/kwin-5.15.5\n\
@@ -680,13 +680,13 @@ mod tests {
                            2019-06-05 11:21:02 +01:00         ? kde-plasma/kwin-5.15.5\n\
                            2019-06-08 22:33:36 +01:00      3:10 kde-plasma/kwin-5.15.5\n")),
                  // For `pred` the negative merge time is ignored.
-                 (vec!["-f", "test/emerge.negtime.log", "p"],
+                 (vec!["-F", "test/emerge.negtime.log", "p"],
                   "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n",
                   format!("kde-plasma/kwin-5.15.5                              4:33\n\
                            Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33 @ {}\n",
                           ts(4 * 60 + 33))),
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
-                 (vec!["-f", "test/emerge.negtime.log", "s", "-sa"],
+                 (vec!["-F", "test/emerge.negtime.log", "s", "-sa"],
                   "",
                   format!("kde-apps/libktnef          26      1        26\n\
                            kde-plasma/kwin          9:06      3      4:33\n\
@@ -719,16 +719,16 @@ mod tests {
                  (&["s", "bad regex [a-z"], 1),
                  (&["p", "bad regex [a-z"], 1),
                  // Normal behaviour
-                 (&["-f", "test/emerge.10000.log", "p"], 2),
-                 (&["-f", "test/emerge.10000.log", "l"], 0),
-                 (&["-f", "test/emerge.10000.log", "l", "-s"], 0),
-                 (&["-f", "test/emerge.10000.log", "l", "-e", "icu"], 0),
-                 (&["-f", "test/emerge.10000.log", "l", "-e", "unknown"], 2),
-                 (&["-f", "test/emerge.10000.log", "l", "--from", "2018-09-28"], 2),
-                 (&["-f", "test/emerge.10000.log", "l", "-s", "--from", "2018-09-28"], 2),
-                 (&["-f", "test/emerge.10000.log", "s"], 0),
-                 (&["-f", "test/emerge.10000.log", "s", "-e", "icu"], 0),
-                 (&["-f", "test/emerge.10000.log", "s", "-e", "unknown"], 2),];
+                 (&["-F", "test/emerge.10000.log", "p"], 2),
+                 (&["-F", "test/emerge.10000.log", "l"], 0),
+                 (&["-F", "test/emerge.10000.log", "l", "-s"], 0),
+                 (&["-F", "test/emerge.10000.log", "l", "-e", "icu"], 0),
+                 (&["-F", "test/emerge.10000.log", "l", "-e", "unknown"], 2),
+                 (&["-F", "test/emerge.10000.log", "l", "--from", "2018-09-28"], 2),
+                 (&["-F", "test/emerge.10000.log", "l", "-s", "--from", "2018-09-28"], 2),
+                 (&["-F", "test/emerge.10000.log", "s"], 0),
+                 (&["-F", "test/emerge.10000.log", "s", "-e", "icu"], 0),
+                 (&["-F", "test/emerge.10000.log", "s", "-e", "unknown"], 2),];
         for (args, exit) in t {
             match exit {
                 0 => Assert::main_binary().with_args(args).unwrap(),
