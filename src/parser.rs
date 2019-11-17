@@ -17,6 +17,10 @@ pub enum ParsedHist {
     Start { ts: i64, ebuild: String, version: String, iter: String },
     /// Merge completed.
     Stop { ts: i64, ebuild: String, version: String, iter: String },
+    /// Unmerge started (might never complete).
+    UnmergeStart { ts: i64, ebuild: String, version: String },
+    /// Unmerge completed.
+    UnmergeStop { ts: i64, ebuild: String, version: String },
     /// Sync started (might never complete).
     SyncStart { ts: i64 },
     /// Sync completed.
@@ -27,6 +31,8 @@ impl ParsedHist {
         match self {
             ParsedHist::Start { ts, .. } => *ts,
             ParsedHist::Stop { ts, .. } => *ts,
+            ParsedHist::UnmergeStart { ts, .. } => *ts,
+            ParsedHist::UnmergeStop { ts, .. } => *ts,
             ParsedHist::SyncStart { ts, .. } => *ts,
             ParsedHist::SyncStop { ts, .. } => *ts,
         }
@@ -47,6 +53,7 @@ pub fn new_hist<R: Read>(reader: R,
                          min_ts: Option<i64>,
                          max_ts: Option<i64>,
                          parse_merge: bool,
+                         parse_unmerge: bool,
                          parse_sync: bool,
                          search_str: Option<&str>,
                          search_exact: bool)
@@ -77,6 +84,14 @@ pub fn new_hist<R: Read>(reader: R,
                         if let Some(found) = parse_start(parse_merge, t, s, &filter_pkg) {
                             tx.send(found).unwrap()
                         } else if let Some(found) = parse_stop(parse_merge, t, s, &filter_pkg) {
+                            tx.send(found).unwrap()
+                        } else if let Some(found) =
+                            parse_unmergestart(parse_unmerge, t, s, &filter_pkg)
+                        {
+                            tx.send(found).unwrap()
+                        } else if let Some(found) =
+                            parse_unmergestop(parse_unmerge, t, s, &filter_pkg)
+                        {
                             tx.send(found).unwrap()
                         } else if let Some(found) = parse_syncstart(parse_sync, t, s) {
                             tx.send(found).unwrap()
@@ -188,14 +203,14 @@ fn parse_ts(line: &str, filter_ts: impl Fn(i64) -> bool) -> Option<(i64, &str)> 
     if !(filter_ts)(ts) {
         return None;
     }
-    Some((ts, &rest[2..]))
+    Some((ts, &rest[2..].trim_start()))
 }
 fn parse_start(enabled: bool,
                ts: i64,
                line: &str,
                filter_pkg: impl Fn(&str) -> bool)
                -> Option<ParsedHist> {
-    if !enabled || !line.starts_with(" >>> emer") {
+    if !enabled || !line.starts_with(">>> emer") {
         return None;
     }
     let mut tokens = line.split_ascii_whitespace();
@@ -214,7 +229,7 @@ fn parse_stop(enabled: bool,
               line: &str,
               filter_pkg: impl Fn(&str) -> bool)
               -> Option<ParsedHist> {
-    if !enabled || !line.starts_with(" ::: comp") {
+    if !enabled || !line.starts_with("::: comp") {
         return None;
     }
     let mut tokens = line.split_whitespace();
@@ -228,8 +243,39 @@ fn parse_stop(enabled: bool,
                             iter: format!("{} {}", t4, t6),
                             version: version.to_string() })
 }
+fn parse_unmergestart(enabled: bool,
+                      ts: i64,
+                      line: &str,
+                      filter_pkg: impl Fn(&str) -> bool)
+                      -> Option<ParsedHist> {
+    if !enabled || !line.starts_with("=== Unmerging...") {
+        return None;
+    }
+    let mut tokens = line.split_whitespace();
+    let t3 = tokens.nth(2)?;
+    let (ebuild, version) = split_atom(&t3[1..t3.len() - 1])?;
+    if !(filter_pkg)(ebuild) {
+        return None;
+    }
+    Some(ParsedHist::UnmergeStart { ts, ebuild: ebuild.to_string(), version: version.to_string() })
+}
+fn parse_unmergestop(enabled: bool,
+                     ts: i64,
+                     line: &str,
+                     filter_pkg: impl Fn(&str) -> bool)
+                     -> Option<ParsedHist> {
+    if !enabled || !line.starts_with(">>> unmerge success") {
+        return None;
+    }
+    let mut tokens = line.split_whitespace();
+    let (ebuild, version) = split_atom(tokens.nth(3)?)?;
+    if !(filter_pkg)(ebuild) {
+        return None;
+    }
+    Some(ParsedHist::UnmergeStop { ts, ebuild: ebuild.to_string(), version: version.to_string() })
+}
 fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<ParsedHist> {
-    if !enabled || line != " === sync" {
+    if !enabled || line != "=== sync" {
         return None;
     }
     Some(ParsedHist::SyncStart { ts })

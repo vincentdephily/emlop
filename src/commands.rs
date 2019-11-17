@@ -10,31 +10,47 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
     let show = subargs.value_of("show").unwrap();
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
+    let show_unmerge = show.contains(&"u") || show.contains(&"a");
     let hist = new_hist(myopen(args.value_of("logfile").unwrap())?,
                         args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
                         show_merge,
+                        show_unmerge,
                         show_sync,
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
     let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
-    let mut started: HashMap<(String, String, String), i64> = HashMap::new();
+    let mut merges: HashMap<(String, String, String), i64> = HashMap::new();
+    let mut unmerges: HashMap<(String, String), i64> = HashMap::new();
     let mut found_one = false;
     let mut syncstart: i64 = 0;
     for p in hist {
         match p {
             ParsedHist::Start { ts, ebuild, version, iter, .. } => {
-                // This'll overwrite any previous entry, if a build started but never finished
-                started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
+                // This'll overwrite any previous entry, if a merge started but never finished
+                merges.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
             },
             ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
                 found_one = true;
-                let started = started.remove(&(ebuild.clone(), version.clone(), iter.clone()));
+                let merges = merges.remove(&(ebuild.clone(), version.clone(), iter.clone()));
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts-started.unwrap_or(ts+1)),
+                         st.dur_p, fmt_duration(&fmtd, ts-merges.unwrap_or(ts+1)),
+                         st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
+            },
+            ParsedHist::UnmergeStart { ts, ebuild, version, .. } => {
+                // This'll overwrite any previous entry, if a build started but never finished
+                unmerges.insert((ebuild.clone(), version.clone()), ts);
+            },
+            ParsedHist::UnmergeStop { ts, ebuild, version, .. } => {
+                found_one = true;
+                let unmerges = unmerges.remove(&(ebuild.clone(), version.clone()));
+                #[rustfmt::skip]
+                writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
+                         fmt_time(ts),
+                         st.dur_p, fmt_duration(&fmtd, ts-unmerges.unwrap_or(ts+1)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
             ParsedHist::SyncStart { ts } => {
@@ -115,6 +131,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
                         show_merge || show_tot,
+                        false,
                         show_sync,
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
@@ -154,6 +171,8 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                     timevec.insert(0, ts - start_ts);
                 }
             },
+            ParsedHist::UnmergeStart { .. } => {},
+            ParsedHist::UnmergeStop { .. } => {},
             ParsedHist::SyncStart { ts } => {
                 syncstart = ts;
             },
@@ -275,6 +294,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                         value_opt(args, "to", parse_date),
                         true,
                         false,
+                        false,
                         None,
                         false)?;
     let mut started: BTreeMap<(String, String), i64> = BTreeMap::new();
@@ -291,6 +311,8 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                     timevec.insert(0, ts - start_ts);
                 }
             },
+            ParsedHist::UnmergeStart { .. } => (),
+            ParsedHist::UnmergeStop { .. } => (),
             ParsedHist::SyncStart { .. } => (),
             ParsedHist::SyncStop { .. } => (),
         }

@@ -35,11 +35,11 @@ String is case-sentitive and matches on whole name, or whole category/name if it
     let arg_show_l = Arg::with_name("show")
         .short("s")
         .long("show")
-        .value_name("m,s,a")
-        .validator(|s| find_invalid("msa", &s))
+        .value_name("m,u,s,a")
+        .validator(|s| find_invalid("musa", &s))
         .default_value("m")
-        .help("Show (m)erges, (s)yncs, and/or (a)ll.")
-        .long_help("Show individual (m)erges, portage tree (s)yncs, or (a)ll of these (any letters combination).");
+        .help("Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll.")
+        .long_help("Show individual (m)erges, (u)nmerges, portage tree (s)yncs, or (a)ll of these (any letters combination).");
     let arg_show_s = Arg::with_name("show")
         .short("s")
         .long("show")
