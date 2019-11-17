@@ -36,7 +36,7 @@ install them system-wide, edit the system `$PATH` or copy/symlink `~/.cargo/bin/
     git clone https://github.com/vincentdephily/emlop
     cd emlop
     cargo test
-    cargo install -f
+    cargo install -f --path .
 
 ## Usage
 
@@ -50,7 +50,7 @@ Show log of sucessful merges and syncs:
 
     emlop log [OPTIONS] [package]
         <package>                 Display only packages matching <package>.
-        -s, --show <m,s,a>        Show (m)erges, (s)yncs, and/or (a)ll. [default: m]
+        -s, --show <m,u,s,a>      Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll. [default: m]
         -e, --exact               Match package with a string instead of a regex.
 
 Predict merge time for current or pretended merges:
@@ -69,10 +69,10 @@ Show statistics about sucessful merges and syncs:
 
 Options common to all subcommands:
 
-        --from <date>         Only parse log entries after <date>.
-        --to <date>           Only parse log entries before <date>.
+    -f, --from <date>         Only parse log entries after <date>.
+    -t, --to <date>           Only parse log entries before <date>.
         --duration <hms,s>    Format durations in hours:minutes:seconds or in seconds. [default: hms]
-    -f, --logfile <file>      Location of emerge log file. [default: /var/log/emerge.log]
+    -F, --logfile <file>      Location of emerge log file. [default: /var/log/emerge.log]
     -v                        Show warnings (-v), info (-vv) and debug (-vvv) messages (errors are always displayed).
         --color <when>        Enable color (auto/always/never/y/n). [default: auto]
     -h, --help                Show short (-h) or detailed (--help) help.
@@ -125,7 +125,7 @@ Show currently emerging packages, how long they have been running, and predict h
     Pid 27848: ...on-exec/python3.5/emerge -O firefox         29
     www-client/firefox-58.0.1                              53:37 - 24
     www-client/chromium-65.0.3325.146                    6:01:02 - 28
-    Estimate for 2 ebuilds (0 unknown, 52 elapsed)       6:53:47
+    Estimate for 2 ebuilds (0 unknown, 52 elapsed)       6:53:47 @ 2019-10-09 11:17:42 +01:00
 
 Predict merge time from an `emerge --pretend` output, taking currently elapsed time into account:
 
@@ -134,7 +134,7 @@ Predict merge time from an `emerge --pretend` output, taking currently elapsed t
     www-client/chromium-65.0.3325.146                    5:49:38 - 1:10:55
     www-client/firefox-58.0.1                              53:37
     kde-apps/konqueror-17.12.3                              3:46
-    Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06
+    Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06 @ 2019-10-09 11:17:42 +01:00
 
 Show total merge time, merge count, and average merge time:
 

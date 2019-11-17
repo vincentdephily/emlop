@@ -1,3 +1,12 @@
+# Unreleased
+
+* Display predicted merge datetime (not just merge duration).
+* Optionaly display unmerge operations.
+* -f/-t are now aliases from --from/--to.
+  -f as an alias for --logfile was renamed to -F.
+* Fix handling of negative durations (system clock gone backwards).
+  Also, if warnings are enabled clock jumps will be reported.
+
 # 0.3.1 2019-06-10
 
 Maintenance release: Fix a panic and do some code maintenance.
