@@ -29,28 +29,32 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
         match p {
             ParsedHist::Start { ts, ebuild, version, iter, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
-                merges.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
+                merges.insert((ebuild, version, iter), ts);
             },
             ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
                 found_one = true;
-                let merges = merges.remove(&(ebuild.clone(), version.clone(), iter.clone()));
+                let k = (ebuild, version, iter);
+                let started = merges.remove(&k);
+                let (ebuild, version, _) = k;
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts-merges.unwrap_or(ts+1)),
+                         st.dur_p, fmt_duration(&fmtd, ts-started.unwrap_or(ts+1)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
             ParsedHist::UnmergeStart { ts, ebuild, version, .. } => {
                 // This'll overwrite any previous entry, if a build started but never finished
-                unmerges.insert((ebuild.clone(), version.clone()), ts);
+                unmerges.insert((ebuild, version), ts);
             },
             ParsedHist::UnmergeStop { ts, ebuild, version, .. } => {
                 found_one = true;
-                let unmerges = unmerges.remove(&(ebuild.clone(), version.clone()));
+                let k = (ebuild, version);
+                let started = unmerges.remove(&k);
+                let (ebuild, version) = k;
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts-unmerges.unwrap_or(ts+1)),
+                         st.dur_p, fmt_duration(&fmtd, ts-started.unwrap_or(ts+1)),
                          st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
             },
             ParsedHist::SyncStart { ts } => {
@@ -161,13 +165,12 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
         }
         match p {
             ParsedHist::Start { ts, ebuild, version, iter, .. } => {
-                started.insert((ebuild.clone(), version.clone(), iter.clone()), ts);
+                started.insert((ebuild, version, iter), ts);
             },
             ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
-                if let Some(start_ts) =
-                    started.remove(&(ebuild.clone(), version.clone(), iter.clone()))
-                {
-                    let timevec = times.entry(ebuild.clone()).or_insert_with(|| vec![]);
+                let k = (ebuild, version, iter);
+                if let Some(start_ts) = started.remove(&k) {
+                    let timevec = times.entry(k.0).or_insert_with(|| vec![]);
                     timevec.insert(0, ts - start_ts);
                 }
             },
@@ -303,11 +306,12 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         match p {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
             ParsedHist::Start { ts, ebuild, version, .. } => {
-                started.insert((ebuild.clone(), version.clone()), ts);
+                started.insert((ebuild, version), ts);
             },
             ParsedHist::Stop { ts, ebuild, version, .. } => {
-                if let Some(start_ts) = started.remove(&(ebuild.clone(), version.clone())) {
-                    let timevec = times.entry(ebuild.clone()).or_insert_with(|| vec![]);
+                let k = (ebuild, version);
+                if let Some(start_ts) = started.remove(&k) {
+                    let timevec = times.entry(k.0).or_insert_with(|| vec![]);
                     timevec.insert(0, ts - start_ts);
                 }
             },
@@ -338,12 +342,14 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     for ParsedPretend { ebuild, version } in pretend {
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
-        let (elapsed, elapsed_fmt) = match started.remove(&(ebuild.clone(), version.clone())) {
+        let k = (ebuild, version);
+        let (elapsed, elapsed_fmt) = match started.remove(&k) {
             Some(s) if s > cms => {
                 (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(&fmtd, now - s), st.dur_s))
             },
             _ => (0, "".into()),
         };
+        let (ebuild, version) = k;
 
         // Find the predicted time and adjust counters
         totcount += 1;
