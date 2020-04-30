@@ -698,7 +698,7 @@ mod tests {
     #[test]
     fn negative_merge_time() {
         for (a, i, o) in vec![// For `log` we show an unknown time.
-                 (vec!["-F", "test/emerge.negtime.log", "l", "-sa"],
+                 (vec!["-F", "test/emerge.negtime.log", "l", "-sms"],
                   "",
                   format!("2019-06-05 09:32:10 +01:00      1:09 Sync\n\
                            2019-06-05 12:26:54 +01:00      5:56 kde-plasma/kwin-5.15.5\n\

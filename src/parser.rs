@@ -316,6 +316,7 @@ mod tests {
                             filter_mints,
                             filter_maxts,
                             parse_merge,
+                            false,
                             parse_sync,
                             filter_pkg,
                             exact).unwrap();
@@ -329,6 +330,8 @@ mod tests {
             let (kind, ts, ebuild, version, iter) = match p {
                 ParsedHist::Start{ts, ebuild, version, iter} => ("start", ts, ebuild, version, iter),
                 ParsedHist::Stop{ts, ebuild, version, iter} =>  ("stop",  ts, ebuild, version, iter),
+                ParsedHist::UnmergeStart{ts, ebuild, version} => ("UStart", ts, ebuild, version, "(1 1)".into()),
+                ParsedHist::UnmergeStop{ts, ebuild, version} =>  ("UStop",  ts, ebuild, version, "(1 1)".into()),
                 ParsedHist::SyncStart{ts} => ("syncstart", ts, "c/e".into(), "1".into(), "(1 1)".into()),
                 ParsedHist::SyncStop{ts} => ("syncstop", ts, "c/e".into(), "1".into(), "(1 1)".into()),
             };
