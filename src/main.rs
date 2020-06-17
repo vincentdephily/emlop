@@ -299,7 +299,10 @@ pub fn epoch_now() -> i64 {
 /// properly.
 pub struct Styles {
     pkg_p: String,
-    pkg_s: String,
+    merge_p: String,
+    merge_s: String,
+    unmerge_p: String,
+    unmerge_s: String,
     dur_p: String,
     dur_s: String,
     cnt_p: String,
@@ -314,14 +317,20 @@ impl Styles {
         };
         if enabled {
             Styles { pkg_p: Style::new().fg(Green).bold().prefix().to_string(),
-                     pkg_s: Style::new().fg(Green).bold().suffix().to_string(),
+                     merge_p: Style::new().fg(Green).bold().prefix().to_string(),
+                     merge_s: Style::new().fg(Green).bold().suffix().to_string(),
+                     unmerge_p: Style::new().fg(Red).bold().prefix().to_string(),
+                     unmerge_s: Style::new().fg(Red).bold().suffix().to_string(),
                      dur_p: Style::new().fg(Purple).bold().prefix().to_string(),
                      dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
                      cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
                      cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string() }
         } else {
             Styles { pkg_p: String::new(),
-                     pkg_s: String::new(),
+                     merge_p: String::from(">>> "),
+                     merge_s: String::new(),
+                     unmerge_p: String::from("<<< "),
+                     unmerge_s: String::new(),
                      dur_p: String::new(),
                      dur_s: String::new(),
                      cnt_p: String::new(),

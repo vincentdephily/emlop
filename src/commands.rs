@@ -39,8 +39,8 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts-started.unwrap_or(ts+1)),
-                         st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
+                         st.dur_p, fmt_duration(&fmtd, ts - started.unwrap_or(ts + 1)),
+                         st.merge_p, ebuild, version, st.merge_s).unwrap_or(());
             },
             ParsedHist::UnmergeStart { ts, ebuild, version, .. } => {
                 // This'll overwrite any previous entry, if a build started but never finished
@@ -54,8 +54,8 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts-started.unwrap_or(ts+1)),
-                         st.pkg_p, ebuild, version, st.pkg_s).unwrap_or(());
+                         st.dur_p, fmt_duration(&fmtd, ts - started.unwrap_or(ts + 1)),
+                         st.unmerge_p, ebuild, version, st.unmerge_s).unwrap_or(());
             },
             ParsedHist::SyncStart { ts } => {
                 syncstart = ts;
@@ -65,7 +65,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9}{} Sync",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts-syncstart), st.dur_s).unwrap_or(());
+                         st.dur_p, fmt_duration(&fmtd, ts - syncstart), st.dur_s).unwrap_or(());
             },
         }
     }
@@ -236,9 +236,8 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         }
         let totavg = if totcount > 0 { tottime / totcount } else { 0 };
         #[rustfmt::skip]
-        writeln!(tw, "{}{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+        writeln!(tw, "{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  group_by,
-                 st.pkg_p,
                  st.dur_p, fmt_duration(&fmtd, tottime),
                  st.cnt_p, totcount,
                  st.dur_p, fmt_duration(&fmtd, totavg), st.dur_s)?;
@@ -253,9 +252,8 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                                                      });
         let avg = if avgcount > 0 { time / avgcount } else { 0 };
         #[rustfmt::skip]
-        writeln!(tw, "{}{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+        writeln!(tw, "{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
                  group_by,
-                 st.pkg_p,
                  st.dur_p, fmt_duration(&fmtd, time),
                  st.cnt_p, totcount,
                  st.dur_p, fmt_duration(&fmtd, avg), st.dur_s)?;
@@ -425,35 +423,38 @@ mod tests {
         let t: Vec<(&[&str], &str, i32)> = vec![
             // Basic test
             (&["-F", "test/emerge.10000.log", "l", "client"],
-             "2018-02-04 04:55:19 +00:00     35:46 mail-client/thunderbird-52.6.0\n\
-              2018-02-04 05:42:48 +00:00     47:29 www-client/firefox-58.0.1\n\
-              2018-02-09 11:04:59 +00:00     47:58 mail-client/thunderbird-52.6.0-r1\n\
-              2018-02-12 10:14:11 +00:00        31 kde-frameworks/kxmlrpcclient-5.43.0\n\
-              2018-02-16 04:41:39 +00:00   6:03:14 www-client/chromium-64.0.3282.140\n\
-              2018-02-19 17:35:41 +00:00   7:56:03 www-client/chromium-64.0.3282.167\n\
-              2018-02-22 13:32:53 +00:00        44 www-client/links-2.14-r1\n\
-              2018-02-28 09:14:37 +00:00      6:02 www-client/falkon-3.0.0\n\
-              2018-03-06 04:19:52 +00:00   7:42:07 www-client/chromium-64.0.3282.186\n\
-              2018-03-12 10:35:22 +00:00        14 x11-apps/xlsclients-1.1.4\n\
-              2018-03-12 11:03:53 +00:00        16 kde-frameworks/kxmlrpcclient-5.44.0\n",
+             "2018-02-04 04:55:19 +00:00     35:46 >>> mail-client/thunderbird-52.6.0\n\
+              2018-02-04 05:42:48 +00:00     47:29 >>> www-client/firefox-58.0.1\n\
+              2018-02-09 11:04:59 +00:00     47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
+              2018-02-12 10:14:11 +00:00        31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
+              2018-02-16 04:41:39 +00:00   6:03:14 >>> www-client/chromium-64.0.3282.140\n\
+              2018-02-19 17:35:41 +00:00   7:56:03 >>> www-client/chromium-64.0.3282.167\n\
+              2018-02-22 13:32:53 +00:00        44 >>> www-client/links-2.14-r1\n\
+              2018-02-28 09:14:37 +00:00      6:02 >>> www-client/falkon-3.0.0\n\
+              2018-03-06 04:19:52 +00:00   7:42:07 >>> www-client/chromium-64.0.3282.186\n\
+              2018-03-12 10:35:22 +00:00        14 >>> x11-apps/xlsclients-1.1.4\n\
+              2018-03-12 11:03:53 +00:00        16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n",
              0),
             // Check output when duration isn't known
             (&["-F", "test/emerge.10000.log", "l", "-s", "m", "mlt", "-e", "--from", "2018-02-18 12:37:00"],
-             "2018-02-18 12:37:09 +00:00         ? media-libs/mlt-6.4.1-r6\n\
-              2018-02-27 15:10:05 +00:00        43 media-libs/mlt-6.4.1-r6\n\
-              2018-02-27 16:48:40 +00:00        39 media-libs/mlt-6.4.1-r6\n",
+             "2018-02-18 12:37:09 +00:00         ? >>> media-libs/mlt-6.4.1-r6\n\
+              2018-02-27 15:10:05 +00:00        43 >>> media-libs/mlt-6.4.1-r6\n\
+              2018-02-27 16:48:40 +00:00        39 >>> media-libs/mlt-6.4.1-r6\n",
              0),
             // Check output of sync events
             (&["-F", "test/emerge.10000.log", "l", "-ss", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
              "2018-03-07 11:37:05 +00:00        38 Sync\n\
               2018-03-07 13:56:09 +00:00        40 Sync\n",
              0),
-            (&["-F", "test/emerge.10000.log", "l", "--show", "ms", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
-             "2018-03-07 10:43:10 +00:00        14 sys-apps/the_silver_searcher-2.0.0\n\
+            // Check output of all events
+            (&["-F", "test/emerge.10000.log", "l", "--show", "a", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
+             "2018-03-07 10:43:10 +00:00        14 >>> sys-apps/the_silver_searcher-2.0.0\n\
               2018-03-07 11:37:05 +00:00        38 Sync\n\
-              2018-03-07 12:49:13 +00:00      1:01 sys-apps/util-linux-2.30.2-r1\n\
+              2018-03-07 12:49:09 +00:00         2 <<< sys-apps/util-linux-2.30.2\n\
+              2018-03-07 12:49:13 +00:00      1:01 >>> sys-apps/util-linux-2.30.2-r1\n\
               2018-03-07 13:56:09 +00:00        40 Sync\n\
-              2018-03-07 13:59:41 +00:00        24 dev-libs/nspr-4.18\n",
+              2018-03-07 13:59:38 +00:00         2 <<< dev-libs/nspr-4.17\n\
+              2018-03-07 13:59:41 +00:00        24 >>> dev-libs/nspr-4.18\n",
              0)
         ];
         for (a, o, e) in t {
@@ -701,12 +702,12 @@ mod tests {
                  (vec!["-F", "test/emerge.negtime.log", "l", "-sms"],
                   "",
                   format!("2019-06-05 09:32:10 +01:00      1:09 Sync\n\
-                           2019-06-05 12:26:54 +01:00      5:56 kde-plasma/kwin-5.15.5\n\
-                           2019-06-06 03:11:48 +01:00        26 kde-apps/libktnef-19.04.1\n\
-                           2019-06-06 03:16:01 +01:00        34 net-misc/chrony-3.3\n\
+                           2019-06-05 12:26:54 +01:00      5:56 >>> kde-plasma/kwin-5.15.5\n\
+                           2019-06-06 03:11:48 +01:00        26 >>> kde-apps/libktnef-19.04.1\n\
+                           2019-06-06 03:16:01 +01:00        34 >>> net-misc/chrony-3.3\n\
                            2019-06-05 11:18:28 +01:00         ? Sync\n\
-                           2019-06-05 11:21:02 +01:00         ? kde-plasma/kwin-5.15.5\n\
-                           2019-06-08 22:33:36 +01:00      3:10 kde-plasma/kwin-5.15.5\n")),
+                           2019-06-05 11:21:02 +01:00         ? >>> kde-plasma/kwin-5.15.5\n\
+                           2019-06-08 22:33:36 +01:00      3:10 >>> kde-plasma/kwin-5.15.5\n")),
                  // For `pred` the negative merge time is ignored.
                  (vec!["-F", "test/emerge.negtime.log", "p"],
                   "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n",
