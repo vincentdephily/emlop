@@ -22,8 +22,8 @@ highly recomended.
 
 `rustfmt` and `clippy` are also recomended, but not followed religiously.
 
-Speed is important, check for improvements/regressions using `benches/exec_compare.crs` (you need to
-`cargo install script` to be able to run this file).
+Speed is important, check for improvements/regressions using `benches/exec_compare.rs` (you need to
+`cargo install scriptisto` to be able to run this file).
 
 Respect [semver](https://semver.org/).
 

@@ -1,18 +1,22 @@
-#!/usr/bin/env run-cargo-script
+#!/usr/bin/env scriptisto
+
 //! Quick script to benchmark *lop implementations.
-//!
-//! ```cargo
-//! [dependencies]
-//! clap = "*"
-//! stats-cli = "*"
-//! tabwriter = "*"
-//! ```
 
-#[macro_use] extern crate clap;
-extern crate inc_stats;
-extern crate tabwriter;
+//! scriptisto-begin
+//! script_src: src/main.rs
+//! build_cmd: cargo build --release
+//! target_bin: ./target/release/exec_compare
+//! files:
+//!  - path: Cargo.toml
+//!    content: |
+//!     package = { name = "exec_compare", version = "0.1.0", edition = "2018"}
+//!     [dependencies]
+//!     clap = "*"
+//!     stats-cli = "*"
+//!     tabwriter = "*"
+//! scriptisto-end
 
-use clap::{App, AppSettings, Arg};
+use clap::{App, AppSettings, Arg, value_t, values_t};
 use inc_stats::*;
 use std::{collections::{BTreeMap, HashMap}, fs::File, io, io::Write, process::{Command, Stdio}, time::Instant};
 use tabwriter::TabWriter;
