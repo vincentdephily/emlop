@@ -43,10 +43,10 @@ String is case-sentitive and matches on whole name, or whole category/name if it
     let arg_show_s = Arg::with_name("show")
         .short("s")
         .long("show")
-        .value_name("m,t,s,a")
-        .validator(|s| find_invalid("msta", &s))
+        .value_name("m,u,t,s,a")
+        .validator(|s| find_invalid("mutsa", &s))
         .default_value("m")
-        .help("Show (m)erges, (t)otals, (s)yncs, and/or (a)ll.")
+        .help("Show (m)erges / (u)nmerges, (t)otals, (s)yncs, and/or (a)ll.")
         .long_help("Show individual (m)erges, (t)otal merges, portage tree (s)yncs, or (a)ll of these (any letters combination).");
     let arg_group = Arg::with_name("group")
         .short("g")
@@ -135,11 +135,11 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
                     .help_message("Show short (-h) or detailed (--help) help.")
                     .arg(&arg_limit))
         .subcommand(SubCommand::with_name("stats")
-                    .about("Show statistics about sucessful merges and syncs.")
-                    .long_about("Show statistics about sucessful merges (overall or per package) and syncs.\n\
-* package: total merge time, total merge count, next merge time prediction.\n\
-* Merges:  total merge time, total merge count, average merge time\n\
-* Syncs:   total sync time,  total sync count,  average sync time")
+                    .about("Show statistics about sucessful merges, unmerges and syncs.")
+                    .long_about("Show statistics about sucessful (un)merges (overall or per package) and syncs.\n\
+* <package>: merge count, total merge time, predicted merge time, unmerge count, total unmerge time, predicted unmerge time.\n\
+* Total:     merge count, total merge time, average merge time,   unmerge count, total unmerge time, average unmerge time.\n\
+* Sync:      sync count,  total sync time,  predicted sync time.")
                     .help_message("Show short (-h) or detailed (--help) help.")
                     .arg(&arg_show_s)
                     .arg(&arg_group)

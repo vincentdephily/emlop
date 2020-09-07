@@ -116,6 +116,46 @@ fn timespan_header(ts: i64, timespan: &Timespan) -> String {
     }
 }
 
+/// Wrapper to extract stats from a list of data points (durations).
+struct Times {
+    vals: Vec<i64>,
+    count: i64,
+    tot: i64,
+}
+impl Times {
+    fn new() -> Self {
+        Self { vals: vec![], count: 0, tot: 0 }
+    }
+    /// Digest new data point
+    ///
+    /// Data points should be inserted in chronological order.
+    /// We don't store negative values but we still take them into account.
+    fn insert(&mut self, t: i64) {
+        self.count += 1;
+        if t > 0 {
+            self.vals.insert(0, t); // FIXME: append would be cheaper ?
+            self.tot += t;
+        }
+    }
+    fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+    fn clear(&mut self) {
+        self.vals.clear();
+        self.count = 0;
+        self.tot = 0;
+    }
+    /// Predict the next data point by looking at past ones
+    fn pred(&self, lim: u16) -> i64 {
+        let (t, c) = self.vals.iter().take(lim as usize).fold((0, 0), |(t, c), v| (t + v, c + 1));
+        if c > 0 {
+            t / c
+        } else {
+            -1 // FIXME Return None
+        }
+    }
+}
+
 /// Summary display of merge events
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
@@ -126,7 +166,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                  st: &Styles)
                  -> Result<bool, Error> {
     let show = subargs.value_of("show").unwrap();
-    let show_merge = show.contains(&"m") || show.contains(&"a");
+    let show_pkt = show.contains(&"m") || show.contains(&"u") || show.contains(&"a"); // FIXME: split m/u
     let show_tot = show.contains(&"t") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
     let timespan_opt = value_opt(subargs, "group", parse_timespan);
@@ -134,17 +174,18 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                         args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
-                        show_merge || show_tot,
-                        false,
+                        show_pkt || show_tot,
+                        show_pkt || show_tot,
                         show_sync,
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
     let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
     let lim = value(subargs, "limit", parse_limit);
-    let mut started: HashMap<(String, String, String), i64> = HashMap::new();
-    let mut syncs: Vec<i64> = vec![];
-    let mut times: BTreeMap<String, Vec<i64>> = BTreeMap::new();
-    let mut syncstart: i64 = 0;
+    let mut merge_start: HashMap<(String, String, String), i64> = HashMap::new();
+    let mut unmerge_start: HashMap<(String, String), i64> = HashMap::new();
+    let mut pkt_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
+    let mut sync_start: i64 = 0;
+    let mut sync_time = Times::new();
     let mut nextts = 0;
     let mut curts = 0;
     for p in hist {
@@ -155,39 +196,49 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 curts = t;
             } else if t > nextts {
                 let group_by = timespan_header(curts, timespan);
-                cmd_stats_group(tw, &st, &fmtd, false, lim, show_merge, show_tot, show_sync,
-                                &group_by, &syncs, &times)?;
-                syncs.clear();
-                times.clear();
+                cmd_stats_group(tw, &st, &fmtd, false, lim, show_pkt, show_tot, show_sync,
+                                &group_by, &sync_time, &pkt_time)?;
+                sync_time.clear();
+                pkt_time.clear();
                 nextts = timespan_next(t, timespan);
                 curts = t;
             }
         }
         match p {
             ParsedHist::Start { ts, ebuild, version, iter, .. } => {
-                started.insert((ebuild, version, iter), ts);
+                merge_start.insert((ebuild, version, iter), ts);
             },
             ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
                 let k = (ebuild, version, iter);
-                if let Some(start_ts) = started.remove(&k) {
-                    let timevec = times.entry(k.0).or_insert_with(|| vec![]);
-                    timevec.insert(0, ts - start_ts);
+                if let Some(start_ts) = merge_start.remove(&k) {
+                    let (times, _) =
+                        pkt_time.entry(k.0).or_insert_with(|| (Times::new(), Times::new()));
+                    times.insert(ts - start_ts);
                 }
             },
-            ParsedHist::UnmergeStart { .. } => {},
-            ParsedHist::UnmergeStop { .. } => {},
+            ParsedHist::UnmergeStart { ts, ebuild, version } => {
+                unmerge_start.insert((ebuild, version), ts);
+            },
+            ParsedHist::UnmergeStop { ts, ebuild, version } => {
+                let k = (ebuild, version);
+                if let Some(start_ts) = unmerge_start.remove(&k) {
+                    let (_, times) =
+                        pkt_time.entry(k.0).or_insert_with(|| (Times::new(), Times::new()));
+                    times.insert(ts - start_ts);
+                }
+            },
             ParsedHist::SyncStart { ts } => {
-                syncstart = ts;
+                sync_start = ts;
             },
             ParsedHist::SyncStop { ts } => {
-                syncs.push(ts - syncstart);
+                sync_time.insert(ts - sync_start);
             },
         }
     }
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, &t));
-    cmd_stats_group(tw, &st, &fmtd, true, lim, show_merge, show_tot, show_sync, &group_by,
-                    &syncs, &times)?;
-    Ok(!times.is_empty() || !syncs.is_empty())
+    cmd_stats_group(tw, &st, &fmtd, true, lim, show_pkt, show_tot, show_sync, &group_by,
+                    &sync_time, &pkt_time)?;
+    Ok(!pkt_time.is_empty() || !sync_time.is_empty())
 }
 
 fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
@@ -195,68 +246,58 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    fmtd: &DurationStyle,
                    print_zeros: bool,
                    lim: u16,
-                   show_merge: bool,
+                   show_pkt: bool,
                    show_tot: bool,
                    show_sync: bool,
                    group_by: &str,
-                   syncs: &[i64],
-                   times: &BTreeMap<String, Vec<i64>>)
+                   sync_time: &Times,
+                   pkt_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
-    if show_merge && (print_zeros || !times.is_empty()) {
-        for (pkg, tv) in times {
-            let (predtime, predcount, tottime, totcount) =
-                tv.iter().fold((0, 0, 0, 0), |(pt, pc, tt, tc), &i| {
-                             if i < 0 {
-                                 (pt, pc, tt, tc + 1)
-                             } else if tc >= lim {
-                                 (pt, pc, tt + i, tc + 1)
-                             } else {
-                                 (pt + i, pc + 1, tt + i, tc + 1)
-                             }
-                         });
+    if show_pkt && (print_zeros || !pkt_time.is_empty()) {
+        for (pkg, (merge, unmerge)) in pkt_time {
             #[rustfmt::skip]
-            writeln!(tw, "{}{}{}\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+            writeln!(tw, "{}{}{}\t{}{:>5}\t{}{:>10}\t{}{:>8}\t{}{:>5}\t{}{:>8}\t{}{:>8}{}",
                      group_by,
                      st.pkg_p, pkg,
-                     st.dur_p, fmt_duration(&fmtd, tottime),
-                     st.cnt_p, totcount,
-                     st.dur_p, fmt_duration(&fmtd, predtime/predcount), st.dur_s)?;
+                     st.cnt_p, merge.count,
+                     st.dur_p, fmt_duration(&fmtd, merge.tot),
+                     st.dur_p, fmt_duration(&fmtd, merge.pred(lim)),
+                     st.cnt_p, unmerge.count,
+                     st.dur_p, fmt_duration(&fmtd, unmerge.tot),
+                     st.dur_p, fmt_duration(&fmtd, unmerge.pred(lim)),
+                     st.dur_s)?;
         }
     }
-    if show_tot && (print_zeros || !times.is_empty()) {
-        let mut tottime = 0;
-        let mut totcount = 0;
-        for tv in times.values() {
-            for t in tv {
-                if *t > 0 {
-                    tottime += t;
-                }
-                totcount += 1
-            }
+    if show_tot && (print_zeros || !pkt_time.is_empty()) {
+        let mut merge_time = 0;
+        let mut merge_count = 0;
+        let mut unmerge_time = 0;
+        let mut unmerge_count = 0;
+        for (merge, unmerge) in pkt_time.values() {
+            merge_time += merge.tot;
+            merge_count += merge.count;
+            unmerge_time += unmerge.tot;
+            unmerge_count += unmerge.count;
         }
-        let totavg = if totcount > 0 { tottime / totcount } else { 0 };
         #[rustfmt::skip]
-        writeln!(tw, "{}Merge\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+        writeln!(tw, "{}Total\t{}{:>5}\t{}{:>10}\t{}{:>8}\t{}{:>5}\t{}{:>8}\t{}{:>8}{}",
                  group_by,
-                 st.dur_p, fmt_duration(&fmtd, tottime),
-                 st.cnt_p, totcount,
-                 st.dur_p, fmt_duration(&fmtd, totavg), st.dur_s)?;
+                 st.cnt_p, merge_count,
+                 st.dur_p, fmt_duration(&fmtd, merge_time),
+                 st.dur_p, fmt_duration(&fmtd, merge_time.checked_div(merge_count).unwrap_or(-1)),
+                 st.cnt_p, unmerge_count,
+                 st.dur_p, fmt_duration(&fmtd, unmerge_time),
+                 st.dur_p, fmt_duration(&fmtd, unmerge_time.checked_div(unmerge_count).unwrap_or(-1)),
+                 st.dur_s)?;
     }
-    if show_sync && (print_zeros || !syncs.is_empty()) {
-        let (time, avgcount, totcount) = syncs.iter().fold((0, 0, 0), |(tt, ac, tc), &t| {
-                                                         if t < 0 {
-                                                             (tt, ac, tc + 1)
-                                                         } else {
-                                                             (tt + t, ac + 1, tc + 1)
-                                                         }
-                                                     });
-        let avg = if avgcount > 0 { time / avgcount } else { 0 };
+    if show_sync && (print_zeros || !sync_time.is_empty()) {
         #[rustfmt::skip]
-        writeln!(tw, "{}Sync\t{}{:>10}\t{}{:>5}\t{}{:>8}{}",
+        writeln!(tw, "{}Sync\t{}{:>5}\t{}{:>10}\t{}{:>8}{}",
                  group_by,
-                 st.dur_p, fmt_duration(&fmtd, time),
-                 st.cnt_p, totcount,
-                 st.dur_p, fmt_duration(&fmtd, avg), st.dur_s)?;
+                 st.cnt_p, sync_time.count,
+                 st.dur_p, fmt_duration(&fmtd, sync_time.tot),
+                 st.dur_p, fmt_duration(&fmtd, sync_time.pred(lim)),
+                 st.dur_s)?;
     }
     Ok(())
 }
@@ -299,7 +340,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                         None,
                         false)?;
     let mut started: BTreeMap<(String, String), i64> = BTreeMap::new();
-    let mut times: HashMap<String, Vec<i64>> = HashMap::new();
+    let mut times: HashMap<String, Times> = HashMap::new();
     for p in hist {
         match p {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
@@ -309,8 +350,8 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
             ParsedHist::Stop { ts, ebuild, version, .. } => {
                 let k = (ebuild, version);
                 if let Some(start_ts) = started.remove(&k) {
-                    let timevec = times.entry(k.0).or_insert_with(|| vec![]);
-                    timevec.insert(0, ts - start_ts);
+                    let timevec = times.entry(k.0).or_insert_with(|| Times::new());
+                    timevec.insert(ts - start_ts);
                 }
             },
             ParsedHist::UnmergeStart { .. } => (),
@@ -353,19 +394,13 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         totcount += 1;
         let pred_fmt = match times.get(&ebuild) {
             Some(tv) => {
-                let (predtime, predcount, _) = tv.iter().fold((0, 0, 0), |(pt, pc, tc), &i| {
-                                                            if tc >= lim || i < 0 {
-                                                                (pt, pc, tc + 1)
-                                                            } else {
-                                                                (pt + i, pc + 1, tc + 1)
-                                                            }
-                                                        });
-                totpredict += predtime / predcount;
+                let pred = tv.pred(lim);
+                totpredict += pred;
                 if elapsed > 0 {
                     totelapsed += elapsed;
-                    totpredict -= std::cmp::min(predtime / predcount, elapsed);
+                    totpredict -= std::cmp::min(pred, elapsed);
                 }
-                fmt_duration(&fmtd, predtime / predcount)
+                fmt_duration(&fmtd, pred)
             },
             None => {
                 totunknown += 1;
@@ -400,7 +435,6 @@ mod tests {
     use super::{fmt_time, timespan_next, Timespan};
     use assert_cli::Assert;
     use chrono::{DateTime, Datelike, Local, TimeZone, Utc, Weekday};
-    use regex::Regex;
     use std::{collections::HashMap,
               thread,
               time::{Duration, SystemTime, UNIX_EPOCH}};
@@ -418,8 +452,9 @@ mod tests {
         }
     }
 
-    #[test] #[rustfmt::skip]
+    #[test]
     fn log() {
+        #[rustfmt::skip]
         let t: Vec<(&[&str], &str, i32)> = vec![
             // Basic test
             (&["-F", "test/emerge.10000.log", "l", "client"],
@@ -510,39 +545,40 @@ mod tests {
         }
     }
 
-    #[test] #[rustfmt::skip]
+    #[test]
     fn stats() {
+        #[rustfmt::skip]
         let t: Vec<(&[&str],&str,i32)> = vec![
             (&["-F","test/emerge.10000.log","s","client"],
-             "kde-frameworks/kxmlrpcclient          47      2        23\n\
-              mail-client/thunderbird          1:23:44      2     41:52\n\
-              www-client/chromium             21:41:24      3   7:13:48\n\
-              www-client/falkon                   6:02      1      6:02\n\
-              www-client/firefox                 47:29      1     47:29\n\
-              www-client/links                      44      1        44\n\
-              x11-apps/xlsclients                   14      1        14\n",
+             "kde-frameworks/kxmlrpcclient      2          47        23      2         4         2\n\
+              mail-client/thunderbird           2     1:23:44     41:52      2         6         3\n\
+              www-client/chromium               3    21:41:24   7:13:48      3        12         4\n\
+              www-client/falkon                 1        6:02      6:02      0         0         ?\n\
+              www-client/firefox                1       47:29     47:29      1         3         3\n\
+              www-client/links                  1          44        44      1         1         1\n\
+              x11-apps/xlsclients               1          14        14      1         1         1\n",
              0),
             (&["-F","test/emerge.10000.log","s","client","-ss"],
-             "Sync     1:19:28    150        31\n",
+             "Sync    150     1:19:28        30\n",
              0),
             (&["-F","test/emerge.10000.log","s","client","-sst"],
-             "Merge    24:00:24     11   2:10:56\n\
-              Sync      1:19:28    150        31\n",
+             "Total     11    24:00:24   2:10:56     10        27         2\n\
+              Sync     150     1:19:28        30\n",
              0),
             (&["-F","test/emerge.10000.log","s","client","-sa"],
-             "kde-frameworks/kxmlrpcclient          47      2        23\n\
-              mail-client/thunderbird          1:23:44      2     41:52\n\
-              www-client/chromium             21:41:24      3   7:13:48\n\
-              www-client/falkon                   6:02      1      6:02\n\
-              www-client/firefox                 47:29      1     47:29\n\
-              www-client/links                      44      1        44\n\
-              x11-apps/xlsclients                   14      1        14\n\
-              Merge                           24:00:24     11   2:10:56\n\
-              Sync                             1:19:28    150        31\n",
+             "kde-frameworks/kxmlrpcclient      2          47        23      2         4         2\n\
+              mail-client/thunderbird           2     1:23:44     41:52      2         6         3\n\
+              www-client/chromium               3    21:41:24   7:13:48      3        12         4\n\
+              www-client/falkon                 1        6:02      6:02      0         0         ?\n\
+              www-client/firefox                1       47:29     47:29      1         3         3\n\
+              www-client/links                  1          44        44      1         1         1\n\
+              x11-apps/xlsclients               1          14        14      1         1         1\n\
+              Total                            11    24:00:24   2:10:56     10        27         2\n\
+              Sync                            150     1:19:28        30\n",
              0),
             (&["-F","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
-             "Merge           0      0         0\n\
-              Sync            0      0         0\n",
+             "Total      0           0         ?      0         0         ?\n\
+              Sync       0           0         ?\n",
              2),
         ];
         for (a, o, e) in t {
@@ -556,142 +592,150 @@ mod tests {
     /// Test grouped stats. In addition to the usual check that the actual output matches the
     /// expected one, we check that the expected outputs are consistent (y/m/w/d totals are the
     /// same, and avg*count==tot).
-    #[test] #[rustfmt::skip]
+    #[test]
     fn stats_grouped() {
+        #[rustfmt::skip]
         let t: Vec<(&[&str],&str)> = vec![
             (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gy"],
-             "2018 sys-kernel/gentoo-sources         904     10        90\n"),
+             "2018 sys-kernel/gentoo-sources     10         904        90     11       200        16\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gm"],
-             "2018-02 sys-kernel/gentoo-sources         702      8        87\n\
-              2018-03 sys-kernel/gentoo-sources         202      2       101\n"),
+             "2018-02 sys-kernel/gentoo-sources      8         702        87      8       149        18\n\
+              2018-03 sys-kernel/gentoo-sources      2         202       101      3        51        17\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gw"],
-             "2018-05 sys-kernel/gentoo-sources          81      1        81\n\
-              2018-06 sys-kernel/gentoo-sources         192      2        96\n\
-              2018-07 sys-kernel/gentoo-sources         198      2        99\n\
-              2018-08 sys-kernel/gentoo-sources          77      1        77\n\
-              2018-09 sys-kernel/gentoo-sources         236      3        78\n\
-              2018-11 sys-kernel/gentoo-sources         120      1       120\n"),
+             "2018-05 sys-kernel/gentoo-sources      1          81        81      0         0         ?\n\
+              2018-06 sys-kernel/gentoo-sources      2         192        96      3        66        22\n\
+              2018-07 sys-kernel/gentoo-sources      2         198        99      0         0         ?\n\
+              2018-08 sys-kernel/gentoo-sources      1          77        77      3        37        12\n\
+              2018-09 sys-kernel/gentoo-sources      3         236        78      3        61        20\n\
+              2018-10 sys-kernel/gentoo-sources      0           0         ?      1        23        23\n\
+              2018-11 sys-kernel/gentoo-sources      1         120       120      1        13        13\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gd"],
-             "2018-02-04 sys-kernel/gentoo-sources          81      1        81\n\
-              2018-02-05 sys-kernel/gentoo-sources          95      1        95\n\
-              2018-02-08 sys-kernel/gentoo-sources          97      1        97\n\
-              2018-02-12 sys-kernel/gentoo-sources          80      1        80\n\
-              2018-02-18 sys-kernel/gentoo-sources         118      1       118\n\
-              2018-02-23 sys-kernel/gentoo-sources          77      1        77\n\
-              2018-02-26 sys-kernel/gentoo-sources          79      1        79\n\
-              2018-02-28 sys-kernel/gentoo-sources          75      1        75\n\
-              2018-03-01 sys-kernel/gentoo-sources          82      1        82\n\
-              2018-03-12 sys-kernel/gentoo-sources         120      1       120\n"),
+             "2018-02-04 sys-kernel/gentoo-sources      1          81        81      0         0         ?\n\
+              2018-02-05 sys-kernel/gentoo-sources      1          95        95      0         0         ?\n\
+              2018-02-06 sys-kernel/gentoo-sources      0           0         ?      3        66        22\n\
+              2018-02-08 sys-kernel/gentoo-sources      1          97        97      0         0         ?\n\
+              2018-02-12 sys-kernel/gentoo-sources      1          80        80      0         0         ?\n\
+              2018-02-18 sys-kernel/gentoo-sources      1         118       118      0         0         ?\n\
+              2018-02-22 sys-kernel/gentoo-sources      0           0         ?      3        37        12\n\
+              2018-02-23 sys-kernel/gentoo-sources      1          77        77      0         0         ?\n\
+              2018-02-26 sys-kernel/gentoo-sources      1          79        79      0         0         ?\n\
+              2018-02-27 sys-kernel/gentoo-sources      0           0         ?      2        46        23\n\
+              2018-02-28 sys-kernel/gentoo-sources      1          75        75      0         0         ?\n\
+              2018-03-01 sys-kernel/gentoo-sources      1          82        82      1        15        15\n\
+              2018-03-05 sys-kernel/gentoo-sources      0           0         ?      1        23        23\n\
+              2018-03-12 sys-kernel/gentoo-sources      1         120       120      1        13        13\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gy"],
-             "2018 Merge      216426    831       260\n"),
+             "2018 Total    831      216426       260    832      2311         2\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gm"],
-             "2018-02 Merge      158312    533       297\n\
-              2018-03 Merge       58114    298       195\n"),
+             "2018-02 Total    533      158312       297    529      1497         2\n\
+              2018-03 Total    298       58114       195    303       814         2\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gw"],
-             "2018-05 Merge       33577     63       532\n\
-              2018-06 Merge       10070     74       136\n\
-              2018-07 Merge       58604    281       208\n\
-              2018-08 Merge       51276     65       788\n\
-              2018-09 Merge       14737     71       207\n\
-              2018-10 Merge       43782    182       240\n\
-              2018-11 Merge        4380     95        46\n"),
+             "2018-05 Total     63       33577       532     60       132         2\n\
+              2018-06 Total     74       10070       136     68       225         3\n\
+              2018-07 Total    281       58604       208    258       709         2\n\
+              2018-08 Total     65       51276       788     69       197         2\n\
+              2018-09 Total     71       14737       207     95       316         3\n\
+              2018-10 Total    182       43782       240    187       519         2\n\
+              2018-11 Total     95        4380        46     95       213         2\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gd"],
-             "2018-02-03 Merge        2741     32        85\n\
-              2018-02-04 Merge       30836     31       994\n\
-              2018-02-05 Merge         158      4        39\n\
-              2018-02-06 Merge        4288     44        97\n\
-              2018-02-07 Merge         857     15        57\n\
-              2018-02-08 Merge         983      5       196\n\
-              2018-02-09 Merge        3784      6       630\n\
-              2018-02-12 Merge       29239    208       140\n\
-              2018-02-13 Merge          19      1        19\n\
-              2018-02-14 Merge        4795     44       108\n\
-              2018-02-15 Merge         137      3        45\n\
-              2018-02-16 Merge       23914     21      1138\n\
-              2018-02-18 Merge         500      4       125\n\
-              2018-02-19 Merge       28977      2     14488\n\
-              2018-02-20 Merge         488      2       244\n\
-              2018-02-21 Merge        5522     37       149\n\
-              2018-02-22 Merge       15396     16       962\n\
-              2018-02-23 Merge         854      6       142\n\
-              2018-02-24 Merge          39      2        19\n\
-              2018-02-26 Merge        2730     10       273\n\
-              2018-02-27 Merge        1403     35        40\n\
-              2018-02-28 Merge         652      5       130\n\
-              2018-03-01 Merge        9355     13       719\n\
-              2018-03-02 Merge         510      5       102\n\
-              2018-03-03 Merge          87      3        29\n\
-              2018-03-05 Merge         168      9        18\n\
-              2018-03-06 Merge       27746      3      9248\n\
-              2018-03-07 Merge        2969     46        64\n\
-              2018-03-08 Merge        5441     74        73\n\
-              2018-03-09 Merge        7458     50       149\n\
-              2018-03-12 Merge        4380     95        46\n"),
+             "2018-02-03 Total     32        2741        85     32        70         2\n\
+              2018-02-04 Total     31       30836       994     28        62         2\n\
+              2018-02-05 Total      4         158        39      3         5         1\n\
+              2018-02-06 Total     44        4288        97     44       174         3\n\
+              2018-02-07 Total     15         857        57     13        28         2\n\
+              2018-02-08 Total      5         983       196      4         8         2\n\
+              2018-02-09 Total      6        3784       630      4        10         2\n\
+              2018-02-12 Total    208       29239       140    206       587         2\n\
+              2018-02-13 Total      1          19        19      0         0         ?\n\
+              2018-02-14 Total     44        4795       108     44        92         2\n\
+              2018-02-15 Total      3         137        45      3         6         2\n\
+              2018-02-16 Total     21       23914      1138      3        14         4\n\
+              2018-02-18 Total      4         500       125      2        10         5\n\
+              2018-02-19 Total      2       28977     14488      2         6         3\n\
+              2018-02-20 Total      2         488       244      1         2         2\n\
+              2018-02-21 Total     37        5522       149     36        93         2\n\
+              2018-02-22 Total     16       15396       962     23        82         3\n\
+              2018-02-23 Total      6         854       142      5        11         2\n\
+              2018-02-24 Total      2          39        19      2         3         1\n\
+              2018-02-26 Total     10        2730       273      9        18         2\n\
+              2018-02-27 Total     35        1403        40     49       175         3\n\
+              2018-02-28 Total      5         652       130     16        41         2\n\
+              2018-03-01 Total     13        9355       719     13        40         3\n\
+              2018-03-02 Total      5         510       102      5        37         7\n\
+              2018-03-03 Total      3          87        29      3         5         1\n\
+              2018-03-05 Total      9         168        18     21        84         4\n\
+              2018-03-06 Total      3       27746      9248      1         3         3\n\
+              2018-03-07 Total     46        2969        64     43        90         2\n\
+              2018-03-08 Total     74        5441        73     73       202         2\n\
+              2018-03-09 Total     50        7458       149     49       140         2\n\
+              2018-03-12 Total     95        4380        46     95       213         2\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gy"],
-             "2018 Sync        4768    150        31\n"),
+             "2018 Sync    150        4768        30\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gm"],
-             "2018-02 Sync        2429     90        26\n\
-              2018-03 Sync        2339     60        38\n"),
+             "2018-02 Sync     90        2429        18\n\
+              2018-03 Sync     60        2339        30\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gw"],
-             "2018-05 Sync         162      3        54\n\
-              2018-06 Sync         957     31        30\n\
-              2018-07 Sync         391     17        23\n\
-              2018-08 Sync         503     20        25\n\
-              2018-09 Sync        1906     39        48\n\
-              2018-10 Sync         728     36        20\n\
-              2018-11 Sync         121      4        30\n"),
+             "2018-05 Sync      3         162        54\n\
+              2018-06 Sync     31         957        30\n\
+              2018-07 Sync     17         391        21\n\
+              2018-08 Sync     20         503        25\n\
+              2018-09 Sync     39        1906        71\n\
+              2018-10 Sync     36         728        27\n\
+              2018-11 Sync      4         121        30\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gd"],
-             "2018-02-03 Sync          69      1        69\n\
-              2018-02-04 Sync          93      2        46\n\
-              2018-02-05 Sync         188      7        26\n\
-              2018-02-06 Sync         237      7        33\n\
-              2018-02-07 Sync         223      7        31\n\
-              2018-02-08 Sync         217      7        31\n\
-              2018-02-09 Sync          92      3        30\n\
-              2018-02-12 Sync          87      4        21\n\
-              2018-02-13 Sync          46      2        23\n\
-              2018-02-14 Sync          85      3        28\n\
-              2018-02-15 Sync          77      4        19\n\
-              2018-02-16 Sync          68      3        22\n\
-              2018-02-18 Sync          28      1        28\n\
-              2018-02-19 Sync          61      2        30\n\
-              2018-02-20 Sync         120      5        24\n\
-              2018-02-21 Sync          90      4        22\n\
-              2018-02-22 Sync          51      2        25\n\
-              2018-02-23 Sync         158      6        26\n\
-              2018-02-24 Sync          23      1        23\n\
-              2018-02-26 Sync          69      4        17\n\
-              2018-02-27 Sync         211      8        26\n\
-              2018-02-28 Sync         136      7        19\n\
-              2018-03-01 Sync         569      8        71\n\
-              2018-03-02 Sync         548     10        54\n\
-              2018-03-03 Sync         373      2       186\n\
-              2018-03-05 Sync          46      9         5\n\
-              2018-03-06 Sync         183      8        22\n\
-              2018-03-07 Sync         120      4        30\n\
-              2018-03-08 Sync         157      8        19\n\
-              2018-03-09 Sync         222      7        31\n\
-              2018-03-12 Sync         121      4        30\n"),
+             "2018-02-03 Sync      1          69        69\n\
+              2018-02-04 Sync      2          93        46\n\
+              2018-02-05 Sync      7         188        26\n\
+              2018-02-06 Sync      7         237        33\n\
+              2018-02-07 Sync      7         223        31\n\
+              2018-02-08 Sync      7         217        31\n\
+              2018-02-09 Sync      3          92        30\n\
+              2018-02-12 Sync      4          87        21\n\
+              2018-02-13 Sync      2          46        23\n\
+              2018-02-14 Sync      3          85        28\n\
+              2018-02-15 Sync      4          77        19\n\
+              2018-02-16 Sync      3          68        22\n\
+              2018-02-18 Sync      1          28        28\n\
+              2018-02-19 Sync      2          61        30\n\
+              2018-02-20 Sync      5         120        24\n\
+              2018-02-21 Sync      4          90        22\n\
+              2018-02-22 Sync      2          51        25\n\
+              2018-02-23 Sync      6         158        26\n\
+              2018-02-24 Sync      1          23        23\n\
+              2018-02-26 Sync      4          69        17\n\
+              2018-02-27 Sync      8         211        26\n\
+              2018-02-28 Sync      7         136        19\n\
+              2018-03-01 Sync      8         569        71\n\
+              2018-03-02 Sync     10         548        54\n\
+              2018-03-03 Sync      2         373       186\n\
+              2018-03-05 Sync      9          46         5\n\
+              2018-03-06 Sync      8         183        22\n\
+              2018-03-07 Sync      4         120        30\n\
+              2018-03-08 Sync      8         157        19\n\
+              2018-03-09 Sync      7         222        31\n\
+              2018-03-12 Sync      4         121        30\n"),
         ];
-        let re = Regex::new("([0-9]+) +([0-9]+) +([0-9]+)$").unwrap();
-        let mut tots_t: HashMap<&str, i32> = HashMap::new();
-        let mut tots_c: HashMap<&str, i32> = HashMap::new();
+        let mut tots: HashMap<&str, (u64, u64, u64, u64)> = HashMap::new();
+        let to_u64 = |v: &Vec<&str>, i: usize| v.get(i).unwrap().parse::<u64>().unwrap();
         for (a, o) in t {
-            for l in o.lines() {
-                let cap = re.captures(&l).expect("Line doesn't match regex");
-                let cap_t = cap.get(1).unwrap().as_str().parse::<i32>().expect("Can't parse tottime");
-                let cap_c = cap.get(2).unwrap().as_str().parse::<i32>().expect("Can't parse count");
-                let cap_a = cap.get(3).unwrap().as_str().parse::<i32>().expect("Can't parse avgtime");
-                assert!((cap_t - cap_c * cap_a).abs() < cap_c, "Average*count should match total: {}", l);
-                let tot_t = tots_t.entry(a.last().unwrap()).or_insert(0);
-                *tot_t += cap_t;
-                let tot_c = tots_c.entry(a.last().unwrap()).or_insert(0);
-                *tot_c += cap_c;
-            }
+            // Usual output matching
             Assert::main_binary().with_args(a).stdout().is(o).unwrap();
+            // Add up the "count" and "time" columns, grouped by timespan (year/month/week/day)
+            for l in o.lines() {
+                let cols: Vec<&str> = l.split_ascii_whitespace().collect();
+                let tot = tots.entry(a.last().unwrap()).or_insert((0, 0, 0, 0));
+                (*tot).0 += to_u64(&cols, 2);
+                (*tot).1 += to_u64(&cols, 3);
+                if cols.len() > 5 {
+                    (*tot).2 += to_u64(&cols, 5);
+                    (*tot).3 += to_u64(&cols, 6);
+                }
+            }
         }
-        assert!(tots_c.iter().all(|(_,c)| c == tots_c.get("-gy").unwrap()), "Total count should match {:?}", tots_c);
-        assert!(tots_t.iter().all(|(_,t)| t == tots_t.get("-gy").unwrap()), "Total times should match {:?}", tots_t);
+        // Because we run the same test for each timespan, overall totals should match
+        assert!(tots.iter().all(|(_, c)| c == tots.get("-gy").unwrap()),
+                "Timespans should match {:?}",
+                tots);
     }
 
     /// Test behaviour when clock goes backward between merge start and merge end. Likely to happen
@@ -717,11 +761,11 @@ mod tests {
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
                  (vec!["-F", "test/emerge.negtime.log", "s", "-sa"],
                   "",
-                  format!("kde-apps/libktnef          26      1        26\n\
-                           kde-plasma/kwin          9:06      3      4:33\n\
-                           net-misc/chrony            34      1        34\n\
-                           Merge                   10:06      5      2:01\n\
-                           Sync                     1:09      2      1:09\n")),]
+                  format!("kde-apps/libktnef      1          26        26      0         0         ?\n\
+                           kde-plasma/kwin        3        9:06      4:33      2         3         1\n\
+                           net-misc/chrony        1          34        34      0         0         ?\n\
+                           Total                  5       10:06      2:01      2         3         1\n\
+                           Sync                   2        1:09      1:09\n")),]
         {
             Assert::main_binary().with_args(&a).stdin(i).stdout().is(o.as_str()).unwrap();
         }
