@@ -196,8 +196,8 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 curts = t;
             } else if t > nextts {
                 let group_by = timespan_header(curts, timespan);
-                cmd_stats_group(tw, &st, &fmtd, false, lim, show_pkt, show_tot, show_sync,
-                                &group_by, &sync_time, &pkt_time)?;
+                cmd_stats_group(tw, &st, &fmtd, lim, show_pkt, show_tot, show_sync, &group_by,
+                                &sync_time, &pkt_time)?;
                 sync_time.clear();
                 pkt_time.clear();
                 nextts = timespan_next(t, timespan);
@@ -236,15 +236,14 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
         }
     }
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, &t));
-    cmd_stats_group(tw, &st, &fmtd, true, lim, show_pkt, show_tot, show_sync, &group_by,
-                    &sync_time, &pkt_time)?;
+    cmd_stats_group(tw, &st, &fmtd, lim, show_pkt, show_tot, show_sync, &group_by, &sync_time,
+                    &pkt_time)?;
     Ok(!pkt_time.is_empty() || !sync_time.is_empty())
 }
 
 fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    st: &Styles,
                    fmtd: &DurationStyle,
-                   print_zeros: bool,
                    lim: u16,
                    show_pkt: bool,
                    show_tot: bool,
@@ -253,7 +252,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    sync_time: &Times,
                    pkt_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
-    if show_pkt && (print_zeros || !pkt_time.is_empty()) {
+    if show_pkt && !pkt_time.is_empty() {
         for (pkg, (merge, unmerge)) in pkt_time {
             #[rustfmt::skip]
             writeln!(tw, "{}{}{}\t{}{:>5}\t{}{:>10}\t{}{:>8}\t{}{:>5}\t{}{:>8}\t{}{:>8}{}",
@@ -268,7 +267,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                      st.dur_s)?;
         }
     }
-    if show_tot && (print_zeros || !pkt_time.is_empty()) {
+    if show_tot && !pkt_time.is_empty() {
         let mut merge_time = 0;
         let mut merge_count = 0;
         let mut unmerge_time = 0;
@@ -290,7 +289,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                  st.dur_p, fmt_duration(&fmtd, unmerge_time.checked_div(unmerge_count).unwrap_or(-1)),
                  st.dur_s)?;
     }
-    if show_sync && (print_zeros || !sync_time.is_empty()) {
+    if show_sync && !sync_time.is_empty() {
         #[rustfmt::skip]
         writeln!(tw, "{}Sync\t{}{:>5}\t{}{:>10}\t{}{:>8}{}",
                  group_by,
