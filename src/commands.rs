@@ -576,8 +576,7 @@ mod tests {
               Sync                            150     1:19:28        30\n",
              0),
             (&["-F","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
-             "Total      0           0         ?      0         0         ?\n\
-              Sync       0           0         ?\n",
+             "",
              2),
         ];
         for (a, o, e) in t {
