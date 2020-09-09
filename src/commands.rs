@@ -11,8 +11,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
     let show_merge = show.contains(&"m") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
     let show_unmerge = show.contains(&"u") || show.contains(&"a");
-    let hist = new_hist(myopen(args.value_of("logfile").unwrap())?,
-                        args.value_of("logfile").unwrap().into(),
+    let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
                         show_merge,
@@ -170,8 +169,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
     let show_tot = show.contains(&"t") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
     let timespan_opt = value_opt(subargs, "group", parse_timespan);
-    let hist = new_hist(myopen(args.value_of("logfile").unwrap())?,
-                        args.value_of("logfile").unwrap().into(),
+    let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
                         show_pkt || show_tot,
@@ -329,8 +327,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     }
 
     // Parse emerge log.
-    let hist = new_hist(myopen(args.value_of("logfile").unwrap())?,
-                        args.value_of("logfile").unwrap().into(),
+    let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
                         true,

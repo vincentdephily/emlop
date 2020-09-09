@@ -14,12 +14,11 @@ edition = "2018"
 
 [dependencies]
 ansi_term = "~0.11"
+anyhow = "1.0.32"
 atty = "~0.2"
 chrono = "~0.4"
 chrono-english = "~0.1"
 clap = "~2.33"
-failure = "~0.1"
-failure_derive = "~0.1"
 log = "~0.4"
 regex = "~1.1"
 stderrlog = "~0.4"

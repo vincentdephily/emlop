@@ -3,11 +3,12 @@
 //! Instantiate a `Parser` and iterate over it to retrieve the events.
 
 use crate::fmt_time;
+use anyhow::{Context, Error};
 use crossbeam_channel::{unbounded, Receiver, Sender};
-use failure::Error;
 use log::*;
 use regex::{Regex, RegexBuilder};
-use std::{io::{BufRead, BufReader, Read},
+use std::{fs::File,
+          io::{BufRead, BufReader, Read},
           thread};
 
 /// Items sent on the channel returned by `new_hist()`.
@@ -48,20 +49,18 @@ pub struct ParsedPretend {
 }
 
 /// Parse emerge log into a channel of `Parsed` enums.
-pub fn new_hist<R: Read>(reader: R,
-                         filename: String,
-                         min_ts: Option<i64>,
-                         max_ts: Option<i64>,
-                         parse_merge: bool,
-                         parse_unmerge: bool,
-                         parse_sync: bool,
-                         search_str: Option<&str>,
-                         search_exact: bool)
-                         -> Result<Receiver<ParsedHist>, Error>
-    where R: Send + 'static
-{
+pub fn new_hist(filename: String,
+                min_ts: Option<i64>,
+                max_ts: Option<i64>,
+                parse_merge: bool,
+                parse_unmerge: bool,
+                parse_sync: bool,
+                search_str: Option<&str>,
+                search_exact: bool)
+                -> Result<Receiver<ParsedHist>, Error> {
     debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}",
            filename, min_ts, max_ts, search_str, search_exact);
+    let reader = File::open(&filename).with_context(|| format!("Cannot open {:?}", filename))?;
     let (tx, rx): (Sender<ParsedHist>, Receiver<ParsedHist>) = unbounded();
     // https://docs.rs/crossbeam/0.7.1/crossbeam/thread/index.html
     let filter_ts = filter_ts_fn(min_ts, max_ts);
@@ -311,8 +310,7 @@ mod tests {
                   exact: bool,
                   expect_counts: Vec<(&str, usize)>) {
         // Setup
-        let hist = new_hist(File::open(filename).unwrap(),
-                            filename.into(),
+        let hist = new_hist(filename.into(),
                             filter_mints,
                             filter_maxts,
                             parse_merge,

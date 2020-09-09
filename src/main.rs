@@ -4,15 +4,13 @@ mod proces;
 
 use crate::commands::*;
 use ansi_term::{Color::*, Style};
+use anyhow::Error;
 use chrono::{DateTime, Local, TimeZone};
 use chrono_english::{parse_date_string, Dialect};
 use clap::{crate_version, value_t, App, AppSettings, Arg, ArgMatches, Error as ClapError,
            ErrorKind, SubCommand};
-use failure::Error;
-use failure_derive::Fail;
 use log::*;
-use std::{fs::File,
-          io::{stdout, Read, Write},
+use std::{io::{stdout, Write},
           str::FromStr,
           time::{SystemTime, UNIX_EPOCH}};
 use tabwriter::TabWriter;
@@ -163,7 +161,10 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
         Ok(true) => ::std::process::exit(0),
         Ok(false) => ::std::process::exit(2),
         Err(e) => {
-            error!("{}", e);
+            match e.source() {
+                Some(s) => error!("{}: {}", e, s),
+                None => error!("{}", e),
+            }
             ::std::process::exit(1)
         },
     }
@@ -337,17 +338,6 @@ impl Styles {
                      cnt_s: String::new() }
         }
     }
-}
-
-#[derive(Debug, Fail)]
-#[fail(display = "Cannot open {}: {}", file, reason)]
-struct OpenError {
-    file: String,
-    reason: std::io::Error,
-}
-/// File::open wrapper with a more user-friendly error.
-pub fn myopen(fname: &str) -> Result<impl Read, Error> {
-    File::open(fname).map_err(|e| OpenError { file: fname.into(), reason: e }.into())
 }
 
 
