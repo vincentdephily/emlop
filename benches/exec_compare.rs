@@ -16,13 +16,19 @@
 //!     tabwriter = "*"
 //! scriptisto-end
 
-use clap::{App, AppSettings, Arg, value_t, values_t};
+use clap::{value_t, values_t, App, AppSettings, Arg};
 use inc_stats::*;
-use std::{collections::{BTreeMap, HashMap}, fs::File, io, io::Write, process::{Command, Stdio}, time::Instant};
+use std::{collections::{BTreeMap, HashMap},
+          fs::File,
+          io,
+          io::Write,
+          process::{Command, Stdio},
+          time::Instant};
 use tabwriter::TabWriter;
 
 fn main() {
     // Test definitions: (test suite, program name, program args, stdin)
+    #[rustfmt::skip]
     let tests: Vec<(&str,&str,&[&str],Option<&str>)> = vec![
         ("h", "genlop", &["-h"], None),
         ("h", "qlop",   &["-h"], None),
@@ -30,39 +36,39 @@ fn main() {
         ("h", "pqlop",  &["-h"], None),
         ("h", "golop",  &["-h"], None),
 
-        ("l", "genlop", &["-l"], None),
-        ("l", "qlop",   &["-mv"], None),
-        ("l", "emlop",  &["l"],  None),
-        ("l", "golop",  &[],     None),
+        ("l", "genlop", &["-l"],  None),
+        ("l", "qlop",   &["-mvt"], None),
+        ("l", "emlop",  &["l"],   None),
+        ("l", "golop",  &[],      None),
 
-        ("ld1", "genlop", &["-l","--date","2015-01-01","--date","2015-01-10"], None),
+        ("ld1", "genlop", &["-l", "--date","2015-01-01","--date","2015-01-10"], None),
         ("ld1", "qlop",   &["-mv","--date","2015-01-01","--date","2015-01-10"], None),
-        ("ld1", "emlop",  &["l","--from","2015-01-01","--to","2015-01-10"],  None),
-        ("ld2", "genlop", &["-l","--date","2018-01-01","--date","2018-12-31"], None),
+        ("ld1", "emlop",  &["l",  "--from","2015-01-01","--to",  "2015-01-10"], None),
+        ("ld2", "genlop", &["-l", "--date","2018-01-01","--date","2018-12-31"], None),
         ("ld2", "qlop",   &["-mv","--date","2018-01-01","--date","2018-12-31"], None),
-        ("ld2", "emlop",  &["l","--from","2018-01-01","--to","2018-12-31"],  None),
-        ("ld3", "genlop", &["-l","--date","2016-01-01","--date","2018-12-31"], None),
+        ("ld2", "emlop",  &["l",  "--from","2018-01-01","--to",  "2018-12-31"], None),
+        ("ld3", "genlop", &["-l", "--date","2016-01-01","--date","2018-12-31"], None),
         ("ld3", "qlop",   &["-mv","--date","2016-01-01","--date","2018-12-31"], None),
-        ("ld3", "emlop",  &["l","--from","2016-01-01","--to","2018-12-31"],  None),
+        ("ld3", "emlop",  &["l",  "--from","2016-01-01","--to",  "2018-12-31"], None),
 
-        ("lf", "genlop", &["-l","-f","test/emerge.10000.log"], None),
+        ("lf", "genlop", &["-l","-f", "test/emerge.10000.log"], None),
         ("lf", "qlop",   &["-mv","-f","test/emerge.10000.log"], None),
-        ("lf", "emlop",  &["l", "-F","test/emerge.10000.log"], None),
-        ("lf", "golop",  &["-l","test/emerge.10000.log"],      None),
+        ("lf", "emlop",  &["l", "-F", "test/emerge.10000.log"], None),
+        ("lf", "golop",  &["-l",      "test/emerge.10000.log"],      None),
 
-        ("lc", "emlop",  &["l","--color=y"],  None),
-        ("ln", "genlop", &["-l","-n"],        None),
+        ("lc", "emlop",  &["l","--color=y"],   None),
+        ("ln", "genlop", &["-l","-n"],         None),
         ("ln", "qlop",   &["-mv","--nocolor"], None),
-        ("ln", "emlop",  &["l","--color=n"],  None),
+        ("ln", "emlop",  &["l","--color=n"],   None),
 
         ("tgcc", "genlop", &["-t","gcc"],     None),
-        ("tgcc", "qlop",   &["-tv","gcc"],     None),
+        ("tgcc", "qlop",   &["-tv","gcc"],    None),
         ("tgcc", "emlop",  &["l","gcc","-e"], None),
         ("tgcc", "pqlop",  &["-g","gcc"],     None),
         ("tgcc", "golop",  &["-t","gcc"],     None),
 
         ("egcc", "genlop", &["-e","gcc"],     None),
-        ("egcc", "qlop",   &["-mv","gcc"],     None),
+        ("egcc", "qlop",   &["-mv","gcc"],    None),
         ("egcc", "emlop",  &["l","gcc","-e"], None),
         ("egcc", "pqlop",  &["-g","gcc"],     None),
         ("egcc", "golop",  &["-t","gcc"],     None),
@@ -80,18 +86,18 @@ fn main() {
         ("pkde", "genlop", &["-p"], Some("benches/emerge-p.kde.out")),
         ("pkde", "emlop",  &["p"],  Some("benches/emerge-p.kde.out")),
 
-        ("i", "genlop", &["-i","gcc"], None),
-        ("i", "qlop",   &["-c","gcc"], None),
-        ("i", "emlop",  &["s","gcc","-e"],  None),
-        ("i", "pqlop",  &["-g","gcc"], None),
-        ("i", "golop",  &["-t","gcc"], None),
+        ("i", "genlop", &["-i","gcc"],     None),
+        ("i", "qlop",   &["-c","gcc"],     None),
+        ("i", "emlop",  &["s","gcc","-e"], None),
+        ("i", "pqlop",  &["-g","gcc"],     None),
+        ("i", "golop",  &["-t","gcc"],     None),
     ];
 
     // CLI definition
-    let mut allprogs: Vec<&str> = tests.iter().map(|&(_,p,_,_)| p).collect();
+    let mut allprogs: Vec<&str> = tests.iter().map(|&(_, p, _, _)| p).collect();
     allprogs.sort();
     allprogs.dedup();
-    let mut allsuites: Vec<&str> = tests.iter().map(|&(s,_,_,_)| s).collect();
+    let mut allsuites: Vec<&str> = tests.iter().map(|&(s, _, _, _)| s).collect();
     allsuites.sort();
     allsuites.dedup();
     let allsuites_str = allsuites.join(",");
@@ -146,13 +152,18 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     let nullout = cli.is_present("nullout");
 
     // Construct the test list. We abuse the hashmap behavior to run tests in random order.
-    let mut mytests = HashMap::<usize,(String,&str,&[&str],Option<&str>)>::new();
+    let mut mytests = HashMap::<usize, (String, &str, &[&str], Option<&str>)>::new();
     let mut n = 0;
     for p in progs.iter() {
-        let (mut p1,mut p2) = p.split_at(p.find(':').unwrap_or(p.len()));
-        let pmatch: Vec<&str> = allprogs.clone().into_iter().filter(|s| s.starts_with(p1)).collect();
+        let (mut p1, mut p2) = p.split_at(p.find(':').unwrap_or(p.len()));
+        let pmatch: Vec<&str> =
+            allprogs.clone().into_iter().filter(|s| s.starts_with(p1)).collect();
         if 1 != pmatch.len() {
-            writeln!(io::stderr(), "Found {} match for {:?}, should match exactly one of {}", pmatch.len(), p1, allprogs.join(",")).unwrap();
+            writeln!(io::stderr(),
+                     "Found {} match for {:?}, should match exactly one of {}",
+                     pmatch.len(),
+                     p1,
+                     allprogs.join(",")).unwrap();
             ::std::process::exit(1);
         }
         p1 = pmatch[0];
@@ -160,60 +171,77 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
             true => p1,
             false => p2.trim_left_matches(':'),
         };
-        let tests: Vec<_> = tests.iter().filter(|&(s,t,_,_)| t == &p1 && suites.contains(&s.to_string())).collect();
-        let foundsuites: Vec<String> = tests.iter().map(|&(su,_,_,_)| su.to_string()).collect();
+        let tests: Vec<_> =
+            tests.iter()
+                 .filter(|&(s, t, _, _)| t == &p1 && suites.contains(&s.to_string()))
+                 .collect();
+        let foundsuites: Vec<String> = tests.iter().map(|&(su, _, _, _)| su.to_string()).collect();
         suites.iter().filter(|s| !foundsuites.contains(s)).for_each(|s| writeln!(io::stderr(), "Test suite {} not defined for {}.", s, p1).unwrap());
-        for &(su,_,ar,si) in tests {
+        for &(su, _, ar, si) in tests {
             for _ in 0..runs {
-                mytests.insert(n,(format!("{}\t{}",su,p2), p2, ar, si));
+                mytests.insert(n, (format!("{}\t{}", su, p2), p2, ar, si));
                 n += 1;
             }
         }
     }
 
     // Load /var/log/emerge.log in the OS cache
-    assert_eq!(0, Command::new("cat")
-               .arg("/var/log/emerge.log")
-               .stdout(Stdio::null())
-               .status().unwrap().code().unwrap());
+    assert_eq!(0,
+               Command::new("cat").arg("/var/log/emerge.log")
+                                  .stdout(Stdio::null())
+                                  .status()
+                                  .unwrap()
+                                  .code()
+                                  .unwrap());
 
     // Run the tests and collect the results
-    let mut times: BTreeMap<String,Vec<f64>> = BTreeMap::new();
-    for (name,bin,args,stdin) in mytests.values() {
+    let mut times: BTreeMap<String, Vec<f64>> = BTreeMap::new();
+    for (name, bin, args, stdin) in mytests.values() {
         match nullout {
             true => write!(io::stderr(), "\r{} ", n).unwrap(),
-            false => writeln!(io::stderr(), "{}: {} {}{}", n, bin, args.join(" "), stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap(),
+            false => writeln!(io::stderr(),
+                              "{}: {} {}{}",
+                              n,
+                              bin,
+                              args.join(" "),
+                              stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap(),
         };
         n -= 1;
         let timevec = times.entry(name.clone()).or_insert(vec![]);
         let si = match stdin {
             None => Stdio::inherit(),
-            Some(f) => File::open(f).unwrap().into()
+            Some(f) => File::open(f).unwrap().into(),
         };
         let so = match nullout {
             true => Stdio::null(),
             false => Stdio::inherit(),
         };
         let start = Instant::now();
-        Command::new(bin)
-            .args(args.into_iter())
-            .stdin(si)
-            .stdout(so)
-            .status()
-            .expect(&format!("Couldn't run {} {:?}", bin, args));
+        Command::new(bin).args(args.into_iter())
+                         .stdin(si)
+                         .stdout(so)
+                         .status()
+                         .expect(&format!("Couldn't run {} {:?}", bin, args));
         let elapsed = start.elapsed();
-        timevec.insert(0, (elapsed.as_secs()*1000 + elapsed.subsec_nanos() as u64 / 1_000_000) as f64);
+        timevec.insert(0,
+                       (elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1_000_000)
+                       as f64);
     }
 
     // Output the results
     let mut tw = TabWriter::new(io::stderr());
-    writeln!(tw,"\nsuite\tprog\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tvalues").unwrap();
-    for (key,vals) in times {
+    writeln!(tw, "\nsuite\tprog\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tvalues").unwrap();
+    for (key, vals) in times {
         let ss: SummStats = vals.iter().cloned().collect();
         let mut pc: Percentiles = vals.iter().cloned().collect();
-        let mut hist: BTreeMap<u64,u64> = BTreeMap::new();
-        vals.into_iter().for_each(|v| *hist.entry((v/bucket as f64).round() as u64 * bucket).or_insert(0) += 1);
-        writeln!(tw, "{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}", key,
+        let mut hist: BTreeMap<u64, u64> = BTreeMap::new();
+        vals.into_iter()
+            .for_each(|v| {
+                *hist.entry((v / bucket as f64).round() as u64 * bucket).or_insert(0) += 1
+            });
+        writeln!(tw,
+                 "{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}",
+                 key,
                  ss.min().unwrap(),
                  pc.percentile(&0.95).unwrap(),
                  pc.percentile(&0.85).unwrap(),
@@ -222,8 +250,10 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
                  ss.max().unwrap(),
                  ss.standard_deviation().unwrap_or(0.0),
                  ss.sum(),
-                 hist.iter().map(|(k,v)| format!("{}:{}",k,v)).collect::<Vec<String>>().join(","),
-        ).unwrap();
+                 hist.iter()
+                     .map(|(k, v)| format!("{}:{}", k, v))
+                     .collect::<Vec<String>>()
+                     .join(","),).unwrap();
     }
     tw.flush().unwrap();
 }
