@@ -41,11 +41,11 @@ String is case-sentitive and matches on whole name, or whole category/name if it
     let arg_show_s = Arg::with_name("show")
         .short("s")
         .long("show")
-        .value_name("m,u,t,s,a")
-        .validator(|s| find_invalid("mutsa", &s))
-        .default_value("m")
-        .help("Show (m)erges / (u)nmerges, (t)otals, (s)yncs, and/or (a)ll.")
-        .long_help("Show individual (m)erges, (t)otal merges, portage tree (s)yncs, or (a)ll of these (any letters combination).");
+        .value_name("p,t,s,a")
+        .validator(|s| find_invalid("ptsa", &s))
+        .default_value("p")
+        .help("Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll.")
+        .long_help("Show per-(p)ackage merges/unmerges, (t)otal merges/unmerges, portage tree (s)yncs, or (a)ll of these (any letters combination).");
     let arg_group = Arg::with_name("group")
         .short("g")
         .long("groupby")

@@ -165,15 +165,15 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                  st: &Styles)
                  -> Result<bool, Error> {
     let show = subargs.value_of("show").unwrap();
-    let show_pkt = show.contains(&"m") || show.contains(&"u") || show.contains(&"a"); // FIXME: split m/u
+    let show_pkg = show.contains(&"p") || show.contains(&"a");
     let show_tot = show.contains(&"t") || show.contains(&"a");
     let show_sync = show.contains(&"s") || show.contains(&"a");
     let timespan_opt = value_opt(subargs, "group", parse_timespan);
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
-                        show_pkt || show_tot,
-                        show_pkt || show_tot,
+                        show_pkg || show_tot,
+                        show_pkg || show_tot,
                         show_sync,
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
@@ -194,7 +194,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 curts = t;
             } else if t > nextts {
                 let group_by = timespan_header(curts, timespan);
-                cmd_stats_group(tw, &st, &fmtd, lim, show_pkt, show_tot, show_sync, &group_by,
+                cmd_stats_group(tw, &st, &fmtd, lim, show_pkg, show_tot, show_sync, &group_by,
                                 &sync_time, &pkt_time)?;
                 sync_time.clear();
                 pkt_time.clear();
@@ -234,7 +234,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
         }
     }
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, &t));
-    cmd_stats_group(tw, &st, &fmtd, lim, show_pkt, show_tot, show_sync, &group_by, &sync_time,
+    cmd_stats_group(tw, &st, &fmtd, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
                     &pkt_time)?;
     Ok(!pkt_time.is_empty() || !sync_time.is_empty())
 }
@@ -243,14 +243,14 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    st: &Styles,
                    fmtd: &DurationStyle,
                    lim: u16,
-                   show_pkt: bool,
+                   show_pkg: bool,
                    show_tot: bool,
                    show_sync: bool,
                    group_by: &str,
                    sync_time: &Times,
                    pkt_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
-    if show_pkt && !pkt_time.is_empty() {
+    if show_pkg && !pkt_time.is_empty() {
         for (pkg, (merge, unmerge)) in pkt_time {
             #[rustfmt::skip]
             writeln!(tw, "{}{}{}\t{}{:>5}\t{}{:>10}\t{}{:>8}\t{}{:>5}\t{}{:>8}\t{}{:>8}{}",
@@ -591,12 +591,12 @@ mod tests {
     fn stats_grouped() {
         #[rustfmt::skip]
         let t: Vec<(&[&str],&str)> = vec![
-            (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gy"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-sp","gentoo-sources","-gy"],
              "2018 sys-kernel/gentoo-sources     10         904        90     11       200        16\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gm"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-sp","gentoo-sources","-gm"],
              "2018-02 sys-kernel/gentoo-sources      8         702        87      8       149        18\n\
               2018-03 sys-kernel/gentoo-sources      2         202       101      3        51        17\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gw"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-sp","gentoo-sources","-gw"],
              "2018-05 sys-kernel/gentoo-sources      1          81        81      0         0         ?\n\
               2018-06 sys-kernel/gentoo-sources      2         192        96      3        66        22\n\
               2018-07 sys-kernel/gentoo-sources      2         198        99      0         0         ?\n\
@@ -604,7 +604,7 @@ mod tests {
               2018-09 sys-kernel/gentoo-sources      3         236        78      3        61        20\n\
               2018-10 sys-kernel/gentoo-sources      0           0         ?      1        23        23\n\
               2018-11 sys-kernel/gentoo-sources      1         120       120      1        13        13\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-sm","gentoo-sources","-gd"],
+            (&["-F","test/emerge.10000.log","s","--duration","s","-sp","gentoo-sources","-gd"],
              "2018-02-04 sys-kernel/gentoo-sources      1          81        81      0         0         ?\n\
               2018-02-05 sys-kernel/gentoo-sources      1          95        95      0         0         ?\n\
               2018-02-06 sys-kernel/gentoo-sources      0           0         ?      3        66        22\n\
