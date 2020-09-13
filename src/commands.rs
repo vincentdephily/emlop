@@ -429,12 +429,11 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
 #[cfg(test)]
 mod tests {
     use super::{fmt_time, timespan_next, Timespan};
-    use assert_cli::Assert;
+    use assert_cmd::Command;
     use chrono::{DateTime, Datelike, Local, TimeZone, Utc, Weekday};
     use std::{collections::HashMap,
               thread,
               time::{Duration, SystemTime, UNIX_EPOCH}};
-    //TODO: Simplify fails_with() calls once https://github.com/assert-rs/assert_cli/issues/99 is closed
 
     /// Return the current time + offset. To make tests more reproducible, we wait until we're close
     /// to the start of a whole second before returning.
@@ -446,6 +445,10 @@ mod tests {
         } else {
             fmt_time(now.as_secs() as i64 + secs)
         }
+    }
+
+    fn emlop() -> Command {
+        Command::cargo_bin("emlop").unwrap()
     }
 
     #[test]
@@ -489,10 +492,7 @@ mod tests {
              0)
         ];
         for (a, o, e) in t {
-            match e {
-                0 => Assert::main_binary().with_args(a).stdout().is(o).unwrap(),
-                _ => Assert::main_binary().with_args(a).fails_with(e).stdout().is(o).unwrap(),
-            }
+            emlop().args(a).assert().code(e).stdout(o);
         }
     }
 
@@ -500,8 +500,7 @@ mod tests {
     fn predict_tty() {
         // This depends on there being no currently running emerge.
         // Not a hugely useful test, but it's something.
-        let o = "No pretended merge found\n";
-        Assert::main_binary().with_args(&["p"]).fails_with(2).stdout().is(o).unwrap();
+        emlop().args(&["p"]).assert().code(2).stdout("No pretended merge found\n");
     }
 
     #[test]
@@ -525,19 +524,11 @@ mod tests {
                               ts(8 * 60 + 20)),
                       0),];
         for (i, o, e) in t {
-            match e {
-                0 => Assert::main_binary().with_args(&["-F", "test/emerge.10000.log", "p"])
-                                          .stdin(i)
-                                          .stdout()
-                                          .is(o.as_str())
-                                          .unwrap(),
-                _ => Assert::main_binary().with_args(&["-F", "test/emerge.10000.log", "p"])
-                                          .fails_with(e)
-                                          .stdin(i)
-                                          .stdout()
-                                          .is(o.as_str())
-                                          .unwrap(),
-            }
+            emlop().args(&["-F", "test/emerge.10000.log", "p"])
+                   .write_stdin(i)
+                   .assert()
+                   .code(e)
+                   .stdout(o);
         }
     }
 
@@ -577,10 +568,7 @@ mod tests {
              2),
         ];
         for (a, o, e) in t {
-            match e {
-                0 => Assert::main_binary().with_args(a).stdout().is(o).unwrap(),
-                _ => Assert::main_binary().with_args(a).fails_with(e).stdout().is(o).unwrap(),
-            }
+            emlop().args(a).assert().code(e).stdout(o);
         }
     }
 
@@ -714,7 +702,7 @@ mod tests {
         let to_u64 = |v: &Vec<&str>, i: usize| v.get(i).unwrap().parse::<u64>().unwrap();
         for (a, o) in t {
             // Usual output matching
-            Assert::main_binary().with_args(a).stdout().is(o).unwrap();
+            emlop().args(a).assert().success().stdout(o);
             // Add up the "count" and "time" columns, grouped by timespan (year/month/week/day)
             for l in o.lines() {
                 let cols: Vec<&str> = l.split_ascii_whitespace().collect();
@@ -762,7 +750,7 @@ mod tests {
                            Total                  5       10:06      2:01      2         3         1\n\
                            Sync                   2        1:09      1:09\n")),]
         {
-            Assert::main_binary().with_args(&a).stdin(i).stdout().is(o.as_str()).unwrap();
+            emlop().args(a).write_stdin(i).assert().success().stdout(o);
         }
     }
 
@@ -797,11 +785,8 @@ mod tests {
                  (&["-F", "test/emerge.10000.log", "s"], 0),
                  (&["-F", "test/emerge.10000.log", "s", "-e", "icu"], 0),
                  (&["-F", "test/emerge.10000.log", "s", "-e", "unknown"], 2),];
-        for (args, exit) in t {
-            match exit {
-                0 => Assert::main_binary().with_args(args).unwrap(),
-                _ => Assert::main_binary().with_args(args).fails_with(exit).unwrap(),
-            }
+        for (a, e) in t {
+            emlop().args(a).assert().code(e);
         }
     }
 
