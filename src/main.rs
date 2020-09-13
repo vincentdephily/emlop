@@ -221,7 +221,7 @@ pub fn parse_date(s: &str) -> Result<i64, String> {
         .map_err(|_| "Couldn't parse as a date or timestamp".into())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Timespan {
     Year,
     Month,
@@ -247,6 +247,7 @@ fn find_invalid(valid: &'static str, s: &str) -> Result<(), String> {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum DurationStyle {
     HMS,
     S,
@@ -261,15 +262,15 @@ impl FromStr for DurationStyle {
         }
     }
 }
-pub fn fmt_duration(style: &DurationStyle, secs: i64) -> String {
+pub fn fmt_duration(style: DurationStyle, secs: i64) -> String {
     if secs < 0 {
         return String::from("?");
     }
     match style {
         DurationStyle::HMS => {
-            let h = (secs / 3600).abs();
-            let m = (secs % 3600 / 60).abs();
-            let s = (secs % 60).abs();
+            let h = secs / 3600;
+            let m = secs % 3600 / 60;
+            let s = secs % 60;
             if h > 0 {
                 format!("{}:{:02}:{:02}", h, m, s)
             } else if m > 0 {
@@ -359,8 +360,8 @@ mod tests {
                              ("?", "?", -1),
                              ("?", "?", -123456)]
         {
-            assert_eq!(*hms, fmt_duration(&DurationStyle::HMS, *i));
-            assert_eq!(*s, fmt_duration(&DurationStyle::S, *i));
+            assert_eq!(*hms, fmt_duration(DurationStyle::HMS, *i));
+            assert_eq!(*s, fmt_duration(DurationStyle::S, *i));
         }
     }
 

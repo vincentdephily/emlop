@@ -38,7 +38,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts - started.unwrap_or(ts + 1)),
+                         st.dur_p, fmt_duration(fmtd, ts - started.unwrap_or(ts + 1)),
                          st.merge_p, ebuild, version, st.merge_s).unwrap_or(());
             },
             ParsedHist::UnmergeStart { ts, ebuild, version, .. } => {
@@ -53,7 +53,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts - started.unwrap_or(ts + 1)),
+                         st.dur_p, fmt_duration(fmtd, ts - started.unwrap_or(ts + 1)),
                          st.unmerge_p, ebuild, version, st.unmerge_s).unwrap_or(());
             },
             ParsedHist::SyncStart { ts } => {
@@ -64,7 +64,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9}{} Sync",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(&fmtd, ts - syncstart), st.dur_s).unwrap_or(());
+                         st.dur_p, fmt_duration(fmtd, ts - syncstart), st.dur_s).unwrap_or(());
             },
         }
     }
@@ -74,7 +74,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
 /// Given a unix timestamp, truncate it to midnight and advance by the given number of years/months/days.
 /// We avoid DST issues by switching to 12:00.
 /// See https://github.com/chronotope/chrono/issues/290
-fn timespan_next(ts: i64, add: &Timespan) -> i64 {
+fn timespan_next(ts: i64, add: Timespan) -> i64 {
     let mut d = Local.timestamp(ts, 0).with_minute(0).unwrap().with_second(0).unwrap();
     match add {
         Timespan::Year => {
@@ -106,7 +106,7 @@ fn timespan_next(ts: i64, add: &Timespan) -> i64 {
     debug!("{} + {:?} = {}", fmt_time(ts), add, fmt_time(res));
     res
 }
-fn timespan_header(ts: i64, timespan: &Timespan) -> String {
+fn timespan_header(ts: i64, timespan: Timespan) -> String {
     match timespan {
         Timespan::Year => format!("{}", Local.timestamp(ts, 0).format("%Y ")),
         Timespan::Month => format!("{}", Local.timestamp(ts, 0).format("%Y-%m ")),
@@ -187,14 +187,14 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
     let mut nextts = 0;
     let mut curts = 0;
     for p in hist {
-        if let Some(ref timespan) = timespan_opt {
+        if let Some(timespan) = timespan_opt {
             let t = p.ts();
             if nextts == 0 {
                 nextts = timespan_next(t, timespan);
                 curts = t;
             } else if t > nextts {
                 let group_by = timespan_header(curts, timespan);
-                cmd_stats_group(tw, &st, &fmtd, lim, show_pkg, show_tot, show_sync, &group_by,
+                cmd_stats_group(tw, &st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by,
                                 &sync_time, &pkt_time)?;
                 sync_time.clear();
                 pkt_time.clear();
@@ -233,15 +233,15 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
             },
         }
     }
-    let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, &t));
-    cmd_stats_group(tw, &st, &fmtd, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
+    let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, t));
+    cmd_stats_group(tw, &st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
                     &pkt_time)?;
     Ok(!pkt_time.is_empty() || !sync_time.is_empty())
 }
 
 fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    st: &Styles,
-                   fmtd: &DurationStyle,
+                   fmtd: DurationStyle,
                    lim: u16,
                    show_pkg: bool,
                    show_tot: bool,
@@ -257,11 +257,11 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                      group_by,
                      st.pkg_p, pkg,
                      st.cnt_p, merge.count,
-                     st.dur_p, fmt_duration(&fmtd, merge.tot),
-                     st.dur_p, fmt_duration(&fmtd, merge.pred(lim)),
+                     st.dur_p, fmt_duration(fmtd, merge.tot),
+                     st.dur_p, fmt_duration(fmtd, merge.pred(lim)),
                      st.cnt_p, unmerge.count,
-                     st.dur_p, fmt_duration(&fmtd, unmerge.tot),
-                     st.dur_p, fmt_duration(&fmtd, unmerge.pred(lim)),
+                     st.dur_p, fmt_duration(fmtd, unmerge.tot),
+                     st.dur_p, fmt_duration(fmtd, unmerge.pred(lim)),
                      st.dur_s)?;
         }
     }
@@ -280,11 +280,11 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "{}Total\t{}{:>5}\t{}{:>10}\t{}{:>8}\t{}{:>5}\t{}{:>8}\t{}{:>8}{}",
                  group_by,
                  st.cnt_p, merge_count,
-                 st.dur_p, fmt_duration(&fmtd, merge_time),
-                 st.dur_p, fmt_duration(&fmtd, merge_time.checked_div(merge_count).unwrap_or(-1)),
+                 st.dur_p, fmt_duration(fmtd, merge_time),
+                 st.dur_p, fmt_duration(fmtd, merge_time.checked_div(merge_count).unwrap_or(-1)),
                  st.cnt_p, unmerge_count,
-                 st.dur_p, fmt_duration(&fmtd, unmerge_time),
-                 st.dur_p, fmt_duration(&fmtd, unmerge_time.checked_div(unmerge_count).unwrap_or(-1)),
+                 st.dur_p, fmt_duration(fmtd, unmerge_time),
+                 st.dur_p, fmt_duration(fmtd, unmerge_time.checked_div(unmerge_count).unwrap_or(-1)),
                  st.dur_s)?;
     }
     if show_sync && !sync_time.is_empty() {
@@ -292,8 +292,8 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "{}Sync\t{}{:>5}\t{}{:>10}\t{}{:>8}{}",
                  group_by,
                  st.cnt_p, sync_time.count,
-                 st.dur_p, fmt_duration(&fmtd, sync_time.tot),
-                 st.dur_p, fmt_duration(&fmtd, sync_time.pred(lim)),
+                 st.dur_p, fmt_duration(fmtd, sync_time.tot),
+                 st.dur_p, fmt_duration(fmtd, sync_time.pred(lim)),
                  st.dur_s)?;
     }
     Ok(())
@@ -319,7 +319,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "Pid {}: ...{}\t{}{:>9}{}",
                  i.pid,
                  &i.cmdline[(i.cmdline.len()-35)..],
-                 st.dur_p, fmt_duration(&fmtd, now-i.start), st.dur_s)?;
+                 st.dur_p, fmt_duration(fmtd, now-i.start), st.dur_s)?;
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
         writeln!(tw, "No ongoing merge found")?;
@@ -380,7 +380,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         let k = (ebuild, version);
         let (elapsed, elapsed_fmt) = match started.remove(&k) {
             Some(s) if s > cms => {
-                (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(&fmtd, now - s), st.dur_s))
+                (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(fmtd, now - s), st.dur_s))
             },
             _ => (0, "".into()),
         };
@@ -396,7 +396,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                     totelapsed += elapsed;
                     totpredict -= std::cmp::min(pred, elapsed);
                 }
-                fmt_duration(&fmtd, pred)
+                fmt_duration(fmtd, pred)
             },
             None => {
                 totunknown += 1;
@@ -416,8 +416,8 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "Estimate for {}{}{} ebuilds ({}{}{} unknown, {}{}{} elapsed)\t{}{:>9}{} @ {}{}{}",
                  st.cnt_p, totcount, st.cnt_s,
                  st.cnt_p, totunknown, st.cnt_s,
-                 st.dur_p, fmt_duration(&fmtd, totelapsed), st.dur_s,
-                 st.dur_p, fmt_duration(&fmtd, totpredict), st.dur_s,
+                 st.dur_p, fmt_duration(fmtd, totelapsed), st.dur_s,
+                 st.dur_p, fmt_duration(fmtd, totpredict), st.dur_s,
                  st.dur_p, fmt_time(now + totpredict), st.dur_s)?;
     } else {
         writeln!(tw, "No pretended merge found")?;
@@ -806,11 +806,11 @@ mod tests {
             let m = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[2])).unwrap();
             let w = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[3])).unwrap();
             let d = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[4])).unwrap();
-            assert_eq!(y, Utc.timestamp(timespan_next(i, &Timespan::Year), 0), "year {}", v[0]);
-            assert_eq!(m, Utc.timestamp(timespan_next(i, &Timespan::Month), 0), "month {}", v[0]);
-            assert_eq!(w, Utc.timestamp(timespan_next(i, &Timespan::Week), 0), "week {}", v[0]);
-            assert_eq!(Weekday::Mon, Utc.timestamp(timespan_next(i, &Timespan::Week), 0).weekday());
-            assert_eq!(d, Utc.timestamp(timespan_next(i, &Timespan::Day), 0), "day {}", v[0]);
+            assert_eq!(y, Utc.timestamp(timespan_next(i, Timespan::Year), 0), "year {}", v[0]);
+            assert_eq!(m, Utc.timestamp(timespan_next(i, Timespan::Month), 0), "month {}", v[0]);
+            assert_eq!(w, Utc.timestamp(timespan_next(i, Timespan::Week), 0), "week {}", v[0]);
+            assert_eq!(Weekday::Mon, Utc.timestamp(timespan_next(i, Timespan::Week), 0).weekday());
+            assert_eq!(d, Utc.timestamp(timespan_next(i, Timespan::Day), 0), "day {}", v[0]);
         }
     }
 }
