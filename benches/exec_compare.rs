@@ -33,13 +33,10 @@ fn main() {
         ("h", "genlop", &["-h"], None),
         ("h", "qlop",   &["-h"], None),
         ("h", "emlop",  &["-h"], None),
-        ("h", "pqlop",  &["-h"], None),
-        ("h", "golop",  &["-h"], None),
 
         ("l", "genlop", &["-l"],  None),
         ("l", "qlop",   &["-mvt"], None),
         ("l", "emlop",  &["l"],   None),
-        ("l", "golop",  &[],      None),
 
         ("ld1", "genlop", &["-l", "--date","2015-01-01","--date","2015-01-10"], None),
         ("ld1", "qlop",   &["-mv","--date","2015-01-01","--date","2015-01-10"], None),
@@ -54,7 +51,6 @@ fn main() {
         ("lf", "genlop", &["-l","-f", "test/emerge.10000.log"], None),
         ("lf", "qlop",   &["-mv","-f","test/emerge.10000.log"], None),
         ("lf", "emlop",  &["l", "-F", "test/emerge.10000.log"], None),
-        ("lf", "golop",  &["-l",      "test/emerge.10000.log"],      None),
 
         ("lc", "emlop",  &["l","--color=y"],   None),
         ("ln", "genlop", &["-l","-n"],         None),
@@ -64,20 +60,14 @@ fn main() {
         ("tgcc", "genlop", &["-t","gcc"],     None),
         ("tgcc", "qlop",   &["-tv","gcc"],    None),
         ("tgcc", "emlop",  &["l","gcc","-e"], None),
-        ("tgcc", "pqlop",  &["-g","gcc"],     None),
-        ("tgcc", "golop",  &["-t","gcc"],     None),
 
         ("egcc", "genlop", &["-e","gcc"],     None),
         ("egcc", "qlop",   &["-mv","gcc"],    None),
         ("egcc", "emlop",  &["l","gcc","-e"], None),
-        ("egcc", "pqlop",  &["-g","gcc"],     None),
-        ("egcc", "golop",  &["-t","gcc"],     None),
 
         ("c", "genlop", &["-c"], None),
         ("c", "qlop",   &["-r"], None),
         ("c", "emlop",  &["p"],  None),
-        ("c", "pqlop",  &["-c"], None),
-        ("c", "golop",  &["-c"], None),
 
         ("pgcc", "genlop", &["-p"], Some("benches/emerge-p.gcc.out")),
         ("pgcc", "emlop",  &["p"],  Some("benches/emerge-p.gcc.out")),
@@ -89,8 +79,6 @@ fn main() {
         ("i", "genlop", &["-i","gcc"],     None),
         ("i", "qlop",   &["-c","gcc"],     None),
         ("i", "emlop",  &["s","gcc","-e"], None),
-        ("i", "pqlop",  &["-g","gcc"],     None),
-        ("i", "golop",  &["-t","gcc"],     None),
     ];
 
     // CLI definition

@@ -4,10 +4,9 @@ really want, some no more than an idle tought. If any of those resonate with you
 [contribute](CONTRIBUTING.md) with an issue report or a pull request.
 
 ## Testing
-### Use catname.txt
-To better validate parsed ebuild category/name. Might just use category.
 ### Misc
 * More testcases
+### https://github.com/japaric/trust/
 
 ## Refactoring
 ### StructOpt crate
@@ -22,8 +21,6 @@ Should be able to take slices from the input instead of allocating new Strings.
 https://deterministic.space/secret-life-of-cows.html ?
 ### Low-level optims
 Use `flame` and `flamer` crates ?
-Use a single regex for all ParsedHist types ?
-Would be cool to beat qlop more consistently.
 ### Remove utf8 validation overhead
 https://github.com/BurntSushi/bstr
 
@@ -35,10 +32,12 @@ https://github.com/BurntSushi/bstr
 * Color-code predict durations ?
 * Dark-green for packages not in world file ?
 ### Automatically run `emerge -rOp` for `predict`
-### Parse and optionaly display unmerges, failed merges, etc
-For the `log` command.
+### Parse and optionaly display failed merges
+### Distinguish autoclean from explicit unmerges
+### Show previous version for upgrades
 ### Get ebuild upstreamed
 https://bugs.gentoo.org/649904
+### Option to limit display to last/first N events
 ### Better/selectable prediction algorythm
 Currently is just averaged over the last `--limit` times, but should probably be a weighted average.
 
@@ -65,4 +64,5 @@ Never used this in genlop, but I guess others will want the feature.
 ### Bash completion
 Clap has something builtin.
 ### Allow specifying multiple search strings
-### https://github.com/japaric/trust/
+### embed audit info in binary
+https://github.com/Shnatsel/rust-audit

@@ -318,7 +318,7 @@ mod tests {
                             parse_sync,
                             filter_pkg,
                             exact).unwrap();
-        let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap(); //FIXME use catname.txt
+        let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
         let re_iter = Regex::new("^\\([1-9][0-9]* [1-9][0-9]*\\)$").unwrap(); //Should match pattern used in *Parser
         let mut counts: HashMap<String, usize> = HashMap::new();
