@@ -33,12 +33,12 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
             ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
                 found_one = true;
                 let k = (ebuild, version, iter);
-                let started = merges.remove(&k);
+                let started = merges.remove(&k).unwrap_or(ts + 1);
                 let (ebuild, version, _) = k;
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(fmtd, ts - started.unwrap_or(ts + 1)),
+                         st.dur_p, fmt_duration(fmtd, ts - started),
                          st.merge_p, ebuild, version, st.merge_s).unwrap_or(());
             },
             ParsedHist::UnmergeStart { ts, ebuild, version, .. } => {
@@ -48,12 +48,12 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
             ParsedHist::UnmergeStop { ts, ebuild, version, .. } => {
                 found_one = true;
                 let k = (ebuild, version);
-                let started = unmerges.remove(&k);
+                let started = unmerges.remove(&k).unwrap_or(ts + 1);
                 let (ebuild, version) = k;
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(fmtd, ts - started.unwrap_or(ts + 1)),
+                         st.dur_p, fmt_duration(fmtd, ts - started),
                          st.unmerge_p, ebuild, version, st.unmerge_s).unwrap_or(());
             },
             ParsedHist::SyncStart { ts } => {
@@ -132,7 +132,7 @@ impl Times {
     fn insert(&mut self, t: i64) {
         self.count += 1;
         if t > 0 {
-            self.vals.insert(0, t); // FIXME: append would be cheaper ?
+            self.vals.insert(0, t);
             self.tot += t;
         }
     }
@@ -181,7 +181,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
     let lim = value(subargs, "limit", parse_limit);
     let mut merge_start: HashMap<(String, String, String), i64> = HashMap::new();
     let mut unmerge_start: HashMap<(String, String), i64> = HashMap::new();
-    let mut pkt_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
+    let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
     let mut sync_start: i64 = 0;
     let mut sync_time = Times::new();
     let mut nextts = 0;
@@ -195,9 +195,9 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
             } else if t > nextts {
                 let group_by = timespan_header(curts, timespan);
                 cmd_stats_group(tw, &st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by,
-                                &sync_time, &pkt_time)?;
+                                &sync_time, &pkg_time)?;
                 sync_time.clear();
-                pkt_time.clear();
+                pkg_time.clear();
                 nextts = timespan_next(t, timespan);
                 curts = t;
             }
@@ -210,7 +210,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 let k = (ebuild, version, iter);
                 if let Some(start_ts) = merge_start.remove(&k) {
                     let (times, _) =
-                        pkt_time.entry(k.0).or_insert_with(|| (Times::new(), Times::new()));
+                        pkg_time.entry(k.0).or_insert_with(|| (Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
@@ -221,7 +221,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 let k = (ebuild, version);
                 if let Some(start_ts) = unmerge_start.remove(&k) {
                     let (_, times) =
-                        pkt_time.entry(k.0).or_insert_with(|| (Times::new(), Times::new()));
+                        pkg_time.entry(k.0).or_insert_with(|| (Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
@@ -235,8 +235,8 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
     }
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, t));
     cmd_stats_group(tw, &st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
-                    &pkt_time)?;
-    Ok(!pkt_time.is_empty() || !sync_time.is_empty())
+                    &pkg_time)?;
+    Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
 
 fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
@@ -248,10 +248,10 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    show_sync: bool,
                    group_by: &str,
                    sync_time: &Times,
-                   pkt_time: &BTreeMap<String, (Times, Times)>)
+                   pkg_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
-    if show_pkg && !pkt_time.is_empty() {
-        for (pkg, (merge, unmerge)) in pkt_time {
+    if show_pkg && !pkg_time.is_empty() {
+        for (pkg, (merge, unmerge)) in pkg_time {
             #[rustfmt::skip]
             writeln!(tw, "{}{}{}\t{}{:>5}\t{}{:>10}\t{}{:>8}\t{}{:>5}\t{}{:>8}\t{}{:>8}{}",
                      group_by,
@@ -265,12 +265,12 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                      st.dur_s)?;
         }
     }
-    if show_tot && !pkt_time.is_empty() {
+    if show_tot && !pkg_time.is_empty() {
         let mut merge_time = 0;
         let mut merge_count = 0;
         let mut unmerge_time = 0;
         let mut unmerge_count = 0;
-        for (merge, unmerge) in pkt_time.values() {
+        for (merge, unmerge) in pkg_time.values() {
             merge_time += merge.tot;
             merge_count += merge.count;
             unmerge_time += unmerge.tot;
@@ -346,14 +346,11 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
             ParsedHist::Stop { ts, ebuild, version, .. } => {
                 let k = (ebuild, version);
                 if let Some(start_ts) = started.remove(&k) {
-                    let timevec = times.entry(k.0).or_insert_with(|| Times::new());
+                    let timevec = times.entry(k.0).or_insert_with(Times::new);
                     timevec.insert(ts - start_ts);
                 }
             },
-            ParsedHist::UnmergeStart { .. } => (),
-            ParsedHist::UnmergeStop { .. } => (),
-            ParsedHist::SyncStart { .. } => (),
-            ParsedHist::SyncStop { .. } => (),
+            _ => unreachable!("Should only receive ParsedHist::{Start,Stop}"),
         }
     }
 

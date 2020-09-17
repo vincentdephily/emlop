@@ -61,7 +61,7 @@ pub fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
     let clocktick = sysconf(SysconfVariable::ScClkTck).unwrap() as i64;
     let mut uptimestr = String::new();
     File::open("/proc/uptime")?.read_to_string(&mut uptimestr)?;
-    let uptime = i64::from_str(uptimestr.split('.').nth(0).unwrap()).unwrap();
+    let uptime = i64::from_str(uptimestr.split('.').next().unwrap()).unwrap();
     let time_ref = epoch_now() - uptime;
     // Now iterate through /proc/<pid>
     let mut ret: Vec<Info> = Vec::new();

@@ -155,20 +155,20 @@ fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<impl Fn(&str) -> 
         Ends { e: String },
         Re { r: Regex },
     }
-    let fp = match (&package, exact, package.as_ref().map_or(false, |p| p.contains('/'))) {
-        (None, _, _) => {
+    let fp = match (&package, exact) {
+        (None, _) => {
             info!("Package filter: None");
             FilterPkg::True
         },
-        (Some(search), true, true) => {
+        (Some(search), true) if search.contains("/") => {
             info!("Package filter: categ/name == {}", search);
             FilterPkg::Eq { e: search.to_string() }
         },
-        (Some(search), true, false) => {
+        (Some(search), true) => {
             info!("Package filter: name == {}", search);
             FilterPkg::Ends { e: format!("/{}", search) }
         },
-        (Some(search), false, _) => {
+        (Some(search), false) => {
             info!("Package filter: categ/name ~= {}", search);
             FilterPkg::Re { r: RegexBuilder::new(&search).case_insensitive(true).build()? }
         },
@@ -231,7 +231,7 @@ fn parse_stop(enabled: bool,
     if !enabled || !line.starts_with("::: comp") {
         return None;
     }
-    let mut tokens = line.split_whitespace();
+    let mut tokens = line.split_ascii_whitespace();
     let (t4, t6, t7) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
     let (ebuild, version) = split_atom(t7)?;
     if !(filter_pkg)(ebuild) {
@@ -250,7 +250,7 @@ fn parse_unmergestart(enabled: bool,
     if !enabled || !line.starts_with("=== Unmerging...") {
         return None;
     }
-    let mut tokens = line.split_whitespace();
+    let mut tokens = line.split_ascii_whitespace();
     let t3 = tokens.nth(2)?;
     let (ebuild, version) = split_atom(&t3[1..t3.len() - 1])?;
     if !(filter_pkg)(ebuild) {
@@ -266,7 +266,7 @@ fn parse_unmergestop(enabled: bool,
     if !enabled || !line.starts_with(">>> unmerge success") {
         return None;
     }
-    let mut tokens = line.split_whitespace();
+    let mut tokens = line.split_ascii_whitespace();
     let (ebuild, version) = split_atom(tokens.nth(3)?)?;
     if !(filter_pkg)(ebuild) {
         return None;
