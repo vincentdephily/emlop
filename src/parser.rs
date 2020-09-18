@@ -15,19 +15,54 @@ use std::{fs::File,
 #[derive(Debug)]
 pub enum ParsedHist {
     /// Merge started (might never complete).
-    Start { ts: i64, ebuild: String, version: String, iter: String },
+    Start { ts: i64, key: String, pos1: usize, pos2: usize },
     /// Merge completed.
-    Stop { ts: i64, ebuild: String, version: String, iter: String },
+    Stop { ts: i64, key: String, pos1: usize, pos2: usize },
     /// Unmerge started (might never complete).
-    UnmergeStart { ts: i64, ebuild: String, version: String },
+    UnmergeStart { ts: i64, key: String, pos: usize },
     /// Unmerge completed.
-    UnmergeStop { ts: i64, ebuild: String, version: String },
+    UnmergeStop { ts: i64, key: String, pos: usize },
     /// Sync started (might never complete).
     SyncStart { ts: i64 },
     /// Sync completed.
     SyncStop { ts: i64 },
 }
 impl ParsedHist {
+    pub fn ebuild(&self) -> &str {
+        match self {
+            ParsedHist::Start { key, pos1, .. } => &key[..(*pos1 - 1)],
+            ParsedHist::Stop { key, pos1, .. } => &key[..(*pos1 - 1)],
+            ParsedHist::UnmergeStart { key, pos, .. } => &key[..(*pos - 1)],
+            ParsedHist::UnmergeStop { key, pos, .. } => &key[..(*pos - 1)],
+            _ => unreachable!("No ebuild for {:?}", self),
+        }
+    }
+    pub fn version(&self) -> &str {
+        match self {
+            ParsedHist::Start { key, pos1, pos2, .. } => &key[*pos1..*pos2],
+            ParsedHist::Stop { key, pos1, pos2, .. } => &key[*pos1..*pos2],
+            ParsedHist::UnmergeStart { key, pos, .. } => &key[*pos..],
+            ParsedHist::UnmergeStop { key, pos, .. } => &key[*pos..],
+            _ => unreachable!("No version for {:?}", self),
+        }
+    }
+    pub fn ebuild_version(&self) -> &str {
+        match self {
+            ParsedHist::Start { key, pos2, .. } => &key[..*pos2],
+            ParsedHist::Stop { key, pos2, .. } => &key[..*pos2],
+            ParsedHist::UnmergeStart { key, .. } => &key,
+            ParsedHist::UnmergeStop { key, .. } => &key,
+            _ => unreachable!("No ebuild/version for {:?}", self),
+        }
+    }
+    #[cfg(test)]
+    pub fn iter(&self) -> &str {
+        match self {
+            ParsedHist::Start { key, pos2, .. } => &key[*pos2..],
+            ParsedHist::Stop { key, pos2, .. } => &key[*pos2..],
+            _ => unreachable!("No iter for {:?}", self),
+        }
+    }
     pub fn ts(&self) -> i64 {
         match self {
             ParsedHist::Start { ts, .. } => *ts,
@@ -218,10 +253,10 @@ fn parse_start(enabled: bool,
     if !(filter_pkg)(ebuild) {
         return None;
     }
-    Some(ParsedHist::Start { ts,
-                             ebuild: ebuild.to_string(),
-                             iter: format!("{} {}", t3, t5),
-                             version: version.to_string() })
+    let key = format!("{}-{}{}{}", ebuild, version, t5, &t3[1..]);
+    let pos1 = ebuild.len() + 1;
+    let pos2 = pos1 + version.len();
+    Some(ParsedHist::Start { ts, key, pos1, pos2 })
 }
 fn parse_stop(enabled: bool,
               ts: i64,
@@ -237,10 +272,10 @@ fn parse_stop(enabled: bool,
     if !(filter_pkg)(ebuild) {
         return None;
     }
-    Some(ParsedHist::Stop { ts,
-                            ebuild: ebuild.to_string(),
-                            iter: format!("{} {}", t4, t6),
-                            version: version.to_string() })
+    let key = format!("{}-{}{}{}", ebuild, version, t6, &t4[1..]);
+    let pos1 = ebuild.len() + 1;
+    let pos2 = pos1 + version.len();
+    Some(ParsedHist::Stop { ts, key, pos1, pos2 })
 }
 fn parse_unmergestart(enabled: bool,
                       ts: i64,
@@ -256,7 +291,9 @@ fn parse_unmergestart(enabled: bool,
     if !(filter_pkg)(ebuild) {
         return None;
     }
-    Some(ParsedHist::UnmergeStart { ts, ebuild: ebuild.to_string(), version: version.to_string() })
+    let key = format!("{}-{}", ebuild, version);
+    let pos = ebuild.len() + 1;
+    Some(ParsedHist::UnmergeStart { ts, key, pos })
 }
 fn parse_unmergestop(enabled: bool,
                      ts: i64,
@@ -271,7 +308,9 @@ fn parse_unmergestop(enabled: bool,
     if !(filter_pkg)(ebuild) {
         return None;
     }
-    Some(ParsedHist::UnmergeStop { ts, ebuild: ebuild.to_string(), version: version.to_string() })
+    let key = format!("{}-{}", ebuild, version);
+    let pos = ebuild.len() + 1;
+    Some(ParsedHist::UnmergeStop { ts, key, pos })
 }
 fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<ParsedHist> {
     if !enabled || line != "=== sync" {
@@ -319,28 +358,29 @@ mod tests {
                             filter_pkg,
                             exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
-        let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap(); //Should match pattern used in *Parser
-        let re_iter = Regex::new("^\\([1-9][0-9]* [1-9][0-9]*\\)$").unwrap(); //Should match pattern used in *Parser
+        let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();
+        let re_iter = Regex::new("^[1-9][0-9]*\\)[1-9][0-9]*$").unwrap();
         let mut counts: HashMap<String, usize> = HashMap::new();
         // Check that all items look valid
         for p in hist {
-            #[rustfmt::skip]
             let (kind, ts, ebuild, version, iter) = match p {
-                ParsedHist::Start{ts, ebuild, version, iter} => ("start", ts, ebuild, version, iter),
-                ParsedHist::Stop{ts, ebuild, version, iter} =>  ("stop",  ts, ebuild, version, iter),
-                ParsedHist::UnmergeStart{ts, ebuild, version} => ("UStart", ts, ebuild, version, "(1 1)".into()),
-                ParsedHist::UnmergeStop{ts, ebuild, version} =>  ("UStop",  ts, ebuild, version, "(1 1)".into()),
-                ParsedHist::SyncStart{ts} => ("syncstart", ts, "c/e".into(), "1".into(), "(1 1)".into()),
-                ParsedHist::SyncStop{ts} => ("syncstop", ts, "c/e".into(), "1".into(), "(1 1)".into()),
+                ParsedHist::Start { ts, .. } => ("start", ts, p.ebuild(), p.version(), p.iter()),
+                ParsedHist::Stop { ts, .. } => ("stop", ts, p.ebuild(), p.version(), p.iter()),
+                ParsedHist::UnmergeStart { ts, .. } => {
+                    ("UStart", ts, p.ebuild(), p.version(), "1)1")
+                },
+                ParsedHist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version(), "1)1"),
+                ParsedHist::SyncStart { ts } => ("syncstart", ts, "c/e", "1", "1)1"),
+                ParsedHist::SyncStop { ts } => ("syncstop", ts, "c/e", "1", "1)1"),
             };
             *counts.entry(kind.to_string()).or_insert(0) += 1;
-            *counts.entry(ebuild.clone()).or_insert(0) += 1;
+            *counts.entry(ebuild.to_string()).or_insert(0) += 1;
             assert!(ts >= filter_mints.unwrap_or(mints) && ts <= filter_maxts.unwrap_or(maxts),
                     "Out of bound date {}",
                     fmt_time(ts));
-            assert!(re_atom.is_match(&ebuild), "Invalid ebuild atom {}", ebuild);
-            assert!(re_version.is_match(&version), "Invalid version {}", version);
-            assert!(re_iter.is_match(&iter), "Invalid iteration {}", iter);
+            assert!(re_atom.is_match(ebuild), "Invalid ebuild atom {}", ebuild);
+            assert!(re_version.is_match(version), "Invalid version {}", version);
+            assert!(re_iter.is_match(iter), "Invalid iteration {}", iter);
         }
         // Check that we got the right number of each kind
         for (t, ref c) in expect_counts {

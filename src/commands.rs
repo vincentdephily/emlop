@@ -20,41 +20,37 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
     let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
-    let mut merges: HashMap<(String, String, String), i64> = HashMap::new();
-    let mut unmerges: HashMap<(String, String), i64> = HashMap::new();
+    let mut merges: HashMap<String, i64> = HashMap::new();
+    let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found_one = false;
     let mut syncstart: i64 = 0;
     for p in hist {
         match p {
-            ParsedHist::Start { ts, ebuild, version, iter, .. } => {
+            ParsedHist::Start { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
-                merges.insert((ebuild, version, iter), ts);
+                merges.insert(key, ts);
             },
-            ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
+            ParsedHist::Stop { ts, ref key, .. } => {
                 found_one = true;
-                let k = (ebuild, version, iter);
-                let started = merges.remove(&k).unwrap_or(ts + 1);
-                let (ebuild, version, _) = k;
+                let started = merges.remove(key).unwrap_or(ts + 1);
                 #[rustfmt::skip]
-                writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
+                writeln!(stdout(), "{} {}{:>9} {}{}{}",
                          fmt_time(ts),
                          st.dur_p, fmt_duration(fmtd, ts - started),
-                         st.merge_p, ebuild, version, st.merge_s).unwrap_or(());
+                         st.merge_p, p.ebuild_version(), st.merge_s).unwrap_or(());
             },
-            ParsedHist::UnmergeStart { ts, ebuild, version, .. } => {
+            ParsedHist::UnmergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a build started but never finished
-                unmerges.insert((ebuild, version), ts);
+                unmerges.insert(key, ts);
             },
-            ParsedHist::UnmergeStop { ts, ebuild, version, .. } => {
+            ParsedHist::UnmergeStop { ts, ref key, .. } => {
                 found_one = true;
-                let k = (ebuild, version);
-                let started = unmerges.remove(&k).unwrap_or(ts + 1);
-                let (ebuild, version) = k;
+                let started = unmerges.remove(key).unwrap_or(ts + 1);
                 #[rustfmt::skip]
-                writeln!(stdout(), "{} {}{:>9} {}{}-{}{}",
+                writeln!(stdout(), "{} {}{:>9} {}{}{}",
                          fmt_time(ts),
                          st.dur_p, fmt_duration(fmtd, ts - started),
-                         st.unmerge_p, ebuild, version, st.unmerge_s).unwrap_or(());
+                         st.unmerge_p, p.ebuild_version(), st.unmerge_s).unwrap_or(());
             },
             ParsedHist::SyncStart { ts } => {
                 syncstart = ts;
@@ -179,8 +175,8 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                         subargs.is_present("exact"))?;
     let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
     let lim = value(subargs, "limit", parse_limit);
-    let mut merge_start: HashMap<(String, String, String), i64> = HashMap::new();
-    let mut unmerge_start: HashMap<(String, String), i64> = HashMap::new();
+    let mut merge_start: HashMap<String, i64> = HashMap::new();
+    let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
     let mut sync_start: i64 = 0;
     let mut sync_time = Times::new();
@@ -203,25 +199,23 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
             }
         }
         match p {
-            ParsedHist::Start { ts, ebuild, version, iter, .. } => {
-                merge_start.insert((ebuild, version, iter), ts);
+            ParsedHist::Start { ts, key, .. } => {
+                merge_start.insert(key, ts);
             },
-            ParsedHist::Stop { ts, ebuild, version, iter, .. } => {
-                let k = (ebuild, version, iter);
-                if let Some(start_ts) = merge_start.remove(&k) {
-                    let (times, _) =
-                        pkg_time.entry(k.0).or_insert_with(|| (Times::new(), Times::new()));
+            ParsedHist::Stop { ts, ref key, .. } => {
+                if let Some(start_ts) = merge_start.remove(key) {
+                    let (times, _) = pkg_time.entry(p.ebuild().to_owned())
+                                             .or_insert_with(|| (Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
-            ParsedHist::UnmergeStart { ts, ebuild, version } => {
-                unmerge_start.insert((ebuild, version), ts);
+            ParsedHist::UnmergeStart { ts, key, .. } => {
+                unmerge_start.insert(key, ts);
             },
-            ParsedHist::UnmergeStop { ts, ebuild, version } => {
-                let k = (ebuild, version);
-                if let Some(start_ts) = unmerge_start.remove(&k) {
-                    let (_, times) =
-                        pkg_time.entry(k.0).or_insert_with(|| (Times::new(), Times::new()));
+            ParsedHist::UnmergeStop { ts, ref key, .. } => {
+                if let Some(start_ts) = unmerge_start.remove(key) {
+                    let (_, times) = pkg_time.entry(p.ebuild().to_owned())
+                                             .or_insert_with(|| (Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
@@ -340,11 +334,11 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     for p in hist {
         match p {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
-            ParsedHist::Start { ts, ebuild, version, .. } => {
-                started.insert((ebuild, version), ts);
+            ParsedHist::Start { ts, .. } => {
+                started.insert((p.ebuild().to_string(), p.version().to_string()), ts);
             },
-            ParsedHist::Stop { ts, ebuild, version, .. } => {
-                let k = (ebuild, version);
+            ParsedHist::Stop { ts, .. } => {
+                let k = (p.ebuild().to_string(), p.version().to_string());
                 if let Some(start_ts) = started.remove(&k) {
                     let timevec = times.entry(k.0).or_insert_with(Times::new);
                     timevec.insert(ts - start_ts);
