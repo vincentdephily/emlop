@@ -26,11 +26,11 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
     let mut syncstart: i64 = 0;
     for p in hist {
         match p {
-            ParsedHist::Start { ts, key, .. } => {
+            Hist::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 merges.insert(key, ts);
             },
-            ParsedHist::Stop { ts, ref key, .. } => {
+            Hist::MergeStop { ts, ref key, .. } => {
                 found_one = true;
                 let started = merges.remove(key).unwrap_or(ts + 1);
                 #[rustfmt::skip]
@@ -39,11 +39,11 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                          st.dur_p, fmt_duration(fmtd, ts - started),
                          st.merge_p, p.ebuild_version(), st.merge_s).unwrap_or(());
             },
-            ParsedHist::UnmergeStart { ts, key, .. } => {
+            Hist::UnmergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a build started but never finished
                 unmerges.insert(key, ts);
             },
-            ParsedHist::UnmergeStop { ts, ref key, .. } => {
+            Hist::UnmergeStop { ts, ref key, .. } => {
                 found_one = true;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 #[rustfmt::skip]
@@ -52,10 +52,10 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                          st.dur_p, fmt_duration(fmtd, ts - started),
                          st.unmerge_p, p.ebuild_version(), st.unmerge_s).unwrap_or(());
             },
-            ParsedHist::SyncStart { ts } => {
+            Hist::SyncStart { ts } => {
                 syncstart = ts;
             },
-            ParsedHist::SyncStop { ts } => {
+            Hist::SyncStop { ts } => {
                 found_one = true;
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9}{} Sync",
@@ -199,30 +199,30 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
             }
         }
         match p {
-            ParsedHist::Start { ts, key, .. } => {
+            Hist::MergeStart { ts, key, .. } => {
                 merge_start.insert(key, ts);
             },
-            ParsedHist::Stop { ts, ref key, .. } => {
+            Hist::MergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = merge_start.remove(key) {
                     let (times, _) = pkg_time.entry(p.ebuild().to_owned())
                                              .or_insert_with(|| (Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
-            ParsedHist::UnmergeStart { ts, key, .. } => {
+            Hist::UnmergeStart { ts, key, .. } => {
                 unmerge_start.insert(key, ts);
             },
-            ParsedHist::UnmergeStop { ts, ref key, .. } => {
+            Hist::UnmergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = unmerge_start.remove(key) {
                     let (_, times) = pkg_time.entry(p.ebuild().to_owned())
                                              .or_insert_with(|| (Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
-            ParsedHist::SyncStart { ts } => {
+            Hist::SyncStart { ts } => {
                 sync_start = ts;
             },
-            ParsedHist::SyncStop { ts } => {
+            Hist::SyncStop { ts } => {
                 sync_time.insert(ts - sync_start);
             },
         }
@@ -334,27 +334,27 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     for p in hist {
         match p {
             // We're ignoring iter here (reducing the start->stop matching accuracy) because there's no iter in the pretend output.
-            ParsedHist::Start { ts, .. } => {
+            Hist::MergeStart { ts, .. } => {
                 started.insert((p.ebuild().to_string(), p.version().to_string()), ts);
             },
-            ParsedHist::Stop { ts, .. } => {
+            Hist::MergeStop { ts, .. } => {
                 let k = (p.ebuild().to_string(), p.version().to_string());
                 if let Some(start_ts) = started.remove(&k) {
                     let timevec = times.entry(k.0).or_insert_with(Times::new);
                     timevec.insert(ts - start_ts);
                 }
             },
-            _ => unreachable!("Should only receive ParsedHist::{Start,Stop}"),
+            _ => unreachable!("Should only receive Hist::{Start,Stop}"),
         }
     }
 
     // Parse list of pending merges (from stdin or from emerge log filtered by cms).
     // We collect immediately to deal with type mismatches; it should be a small list anyway.
-    let pretend: Vec<ParsedPretend> = if atty::is(atty::Stream::Stdin) {
+    let pretend: Vec<Pretend> = if atty::is(atty::Stream::Stdin) {
         started.iter()
                .filter(|&(_, t)| *t > cms)
-               .map(|(&(ref e, ref v), _)| ParsedPretend { ebuild: e.to_string(),
-                                                           version: v.to_string() })
+               .map(|(&(ref e, ref v), _)| Pretend { ebuild: e.to_string(),
+                                                     version: v.to_string() })
                .collect()
     } else {
         new_pretend(stdin(), "STDIN")
@@ -365,7 +365,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     let mut totunknown = 0;
     let mut totpredict = 0;
     let mut totelapsed = 0;
-    for ParsedPretend { ebuild, version } in pretend {
+    for Pretend { ebuild, version } in pretend {
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
         let k = (ebuild, version);

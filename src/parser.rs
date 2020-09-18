@@ -13,11 +13,11 @@ use std::{fs::File,
 
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
-pub enum ParsedHist {
+pub enum Hist {
     /// Merge started (might never complete).
-    Start { ts: i64, key: String, pos1: usize, pos2: usize },
+    MergeStart { ts: i64, key: String, pos1: usize, pos2: usize },
     /// Merge completed.
-    Stop { ts: i64, key: String, pos1: usize, pos2: usize },
+    MergeStop { ts: i64, key: String, pos1: usize, pos2: usize },
     /// Unmerge started (might never complete).
     UnmergeStart { ts: i64, key: String, pos: usize },
     /// Unmerge completed.
@@ -27,50 +27,50 @@ pub enum ParsedHist {
     /// Sync completed.
     SyncStop { ts: i64 },
 }
-impl ParsedHist {
+impl Hist {
     pub fn ebuild(&self) -> &str {
         match self {
-            ParsedHist::Start { key, pos1, .. } => &key[..(*pos1 - 1)],
-            ParsedHist::Stop { key, pos1, .. } => &key[..(*pos1 - 1)],
-            ParsedHist::UnmergeStart { key, pos, .. } => &key[..(*pos - 1)],
-            ParsedHist::UnmergeStop { key, pos, .. } => &key[..(*pos - 1)],
+            Self::MergeStart { key, pos1, .. } => &key[..(*pos1 - 1)],
+            Self::MergeStop { key, pos1, .. } => &key[..(*pos1 - 1)],
+            Self::UnmergeStart { key, pos, .. } => &key[..(*pos - 1)],
+            Self::UnmergeStop { key, pos, .. } => &key[..(*pos - 1)],
             _ => unreachable!("No ebuild for {:?}", self),
         }
     }
     pub fn version(&self) -> &str {
         match self {
-            ParsedHist::Start { key, pos1, pos2, .. } => &key[*pos1..*pos2],
-            ParsedHist::Stop { key, pos1, pos2, .. } => &key[*pos1..*pos2],
-            ParsedHist::UnmergeStart { key, pos, .. } => &key[*pos..],
-            ParsedHist::UnmergeStop { key, pos, .. } => &key[*pos..],
+            Self::MergeStart { key, pos1, pos2, .. } => &key[*pos1..*pos2],
+            Self::MergeStop { key, pos1, pos2, .. } => &key[*pos1..*pos2],
+            Self::UnmergeStart { key, pos, .. } => &key[*pos..],
+            Self::UnmergeStop { key, pos, .. } => &key[*pos..],
             _ => unreachable!("No version for {:?}", self),
         }
     }
     pub fn ebuild_version(&self) -> &str {
         match self {
-            ParsedHist::Start { key, pos2, .. } => &key[..*pos2],
-            ParsedHist::Stop { key, pos2, .. } => &key[..*pos2],
-            ParsedHist::UnmergeStart { key, .. } => &key,
-            ParsedHist::UnmergeStop { key, .. } => &key,
+            Self::MergeStart { key, pos2, .. } => &key[..*pos2],
+            Self::MergeStop { key, pos2, .. } => &key[..*pos2],
+            Self::UnmergeStart { key, .. } => &key,
+            Self::UnmergeStop { key, .. } => &key,
             _ => unreachable!("No ebuild/version for {:?}", self),
         }
     }
     #[cfg(test)]
     pub fn iter(&self) -> &str {
         match self {
-            ParsedHist::Start { key, pos2, .. } => &key[*pos2..],
-            ParsedHist::Stop { key, pos2, .. } => &key[*pos2..],
+            Self::MergeStart { key, pos2, .. } => &key[*pos2..],
+            Self::MergeStop { key, pos2, .. } => &key[*pos2..],
             _ => unreachable!("No iter for {:?}", self),
         }
     }
     pub fn ts(&self) -> i64 {
         match self {
-            ParsedHist::Start { ts, .. } => *ts,
-            ParsedHist::Stop { ts, .. } => *ts,
-            ParsedHist::UnmergeStart { ts, .. } => *ts,
-            ParsedHist::UnmergeStop { ts, .. } => *ts,
-            ParsedHist::SyncStart { ts, .. } => *ts,
-            ParsedHist::SyncStop { ts, .. } => *ts,
+            Self::MergeStart { ts, .. } => *ts,
+            Self::MergeStop { ts, .. } => *ts,
+            Self::UnmergeStart { ts, .. } => *ts,
+            Self::UnmergeStop { ts, .. } => *ts,
+            Self::SyncStart { ts, .. } => *ts,
+            Self::SyncStop { ts, .. } => *ts,
         }
     }
 }
@@ -78,7 +78,7 @@ impl ParsedHist {
 
 /// Items sent on the channel returned by `new_pretend()`.
 #[derive(Debug)]
-pub struct ParsedPretend {
+pub struct Pretend {
     pub ebuild: String,
     pub version: String,
 }
@@ -92,11 +92,11 @@ pub fn new_hist(filename: String,
                 parse_sync: bool,
                 search_str: Option<&str>,
                 search_exact: bool)
-                -> Result<Receiver<ParsedHist>, Error> {
+                -> Result<Receiver<Hist>, Error> {
     debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}",
            filename, min_ts, max_ts, search_str, search_exact);
     let reader = File::open(&filename).with_context(|| format!("Cannot open {:?}", filename))?;
-    let (tx, rx): (Sender<ParsedHist>, Receiver<ParsedHist>) = unbounded();
+    let (tx, rx): (Sender<Hist>, Receiver<Hist>) = unbounded();
     // https://docs.rs/crossbeam/0.7.1/crossbeam/thread/index.html
     let filter_ts = filter_ts_fn(min_ts, max_ts);
     let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
@@ -145,11 +145,11 @@ pub fn new_hist(filename: String,
 }
 
 /// Parse portage pretend output into a Vec of `Parsed` enums.
-pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<ParsedPretend>
+pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pretend>
     where R: Send + 'static
 {
     debug!("new_pretend input={}", filename);
-    let mut out: Vec<ParsedPretend> = vec![];
+    let mut out: Vec<Pretend> = vec![];
     let re = Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap();
     for (curline, l) in BufReader::new(reader).lines().enumerate() {
         match l {
@@ -243,7 +243,7 @@ fn parse_start(enabled: bool,
                ts: i64,
                line: &str,
                filter_pkg: impl Fn(&str) -> bool)
-               -> Option<ParsedHist> {
+               -> Option<Hist> {
     if !enabled || !line.starts_with(">>> emer") {
         return None;
     }
@@ -256,13 +256,13 @@ fn parse_start(enabled: bool,
     let key = format!("{}-{}{}{}", ebuild, version, t5, &t3[1..]);
     let pos1 = ebuild.len() + 1;
     let pos2 = pos1 + version.len();
-    Some(ParsedHist::Start { ts, key, pos1, pos2 })
+    Some(Hist::MergeStart { ts, key, pos1, pos2 })
 }
 fn parse_stop(enabled: bool,
               ts: i64,
               line: &str,
               filter_pkg: impl Fn(&str) -> bool)
-              -> Option<ParsedHist> {
+              -> Option<Hist> {
     if !enabled || !line.starts_with("::: comp") {
         return None;
     }
@@ -275,13 +275,13 @@ fn parse_stop(enabled: bool,
     let key = format!("{}-{}{}{}", ebuild, version, t6, &t4[1..]);
     let pos1 = ebuild.len() + 1;
     let pos2 = pos1 + version.len();
-    Some(ParsedHist::Stop { ts, key, pos1, pos2 })
+    Some(Hist::MergeStop { ts, key, pos1, pos2 })
 }
 fn parse_unmergestart(enabled: bool,
                       ts: i64,
                       line: &str,
                       filter_pkg: impl Fn(&str) -> bool)
-                      -> Option<ParsedHist> {
+                      -> Option<Hist> {
     if !enabled || !line.starts_with("=== Unmerging...") {
         return None;
     }
@@ -293,13 +293,13 @@ fn parse_unmergestart(enabled: bool,
     }
     let key = format!("{}-{}", ebuild, version);
     let pos = ebuild.len() + 1;
-    Some(ParsedHist::UnmergeStart { ts, key, pos })
+    Some(Hist::UnmergeStart { ts, key, pos })
 }
 fn parse_unmergestop(enabled: bool,
                      ts: i64,
                      line: &str,
                      filter_pkg: impl Fn(&str) -> bool)
-                     -> Option<ParsedHist> {
+                     -> Option<Hist> {
     if !enabled || !line.starts_with(">>> unmerge success") {
         return None;
     }
@@ -310,25 +310,25 @@ fn parse_unmergestop(enabled: bool,
     }
     let key = format!("{}-{}", ebuild, version);
     let pos = ebuild.len() + 1;
-    Some(ParsedHist::UnmergeStop { ts, key, pos })
+    Some(Hist::UnmergeStop { ts, key, pos })
 }
-fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<ParsedHist> {
+fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
     if !enabled || line != "=== sync" {
         return None;
     }
-    Some(ParsedHist::SyncStart { ts })
+    Some(Hist::SyncStart { ts })
 }
-fn parse_syncstop(enabled: bool, ts: i64, line: &str) -> Option<ParsedHist> {
+fn parse_syncstop(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
     // Old portage logs 'completed with <source>', new portage logs 'completed for <destination>'
     if !enabled || !line.starts_with("=== Sync completed") {
         return None;
     }
-    Some(ParsedHist::SyncStop { ts })
+    Some(Hist::SyncStop { ts })
 }
-fn parse_pretend(line: &str, re: &Regex) -> Option<ParsedPretend> {
+fn parse_pretend(line: &str, re: &Regex) -> Option<Pretend> {
     let c = re.captures(line)?;
-    Some(ParsedPretend { ebuild: c.get(1).unwrap().as_str().to_string(),
-                         version: c.get(2).unwrap().as_str().to_string() })
+    Some(Pretend { ebuild: c.get(1).unwrap().as_str().to_string(),
+                   version: c.get(2).unwrap().as_str().to_string() })
 }
 
 
@@ -364,14 +364,12 @@ mod tests {
         // Check that all items look valid
         for p in hist {
             let (kind, ts, ebuild, version, iter) = match p {
-                ParsedHist::Start { ts, .. } => ("start", ts, p.ebuild(), p.version(), p.iter()),
-                ParsedHist::Stop { ts, .. } => ("stop", ts, p.ebuild(), p.version(), p.iter()),
-                ParsedHist::UnmergeStart { ts, .. } => {
-                    ("UStart", ts, p.ebuild(), p.version(), "1)1")
-                },
-                ParsedHist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version(), "1)1"),
-                ParsedHist::SyncStart { ts } => ("syncstart", ts, "c/e", "1", "1)1"),
-                ParsedHist::SyncStop { ts } => ("syncstop", ts, "c/e", "1", "1)1"),
+                Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version(), p.iter()),
+                Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version(), p.iter()),
+                Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version(), "1)1"),
+                Hist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version(), "1)1"),
+                Hist::SyncStart { ts } => ("SStart", ts, "c/e", "1", "1)1"),
+                Hist::SyncStop { ts } => ("SStop", ts, "c/e", "1", "1)1"),
             };
             *counts.entry(kind.to_string()).or_insert(0) += 1;
             *counts.entry(ebuild.to_string()).or_insert(0) += 1;
@@ -396,7 +394,7 @@ mod tests {
     fn parse_hist_all() {
         parse_hist("test/emerge.all.log", 1483228800, 1483747200,
                    None, None, true, false, None, false,
-                   vec![("start",37415),("stop",37415)]);
+                   vec![("MStart",37415),("MStop",37415)]);
     }
 
     #[test] #[rustfmt::skip]
@@ -404,14 +402,14 @@ mod tests {
     fn parse_hist_nullbytes() {
         parse_hist("test/emerge.nullbytes.log", 1327867709, 1327871057,
                    None, None, true, false, None, false,
-                   vec![("start",14),("stop",14)]);
+                   vec![("MStart",14),("MStop",14)]);
     }
     #[test] #[rustfmt::skip]
     /// Emerge log with various invalid data
     fn parse_hist_badtimestamp() {
         parse_hist("test/emerge.badtimestamp.log", 1327867709, 1327871057,
                    None, None, true, false, None, false,
-                   vec![("start",2),("stop",3),
+                   vec![("MStart",2),("MStop",3),
                         ("media-libs/jpeg",1),    //letter in timestamp
                         ("dev-libs/libical",2),
                         ("media-libs/libpng",2)]);
@@ -421,7 +419,7 @@ mod tests {
     fn parse_hist_badversion() {
         parse_hist("test/emerge.badversion.log", 1327867709, 1327871057,
                    None, None, true, false, None, false,
-                   vec![("start",3),("stop",2),
+                   vec![("MStart",3),("MStop",2),
                         ("media-libs/jpeg",2),
                         ("dev-libs/libical",2),
                         ("media-libs/libpng",1)]); //missing version
@@ -431,7 +429,7 @@ mod tests {
     fn parse_hist_shortline() {
         parse_hist("test/emerge.shortline.log", 1327867709, 1327871057,
                    None, None, true, false, None, false,
-                   vec![("start",3),("stop",2),
+                   vec![("MStart",3),("MStop",2),
                         ("media-libs/jpeg",2),
                         ("dev-libs/libical",1),    //missing end of line and spaces in iter
                         ("media-libs/libpng",2)]);
@@ -453,7 +451,7 @@ mod tests {
         ] {
             parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
                        None, None, true, false, f, e,
-                       vec![("start",c1),("stop",c2)]);
+                       vec![("MStart",c1),("MStop",c2)]);
         }
     }
 
@@ -476,7 +474,7 @@ mod tests {
         ] {
             parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
                        min, max, true, false, None, true,
-                       vec![("start",c1),("stop",c2)]);
+                       vec![("MStart",c1),("MStop",c2)]);
         }
     }
 
@@ -490,7 +488,7 @@ mod tests {
         ] {
             parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
                        None, None, m, s, None, false,
-                       vec![("start",c1),("stop",c2),("syncstart",c3),("syncstop",c4)]);
+                       vec![("MStart",c1),("MStop",c2),("SStart",c3),("SStop",c4)]);
         }
     }
 
@@ -499,7 +497,7 @@ mod tests {
         let pretend = new_pretend(File::open(filename).unwrap(), filename);
         let mut count = 0;
         // Check that all items look valid
-        for ParsedPretend { ebuild, version } in pretend {
+        for Pretend { ebuild, version } in pretend {
             assert_eq!(ebuild, expect[count].0);
             assert_eq!(version, expect[count].1);
             count += 1;
