@@ -48,6 +48,9 @@ applies to dates and durations at the same time.
 | Display currently installed package's USE/CFLAGS/date | yes    | no    | no    |
 | Display merge begin time or end time                  | end    | begin | end   |
 
+If the log file is truncated and contains a merge end event without a merge start : qlop displays
+nothing, genlop displays a buggy time, emlop displays the time as `?`.
+
 ## Merge stats
 
 Emlop has a dedicated `stats` command. {gen,q}lop spread the functionality between multiple and

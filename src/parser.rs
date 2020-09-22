@@ -331,29 +331,36 @@ fn parse_pretend(line: &str, re: &Regex) -> Option<Pretend> {
                    version: c.get(2).unwrap().as_str().to_string() })
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::parser::*;
     use std::{collections::HashMap, fs::File};
 
     /// This checks parsing the given emerge.log.
-    fn parse_hist(filename: &str,
-                  mints: i64,
-                  maxts: i64,
-                  filter_mints: Option<i64>,
-                  filter_maxts: Option<i64>,
-                  parse_merge: bool,
-                  parse_sync: bool,
-                  filter_pkg: Option<&str>,
-                  exact: bool,
-                  expect_counts: Vec<(&str, usize)>) {
+    fn chk_hist(file: &str,
+                parse_merge: bool,
+                parse_unmerge: bool,
+                parse_sync: bool,
+                filter_mints: Option<i64>,
+                filter_maxts: Option<i64>,
+                filter_pkg: Option<&str>,
+                exact: bool,
+                expect_counts: Vec<(&str, usize)>) {
         // Setup
-        let hist = new_hist(filename.into(),
+        let (mints, maxts) = match file {
+            "10000" => (1517609348, 1520891098),
+            "all" => (1483228800, 1483747200),
+            "badtimestamp" => (1327867709, 1327871057),
+            "badversion" => (1327867709, 1327871057),
+            "nullbytes" => (1327867709, 1327871057),
+            "shortline" => (1327867709, 1327871057),
+            o => unimplemented!("Unknown test log file {:?}", o),
+        };
+        let hist = new_hist(format!("test/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
                             parse_merge,
-                            false,
+                            parse_unmerge,
                             parse_sync,
                             filter_pkg,
                             exact).unwrap();
@@ -384,111 +391,120 @@ mod tests {
         for (t, ref c) in expect_counts {
             let v = counts.get(t).unwrap_or(&0);
             assert_eq!(v, c,
-                       "Got {} {}, expected {:?} with {:?} {} {:?} {:?}",
+                       "Got {} {}, expected {:?} with pkg={:?} exact={} min={:?} max={:?}",
                        v, t, c, filter_pkg, exact, filter_mints, filter_maxts);
         }
     }
 
-    #[test] #[rustfmt::skip]
+    #[test]
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
-        parse_hist("test/emerge.all.log", 1483228800, 1483747200,
-                   None, None, true, false, None, false,
-                   vec![("MStart",37415),("MStop",37415)]);
+        let t = vec![("MStart", 37415)];
+        chk_hist("all", true, false, false, None, None, None, false, t);
     }
 
-    #[test] #[rustfmt::skip]
+    #[test]
     /// Emerge log with various invalid data
     fn parse_hist_nullbytes() {
-        parse_hist("test/emerge.nullbytes.log", 1327867709, 1327871057,
-                   None, None, true, false, None, false,
-                   vec![("MStart",14),("MStop",14)]);
+        let t = vec![("MStart", 14), ("MStop", 14)];
+        chk_hist("nullbytes", true, false, false, None, None, None, false, t);
     }
-    #[test] #[rustfmt::skip]
+
+    #[test]
     /// Emerge log with various invalid data
     fn parse_hist_badtimestamp() {
-        parse_hist("test/emerge.badtimestamp.log", 1327867709, 1327871057,
-                   None, None, true, false, None, false,
-                   vec![("MStart",2),("MStop",3),
-                        ("media-libs/jpeg",1),    //letter in timestamp
-                        ("dev-libs/libical",2),
-                        ("media-libs/libpng",2)]);
+        let t = vec![("MStart", 2),
+                     ("MStop", 3),
+                     ("media-libs/jpeg", 1), //letter in timestamp
+                     ("dev-libs/libical", 2),
+                     ("media-libs/libpng", 2)];
+        chk_hist("badtimestamp", true, false, false, None, None, None, false, t);
     }
-    #[test] #[rustfmt::skip]
+
+    #[test]
     /// Emerge log with various invalid data
     fn parse_hist_badversion() {
-        parse_hist("test/emerge.badversion.log", 1327867709, 1327871057,
-                   None, None, true, false, None, false,
-                   vec![("MStart",3),("MStop",2),
-                        ("media-libs/jpeg",2),
-                        ("dev-libs/libical",2),
-                        ("media-libs/libpng",1)]); //missing version
+        let t = vec![("MStart", 3),
+                     ("MStop", 2),
+                     ("media-libs/jpeg", 2),
+                     ("dev-libs/libical", 2),
+                     ("media-libs/libpng", 1)]; //missing version
+        chk_hist("badversion", true, false, false, None, None, None, false, t);
     }
-    #[test] #[rustfmt::skip]
+
+    #[test]
     /// Emerge log with various invalid data
     fn parse_hist_shortline() {
-        parse_hist("test/emerge.shortline.log", 1327867709, 1327871057,
-                   None, None, true, false, None, false,
-                   vec![("MStart",3),("MStop",2),
-                        ("media-libs/jpeg",2),
-                        ("dev-libs/libical",1),    //missing end of line and spaces in iter
-                        ("media-libs/libpng",2)]);
+        let t = vec![("MStart", 3),
+                     ("MStop", 2),
+                     ("media-libs/jpeg", 2),
+                     ("dev-libs/libical", 1), //missing end of line and spaces in iter
+                     ("media-libs/libpng", 2)];
+        chk_hist("shortline", true, false, false, None, None, None, false, t);
     }
 
-    #[test] #[rustfmt::skip]
+    #[test]
+    /// Basic counts, with every combination of merge/unmerge/sync
+    fn parse_hist_nofilter() {
+        for i in 0..8 {
+            let m = (i & 0b001) == 0;
+            let u = (i & 0b010) == 0;
+            let s = (i & 0b100) == 0;
+            let t = vec![("MStart", if m { 889 } else { 0 }),
+                         ("MStop", if m { 832 } else { 0 }),
+                         ("UStart", if u { 832 } else { 0 }),
+                         ("UStop", if u { 832 } else { 0 }),
+                         ("SStart", if s { 163 } else { 0 }),
+                         ("SStop", if s { 150 } else { 0 })];
+            chk_hist("10000", m, u, s, None, None, None, false, t);
+        }
+    }
+
+    #[test]
     /// Filtering by package
     fn parse_hist_filter_pkg() {
-        for (f,e,c1,c2) in vec![(None,                               false, 889, 832), // Everything
-                                (Some("kactivities"),                false,   4,   4), // regexp matches 4
-                                (Some("kactivities"),                true,    2,   2), // string matches 2
-                                (Some("kde-frameworks/kactivities"), true,    2,   2), // string matches 2
-                                (Some("frameworks/kactivities"),     true,    0,   0), // string matches nothing
-                                (Some("ks/kw"),                      false,   9,   8), // regexp matches 16 (+1 failed)
-                                (Some("file"),                       false,   7,   7), // case-insensitive
-                                (Some("FILE"),                       false,   7,   7), // case-insensitive
-                                (Some("file-next"),                  true,    0,   0), // case-sensitive
-                                (Some("File-Next"),                  true,    1,   1), // case-sensitive
-        ] {
-            parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
-                       None, None, true, false, f, e,
-                       vec![("MStart",c1),("MStop",c2)]);
+        #[rustfmt::skip]
+        let t = vec![(Some("kactivities"),                false, 4, 4, 4, 4), // regexp matches 4
+                     (Some("kactivities"),                true,  2, 2, 2, 2), // string matches 2
+                     (Some("kde-frameworks/kactivities"), true,  2, 2, 2, 2), // string matches 2
+                     (Some("frameworks/kactivities"),     true,  0, 0, 0, 0), // string matches nothing
+                     (Some("ks/kw"),                      false, 9, 8, 8, 8), // regexp matches 16 (+1 failed)
+                     (Some("file"),                       false, 7, 7, 6, 6), // case-insensitive
+                     (Some("FILE"),                       false, 7, 7, 6, 6), // case-insensitive
+                     (Some("file-next"),                  true,  0, 0, 0, 0), // case-sensitive
+                     (Some("File-Next"),                  true,  1, 1, 0, 0), // case-sensitive
+        ];
+        for (f, e, m1, m2, u1, u2) in t {
+            let c = vec![("MStart", m1), ("MStop", m2), ("UStart", u1), ("UStop", u2)];
+            chk_hist("10000", true, true, false, None, None, f, e, c);
         }
     }
 
-    #[test] #[rustfmt::skip]
+    #[test]
     /// Filtering by timestamp
     fn parse_hist_filter_ts() {
-        let (umin,umax,fmin,fmax) = (std::i64::MIN, std::i64::MAX, 1517609348, 1520891098);
-        for (min,max,c1,c2) in vec![(None,             None,           889, 832),
-                                    (Some(umin),       None,           889, 832),
-                                    (Some(fmin),       None,           889, 832),
-                                    (None,             Some(umax),     889, 832),
-                                    (None,             Some(fmax),     889, 832),
-                                    (Some(fmin),       Some(fmax),     889, 832),
-                                    (Some(fmax),       None,             0,   0),
-                                    (None,             Some(fmin),       0,   1), //fist line of this file happens to be a stop
-                                    (None,             Some(umin),       0,   0),
-                                    (Some(umax),       None,             0,   0),
-                                    (Some(1517917751), Some(1517931835), 6,   6),
-                                    (Some(1517959010), Some(1518176159), 24, 21),
-        ] {
-            parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
-                       min, max, true, false, None, true,
-                       vec![("MStart",c1),("MStop",c2)]);
-        }
-    }
-
-    #[test] #[rustfmt::skip]
-    /// Enabling and disabling sync
-    fn parse_hist_sync_merge() {
-        for (m,s,c1,c2,c3,c4) in vec![(true,   true, 889, 832, 163, 150),
-                                      (false,  true,   0,   0, 163, 150),
-                                      (true,  false, 889, 832,   0,   0),
-                                      (false, false,   0,   0,   0,   0),
-        ] {
-            parse_hist("test/emerge.10000.log", 1517609348, 1520891098,
-                       None, None, m, s, None, false,
-                       vec![("MStart",c1),("MStop",c2),("SStart",c3),("SStop",c4)]);
+        let (umin, umax, fmin, fmax) = (std::i64::MIN, std::i64::MAX, 1517609348, 1520891098);
+        #[rustfmt::skip]
+        let t = vec![(Some(umin),       None,           889, 832, 832, 832, 163, 150),
+                     (Some(fmin),       None,           889, 832, 832, 832, 163, 150),
+                     (None,             Some(umax),     889, 832, 832, 832, 163, 150),
+                     (None,             Some(fmax),     889, 832, 832, 832, 163, 150),
+                     (Some(fmin),       Some(fmax),     889, 832, 832, 832, 163, 150),
+                     (Some(fmax),       None,             0,   0,   0,   0,   0,   0),
+                     (None,             Some(fmin),       0,   1,   0,   0,   0,   0), //fist line of this file happens to be a stop
+                     (None,             Some(umin),       0,   0,   0,   0,   0,   0),
+                     (Some(umax),       None,             0,   0,   0,   0,   0,   0),
+                     (Some(1517917751), Some(1517931835), 6,   6,   5,   5,   2,   2),
+                     (Some(1517959010), Some(1518176159), 24, 21,  23,  23,  16,  16),
+        ];
+        for (min, max, m1, m2, u1, u2, s1, s2) in t {
+            let c = vec![("MStart", m1),
+                         ("MStop", m2),
+                         ("UStart", u1),
+                         ("UStop", u2),
+                         ("SStart", s1),
+                         ("SStop", s2)];
+            chk_hist("10000", true, true, true, min, max, None, true, c);
         }
     }
 
