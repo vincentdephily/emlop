@@ -1,4 +1,5 @@
 use crate::{parser::*, proces::*, *};
+use anyhow::bail;
 use chrono::{Datelike, Duration, Timelike, Weekday};
 use std::{collections::{BTreeMap, HashMap},
           io::{stdin, stdout, Stdout}};
@@ -414,6 +415,17 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "No pretended merge found")?;
     }
     Ok(totcount > 0)
+}
+
+pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
+    let shell = match subargs.value_of("shell") {
+        Some("bash") => clap::Shell::Bash,
+        Some("zsh") => clap::Shell::Zsh,
+        Some("fish") => clap::Shell::Fish,
+        o => bail!("Unsupported shell {:?}", o),
+    };
+    cli::build_cli_nocomplete().gen_completions_to("emlop", shell, &mut std::io::stdout());
+    Ok(true)
 }
 
 

@@ -44,6 +44,9 @@ Emlop is split into `log`, `predict` and `stats` subcommands, which can be abbre
 first letter. This file doesn't show everything, see `emlop --help` and `emlop <sucommand> --help`
 for complete and up to date usage info.
 
+Shell autocompletion is available. If you have installed emlop manually, generate the completion
+script for your shell with the `complete` subcommand.
+
 ### Subcommands and arguments
 
 Show log of sucessful merges and syncs:

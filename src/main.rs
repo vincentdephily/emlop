@@ -25,6 +25,7 @@ fn main() {
         ("log", Some(sub_args)) => cmd_list(&args, sub_args, &styles),
         ("stats", Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, &styles),
         ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args, &styles),
+        ("complete", Some(sub_args)) => cmd_complete(sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
     };
     tw.flush().unwrap_or(());

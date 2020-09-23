@@ -141,14 +141,10 @@ part of the broader portage-utils; is is mature and maintained. Emlop started in
 is mature and still adding features. Pqlop and Golop started in 2011 and 2017 respectively, but seem
 to be abandonned experiments.
 
-|                                                       | genlop | qlop   | emlop  |
-| :---------------------------------------------------- | :----: | :----: | :----: |
-| Bash completion                                       | yes    | no     | no     |
-| An ebuild in the gentoo portage tree                  | yes    | yes    | no     |
-| Support for non-Linux platforms                       | yes    | yes    | no     |
-| Unittests                                             | no     | yes    | yes    |
-| Documentation and help                                | ok     | good   | good   |
-| Development activity                                  | mature | active | active |
-
-Emlop cannot yet detect current emerge processes on non-Linux; I'm taking an educated guess for the
-other tools.
+|                                                       | genlop | qlop   | emlop                |
+| :---------------------------------------------------- | :----: | :----: | :------------------: |
+| Shell completion                                      | bash   | none   | bash/zsh/fish/elvish |
+| An ebuild in the gentoo portage tree                  | yes    | yes    | no                   |
+| Unittests                                             | no     | yes    | yes                  |
+| Documentation and help                                | ok     | good   | good                 |
+| Development activity                                  | mature | active | active               |
