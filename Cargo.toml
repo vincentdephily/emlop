@@ -29,6 +29,9 @@ crossbeam-channel = "0.4.4"
 features = ["ansi_formatting"]
 version = "1.2.1"
 
+[build-dependencies]
+clap = "2.33.3"
+
 [dev-dependencies]
 assert_cmd = "1.0.1"
 
