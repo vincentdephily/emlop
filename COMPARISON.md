@@ -136,15 +136,15 @@ fine and {gen,em}lop agree with each other.
 
 ## misc
 
-Genlop is the original from 2007; mature but development has stoped in 2015. Qlop started in 2011 as
+Genlop is the original from 2007; mature but in maintenance mode since 2015. Qlop started in 2011 as
 part of the broader portage-utils; is is mature and maintained. Emlop started in december 2017, it
 is mature and still adding features. Pqlop and Golop started in 2011 and 2017 respectively, but seem
 to be abandonned experiments.
 
-|                                                       | genlop | qlop   | emlop                |
-| :---------------------------------------------------- | :----: | :----: | :------------------: |
-| Shell completion                                      | bash   | none   | bash/zsh/fish/elvish |
-| An ebuild in the gentoo portage tree                  | yes    | yes    | no                   |
-| Unittests                                             | no     | yes    | yes                  |
-| Documentation and help                                | ok     | good   | good                 |
-| Development activity                                  | mature | active | active               |
+|                                                       | genlop | qlop   | emlop         |
+| :---------------------------------------------------- | :----: | :----: | :-----------: |
+| Shell completion                                      | bash   | none   | bash/zsh/fish |
+| An ebuild in the gentoo portage tree                  | yes    | yes    | no            |
+| Unittests                                             | no     | yes    | yes           |
+| Documentation and help                                | ok     | good   | good          |
+| Development activity                                  | mature | active | active        |

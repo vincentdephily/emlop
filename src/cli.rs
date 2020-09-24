@@ -1,5 +1,6 @@
 use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 
+/// Generate cli argument parser without the `complete` subcommand.
 pub fn build_cli_nocomplete() -> App<'static, 'static> {
     let arg_limit =
         Arg::with_name("limit").long("limit")
@@ -130,17 +131,19 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
                     .arg(&arg_limit))
 }
 
+/// Generate cli argument parser.
 pub fn build_cli() -> App<'static, 'static> {
     let c = build_cli_nocomplete();
     c.subcommand(SubCommand::with_name("complete")
-                 .about("Generate shell completion script")
+                 .about("Generate shell completion script.")
                  .long_about("Write shell completion script to stdout.\n\n\
 You should redirect the output to a file that will be sourced by your shell.\n\
 For example: `emlop complete bash > ~/.bash_completion.d/emlop`.\n\
 To apply the changes, either restart you shell or `source` the generated file.
 ")
                  .arg(Arg::with_name("shell")
-                     .help("Target shell")
+                      .help("Target shell")
+                      .required(true)
                       .possible_values(&["bash","zsh","fish"])))
 }
 
