@@ -434,7 +434,10 @@ mod tests {
     use super::{fmt_time, timespan_next, Timespan};
     use assert_cmd::Command;
     use chrono::{DateTime, Datelike, Local, TimeZone, Utc, Weekday};
+    use escargot::CargoBuild;
+    use lazy_static::lazy_static;
     use std::{collections::HashMap,
+              path::PathBuf,
               thread,
               time::{Duration, SystemTime, UNIX_EPOCH}};
 
@@ -450,8 +453,14 @@ mod tests {
         }
     }
 
+    lazy_static! {
+        static ref EMLOP: PathBuf =
+            CargoBuild::new().current_release().current_target().run().unwrap().path().into();
+    }
+    /// Return a `Command` for the main binary, making sure it is compiled first. The first call can
+    /// take a while, so do a warmup call before time-sensitive tests.
     fn emlop() -> Command {
-        Command::cargo_bin("emlop").unwrap()
+        Command::new(&*EMLOP)
     }
 
     #[test]
@@ -508,6 +517,7 @@ mod tests {
 
     #[test]
     fn predict_emerge_p() {
+        let _cache_cargo_build = emlop();
         let t = vec![// Check garbage input
                      ("blah blah\n", format!("No pretended merge found\n"), 2),
                      // Check all-unknowns
@@ -728,6 +738,7 @@ mod tests {
     /// when you're bootstrapping an Gentoo and setting the time halfway through.
     #[test]
     fn negative_merge_time() {
+        let _cache_cargo_build = emlop();
         for (a, i, o) in vec![// For `log` we show an unknown time.
                  (vec!["-F", "test/emerge.negtime.log", "l", "-sms"],
                   "",
