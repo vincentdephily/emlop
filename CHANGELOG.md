@@ -15,7 +15,7 @@ Long time no release, gotta get those goodies out of the door, perhaps even in t
 * Various optimisations, emlop is now unambiguously faster than its peers.
 * Fix handling of negative durations (system clock gone backwards).
   Also, if warnings are enabled clock jumps will be reported.
-* Code cleanups, dep updates, expanded unittests, bumped MSRV to 1.37.0.
+* Code cleanups, dep updates, expanded unittests, bumped MSRV to 1.41.1.
 
 # 0.3.1 2019-06-10
 
