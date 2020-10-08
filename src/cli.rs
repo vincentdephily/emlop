@@ -102,10 +102,10 @@ Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago',
              .value_name("when")
              .help("Enable color (auto/always/never/y/n)."))
         .subcommand(SubCommand::with_name("log")
-                    .about("Show log of sucessful merges and syncs.")
-                    .long_about("Show log of sucessful merges and syncs.\n\
-* Merges: date, duration, package name-version.\n\
-* Syncs:  date, duration.")
+                    .about("Show log of sucessful merges, unmerges and syncs.")
+                    .long_about("Show log of sucessful merges, unmerges and syncs.\n\
+* (Un)merges: date, duration, package name-version.\n\
+* Syncs:      date, duration.")
                     .help_message("Show short (-h) or detailed (--help) help.")
                     .arg(&arg_show_l)
                     .arg(&arg_exact)

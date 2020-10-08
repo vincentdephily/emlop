@@ -1,11 +1,21 @@
 # Unreleased
 
-* Display predicted merge datetime (not just merge duration).
-* Optionaly display unmerge operations.
-* -f/-t are now aliases from --from/--to.
-  -f as an alias for --logfile was renamed to -F.
+Feature release: unmerge events, shell completion, predicted merge timestamp, and optimizations.
+
+Long time no release, gotta get those goodies out of the door, perhaps even in the portage tree :)
+
+* Display predicted merge timestamp (not just duration).
+* Display unmerge logs (optional: `--show u`) and stats (always).
+  `stats --show m` renamed to `stats --show p`
+* Stats columns were reordered to be more consistent.
+* Stats give the predicted rather than average time where it makes sense.
+* Added shell completion scripts for bash, zsh, fish.
+* `-f/-t` are now aliases of `--from/--to`.
+  `-f` as an alias of `--logfile` was renamed to `-F`.
+* Various optimisations, emlop is now unambiguously faster than its peers.
 * Fix handling of negative durations (system clock gone backwards).
   Also, if warnings are enabled clock jumps will be reported.
+* Code cleanups, dep updates, expanded unittests, bumped MSRV to 1.37.0.
 
 # 0.3.1 2019-06-10
 

@@ -15,7 +15,11 @@ There's a `structopt` branch doing just that, but the end result is not as convi
 For nicer parser implementation ?
 ### Better parallelization
 Currently a 'parsing' and a 'main' tread but should be possible to parse using all cores.
-https://github.com/alex-shapiro/ditto might help with ordering ?
+* https://github.com/alex-shapiro/ditto might help with ordering ?
+* StreamExt.buffered_unordered
+* Use something more low-level than `.lines()` ?
+* A pure IO thread ?
+* Swithc to proper async ?
 ### Reduce allocations during parsing
 Should be able to take slices from the input instead of allocating new Strings.
 https://deterministic.space/secret-life-of-cows.html ?
