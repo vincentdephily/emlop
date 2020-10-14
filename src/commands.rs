@@ -313,7 +313,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         #[rustfmt::skip]
         writeln!(tw, "Pid {}: ...{}\t{}{:>9}{}",
                  i.pid,
-                 &i.cmdline[(i.cmdline.len()-35)..],
+                 &i.cmdline[(i.cmdline.len().saturating_sub(35))..],
                  st.dur_p, fmt_duration(fmtd, now-i.start), st.dur_s)?;
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
