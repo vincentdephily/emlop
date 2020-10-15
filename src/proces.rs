@@ -13,7 +13,6 @@ use sysconf::raw::{sysconf, SysconfVariable};
 
 #[derive(Debug)]
 pub struct Info {
-    pub comm: String,
     pub cmdline: String,
     pub start: i64,
     pub pid: i32,
@@ -28,30 +27,23 @@ fn get_proc_info(filter: Option<&str>,
     // Parse pid.
     // At this stage we expect `entry` to not always correspond to a process.
     let pid = i32::from_str(&entry.file_name().to_string_lossy()).ok()?;
-    // Parse command name and start time.
     // See linux/Documentation/filesystems/proc.txt Table 1-4: Contents of the stat files.
-    // The command name is surrounded by parens and may contain spaces. Parsing will fail if it contains a closing paren followed by a space.
-    let mut statstr = String::new();
-    File::open(entry.path().join("stat")).ok()?.read_to_string(&mut statstr).ok()?;
-    let statfields: Vec<&str> = statstr.split(' ').collect();
-    let mut parse_offset = 0;
-    let mut comm = statfields[1].trim_start_matches('(').to_string();
-    while !comm.ends_with(')') {
-        parse_offset += 1;
-        comm = format!("{} {}", comm, statfields[1 + parse_offset]);
-    }
-    comm = comm.trim_end_matches(')').to_string();
-    // Bail out now if the command name doesn't match.
-    if filter.map_or(false, |f| f != comm) {
+    let mut stat = String::new();
+    File::open(entry.path().join("stat")).ok()?.read_to_string(&mut stat).ok()?;
+    // Parse command name, bail out now if it doesn't match.
+    // The command name is surrounded by parens and may contain spaces.
+    let (cmd_start, cmd_end) = (stat.find('(')? + 1, stat.rfind(')')?);
+    if filter.map_or(false, |f| f != &stat[cmd_start..cmd_end]) {
         return None;
     }
-    let start_time = i64::from_str(statfields[21 + parse_offset]).ok()?;
+    // Parse start time
+    let start_time = i64::from_str(stat[cmd_end + 1..].split(' ').nth(20)?).ok()?;
     // Parse arguments
     let mut cmdline = String::new();
     File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
     cmdline = cmdline.replace("\0", " ").trim().into();
     // Done
-    Some(Info { comm, cmdline, start: time_ref + (start_time / clocktick) as i64, pid })
+    Some(Info { cmdline, start: time_ref + (start_time / clocktick) as i64, pid })
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
@@ -95,7 +87,7 @@ mod tests {
             get_all_info(None)
             .unwrap()
             .iter()
-            .fold(BTreeMap::new(), |mut a,i| {a.insert(i.pid, (i.comm.clone(),Some(i.start),None)); a});
+            .fold(BTreeMap::new(), |mut a,i| {a.insert(i.pid, (i.cmdline.clone(),Some(i.start),None)); a});
         // Then get them using the ps implementation (merging them into the same data structure)
         let ps_start = epoch_now();
         let re = Regex::new("^ *([0-9]+) [A-Za-z]+ ([a-zA-Z0-9: ]+)$").unwrap();
