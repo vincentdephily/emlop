@@ -195,7 +195,7 @@ fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<impl Fn(&str) -> 
             info!("Package filter: None");
             FilterPkg::True
         },
-        (Some(search), true) if search.contains("/") => {
+        (Some(search), true) if search.contains('/') => {
             info!("Package filter: categ/name == {}", search);
             FilterPkg::Eq { e: search.to_string() }
         },
@@ -248,7 +248,9 @@ fn parse_start(enabled: bool,
         return None;
     }
     let mut tokens = line.split_ascii_whitespace();
-    let (t3, t5, t6) = (tokens.nth(2)?, tokens.nth(1)?, tokens.nth(0)?);
+    let t3 = tokens.nth(2)?;
+    let t5 = tokens.nth(1)?;
+    let t6 = tokens.next()?;
     let (ebuild, version) = split_atom(t6)?;
     if !(filter_pkg)(ebuild) {
         return None;
@@ -267,7 +269,9 @@ fn parse_stop(enabled: bool,
         return None;
     }
     let mut tokens = line.split_ascii_whitespace();
-    let (t4, t6, t7) = (tokens.nth(3)?, tokens.nth(1)?, tokens.nth(0)?);
+    let t4 = tokens.nth(3)?;
+    let t6 = tokens.nth(1)?;
+    let t7 = tokens.next()?;
     let (ebuild, version) = split_atom(t7)?;
     if !(filter_pkg)(ebuild) {
         return None;
