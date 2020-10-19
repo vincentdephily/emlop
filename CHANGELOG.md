@@ -1,4 +1,4 @@
-# Unreleased
+# 0.4.0 2020-10-19
 
 Feature release: unmerge events, shell completion, predicted merge timestamp, and optimizations.
 
@@ -15,6 +15,7 @@ Long time no release, gotta get those goodies out of the door, perhaps even in t
 * Various optimisations, emlop is now unambiguously faster than its peers.
 * Fix handling of negative durations (system clock gone backwards).
   Also, if warnings are enabled clock jumps will be reported.
+* Fix rare panic when printing system process comandline.
 * Code cleanups, dep updates, expanded unittests, bumped MSRV to 1.41.1.
 
 # 0.3.1 2019-06-10

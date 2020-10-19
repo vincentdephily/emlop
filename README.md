@@ -201,12 +201,4 @@ Show number of syncs per week:
 
 ## Contributing
 
-Thank you for taking the time to contribute. We're especially looking for
-
-* bug reports
-* feature requests
-* testing in non-gentoo/linux/amd64/portage environements
-* patches
-* praise and encouragements ;)
-
-See [CONTRIBUTING](CONTRIBUTING.md). Emlop is licensed as GPLv3.
+Thanks in advance. See [CONTRIBUTING](CONTRIBUTING.md) for pointers. Emlop is licensed as GPLv3.
