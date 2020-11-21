@@ -310,16 +310,12 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     let mut cms = std::i64::MAX;
     for i in get_all_info(Some("emerge"))? {
         cms = std::cmp::min(cms, i.start);
-        let pid = i.pid.to_string();
-        let (pad, trim) = match i.cmdline.len() + pid.len() - 45 {
-            n if n < 4 => ("", 0),
-            n => ("...", std::cmp::max(3, n)),
-        };
-        #[rustfmt::skip]
-        writeln!(tw, "Pid {}: {}{}\t{}{:>9}{}",
-                 pid,
-                 pad, &i.cmdline[trim..],
-                 st.dur_p, fmt_duration(fmtd, now - i.start), st.dur_s)?;
+        writeln!(tw,
+                 "{:.45}\t{}{:>9}{}",
+                 &i,
+                 st.dur_p,
+                 fmt_duration(fmtd, now - i.start),
+                 st.dur_s)?;
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
         writeln!(tw, "No ongoing merge found")?;

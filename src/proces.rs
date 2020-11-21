@@ -18,6 +18,22 @@ pub struct Info {
     pub pid: i32,
 }
 
+impl std::fmt::Display for Info {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let pid = format!("Pid {}: ", self.pid);
+        let capacity = f.precision().unwrap_or(100).saturating_sub(pid.len());
+        let cmdlen = self.cmdline.len();
+        if capacity >= cmdlen || cmdlen < 4 {
+            write!(f, "{}{}", pid, &self.cmdline)
+        } else if capacity > 3 {
+            write!(f, "{}...{}", pid, &self.cmdline[(cmdlen - capacity + 3)..])
+        } else {
+            write!(f, "{}...", pid)
+        }
+    }
+}
+
+
 /// Get command name, arguments, start time, and pid for one process.
 fn get_proc_info(filter: Option<&str>,
                  entry: &DirEntry,
@@ -133,5 +149,42 @@ mod tests {
             }
         }
         assert!(e < 10, "Got failure score of {}", e);
+    }
+
+    #[test]
+    fn format_info() {
+        let s = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let t: Vec<(i32, usize, usize, &str)> = vec![// Precison is way too small, use elipsis starting at 4 chars
+                                                     (1, 1, 1, "Pid 1: a"),
+                                                     (1, 2, 1, "Pid 1: ab"),
+                                                     (2, 3, 1, "Pid 2: abc"),
+                                                     (3, 4, 1, "Pid 3: ..."),
+                                                     (4, 5, 1, "Pid 4: ..."),
+                                                     (330, 1, 1, "Pid 330: a"),
+                                                     (331, 2, 1, "Pid 331: ab"),
+                                                     (332, 3, 1, "Pid 332: abc"),
+                                                     (333, 4, 1, "Pid 333: ..."),
+                                                     (334, 5, 1, "Pid 334: ..."),
+                                                     // Here we have enough space
+                                                     (1, 1, 12, "Pid 1: a"),
+                                                     (1, 2, 12, "Pid 1: ab"),
+                                                     (1, 3, 12, "Pid 1: abc"),
+                                                     (1, 4, 12, "Pid 1: abcd"),
+                                                     (1, 5, 12, "Pid 1: abcde"),
+                                                     (12, 4, 12, "Pid 12: abcd"),
+                                                     (123, 3, 12, "Pid 123: abc"),
+                                                     (1234, 2, 12, "Pid 1234: ab"),
+                                                     // Running out of space again, but we can display part of it
+                                                     (1, 6, 12, "Pid 1: ...ef"),
+                                                     (1, 7, 12, "Pid 1: ...fg"),
+                                                     (1, 8, 12, "Pid 1: ...gh"),
+                                                     (22, 9, 12, "Pid 22: ...i"),];
+        for (pid, cmdlen, precision, out) in t.into_iter() {
+            dbg!((pid, cmdlen, precision, out));
+            let i = Info { pid, cmdline: s[..cmdlen].to_string(), start: 0 };
+            let f = format!("{1:.0$}", precision, i);
+            assert!(precision < 10 || f.len() <= precision, "{} <= {}", f.len(), precision);
+            assert_eq!(f, out);
+        }
     }
 }
