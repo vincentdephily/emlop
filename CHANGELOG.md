@@ -1,3 +1,12 @@
+# 0.4.1 2020-12-26
+
+Maintenance release
+
+* Fix rare panic when printing system process commandline.
+  Previous fix didn't quite do it, this one has an associated test.
+* Switch to panic=abort (2% speedup, smaller binary)
+* Routine deps update
+
 # 0.4.0 2020-10-19
 
 Feature release: unmerge events, shell completion, predicted merge timestamp, and optimizations.
