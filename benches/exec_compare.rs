@@ -14,11 +14,13 @@
 //!     clap = "*"
 //!     stats-cli = "*"
 //!     tabwriter = "*"
+//!     rand = "*"
 //! scriptisto-end
 
 use clap::{value_t, values_t, App, AppSettings, Arg};
 use inc_stats::*;
-use std::{collections::{BTreeMap, HashMap},
+use rand::prelude::SliceRandom;
+use std::{collections::BTreeMap,
           fs::File,
           io,
           io::Write,
@@ -152,13 +154,11 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     let suites = values_t!(cli.values_of("suites"), String).unwrap();
     let nullout = cli.is_present("nullout");
 
-    // Construct the test list. We abuse the hashmap behavior to run tests in random order.
-    let mut mytests = HashMap::<usize, (String, &str, &[&str], Option<&str>)>::new();
-    let mut n = 0;
+    // Construct the test list.
+    let mut mytests = Vec::<(String, &str, &[&str], Option<&str>)>::new();
     for p in progs.iter() {
         let (mut p1, mut p2) = p.split_at(p.find(':').unwrap_or(p.len()));
-        let pmatch: Vec<&str> =
-            allprogs.clone().into_iter().filter(|s| s.starts_with(p1)).collect();
+        let pmatch: Vec<&str> = allprogs.iter().filter(|s| s.starts_with(p1)).cloned().collect();
         if 1 != pmatch.len() {
             writeln!(io::stderr(),
                      "Found {} match for {:?}, should match exactly one of {}",
@@ -170,7 +170,7 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         p1 = pmatch[0];
         p2 = match p2.is_empty() {
             true => p1,
-            false => p2.trim_left_matches(':'),
+            false => p2.trim_start_matches(':'),
         };
         let tests: Vec<_> =
             tests.iter()
@@ -179,9 +179,13 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         let foundsuites: Vec<String> = tests.iter().map(|&(su, _, _, _)| su.to_string()).collect();
         suites.iter().filter(|s| !foundsuites.contains(s)).for_each(|s| writeln!(io::stderr(), "Test suite {} not defined for {}.", s, p1).unwrap());
         for &(su, _, ar, si) in tests {
+            let cmd = format!("{}\t{} {}{}",
+                              su,
+                              p2,
+                              ar.join(" "),
+                              si.map_or(String::new(), |s| format!(" < {}", s)));
             for _ in 0..runs {
-                mytests.insert(n, (format!("{}\t{}", su, p2), p2, ar, si));
-                n += 1;
+                mytests.push((cmd.clone(), p2, ar, si));
             }
         }
     }
@@ -196,19 +200,15 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
                                   .unwrap());
 
     // Run the tests and collect the results
+    mytests.shuffle(&mut rand::thread_rng());
+    let mut n = mytests.len();
     let mut times: BTreeMap<String, Vec<f64>> = BTreeMap::new();
-    for (name, bin, args, stdin) in mytests.values() {
+    for (name, bin, args, stdin) in &mytests {
         match nullout {
             true => write!(io::stderr(), "\r{} ", n).unwrap(),
-            false => writeln!(io::stderr(),
-                              "{}: {} {}{}",
-                              n,
-                              bin,
-                              args.join(" "),
-                              stdin.map_or(String::new(), |f| format!(" < {}", f))).unwrap(),
+            false => writeln!(io::stderr(), "=== {} {} ===", n, &name).unwrap(),
         };
         n -= 1;
-        let timevec = times.entry(name.clone()).or_insert(vec![]);
         let si = match stdin {
             None => Stdio::inherit(),
             Some(f) => File::open(f).unwrap().into(),
@@ -223,15 +223,13 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
                          .stdout(so)
                          .status()
                          .expect(&format!("Couldn't run {} {:?}", bin, args));
-        let elapsed = start.elapsed();
-        timevec.insert(0,
-                       (elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1_000_000)
-                       as f64);
+        let elapsed = start.elapsed().as_millis() as f64;
+        times.entry(name.clone()).or_insert(vec![]).insert(0, elapsed);
     }
 
     // Output the results
     let mut tw = TabWriter::new(io::stderr());
-    writeln!(tw, "\nsuite\tprog\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tvalues").unwrap();
+    writeln!(tw, "\nsuite\tcmd\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tvalues").unwrap();
     for (key, vals) in times {
         let ss: SummStats = vals.iter().cloned().collect();
         let mut pc: Percentiles = vals.iter().cloned().collect();
@@ -254,7 +252,7 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
                  hist.iter()
                      .map(|(k, v)| format!("{}:{}", k, v))
                      .collect::<Vec<String>>()
-                     .join(","),).unwrap();
+                     .join(",")).unwrap();
     }
     tw.flush().unwrap();
 }

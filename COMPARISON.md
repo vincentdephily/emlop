@@ -6,7 +6,7 @@ Rust. It has since gained features and maturity to compete on all fronts. This f
 [the issue tracker](https://github.com/vincentdephily/emlop/issues).
 
 Known emegre log parsers:
-* [Emlop](https://github.com/vincentdephily/emlop) (Rust) is teh one you're reading about.
+* [Emlop](https://github.com/vincentdephily/emlop) (Rust) is the one you're reading about.
 * [Genlop](https://github.com/gentoo-perl/genlop) (Perl) is the most well known and the inspiration
   for Emlop.
 * [Qlop](https://github.com/gentoo/portage-utils) (C) is pretty fast and part of a larger toolkit.
