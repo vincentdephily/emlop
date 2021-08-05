@@ -14,8 +14,8 @@ peek at the [roadmap](ROADMAP.md) for inspiration.
 
 Send pull requests to [Github](https://github.com/vincentdephily/emlop).
 
-Make sure to `cargo test` before submitting your code. A bugfix should probably include an updated
-unittest.
+Make sure to `cargo test -- --include-ignored` before submitting your code. A bugfix should probably
+include an updated unittest.
 
 Test emlop with the latest rust stable versions from both Gentoo and upstream. Using `rustup` is
 highly recomended.

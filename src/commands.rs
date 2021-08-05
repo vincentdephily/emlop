@@ -509,13 +509,17 @@ mod tests {
         }
     }
 
+    /// Check Basic 'emlop p`. Not a hugely useful test, but it's something.
+    ///
+    /// Ignored by default: depends on there being no currently running emerge.
+    #[ignore]
     #[test]
     fn predict_tty() {
-        // This depends on there being no currently running emerge.
-        // Not a hugely useful test, but it's something.
         emlop().args(&["p"]).assert().code(2).stdout("No pretended merge found\n");
     }
 
+    /// Ignored by default: depends on there being no currently running emerge.
+    #[ignore]
     #[test]
     fn predict_emerge_p() {
         let _cache_cargo_build = emlop();
@@ -740,9 +744,9 @@ mod tests {
     #[test]
     fn negative_merge_time() {
         let _cache_cargo_build = emlop();
-        for (a, i, o) in vec![// For `log` we show an unknown time.
+        for (a, o) in vec![
+            // For `log` we show an unknown time.
                  (vec!["-F", "test/emerge.negtime.log", "l", "-sms"],
-                  "",
                   format!("2019-06-05 09:32:10 +01:00      1:09 Sync\n\
                            2019-06-05 12:26:54 +01:00      5:56 >>> kde-plasma/kwin-5.15.5\n\
                            2019-06-06 03:11:48 +01:00        26 >>> kde-apps/libktnef-19.04.1\n\
@@ -750,23 +754,32 @@ mod tests {
                            2019-06-05 11:18:28 +01:00         ? Sync\n\
                            2019-06-05 11:21:02 +01:00         ? >>> kde-plasma/kwin-5.15.5\n\
                            2019-06-08 22:33:36 +01:00      3:10 >>> kde-plasma/kwin-5.15.5\n")),
-                 // For `pred` the negative merge time is ignored.
-                 (vec!["-F", "test/emerge.negtime.log", "p"],
-                  "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n",
-                  format!("kde-plasma/kwin-5.15.5                              4:33\n\
-                           Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33 @ {}\n",
-                          ts(4 * 60 + 33))),
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
                  (vec!["-F", "test/emerge.negtime.log", "s", "-sa"],
-                  "",
                   format!("kde-apps/libktnef      1          26        26      0         0         ?\n\
                            kde-plasma/kwin        3        9:06      4:33      2         3         1\n\
                            net-misc/chrony        1          34        34      0         0         ?\n\
                            Total                  5       10:06      2:01      2         3         1\n\
                            Sync                   2        1:09      1:09\n")),]
         {
-            emlop().args(a).write_stdin(i).assert().success().stdout(o);
+            emlop().args(a).assert().success().stdout(o);
         }
+    }
+
+    /// Same as negative_merge_time() but for predict command.
+    /// For `pred` the negative merge time is ignored.
+    ///
+    /// Ignored by default: depends on there being no currently running emerge.
+    #[ignore]
+    #[test]
+    fn negative_merge_time_pred() {
+        let _cache_cargo_build = emlop();
+        let a = vec!["-F", "test/emerge.negtime.log", "p"];
+        let i = "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n";
+        let o = format!("kde-plasma/kwin-5.15.5                              4:33\n\
+                           Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33 @ {}\n",
+                        ts(4 * 60 + 33));
+        emlop().args(a).write_stdin(i).assert().success().stdout(o);
     }
 
     #[test]
