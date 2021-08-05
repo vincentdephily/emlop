@@ -515,7 +515,10 @@ mod tests {
     #[ignore]
     #[test]
     fn predict_tty() {
-        emlop().args(&["p"]).assert().code(2).stdout("No pretended merge found\n");
+        emlop().args(&["p", "-F", "test/emerge.10000.log"])
+               .assert()
+               .code(2)
+               .stdout("No pretended merge found\n");
     }
 
     /// Ignored by default: depends on there being no currently running emerge.
