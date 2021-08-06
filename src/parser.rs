@@ -50,8 +50,8 @@ impl Hist {
         match self {
             Self::MergeStart { key, pos2, .. } => &key[..*pos2],
             Self::MergeStop { key, pos2, .. } => &key[..*pos2],
-            Self::UnmergeStart { key, .. } => &key,
-            Self::UnmergeStop { key, .. } => &key,
+            Self::UnmergeStart { key, .. } => key,
+            Self::UnmergeStop { key, .. } => key,
             _ => unreachable!("No ebuild/version for {:?}", self),
         }
     }
@@ -205,7 +205,7 @@ fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<impl Fn(&str) -> 
         },
         (Some(search), false) => {
             info!("Package filter: categ/name ~= {}", search);
-            FilterPkg::Re { r: RegexBuilder::new(&search).case_insensitive(true).build()? }
+            FilterPkg::Re { r: RegexBuilder::new(search).case_insensitive(true).build()? }
         },
     };
     Ok(move |s: &str| match &fp {
@@ -237,7 +237,7 @@ fn parse_ts(line: &str, filter_ts: impl Fn(i64) -> bool) -> Option<(i64, &str)> 
     if !(filter_ts)(ts) {
         return None;
     }
-    Some((ts, &rest[2..].trim_start()))
+    Some((ts, rest[2..].trim_start()))
 }
 fn parse_start(enabled: bool,
                ts: i64,

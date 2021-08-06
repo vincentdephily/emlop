@@ -79,17 +79,17 @@ pub fn value_opt<T, P>(matches: &ArgMatches, name: &str, parse: P) -> Option<T>
 }
 
 pub fn parse_limit(s: &str) -> Result<u16, String> {
-    u16::from_str(&s).map_err(|_| {
-                         format!("Must be an integer between {} and {}",
-                                 std::u16::MIN,
-                                 std::u16::MAX)
-                     })
+    u16::from_str(s).map_err(|_| {
+                        format!("Must be an integer between {} and {}",
+                                std::u16::MIN,
+                                std::u16::MAX)
+                    })
 }
 
 pub fn parse_date(s: &str) -> Result<i64, String> {
     parse_date_string(s, Local::now(), Dialect::Uk)
         .map(|d| d.timestamp())
-        .or_else(|_| i64::from_str(&s.trim()))
+        .or_else(|_| i64::from_str(s.trim()))
         .map_err(|_| "Couldn't parse as a date or timestamp".into())
 }
 

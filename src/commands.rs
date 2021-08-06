@@ -191,7 +191,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 curts = t;
             } else if t > nextts {
                 let group_by = timespan_header(curts, timespan);
-                cmd_stats_group(tw, &st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by,
+                cmd_stats_group(tw, st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by,
                                 &sync_time, &pkg_time)?;
                 sync_time.clear();
                 pkg_time.clear();
@@ -229,7 +229,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
         }
     }
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, t));
-    cmd_stats_group(tw, &st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
+    cmd_stats_group(tw, st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
                     &pkg_time)?;
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
