@@ -208,6 +208,14 @@ impl Styles {
 #[cfg(test)]
 mod tests {
     use crate::*;
+    use chrono::{naive::NaiveDate,
+                 offset::{Local, Offset}};
+
+    /// Get the offset between localtime and UTC in seconds
+    fn offset(year: i32, month: u32, day: u32) -> i64 {
+        let date = NaiveDate::from_ymd(year, month, day);
+        Local {}.offset_from_utc_date(&date).fix().utc_minus_local() as i64
+    }
 
     #[test]
     fn duration() {
@@ -234,7 +242,8 @@ mod tests {
         let now = epoch_now();
         assert_eq!(Ok(1522710000), parse_date("1522710000"));
         assert_eq!(Ok(1522710000), parse_date("   1522710000   "));
-        assert_eq!(Ok(1522713661), parse_date("2018-04-03 01:01:01"));
+        assert_eq!(Ok(1522713661), parse_date("2018-04-03 01:01:01 +01:00"));
+        assert_eq!(Ok(1522717261 + offset(2018, 4, 3)), parse_date("2018-04-03 01:01:01"));
         assert_eq!(Ok(now), parse_date("now"));
         assert_eq!(Ok(now), parse_date("   now   "));
         assert_eq!(Ok(now - 3600), parse_date("1 hour ago"));

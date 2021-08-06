@@ -1,0 +1,59 @@
+1616778408:  >>> emerge (4 of 5) dev-libs/libksba-1.5.0 to /
+1616778408:  === (4 of 5) Cleaning (dev-libs/libksba-1.5.0::/usr/portage/dev-libs/libksba/libksba-1.5.0.ebuild)
+1616778408:  === (4 of 5) Compiling/Merging (dev-libs/libksba-1.5.0::/usr/portage/dev-libs/libksba/libksba-1.5.0.ebuild)
+1616778423:  === (4 of 5) Merging (dev-libs/libksba-1.5.0::/usr/portage/dev-libs/libksba/libksba-1.5.0.ebuild)
+1616778425:  >>> AUTOCLEAN: dev-libs/libksba:0
+1616778425:  === Unmerging... (dev-libs/libksba-1.3.5-r1)
+1616778426:  >>> unmerge success: dev-libs/libksba-1.3.5-r1
+1616778428:  === (4 of 5) Post-Build Cleaning (dev-libs/libksba-1.5.0::/usr/portage/dev-libs/libksba/libksba-1.5.0.ebuild)
+1616778428:  ::: completed emerge (4 of 5) dev-libs/libksba-1.5.0 to /
+1616778428:  >>> emerge (5 of 5) sys-boot/grub-2.06_rc1 to /
+1616778428:  === (5 of 5) Cleaning (sys-boot/grub-2.06_rc1::/usr/portage/sys-boot/grub/grub-2.06_rc1.ebuild)
+1616778428:  === (5 of 5) Compiling/Merging (sys-boot/grub-2.06_rc1::/usr/portage/sys-boot/grub/grub-2.06_rc1.ebuild)
+1616778495:  === (5 of 5) Merging (sys-boot/grub-2.06_rc1::/usr/portage/sys-boot/grub/grub-2.06_rc1.ebuild)
+1616778497:  >>> AUTOCLEAN: sys-boot/grub:2
+1616778497:  === Unmerging... (sys-boot/grub-2.04-r2)
+1616778498:  >>> unmerge success: sys-boot/grub-2.04-r2
+1616778500:  === (5 of 5) Post-Build Cleaning (sys-boot/grub-2.06_rc1::/usr/portage/sys-boot/grub/grub-2.06_rc1.ebuild)
+1616778500:  ::: completed emerge (5 of 5) sys-boot/grub-2.06_rc1 to /
+1616778500:  *** Finished. Cleaning up...
+1616778501:  *** exiting successfully.
+1616778504:  *** terminating.
+1616781118: Started emerge on: Mar 26, 2021 17:51:57
+1616781118:  *** emerge --changed-deps-report=y --quiet-build=y --regex-search-auto=y --sync
+1616781118:  === sync
+1616781118: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1616781122: === Sync completed for gentoo
+1616781122: >>> Syncing repository 'guru' into '/var/db/repos/guru'...
+1616781123: === Sync completed for guru
+1616781123:  *** terminating.
+1617015349: Started emerge on: Mar 29, 2021 11:55:49
+1617015349:  *** emerge --changed-deps-report=y --quiet-build=y --regex-search-auto=y --sync
+1617015349:  === sync
+1617015349: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1617015362: === Sync completed for gentoo
+1617015362: >>> Syncing repository 'guru' into '/var/db/repos/guru'...
+1617015364: === Sync completed for guru
+1617015365:  *** terminating.
+1617015378: Started emerge on: Mar 29, 2021 11:56:18
+1617015378:  *** emerge --newuse --update --ask --backtrack=100 --changed-deps-report=y --deep --keep-going --quiet-build=y --regex-search-auto=y --verbose portage
+1617015422:  >>> emerge (1 of 11) sys-apps/install-xattr-0.8 to /
+1617015422:  === (1 of 11) Cleaning (sys-apps/install-xattr-0.8::/usr/portage/sys-apps/install-xattr/install-xattr-0.8.ebuild)
+1617015422:  === (1 of 11) Compiling/Merging (sys-apps/install-xattr-0.8::/usr/portage/sys-apps/install-xattr/install-xattr-0.8.ebuild)
+1617015425:  === (1 of 11) Merging (sys-apps/install-xattr-0.8::/usr/portage/sys-apps/install-xattr/install-xattr-0.8.ebuild)
+1617015431:  >>> AUTOCLEAN: sys-apps/install-xattr:0
+1617015431:  === Unmerging... (sys-apps/install-xattr-0.5)
+1617015432:  >>> unmerge success: sys-apps/install-xattr-0.5
+1617015434:  === (1 of 11) Post-Build Cleaning (sys-apps/install-xattr-0.8::/usr/portage/sys-apps/install-xattr/install-xattr-0.8.ebuild)
+1617015434:  ::: completed emerge (1 of 11) sys-apps/install-xattr-0.8 to /
+1617015434:  >>> emerge (2 of 11) sys-devel/m4-1.4.18-r2 to /
+1617015434:  === (2 of 11) Cleaning (sys-devel/m4-1.4.18-r2::/usr/portage/sys-devel/m4/m4-1.4.18-r2.ebuild)
+1617015434:  === (2 of 11) Compiling/Merging (sys-devel/m4-1.4.18-r2::/usr/portage/sys-devel/m4/m4-1.4.18-r2.ebuild)
+1617015461:  === (2 of 11) Merging (sys-devel/m4-1.4.18-r2::/usr/portage/sys-devel/m4/m4-1.4.18-r2.ebuild)
+1617015463:  >>> AUTOCLEAN: sys-devel/m4:0
+1617015463:  === Unmerging... (sys-devel/m4-1.4.18-r1)
+1617015464:  >>> unmerge success: sys-devel/m4-1.4.18-r1
+1617015465:  === (2 of 11) Post-Build Cleaning (sys-devel/m4-1.4.18-r2::/usr/portage/sys-devel/m4/m4-1.4.18-r2.ebuild)
+1617015465:  ::: completed emerge (2 of 11) sys-devel/m4-1.4.18-r2 to /
+1617015465:  >>> emerge (3 of 11) dev-libs/nspr-4.30 to /
+1617015465:  === (3 of 11) Cleaning (dev-libs/nspr-4.30::/usr/portage/dev-libs/nspr/nspr-4.30.ebuild)

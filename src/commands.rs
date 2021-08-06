@@ -432,9 +432,9 @@ pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::{fmt_time, timespan_next, Timespan};
+    use super::{timespan_next, Timespan};
     use assert_cmd::Command;
-    use chrono::{DateTime, Datelike, Local, TimeZone, Utc, Weekday};
+    use chrono::{DateTime, Datelike, FixedOffset, TimeZone, Utc, Weekday};
     use escargot::CargoBuild;
     use lazy_static::lazy_static;
     use std::{collections::HashMap,
@@ -444,13 +444,13 @@ mod tests {
 
     /// Return the current time + offset. To make tests more reproducible, we wait until we're close
     /// to the start of a whole second before returning.
-    fn ts(secs: i64) -> DateTime<Local> {
+    fn ts(secs: i64) -> DateTime<FixedOffset> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         if now.subsec_millis() > 100 {
             thread::sleep(Duration::from_millis(25));
             ts(secs)
         } else {
-            fmt_time(now.as_secs() as i64 + secs)
+            FixedOffset::east(0).timestamp(now.as_secs() as i64 + secs, 0)
         }
     }
 
@@ -461,7 +461,9 @@ mod tests {
     /// Return a `Command` for the main binary, making sure it is compiled first. The first call can
     /// take a while, so do a warmup call before time-sensitive tests.
     fn emlop() -> Command {
-        Command::new(&*EMLOP)
+        let mut e = Command::new(&*EMLOP);
+        e.env("TZ", "UTC");
+        e
     }
 
     #[test]
@@ -506,6 +508,36 @@ mod tests {
         ];
         for (a, o, e) in t {
             emlop().args(a).assert().code(e).stdout(o);
+        }
+    }
+
+    #[test]
+    fn timezone() {
+        let t: Vec<(&[&str], &str, &str)> = vec![
+            // UTC
+            (&["-F", "test/emerge.dst.log", "l"],
+             "UTC",
+             "2021-03-26 17:07:08 +00:00        20 >>> dev-libs/libksba-1.5.0\n\
+              2021-03-26 17:08:20 +00:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
+              2021-03-29 10:57:14 +00:00        12 >>> sys-apps/install-xattr-0.8\n\
+              2021-03-29 10:57:45 +00:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
+            // Dublin (affected by DST)
+            (&["-F", "test/emerge.dst.log", "l"],
+             "Europe/Dublin",
+             "2021-03-26 17:07:08 +00:00        20 >>> dev-libs/libksba-1.5.0\n\
+              2021-03-26 17:08:20 +00:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
+              2021-03-29 11:57:14 +01:00        12 >>> sys-apps/install-xattr-0.8\n\
+              2021-03-29 11:57:45 +01:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
+            // Moscow (no DST)
+            (&["-F", "test/emerge.dst.log", "l"],
+             "Europe/Moscow",
+             "2021-03-26 20:07:08 +03:00        20 >>> dev-libs/libksba-1.5.0\n\
+              2021-03-26 20:08:20 +03:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
+              2021-03-29 13:57:14 +03:00        12 >>> sys-apps/install-xattr-0.8\n\
+              2021-03-29 13:57:45 +03:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
+        ];
+        for (a, t, o) in t {
+            emlop().args(a).env("TZ", t).assert().stdout(o);
         }
     }
 
@@ -748,15 +780,15 @@ mod tests {
     fn negative_merge_time() {
         let _cache_cargo_build = emlop();
         for (a, o) in vec![
-            // For `log` we show an unknown time.
+                 // For `log` we show an unknown time.
                  (vec!["-F", "test/emerge.negtime.log", "l", "-sms"],
-                  format!("2019-06-05 09:32:10 +01:00      1:09 Sync\n\
-                           2019-06-05 12:26:54 +01:00      5:56 >>> kde-plasma/kwin-5.15.5\n\
-                           2019-06-06 03:11:48 +01:00        26 >>> kde-apps/libktnef-19.04.1\n\
-                           2019-06-06 03:16:01 +01:00        34 >>> net-misc/chrony-3.3\n\
-                           2019-06-05 11:18:28 +01:00         ? Sync\n\
-                           2019-06-05 11:21:02 +01:00         ? >>> kde-plasma/kwin-5.15.5\n\
-                           2019-06-08 22:33:36 +01:00      3:10 >>> kde-plasma/kwin-5.15.5\n")),
+                  format!("2019-06-05 08:32:10 +00:00      1:09 Sync\n\
+                           2019-06-05 11:26:54 +00:00      5:56 >>> kde-plasma/kwin-5.15.5\n\
+                           2019-06-06 02:11:48 +00:00        26 >>> kde-apps/libktnef-19.04.1\n\
+                           2019-06-06 02:16:01 +00:00        34 >>> net-misc/chrony-3.3\n\
+                           2019-06-05 10:18:28 +00:00         ? Sync\n\
+                           2019-06-05 10:21:02 +00:00         ? >>> kde-plasma/kwin-5.15.5\n\
+                           2019-06-08 21:33:36 +00:00      3:10 >>> kde-plasma/kwin-5.15.5\n")),
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
                  (vec!["-F", "test/emerge.negtime.log", "s", "-sa"],
                   format!("kde-apps/libktnef      1          26        26      0         0         ?\n\
