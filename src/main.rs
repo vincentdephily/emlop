@@ -172,6 +172,7 @@ pub struct Styles {
     dur_s: String,
     cnt_p: String,
     cnt_s: String,
+    dur_t: DurationStyle,
 }
 impl Styles {
     fn new(args: &ArgMatches) -> Self {
@@ -189,7 +190,8 @@ impl Styles {
                      dur_p: Style::new().fg(Purple).bold().prefix().to_string(),
                      dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
                      cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
-                     cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string() }
+                     cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string(),
+                     dur_t: value_t!(args, "duration", DurationStyle).unwrap()}
         } else {
             Styles { pkg_p: String::new(),
                      merge_p: String::from(">>> "),
@@ -199,7 +201,8 @@ impl Styles {
                      dur_p: String::new(),
                      dur_s: String::new(),
                      cnt_p: String::new(),
-                     cnt_s: String::new() }
+                     cnt_s: String::new(),
+                     dur_t: value_t!(args, "duration", DurationStyle).unwrap() }
         }
     }
 }

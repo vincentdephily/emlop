@@ -20,7 +20,6 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                         show_sync,
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
-    let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found_one = false;
@@ -37,11 +36,11 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(fmtd, ts - started),
+                         st.dur_p, fmt_duration(st.dur_t, ts - started),
                          st.merge_p, p.ebuild_version(), st.merge_s).unwrap_or(());
             },
             Hist::UnmergeStart { ts, key, .. } => {
-                // This'll overwrite any previous entry, if a build started but never finished
+                // This'll overwrite any previous entry, if an unmerge started but never finished
                 unmerges.insert(key, ts);
             },
             Hist::UnmergeStop { ts, ref key, .. } => {
@@ -50,7 +49,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}{}",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(fmtd, ts - started),
+                         st.dur_p, fmt_duration(st.dur_t, ts - started),
                          st.unmerge_p, p.ebuild_version(), st.unmerge_s).unwrap_or(());
             },
             Hist::SyncStart { ts } => {
@@ -61,7 +60,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9}{} Sync",
                          fmt_time(ts),
-                         st.dur_p, fmt_duration(fmtd, ts - syncstart), st.dur_s).unwrap_or(());
+                         st.dur_p, fmt_duration(st.dur_t, ts - syncstart), st.dur_s).unwrap_or(());
             },
         }
     }
@@ -174,7 +173,6 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                         show_sync,
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
-    let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
     let lim = value(subargs, "limit", parse_limit);
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
@@ -191,7 +189,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 curts = t;
             } else if t > nextts {
                 let group_by = timespan_header(curts, timespan);
-                cmd_stats_group(tw, st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by,
+                cmd_stats_group(tw, st, lim, show_pkg, show_tot, show_sync, &group_by,
                                 &sync_time, &pkg_time)?;
                 sync_time.clear();
                 pkg_time.clear();
@@ -229,14 +227,13 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
         }
     }
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, t));
-    cmd_stats_group(tw, st, fmtd, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
+    cmd_stats_group(tw, st, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
                     &pkg_time)?;
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
 
 fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    st: &Styles,
-                   fmtd: DurationStyle,
                    lim: u16,
                    show_pkg: bool,
                    show_tot: bool,
@@ -252,11 +249,11 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                      group_by,
                      st.pkg_p, pkg,
                      st.cnt_p, merge.count,
-                     st.dur_p, fmt_duration(fmtd, merge.tot),
-                     st.dur_p, fmt_duration(fmtd, merge.pred(lim)),
+                     st.dur_p, fmt_duration(st.dur_t, merge.tot),
+                     st.dur_p, fmt_duration(st.dur_t, merge.pred(lim)),
                      st.cnt_p, unmerge.count,
-                     st.dur_p, fmt_duration(fmtd, unmerge.tot),
-                     st.dur_p, fmt_duration(fmtd, unmerge.pred(lim)),
+                     st.dur_p, fmt_duration(st.dur_t, unmerge.tot),
+                     st.dur_p, fmt_duration(st.dur_t, unmerge.pred(lim)),
                      st.dur_s)?;
         }
     }
@@ -275,11 +272,11 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "{}Total\t{}{:>5}\t{}{:>10}\t{}{:>8}\t{}{:>5}\t{}{:>8}\t{}{:>8}{}",
                  group_by,
                  st.cnt_p, merge_count,
-                 st.dur_p, fmt_duration(fmtd, merge_time),
-                 st.dur_p, fmt_duration(fmtd, merge_time.checked_div(merge_count).unwrap_or(-1)),
+                 st.dur_p, fmt_duration(st.dur_t, merge_time),
+                 st.dur_p, fmt_duration(st.dur_t, merge_time.checked_div(merge_count).unwrap_or(-1)),
                  st.cnt_p, unmerge_count,
-                 st.dur_p, fmt_duration(fmtd, unmerge_time),
-                 st.dur_p, fmt_duration(fmtd, unmerge_time.checked_div(unmerge_count).unwrap_or(-1)),
+                 st.dur_p, fmt_duration(st.dur_t, unmerge_time),
+                 st.dur_p, fmt_duration(st.dur_t, unmerge_time.checked_div(unmerge_count).unwrap_or(-1)),
                  st.dur_s)?;
     }
     if show_sync && !sync_time.is_empty() {
@@ -287,8 +284,8 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "{}Sync\t{}{:>5}\t{}{:>10}\t{}{:>8}{}",
                  group_by,
                  st.cnt_p, sync_time.count,
-                 st.dur_p, fmt_duration(fmtd, sync_time.tot),
-                 st.dur_p, fmt_duration(fmtd, sync_time.pred(lim)),
+                 st.dur_p, fmt_duration(st.dur_t, sync_time.tot),
+                 st.dur_p, fmt_duration(st.dur_t, sync_time.pred(lim)),
                  st.dur_s)?;
     }
     Ok(())
@@ -304,7 +301,6 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                    -> Result<bool, Error> {
     let now = epoch_now();
     let lim = value(subargs, "limit", parse_limit);
-    let fmtd = value_t!(subargs, "duration", DurationStyle).unwrap();
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
@@ -314,7 +310,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                  "{:.45}\t{}{:>9}{}",
                  &i,
                  st.dur_p,
-                 fmt_duration(fmtd, now - i.start),
+                 fmt_duration(st.dur_t, now - i.start),
                  st.dur_s)?;
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
@@ -373,7 +369,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         let k = (ebuild, version);
         let (elapsed, elapsed_fmt) = match started.remove(&k) {
             Some(s) if s > cms => {
-                (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(fmtd, now - s), st.dur_s))
+                (now - s, format!(" - {}{}{}", st.dur_p, fmt_duration(st.dur_t, now - s), st.dur_s))
             },
             _ => (0, "".into()),
         };
@@ -389,7 +385,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                     totelapsed += elapsed;
                     totpredict -= std::cmp::min(pred, elapsed);
                 }
-                fmt_duration(fmtd, pred)
+                fmt_duration(st.dur_t, pred)
             },
             None => {
                 totunknown += 1;
@@ -409,8 +405,8 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
         writeln!(tw, "Estimate for {}{}{} ebuilds ({}{}{} unknown, {}{}{} elapsed)\t{}{:>9}{} @ {}{}{}",
                  st.cnt_p, totcount, st.cnt_s,
                  st.cnt_p, totunknown, st.cnt_s,
-                 st.dur_p, fmt_duration(fmtd, totelapsed), st.dur_s,
-                 st.dur_p, fmt_duration(fmtd, totpredict), st.dur_s,
+                 st.dur_p, fmt_duration(st.dur_t, totelapsed), st.dur_s,
+                 st.dur_p, fmt_duration(st.dur_t, totpredict), st.dur_s,
                  st.dur_p, fmt_time(now + totpredict), st.dur_s)?;
     } else {
         writeln!(tw, "No pretended merge found")?;
