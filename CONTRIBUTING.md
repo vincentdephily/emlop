@@ -15,12 +15,10 @@ peek at the [roadmap](ROADMAP.md) for inspiration.
 Send pull requests to [Github](https://github.com/vincentdephily/emlop).
 
 Make sure to `cargo test -- --include-ignored` before submitting your code. A bugfix should probably
-include an updated unittest.
+include an updated unittest. Check `cargo clippy` hints. Format code using `cargo +nightly fmt`.
 
 Test emlop with the latest rust stable versions from both Gentoo and upstream. Using `rustup` is
 highly recomended.
-
-`rustfmt` and `clippy` are also recomended, but not followed religiously.
 
 Speed is important, check for improvements/regressions using `benches/exec_compare.rs` (you need to
 `cargo install scriptisto` to be able to run this file).

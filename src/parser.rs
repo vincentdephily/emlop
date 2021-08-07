@@ -363,10 +363,10 @@ mod tests {
         let hist = new_hist(format!("test/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
-                            Show{merge: parse_merge,
-                                 unmerge: parse_unmerge,
-                                 sync: parse_sync,
-                                 ..Show::default()},
+                            Show { merge: parse_merge,
+                                   unmerge: parse_unmerge,
+                                   sync: parse_sync,
+                                   ..Show::default() },
                             filter_pkg,
                             exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();

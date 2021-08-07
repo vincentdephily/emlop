@@ -155,7 +155,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                  subargs: &ArgMatches,
                  st: &Styles)
                  -> Result<bool, Error> {
-    let show =  value_t!(subargs, "show", Show).unwrap();
+    let show = value_t!(subargs, "show", Show).unwrap();
     let timespan_opt = value_opt(subargs, "group", parse_timespan);
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
@@ -308,7 +308,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
-                        Show{merge: true, .. Show::default()},
+                        Show { merge: true, ..Show::default() },
                         None,
                         false)?;
     let mut started: BTreeMap<(String, String), i64> = BTreeMap::new();
