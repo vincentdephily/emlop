@@ -8,16 +8,11 @@ use std::{collections::{BTreeMap, HashMap},
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
-    let show = subargs.value_of("show").unwrap();
-    let show_merge = show.contains(&"m") || show.contains(&"a");
-    let show_sync = show.contains(&"s") || show.contains(&"a");
-    let show_unmerge = show.contains(&"u") || show.contains(&"a");
+    let show = value_t!(subargs, "show", Show).unwrap();
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
-                        show_merge,
-                        show_unmerge,
-                        show_sync,
+                        show,
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
     let mut merges: HashMap<String, i64> = HashMap::new();
@@ -160,17 +155,12 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                  subargs: &ArgMatches,
                  st: &Styles)
                  -> Result<bool, Error> {
-    let show = subargs.value_of("show").unwrap();
-    let show_pkg = show.contains(&"p") || show.contains(&"a");
-    let show_tot = show.contains(&"t") || show.contains(&"a");
-    let show_sync = show.contains(&"s") || show.contains(&"a");
+    let show =  value_t!(subargs, "show", Show).unwrap();
     let timespan_opt = value_opt(subargs, "group", parse_timespan);
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
-                        show_pkg || show_tot,
-                        show_pkg || show_tot,
-                        show_sync,
+                        show,
                         subargs.value_of("package"),
                         subargs.is_present("exact"))?;
     let lim = value(subargs, "limit", parse_limit);
@@ -189,8 +179,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 curts = t;
             } else if t > nextts {
                 let group_by = timespan_header(curts, timespan);
-                cmd_stats_group(tw, st, lim, show_pkg, show_tot, show_sync, &group_by,
-                                &sync_time, &pkg_time)?;
+                cmd_stats_group(tw, st, lim, show, &group_by, &sync_time, &pkg_time)?;
                 sync_time.clear();
                 pkg_time.clear();
                 nextts = timespan_next(t, timespan);
@@ -227,22 +216,19 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
         }
     }
     let group_by = timespan_opt.map_or(String::new(), |t| timespan_header(curts, t));
-    cmd_stats_group(tw, st, lim, show_pkg, show_tot, show_sync, &group_by, &sync_time,
-                    &pkg_time)?;
+    cmd_stats_group(tw, st, lim, show, &group_by, &sync_time, &pkg_time)?;
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
 
 fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    st: &Styles,
                    lim: u16,
-                   show_pkg: bool,
-                   show_tot: bool,
-                   show_sync: bool,
+                   show: Show,
                    group_by: &str,
                    sync_time: &Times,
                    pkg_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
-    if show_pkg && !pkg_time.is_empty() {
+    if show.pkg && !pkg_time.is_empty() {
         for (pkg, (merge, unmerge)) in pkg_time {
             #[rustfmt::skip]
             writeln!(tw, "{}{}{}\t{}{:>5}\t{}{:>10}\t{}{:>8}\t{}{:>5}\t{}{:>8}\t{}{:>8}{}",
@@ -257,7 +243,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                      st.dur_s)?;
         }
     }
-    if show_tot && !pkg_time.is_empty() {
+    if show.tot && !pkg_time.is_empty() {
         let mut merge_time = 0;
         let mut merge_count = 0;
         let mut unmerge_time = 0;
@@ -279,7 +265,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                  st.dur_p, fmt_duration(st.dur_t, unmerge_time.checked_div(unmerge_count).unwrap_or(-1)),
                  st.dur_s)?;
     }
-    if show_sync && !sync_time.is_empty() {
+    if show.sync && !sync_time.is_empty() {
         #[rustfmt::skip]
         writeln!(tw, "{}Sync\t{}{:>5}\t{}{:>10}\t{}{:>8}{}",
                  group_by,
@@ -322,9 +308,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date),
                         value_opt(args, "to", parse_date),
-                        true,
-                        false,
-                        false,
+                        Show{merge: true, .. Show::default()},
                         None,
                         false)?;
     let mut started: BTreeMap<(String, String), i64> = BTreeMap::new();

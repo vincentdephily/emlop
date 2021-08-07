@@ -110,6 +110,25 @@ pub fn parse_timespan(s: &str) -> Result<Timespan, String> {
     }
 }
 
+#[derive(Clone, Copy, Default)]
+pub struct Show {
+    pub pkg: bool,
+    pub tot: bool,
+    pub sync: bool,
+    pub merge: bool,
+    pub unmerge: bool,
+}
+impl FromStr for Show {
+    type Err = String;
+    fn from_str(show: &str) -> Result<Self, Self::Err> {
+        Ok(Self { pkg: show.contains(&"p") || show.contains(&"a"),
+                  tot: show.contains(&"t") || show.contains(&"a"),
+                  sync: show.contains(&"s") || show.contains(&"a"),
+                  merge: show.contains(&"m") || show.contains(&"a"),
+                  unmerge: show.contains(&"u") || show.contains(&"a") })
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum DurationStyle {
     HMS,

@@ -2,7 +2,7 @@
 //!
 //! Instantiate a `Parser` and iterate over it to retrieve the events.
 
-use crate::fmt_time;
+use crate::{fmt_time, Show};
 use anyhow::{Context, Error};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use log::*;
@@ -87,9 +87,7 @@ pub struct Pretend {
 pub fn new_hist(filename: String,
                 min_ts: Option<i64>,
                 max_ts: Option<i64>,
-                parse_merge: bool,
-                parse_unmerge: bool,
-                parse_sync: bool,
+                show: Show,
                 search_str: Option<&str>,
                 search_exact: bool)
                 -> Result<Receiver<Hist>, Error> {
@@ -100,6 +98,8 @@ pub fn new_hist(filename: String,
     // https://docs.rs/crossbeam/0.7.1/crossbeam/thread/index.html
     let filter_ts = filter_ts_fn(min_ts, max_ts);
     let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
+    let show_merge = show.merge || show.pkg || show.tot;
+    let show_unmerge = show.unmerge || show.pkg || show.tot;
     thread::spawn(move || {
         let mut prev_t = 0;
         for (curline, l) in BufReader::new(reader).lines().enumerate() {
@@ -115,21 +115,21 @@ pub fn new_hist(filename: String,
                                   fmt_time(t));
                         }
                         prev_t = t;
-                        if let Some(found) = parse_start(parse_merge, t, s, &filter_pkg) {
+                        if let Some(found) = parse_start(show_merge, t, s, &filter_pkg) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) = parse_stop(parse_merge, t, s, &filter_pkg) {
+                        } else if let Some(found) = parse_stop(show_merge, t, s, &filter_pkg) {
                             tx.send(found).unwrap()
                         } else if let Some(found) =
-                            parse_unmergestart(parse_unmerge, t, s, &filter_pkg)
+                            parse_unmergestart(show_unmerge, t, s, &filter_pkg)
                         {
                             tx.send(found).unwrap()
                         } else if let Some(found) =
-                            parse_unmergestop(parse_unmerge, t, s, &filter_pkg)
+                            parse_unmergestop(show_unmerge, t, s, &filter_pkg)
                         {
                             tx.send(found).unwrap()
-                        } else if let Some(found) = parse_syncstart(parse_sync, t, s) {
+                        } else if let Some(found) = parse_syncstart(show.sync, t, s) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) = parse_syncstop(parse_sync, t, s) {
+                        } else if let Some(found) = parse_syncstop(show.sync, t, s) {
                             tx.send(found).unwrap()
                         }
                     }
@@ -363,9 +363,10 @@ mod tests {
         let hist = new_hist(format!("test/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
-                            parse_merge,
-                            parse_unmerge,
-                            parse_sync,
+                            Show{merge: parse_merge,
+                                 unmerge: parse_unmerge,
+                                 sync: parse_sync,
+                                 ..Show::default()},
                             filter_pkg,
                             exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
