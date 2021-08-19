@@ -22,8 +22,7 @@ use inc_stats::*;
 use rand::prelude::SliceRandom;
 use std::{collections::BTreeMap,
           fs::File,
-          io,
-          io::Write,
+          io::{stderr, Write},
           process::{Command, Stdio},
           time::Instant};
 use tabwriter::TabWriter;
@@ -31,7 +30,7 @@ use tabwriter::TabWriter;
 fn main() {
     // Test definitions: (test suite, program name, program args, stdin)
     #[rustfmt::skip]
-    let tests: Vec<(&str,&str,&[&str],Option<&str>)> = vec![
+    let defs: Vec<(&str,&str,&[&str],Option<&str>)> = vec![
         // Simply cat the file, as a theoretical max speed reference
         ("cat", "cat",  &["/var/log/emerge.log"],   None),
         // Show version, useful to bench startup cost
@@ -97,13 +96,13 @@ fn main() {
     ];
 
     // CLI definition
-    let mut allprogs: Vec<&str> = tests.iter().map(|&(_, p, _, _)| p).collect();
+    let mut allprogs: Vec<&str> = defs.iter().map(|&(_, p, _, _)| p).collect();
     allprogs.sort();
     allprogs.dedup();
-    let mut allsuites: Vec<&str> = tests.iter().map(|&(s, _, _, _)| s).collect();
-    allsuites.sort();
-    allsuites.dedup();
-    let allsuites_str = allsuites.join(",");
+    let mut allsets: Vec<&str> = defs.iter().map(|&(s, _, _, _)| s).collect();
+    allsets.sort();
+    allsets.dedup();
+    let allsets_str = allsets.join(",");
     let cli = App::new("emlop-bench")
         .about("Quick script to benchmark *lop implementations.")
         .global_setting(AppSettings::ColoredHelp)
@@ -114,7 +113,7 @@ fn main() {
  * Look at all indicators, not just the mean.\n\
  * The terminal emulator's speed makes a big difference. Reduce the scroll buffer size and check performance-related settings.\n\
  * Use -n option (redirect to /dev/null) to ignore terminal overhead.\n\
- * Pipe to cat to disable colors (see also color-specific suites).")
+ * Pipe to cat to disable colors (see also color-specific sets).")
         .arg(Arg::with_name("programs")
              .help("Programs to test, formated as 'NAME[:PATH][,...]': coma-separated list, name can \
 be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/emlop,q'")
@@ -123,15 +122,15 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
              .multiple(true)
              .use_delimiter(true)
              .default_value("emlop"))
-        .arg(Arg::with_name("suites")
-             .help("Test suites")
+        .arg(Arg::with_name("sets")
+             .help("Test sets")
              .short("s")
              .takes_value(true)
              .multiple(true)
              .use_delimiter(true)
-             .possible_values(&allsuites)
+             .possible_values(&allsets)
              .hide_possible_values(true)
-             .default_value(&allsuites_str))
+             .default_value(&allsets_str))
         .arg(Arg::with_name("runs")
              .help("Number of iterations")
              .short("r")
@@ -151,43 +150,42 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     let runs = value_t!(cli, "runs", usize).unwrap();
     let bucket = value_t!(cli, "bucket", u64).unwrap();
     let progs = values_t!(cli.values_of("programs"), String).unwrap();
-    let suites = values_t!(cli.values_of("suites"), String).unwrap();
+    let sets = values_t!(cli.values_of("sets"), String).unwrap();
     let nullout = cli.is_present("nullout");
 
     // Construct the test list.
-    let mut mytests = Vec::<(String, &str, &[&str], Option<&str>)>::new();
+    let mut tests = Vec::<(String, &str, &[&str], Option<&str>)>::new();
     for p in progs.iter() {
-        let (mut p1, mut p2) = p.split_at(p.find(':').unwrap_or(p.len()));
-        let pmatch: Vec<&str> = allprogs.iter().filter(|s| s.starts_with(p1)).cloned().collect();
-        if 1 != pmatch.len() {
-            writeln!(io::stderr(),
-                     "Found {} match for {:?}, should match exactly one of {}",
-                     pmatch.len(),
-                     p1,
-                     allprogs.join(",")).unwrap();
-            ::std::process::exit(1);
-        }
-        p1 = pmatch[0];
-        p2 = match p2.is_empty() {
-            true => p1,
-            false => p2.trim_start_matches(':'),
+        // Resolve this program's name and path
+        let (p1, p2) = p.split_at(p.find(':').unwrap_or(p.len()));
+        let mut pmatch = allprogs.iter().filter(|s| s.starts_with(p1));
+        let pname = match (pmatch.next(), pmatch.next()) {
+            (Some(s), None) => s,
+            _ => {
+                eprintln!("{:?} should match exactly one of {:?}", p1, allprogs);
+                ::std::process::exit(1);
+            },
         };
-        let tests: Vec<_> =
-            tests.iter()
-                 .filter(|&(s, t, _, _)| t == &p1 && suites.contains(&s.to_string()))
-                 .collect();
-        let foundsuites: Vec<String> = tests.iter().map(|&(su, _, _, _)| su.to_string()).collect();
-        suites.iter().filter(|s| !foundsuites.contains(s)).for_each(|s| writeln!(io::stderr(), "Test suite {} not defined for {}.", s, p1).unwrap());
-        for &(su, _, ar, si) in tests {
-            let cmd = format!("{}\t{} {}{}",
-                              su,
-                              p2,
-                              ar.join(" "),
-                              si.map_or(String::new(), |s| format!(" < {}", s)));
-            for _ in 0..runs {
-                mytests.push((cmd.clone(), p2, ar, si));
+        let ppath = if p2.is_empty() { pname } else { p2.trim_start_matches(':') };
+
+        // Add matching tests to test vector
+        let mut found = Vec::new();
+        for &(set, prg, args, si) in &defs {
+            if &prg == pname && sets.contains(&set.to_string()) {
+                found.push(set);
+                let cmd = format!("{}\t{} {}{}",
+                                  set,
+                                  ppath,
+                                  args.join(" "),
+                                  si.map_or(String::new(), |s| format!(" < {}", s)));
+                for _ in 0..runs {
+                    tests.push((cmd.clone(), ppath, args, si));
+                }
             }
         }
+        sets.iter()
+            .filter(|s| !found.contains(&s.as_str()))
+            .for_each(|s| eprintln!("Test {:?} not defined for {:?}.", s, pname));
     }
 
     // Load /var/log/emerge.log in the OS cache
@@ -200,23 +198,17 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
                                   .unwrap());
 
     // Run the tests and collect the results
-    mytests.shuffle(&mut rand::thread_rng());
-    let mut n = mytests.len();
+    tests.shuffle(&mut rand::thread_rng());
+    let mut n = tests.len();
     let mut times: BTreeMap<String, Vec<f64>> = BTreeMap::new();
-    for (name, bin, args, stdin) in &mytests {
+    for (name, bin, args, stdin) in &tests {
         match nullout {
-            true => write!(io::stderr(), "\r{} ", n).unwrap(),
-            false => writeln!(io::stderr(), "=== {} {} ===", n, &name).unwrap(),
-        };
+            true => eprint!("\r{} ", n),
+            false => eprintln!(">>>>>> {} {}", n, &name),
+        }
         n -= 1;
-        let si = match stdin {
-            None => Stdio::inherit(),
-            Some(f) => File::open(f).unwrap().into(),
-        };
-        let so = match nullout {
-            true => Stdio::null(),
-            false => Stdio::inherit(),
-        };
+        let si = stdin.map_or(Stdio::inherit(), |f| File::open(f).unwrap().into());
+        let so = if nullout { Stdio::null() } else { Stdio::inherit() };
         let start = Instant::now();
         Command::new(bin).args(args.into_iter())
                          .stdin(si)
@@ -228,31 +220,29 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     }
 
     // Output the results
-    let mut tw = TabWriter::new(io::stderr());
-    writeln!(tw, "\nsuite\tcmd\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tvalues").unwrap();
+    let mut tw = TabWriter::new(stderr());
+    writeln!(tw, "\ntest\tcmd\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tbucketed values")
+        .unwrap();
     for (key, vals) in times {
-        let ss: SummStats = vals.iter().cloned().collect();
-        let mut pc: Percentiles = vals.iter().cloned().collect();
+        let ss: SummStats<f64> = vals.iter().cloned().collect();
+        let mut pc: Percentiles<f64> = vals.iter().cloned().collect();
         let mut hist: BTreeMap<u64, u64> = BTreeMap::new();
         vals.into_iter()
-            .for_each(|v| {
-                *hist.entry((v / bucket as f64).round() as u64 * bucket).or_insert(0) += 1
-            });
+            .map(|v| (v / bucket as f64).round() as u64 * bucket)
+            .for_each(|v| *hist.entry(v).or_insert(0) += 1);
+        let hist = hist.iter().map(|(k, v)| format!("{}:{}", k, v)).collect::<Vec<_>>().join(",");
         writeln!(tw,
                  "{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}",
                  key,
                  ss.min().unwrap(),
-                 pc.percentile(&0.95).unwrap(),
-                 pc.percentile(&0.85).unwrap(),
-                 pc.percentile(&0.75).unwrap(),
+                 pc.percentile(&0.95).unwrap().unwrap(),
+                 pc.percentile(&0.85).unwrap().unwrap(),
+                 pc.percentile(&0.75).unwrap().unwrap(),
                  ss.mean().unwrap(),
                  ss.max().unwrap(),
                  ss.standard_deviation().unwrap_or(0.0),
                  ss.sum(),
-                 hist.iter()
-                     .map(|(k, v)| format!("{}:{}", k, v))
-                     .collect::<Vec<String>>()
-                     .join(",")).unwrap();
+                 hist).unwrap();
     }
     tw.flush().unwrap();
 }
