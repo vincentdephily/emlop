@@ -1,3 +1,18 @@
+# 0.4.2 2021-08-19
+
+Maintenance release
+
+* Fix some unittest failures when run from portage or unexpected timezone
+* Updated deps
+  - Routine updates
+  - Closes RUSTSEC-2020-0095 advisory (likely no vulnerability)
+  - Raises MSRV to 1.52 (current oldest version in Gentoo)
+* Various refactorings
+  - Readability
+  - Clippy lints
+  - Changed deps API
+* Doc updates
+
 # 0.4.1 2020-12-26
 
 Maintenance release

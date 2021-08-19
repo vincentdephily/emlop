@@ -39,7 +39,7 @@ unless the contributor explicitly demands otherwise.
 
 * Update deps: `cargo outdated`, edit Cargo.toml, `cargo update`.
 * Check `git status` and either `commit` or `stash`.
-* Test: `rustup override set 1.41.1 && cargo test && rustup override unset && cargo test`.
+* Test: `rustup override set 1.52 && cargo test -- --include-ignored && rustup override unset && cargo test -- --include-ignored`.
 * Update/commit CHANGELOG.md, Cargo.toml, Cargo.lock.
 * `git tag <version> -a` (copy the changelog entry into the tag).
 * `git push --tags`.
