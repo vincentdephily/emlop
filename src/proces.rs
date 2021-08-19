@@ -134,7 +134,7 @@ mod tests {
         // Check the results. For debugging purposes it's usefull to print everything and only
         // assert at the end. Also some cases are considered soft errors and only make the whole
         // test fail if they happen a lot.
-        assert!(info.len() > 10, "Only {} processes found", info.len());
+        assert!(info.len() > 5, "Only {} processes found", info.len());
         let mut e: u32 = 0;
         for (pid, times) in info {
             match times {
