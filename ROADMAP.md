@@ -23,6 +23,7 @@ Currently a 'parsing' and a 'main' tread but should be possible to parse using a
 ### Reduce allocations during parsing
 Should be able to take slices from the input instead of allocating new Strings.
 https://deterministic.space/secret-life-of-cows.html ?
+https://docs.rs/regex/1.4.3/regex/struct.Regex.html#method.captures_read_at
 ### Low-level optims
 Use `flame` and `flamer` crates ?
 ### Remove utf8 validation overhead

@@ -14,9 +14,10 @@ ergonomic, see [COMPARISON](COMPARISON.md).
 ### Using portage
 
 Not available in main portage tree yet, see [gentoo bug 649904](https://bugs.gentoo.org/649904). In
-the meantime, get it from the `moltonel` overlay : install
-[layman](https://wiki.gentoo.org/wiki/Layman) and run `layman -a moltonel` before running `emerge
-emlop` as ususal.
+the meantime, get it from the [guru](https://wiki.gentoo.org/wiki/Project:GURU)
+[moltonel](https://github.com/vincentdephily/moltonel-ebuilds) overlay: install
+[eselect-repository](https://wiki.gentoo.org/wiki/Eselect/Repository) and run `eselect repository
+enable moltonel` before running `emerge emlop` as ususal.
 
 ### Using cargo
 
