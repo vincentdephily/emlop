@@ -112,7 +112,7 @@ mod tests {
                                     .args(&["-o",
                                             "pid,lstart", // Output pid and start time
                                             "-ax", // All processes including those "not associated with a terminal"
-                                            "-h"]) // No headers
+                                            "--no-header"]) // No headers
                                     .output()
                                     .expect("failed to execute ps");
         for lineres in cmd.stdout.lines() {
