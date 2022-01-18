@@ -1,5 +1,6 @@
 mod cli;
 mod commands;
+mod date;
 mod parser;
 mod proces;
 
@@ -7,7 +8,6 @@ use crate::commands::*;
 use ansi_term::{Color::*, Style};
 use anyhow::Error;
 use chrono::{DateTime, Local, TimeZone};
-use chrono_english::{parse_date_string, Dialect};
 use clap::{value_t, ArgMatches, Error as ClapError, ErrorKind};
 use log::*;
 use std::{io::{stdout, Write},
@@ -86,12 +86,6 @@ pub fn parse_limit(s: &str) -> Result<u16, String> {
                     })
 }
 
-pub fn parse_date(s: &str) -> Result<i64, String> {
-    parse_date_string(s, Local::now(), Dialect::Uk)
-        .map(|d| d.timestamp())
-        .or_else(|_| i64::from_str(s.trim()))
-        .map_err(|_| "Couldn't parse as a date or timestamp".into())
-}
 
 #[derive(Debug, Clone, Copy)]
 pub enum Timespan {
@@ -230,14 +224,6 @@ impl Styles {
 #[cfg(test)]
 mod tests {
     use crate::*;
-    use chrono::{naive::NaiveDate,
-                 offset::{Local, Offset}};
-
-    /// Get the offset between localtime and UTC in seconds
-    fn offset(year: i32, month: u32, day: u32) -> i64 {
-        let date = NaiveDate::from_ymd(year, month, day);
-        Local {}.offset_from_utc_date(&date).fix().utc_minus_local() as i64
-    }
 
     #[test]
     fn duration() {
@@ -256,23 +242,5 @@ mod tests {
             assert_eq!(*hms, fmt_duration(DurationStyle::HMS, *i));
             assert_eq!(*s, fmt_duration(DurationStyle::S, *i));
         }
-    }
-
-    #[test]
-    fn date() {
-        // Mainly testing the unix fallback here, as the rest is chrono_english's responsibility
-        let now = epoch_now();
-        assert_eq!(Ok(1522710000), parse_date("1522710000"));
-        assert_eq!(Ok(1522710000), parse_date("   1522710000   "));
-        assert_eq!(Ok(1522713661), parse_date("2018-04-03 01:01:01 +01:00"));
-        assert_eq!(Ok(1522717261 + offset(2018, 4, 3)), parse_date("2018-04-03 01:01:01"));
-        assert_eq!(Ok(now), parse_date("now"));
-        assert_eq!(Ok(now), parse_date("   now   "));
-        assert_eq!(Ok(now - 3600), parse_date("1 hour ago"));
-        assert!(parse_date("03/30/18").is_err()); // MM/DD/YY is horrible, sorry USA
-        assert!(parse_date("30/03/18").is_ok()); // DD/MM/YY is also bad, switch to YYYY-MM-DD already ;)
-        assert!(parse_date("").is_err());
-        assert!(parse_date("152271000o").is_err());
-        assert!(parse_date("a while ago").is_err());
     }
 }

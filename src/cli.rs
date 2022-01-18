@@ -62,8 +62,7 @@ Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if search 
              .takes_value(true)
              .help("Only parse log entries after <date>.")
              .long_help("Only parse log entries after <date>.\n\
-Accepts string like '2018-03-04', '2018-03-04 12:34:56', 'march', '1 month ago', '10d ago', and unix timestamps... \
-(see https://docs.rs/chrono-english/0.1.3/chrono_english/#supported-formats)."))
+Accepts formats like '2018-03-04', '2018-03-04 12:34:56', '2018-03-04T12:34', '1 year, 2 months', '10d', and unix timestamps."))
         .arg(Arg::with_name("to")
              .value_name("date")
              .short("t")

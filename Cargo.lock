@@ -98,19 +98,8 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "time",
+ "time 0.1.44",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "chrono-english"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0be5180df5f7c41fc2416bc038bc8d78d44db8136c415b94ccbc95f523dc38e9"
-dependencies = [
- "chrono",
- "scanlex",
- "time",
 ]
 
 [[package]]
@@ -175,7 +164,6 @@ dependencies = [
  "assert_cmd",
  "atty",
  "chrono",
- "chrono-english",
  "clap",
  "crossbeam-channel",
  "escargot",
@@ -185,6 +173,7 @@ dependencies = [
  "stderrlog",
  "sysconf",
  "tabwriter",
+ "time 0.3.5",
 ]
 
 [[package]]
@@ -387,12 +376,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
-name = "scanlex"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "088c5d71572124929ea7549a8ce98e1a6fd33d0a38367b09027b382e67c033db"
-
-[[package]]
 name = "serde"
 version = "1.0.127"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -512,6 +495,15 @@ dependencies = [
  "libc",
  "wasi",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "time"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
