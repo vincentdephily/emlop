@@ -66,11 +66,11 @@ pub fn value<T, P>(matches: &ArgMatches, name: &str, parse: P) -> T
 /// type, returns an unwraped value, and exits upon parsing error. It'd be more idiomatic to
 /// implement FromStr trait on a custom struct, but this is simpler to write and use, and we're not
 /// writing a library.
-pub fn value_opt<T, P>(matches: &ArgMatches, name: &str, parse: P) -> Option<T>
-    where P: FnOnce(&str) -> Result<T, String>
+pub fn value_opt<T, P, A>(matches: &ArgMatches, name: &str, parse: P, arg: A) -> Option<T>
+    where P: FnOnce(&str, A) -> Result<T, String>
 {
     let s = matches.value_of(name)?;
-    match parse(s) {
+    match parse(s, arg) {
         Ok(v) => Some(v),
         Err(e) => ClapError { message: format!("Invalid argument '--{} {}': {}", name, s, e),
                               kind: ErrorKind::InvalidValue,
@@ -94,7 +94,7 @@ pub enum Timespan {
     Week,
     Day,
 }
-pub fn parse_timespan(s: &str) -> Result<Timespan, String> {
+pub fn parse_timespan(s: &str, _arg: ()) -> Result<Timespan, String> {
     match s {
         "y" => Ok(Timespan::Year),
         "m" => Ok(Timespan::Month),
