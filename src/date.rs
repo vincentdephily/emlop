@@ -1,4 +1,5 @@
 use anyhow::{bail, Error};
+use log::debug;
 use regex::Regex;
 use std::{convert::TryFrom, str::FromStr};
 use time::{format_description::{modifier::*, Component, FormatItem::*},
@@ -6,12 +7,20 @@ use time::{format_description::{modifier::*, Component, FormatItem::*},
            Date, Duration, OffsetDateTime};
 
 /// Parse datetime in various formats, returning unix timestamp
-// TODO: debug-log individual parsing errors
 pub fn parse_date(s: &str) -> Result<i64, String> {
     let s = s.trim();
-    i64::from_str(s).or_else(|_| parse_date_yyyymmdd(s))
-                    .or_else(|_| parse_date_ago(s))
-                    .map_err(|_| format!("Couldn't parse {:#?}, check examples in --help", s))
+    i64::from_str(s).or_else(|e| {
+                        debug!("{}: bad timestamp: {}", s, e);
+                        parse_date_yyyymmdd(s)
+                    })
+                    .or_else(|e| {
+                        debug!("{}: bad absolute date: {}", s, e);
+                        parse_date_ago(s)
+                    })
+                    .map_err(|e| {
+                        debug!("{}: bad relative date: {}", s, e);
+                        format!("Couldn't parse {:#?}, check examples in --help", s)
+                    })
 }
 
 /// Parse a number of day/years/hours/etc in the past, relative to current time
