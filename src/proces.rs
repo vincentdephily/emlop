@@ -84,16 +84,17 @@ pub fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
 
 #[cfg(test)]
 mod tests {
-    use chrono::DateTime;
     use regex::Regex;
     use std::{collections::BTreeMap, process::Command};
+    use time::{macros::format_description, PrimitiveDateTime};
 
     use crate::proces::*;
 
     fn parse_ps_time(s: &str) -> i64 {
-        DateTime::parse_from_str(&format!("{} +0000", s), "%b %d %T %Y %z")//we run ps with TZ=UTC
-            .expect(&format!("Cannot parse {}", s))
-            .timestamp()
+        let fmt = format_description!("[month repr:short] [day] [hour]:[minute]:[second] [year]");
+        PrimitiveDateTime::parse(s, &fmt).expect(&format!("Cannot parse {}", s))
+                                         .assume_utc() // We run ps with TZ=UTC
+                                         .unix_timestamp()
     }
 
     #[test] #[rustfmt::skip]
