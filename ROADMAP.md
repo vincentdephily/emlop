@@ -31,7 +31,7 @@ https://github.com/BurntSushi/bstr
 
 ## Features
 ### Optional --headers
-### `--utc` and `--local`timezone selection date output
+### Apply `--utc` to date formating
 ### Options to format dates differently
 ### Use colors to carry mmore information
 * Color-code predict durations ?
@@ -71,3 +71,5 @@ Clap has something builtin.
 ### Allow specifying multiple search strings
 ### embed audit info in binary
 https://github.com/Shnatsel/rust-audit
+### stats visuals
+* https://docs.rs/rspark/ or https://docs.rs/spark/

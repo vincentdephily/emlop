@@ -1,4 +1,5 @@
 use anyhow::{bail, Error};
+use clap::ArgMatches;
 use log::{debug, warn};
 use regex::Regex;
 use std::{convert::TryFrom, str::FromStr};
@@ -9,10 +10,14 @@ use time::{format_description::{modifier::*, Component, FormatItem::*},
 /// Get the UtcOffset to parse/display datetimes with.
 /// Needs to be called before starting extra threads.
 pub fn get_utcoffset(matches: &ArgMatches) -> UtcOffset {
-    UtcOffset::current_local_offset().unwrap_or_else(|e| {
-                                         warn!("Falling back to UTC: {}", e);
-                                         UtcOffset::UTC
-                                     })
+    if matches.is_present("utc") {
+        UtcOffset::UTC
+    } else {
+        UtcOffset::current_local_offset().unwrap_or_else(|e| {
+                                             warn!("Falling back to UTC: {}", e);
+                                             UtcOffset::UTC
+                                         })
+    }
 }
 
 /// Parse datetime in various formats, returning unix timestamp

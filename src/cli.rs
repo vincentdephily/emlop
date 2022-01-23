@@ -54,6 +54,10 @@ The grouping key is displayed in the first column. Weeks start on monday and are
         .after_help("Subcommands can be abbreviated down to a single letter.\n\
 Exit code is 0 if sucessful, 1 in case of errors (bad argument...), 2 if search found nothing.")
         .help_message("Show short (-h) or detailed (--help) help. Use <subcommand> -h/--help for subcommand help.")
+        .arg(Arg::with_name("utc")
+             .long("utc")
+             .global(true)
+             .help("Parse naive dates as UTC instead of local time"))
         .arg(Arg::with_name("from")
              .value_name("date")
              .short("f")

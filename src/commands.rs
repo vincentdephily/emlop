@@ -9,7 +9,7 @@ use std::{collections::{BTreeMap, HashMap},
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
     let show = value_t!(subargs, "show", Show).unwrap();
-    let tz = get_utcoffset();
+    let tz = get_utcoffset(args);
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, tz),
                         value_opt(args, "to", parse_date, tz),
@@ -158,7 +158,7 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                  -> Result<bool, Error> {
     let show = value_t!(subargs, "show", Show).unwrap();
     let timespan_opt = value_opt(subargs, "group", parse_timespan, ());
-    let tz = get_utcoffset();
+    let tz = get_utcoffset(args);
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, tz),
                         value_opt(args, "to", parse_date, tz),
@@ -307,7 +307,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
     }
 
     // Parse emerge log.
-    let tz = get_utcoffset();
+    let tz = get_utcoffset(args);
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, tz),
                         value_opt(args, "to", parse_date, tz),
