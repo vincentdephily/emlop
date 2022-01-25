@@ -14,6 +14,7 @@ use std::{io::{stdout, Write},
           str::FromStr,
           time::{SystemTime, UNIX_EPOCH}};
 use tabwriter::TabWriter;
+use time::UtcOffset;
 
 fn main() {
     let args = cli::build_cli().get_matches();
@@ -171,9 +172,9 @@ pub fn epoch_now() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
-/// Holds styling preferences (currently just color).
+/// Holds styling preferences.
 ///
-/// We're using prefix/suffix() instead of paint() because paint() doesn't handle '{:>9}' alignments
+/// Colors use prefix/suffix() instead of paint() because paint() doesn't handle '{:>9}' alignments
 /// properly.
 pub struct Styles {
     pkg_p: String,
@@ -186,6 +187,7 @@ pub struct Styles {
     cnt_p: String,
     cnt_s: String,
     dur_t: DurationStyle,
+    date_offset: UtcOffset,
 }
 impl Styles {
     fn new(args: &ArgMatches) -> Self {
@@ -204,7 +206,8 @@ impl Styles {
                      dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
                      cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
                      cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string(),
-                     dur_t: value_t!(args, "duration", DurationStyle).unwrap() }
+                     dur_t: value_t!(args, "duration", DurationStyle).unwrap(),
+                     date_offset: date::get_utcoffset(args) }
         } else {
             Styles { pkg_p: String::new(),
                      merge_p: String::from(">>> "),
@@ -215,7 +218,8 @@ impl Styles {
                      dur_s: String::new(),
                      cnt_p: String::new(),
                      cnt_s: String::new(),
-                     dur_t: value_t!(args, "duration", DurationStyle).unwrap() }
+                     dur_t: value_t!(args, "duration", DurationStyle).unwrap(),
+                     date_offset: date::get_utcoffset(args) }
         }
     }
 }
