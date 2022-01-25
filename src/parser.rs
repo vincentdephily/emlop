@@ -2,7 +2,7 @@
 //!
 //! Instantiate a `Parser` and iterate over it to retrieve the events.
 
-use crate::{fmt_time, Show};
+use crate::{date::fmt_utctime, Show};
 use anyhow::{Context, Error};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use log::*;
@@ -111,8 +111,8 @@ pub fn new_hist(filename: String,
                             warn!("{}:{}: System clock jump: {} -> {}",
                                   filename,
                                   curline,
-                                  fmt_time(prev_t),
-                                  fmt_time(t));
+                                  fmt_utctime(prev_t),
+                                  fmt_utctime(t));
                         }
                         prev_t = t;
                         if let Some(found) = parse_start(show_merge, t, s, &filter_pkg) {
@@ -173,9 +173,11 @@ pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pretend>
 fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> impl Fn(i64) -> bool {
     match (min, max) {
         (None, None) => info!("Date filter: None"),
-        (Some(a), None) => info!("Date filter: after {}", fmt_time(a)),
-        (None, Some(b)) => info!("Date filter: before {}", fmt_time(b)),
-        (Some(a), Some(b)) => info!("Date filter: between {} and {}", fmt_time(a), fmt_time(b)),
+        (Some(a), None) => info!("Date filter: after {}", fmt_utctime(a)),
+        (None, Some(b)) => info!("Date filter: before {}", fmt_utctime(b)),
+        (Some(a), Some(b)) => {
+            info!("Date filter: between {} and {}", fmt_utctime(a), fmt_utctime(b))
+        },
     }
     let mi = min.unwrap_or(std::i64::MIN);
     let ma = max.unwrap_or(std::i64::MAX);
@@ -387,7 +389,7 @@ mod tests {
             *counts.entry(ebuild.to_string()).or_insert(0) += 1;
             assert!(ts >= filter_mints.unwrap_or(mints) && ts <= filter_maxts.unwrap_or(maxts),
                     "Out of bound date {}",
-                    fmt_time(ts));
+                    fmt_utctime(ts));
             assert!(re_atom.is_match(ebuild), "Invalid ebuild atom {}", ebuild);
             assert!(re_version.is_match(version), "Invalid version {}", version);
             assert!(re_iter.is_match(iter), "Invalid iteration {}", iter);

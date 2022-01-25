@@ -1,6 +1,6 @@
 use crate::{date::*, parser::*, proces::*, *};
 use anyhow::bail;
-use chrono::{Datelike, Duration, Timelike, Weekday};
+use chrono::{Datelike, Duration, Local, TimeZone, Timelike, Weekday};
 use std::{collections::{BTreeMap, HashMap},
           io::{stdin, stdout, Stdout}};
 
@@ -30,7 +30,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 let started = merges.remove(key).unwrap_or(ts + 1);
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}{}",
-                         fmt_time(ts),
+                         fmt_time(ts, &st),
                          st.dur_p, fmt_duration(st.dur_t, ts - started),
                          st.merge_p, p.ebuild_version(), st.merge_s).unwrap_or(());
             },
@@ -43,7 +43,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}{}",
-                         fmt_time(ts),
+                         fmt_time(ts, &st),
                          st.dur_p, fmt_duration(st.dur_t, ts - started),
                          st.unmerge_p, p.ebuild_version(), st.unmerge_s).unwrap_or(());
             },
@@ -54,7 +54,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 found_one = true;
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9}{} Sync",
-                         fmt_time(ts),
+                         fmt_time(ts, &st),
                          st.dur_p, fmt_duration(st.dur_t, ts - syncstart), st.dur_s).unwrap_or(());
             },
         }
@@ -94,7 +94,7 @@ fn timespan_next(ts: i64, add: Timespan) -> i64 {
         Timespan::Day => d = d.with_hour(12).unwrap() + Duration::days(1),
     }
     let res = d.with_hour(0).unwrap().timestamp();
-    debug!("{} + {:?} = {}", fmt_time(ts), add, fmt_time(res));
+    debug!("{} + {:?} = {}", fmt_utctime(ts), add, fmt_utctime(res));
     res
 }
 fn timespan_header(ts: i64, timespan: Timespan) -> String {
@@ -391,7 +391,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                  st.cnt_p, totunknown, st.cnt_s,
                  st.dur_p, fmt_duration(st.dur_t, totelapsed), st.dur_s,
                  st.dur_p, fmt_duration(st.dur_t, totpredict), st.dur_s,
-                 st.dur_p, fmt_time(now + totpredict), st.dur_s)?;
+                 st.dur_p, fmt_time(now + totpredict, &st), st.dur_s)?;
     } else {
         writeln!(tw, "No pretended merge found")?;
     }
@@ -501,20 +501,33 @@ mod tests {
               2021-03-26 17:08:20 +00:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
               2021-03-29 10:57:14 +00:00        12 >>> sys-apps/install-xattr-0.8\n\
               2021-03-29 10:57:45 +00:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
-            // Dublin (affected by DST)
-            (&["-F", "test/emerge.dst.log", "l"],
-             "Europe/Dublin",
-             "2021-03-26 17:07:08 +00:00        20 >>> dev-libs/libksba-1.5.0\n\
-              2021-03-26 17:08:20 +00:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
-              2021-03-29 11:57:14 +01:00        12 >>> sys-apps/install-xattr-0.8\n\
-              2021-03-29 11:57:45 +01:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
-            // Moscow (no DST)
+            // Moscow (east)
             (&["-F", "test/emerge.dst.log", "l"],
              "Europe/Moscow",
              "2021-03-26 20:07:08 +03:00        20 >>> dev-libs/libksba-1.5.0\n\
               2021-03-26 20:08:20 +03:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
               2021-03-29 13:57:14 +03:00        12 >>> sys-apps/install-xattr-0.8\n\
               2021-03-29 13:57:45 +03:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
+            // Newfoundland (west, non-whole)
+            (&["-F", "test/emerge.dst.log", "l"],
+             "Canada/Newfoundland",
+             "2021-03-26 13:37:08 -03:30        20 >>> dev-libs/libksba-1.5.0\n\
+              2021-03-26 13:38:20 -03:30      1:12 >>> sys-boot/grub-2.06_rc1\n\
+              2021-03-29 07:27:14 -03:30        12 >>> sys-apps/install-xattr-0.8\n\
+              2021-03-29 07:27:45 -03:30        31 >>> sys-devel/m4-1.4.18-r2\n"),
+            // Dublin (affected by DST)
+            // FIXME: Hanling this properly will remain impossible until UtcOffset::local_offset_at
+            //        functionality is available after thread start (see
+            //        https://github.com/time-rs/time/issues/380). Until then, emlop's behavior is
+            //        to display all dates with the same offset (the curent one detected at program
+            //        start) even though it should be different at different dates. Not adding a
+            //        unitest for this, as it would need to be updated twice a year.
+            //(&["-F", "test/emerge.dst.log", "l"],
+            // "Europe/Dublin",
+            // "2021-03-26 17:07:08 +00:00        20 >>> dev-libs/libksba-1.5.0\n\
+            //  2021-03-26 17:08:20 +00:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
+            //  2021-03-29 11:57:14 +01:00        12 >>> sys-apps/install-xattr-0.8\n\
+            //  2021-03-29 11:57:45 +01:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
         ];
         for (a, t, o) in t {
             emlop().args(a).env("TZ", t).assert().stdout(o);

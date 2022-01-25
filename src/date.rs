@@ -1,9 +1,13 @@
+use crate::Styles;
 use anyhow::{bail, Error};
 use clap::ArgMatches;
 use log::{debug, warn};
 use regex::Regex;
-use std::{convert::TryFrom, str::FromStr};
+use std::{convert::{TryFrom, TryInto},
+          str::FromStr,
+          time::{SystemTime, UNIX_EPOCH}};
 use time::{format_description::{modifier::*, Component, FormatItem::*},
+           macros::format_description,
            parsing::Parsed,
            Date, Duration, OffsetDateTime, UtcOffset};
 
@@ -18,6 +22,28 @@ pub fn get_utcoffset(matches: &ArgMatches) -> UtcOffset {
                                              UtcOffset::UTC
                                          })
     }
+}
+
+/// Format standardized utc dates
+pub fn fmt_utctime(ts: i64) -> String {
+    let fmt = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z");
+    OffsetDateTime::from_unix_timestamp(ts).unwrap().format(&fmt).unwrap()
+}
+
+/// Format dates according to user preferences
+pub fn fmt_time(ts: i64, style: &Styles) -> String {
+    let fmt = format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]");
+    let offset_secs = Duration::new(style.date_offset.whole_seconds().try_into().unwrap(), 0);
+    OffsetDateTime::from_unix_timestamp(ts).unwrap()
+                                           .replace_offset(style.date_offset)
+                                           .checked_add(offset_secs)
+                                           .unwrap()
+                                           .format(&fmt)
+                                           .unwrap()
+}
+
+pub fn epoch_now() -> i64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
 /// Parse datetime in various formats, returning unix timestamp
@@ -128,7 +154,6 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::epoch_now;
     use std::convert::TryInto;
     use time::format_description::well_known::Rfc3339;
 

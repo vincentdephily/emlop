@@ -7,12 +7,10 @@ mod proces;
 use crate::commands::*;
 use ansi_term::{Color::*, Style};
 use anyhow::Error;
-use chrono::{DateTime, Local, TimeZone};
 use clap::{value_t, ArgMatches, Error as ClapError, ErrorKind};
 use log::*;
 use std::{io::{stdout, Write},
-          str::FromStr,
-          time::{SystemTime, UNIX_EPOCH}};
+          str::FromStr};
 use tabwriter::TabWriter;
 use time::UtcOffset;
 
@@ -158,18 +156,6 @@ pub fn fmt_duration(style: DurationStyle, secs: i64) -> String {
         },
         DurationStyle::S => format!("{}", secs),
     }
-}
-
-pub fn fmt_time(ts: i64) -> DateTime<Local> {
-    Local.timestamp(ts, 0)
-}
-
-pub fn epoch(st: SystemTime) -> i64 {
-    st.duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
-}
-
-pub fn epoch_now() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
 /// Holds styling preferences.

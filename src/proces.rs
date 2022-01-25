@@ -6,7 +6,7 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
-use crate::*;
+use crate::{date::*, *};
 use std::{fs::{read_dir, DirEntry, File},
           io::{self, prelude::*}};
 use sysconf::raw::{sysconf, SysconfVariable};
@@ -139,13 +139,13 @@ mod tests {
         let mut e: u32 = 0;
         for (pid, times) in info {
             match times {
-                (ref c,Some(t), None) =>                           {e+=1; println!("WARN {:>20} {:>7} {}: disappeared after rust run", c, pid, fmt_time(t));},
-                (ref c,None, Some(t)) if t >= ps_start -1 =>       {e+=1; println!("WARN {:>20} {:>7} {}: appeared right after rust run", c, pid, fmt_time(t));},
-                (ref c,None, Some(t)) =>                           {e+=10;println!("ERR  {:>20} {:>7} {}: seen by ps but not by rust", c, pid, fmt_time(t));},
-                (ref c,Some(tr), Some(tp)) if tr == tp =>          {e+=0; println!("OK   {:>20} {:>7} {}: same time", c, pid, fmt_time(tr));},
-                (ref c,Some(tr), Some(tp)) if (tr-tp).abs() < 2 => {e+=0; println!("IGN  {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_time(tr), tr-tp, fmt_time(tp));},
-                (ref c,Some(tr), Some(tp)) if (tr-tp).abs() < 5 => {e+=1; println!("WARN {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_time(tr), tr-tp, fmt_time(tp));},
-                (ref c,Some(tr), Some(tp)) =>                      {e+=5; println!("ERR  {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_time(tr), tr-tp, fmt_time(tp));},
+                (ref c,Some(t), None) =>                           {e+=1; println!("WARN {:>20} {:>7} {}: disappeared after rust run", c, pid, fmt_utctime(t));},
+                (ref c,None, Some(t)) if t >= ps_start -1 =>       {e+=1; println!("WARN {:>20} {:>7} {}: appeared right after rust run", c, pid, fmt_utctime(t));},
+                (ref c,None, Some(t)) =>                           {e+=10;println!("ERR  {:>20} {:>7} {}: seen by ps but not by rust", c, pid, fmt_utctime(t));},
+                (ref c,Some(tr), Some(tp)) if tr == tp =>          {e+=0; println!("OK   {:>20} {:>7} {}: same time", c, pid, fmt_utctime(tr));},
+                (ref c,Some(tr), Some(tp)) if (tr-tp).abs() < 2 => {e+=0; println!("IGN  {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_utctime(tr), tr-tp, fmt_utctime(tp));},
+                (ref c,Some(tr), Some(tp)) if (tr-tp).abs() < 5 => {e+=1; println!("WARN {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_utctime(tr), tr-tp, fmt_utctime(tp));},
+                (ref c,Some(tr), Some(tp)) =>                      {e+=5; println!("ERR  {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_utctime(tr), tr-tp, fmt_utctime(tp));},
                 (ref c,None, None) =>                              {e+=10;println!("ERR  {:>20} {:>7}: no times", c, pid);},
             }
         }
