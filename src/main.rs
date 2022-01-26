@@ -18,7 +18,7 @@ fn main() {
     let args = cli::build_cli().get_matches();
     stderrlog::new().verbosity(args.occurrences_of("verbose") as usize).init().unwrap();
     debug!("{:?}", args);
-    let styles = Styles::new(&args);
+    let styles = Styles::from_args(&args);
     let mut tw = TabWriter::new(stdout());
     let res = match args.subcommand() {
         ("log", Some(sub_args)) => cmd_list(&args, sub_args, &styles),
@@ -159,13 +159,19 @@ pub struct Styles {
     date_offset: UtcOffset,
 }
 impl Styles {
-    fn new(args: &ArgMatches) -> Self {
-        let enabled = match args.value_of("color") {
+    fn from_args(args: &ArgMatches) -> Self {
+        let color = match args.value_of("color") {
             Some("always") | Some("y") => true,
             Some("never") | Some("n") => false,
             _ => atty::is(atty::Stream::Stdout),
         };
-        if enabled {
+        let duration = value_t!(args, "duration", DurationStyle).unwrap();
+        let utc = args.is_present("utc");
+        Styles::new(color, duration, utc)
+    }
+
+    fn new(color: bool, duration: DurationStyle, utc: bool) -> Self {
+        if color {
             Styles { pkg_p: Style::new().fg(Green).bold().prefix().to_string(),
                      merge_p: Style::new().fg(Green).bold().prefix().to_string(),
                      merge_s: Style::new().fg(Green).bold().suffix().to_string(),
@@ -175,8 +181,8 @@ impl Styles {
                      dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
                      cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
                      cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string(),
-                     dur_t: value_t!(args, "duration", DurationStyle).unwrap(),
-                     date_offset: date::get_utcoffset(args) }
+                     dur_t: duration,
+                     date_offset: date::get_offset(utc) }
         } else {
             Styles { pkg_p: String::new(),
                      merge_p: String::from(">>> "),
@@ -187,8 +193,8 @@ impl Styles {
                      dur_s: String::new(),
                      cnt_p: String::new(),
                      cnt_s: String::new(),
-                     dur_t: value_t!(args, "duration", DurationStyle).unwrap(),
-                     date_offset: date::get_utcoffset(args) }
+                     dur_t: duration,
+                     date_offset: date::get_offset(utc) }
         }
     }
 }

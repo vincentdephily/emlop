@@ -1,6 +1,5 @@
 use crate::Styles;
 use anyhow::{bail, Error};
-use clap::ArgMatches;
 use log::{debug, warn};
 use regex::Regex;
 use std::{convert::{TryFrom, TryInto},
@@ -13,8 +12,8 @@ use time::{format_description::{modifier::*, Component, FormatItem::*},
 
 /// Get the UtcOffset to parse/display datetimes with.
 /// Needs to be called before starting extra threads.
-pub fn get_utcoffset(matches: &ArgMatches) -> UtcOffset {
-    if matches.is_present("utc") {
+pub fn get_offset(utc: bool) -> UtcOffset {
+    if utc {
         UtcOffset::UTC
     } else {
         UtcOffset::current_local_offset().unwrap_or_else(|e| {

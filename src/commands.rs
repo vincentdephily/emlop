@@ -367,6 +367,7 @@ pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{date::*, *};
     use assert_cmd::Command;
     use escargot::CargoBuild;
     use lazy_static::lazy_static;
@@ -374,17 +375,16 @@ mod tests {
               path::PathBuf,
               thread,
               time::{Duration, SystemTime, UNIX_EPOCH}};
-    use time::OffsetDateTime;
 
-    /// Return the current time + offset. To make tests more reproducible, we wait until we're close
-    /// to the start of a whole second before returning.
-    fn ts(secs: i64) -> OffsetDateTime {
+    /// Return current unix timestamp + offset, waiting until we're close to the start of a whole
+    /// second to make tests more reproducible.
+    fn ts(secs: i64) -> i64 {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         if now.subsec_millis() > 100 {
             thread::sleep(Duration::from_millis(25));
             ts(secs)
         } else {
-            OffsetDateTime::from_unix_timestamp(now.as_secs() as i64 + secs).unwrap()
+            now.as_secs() as i64 + secs
         }
     }
 
@@ -505,13 +505,14 @@ mod tests {
     #[test]
     fn predict_emerge_p() {
         let _cache_cargo_build = emlop();
+        let st = Styles::new(false, DurationStyle::HMS, true);
         let t = vec![// Check garbage input
                      ("blah blah\n", format!("No pretended merge found\n"), 2),
                      // Check all-unknowns
                      ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
                       format!("dev-lang/unknown-1.42                                  ?\n\
                                Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0 @ {}\n",
-                              ts(0)),
+                              fmt_time(ts(0), &st)),
                       0),
                      // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
                      ("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
@@ -521,7 +522,7 @@ mod tests {
                                dev-lang/unknown-1.42                                  ?\n\
                                dev-qt/qtgui-5.9.4-r3                               4:36\n\
                                Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20 @ {}\n",
-                              ts(8 * 60 + 20)),
+                              fmt_time(ts(8 * 60 + 20), &st)),
                       0),];
         for (i, o, e) in t {
             emlop().args(&["-F", "test/emerge.10000.log", "p"])
@@ -756,11 +757,12 @@ mod tests {
     #[test]
     fn negative_merge_time_pred() {
         let _cache_cargo_build = emlop();
+        let st = Styles::new(false, DurationStyle::HMS, true);
         let a = vec!["-F", "test/emerge.negtime.log", "p"];
         let i = "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n";
         let o = format!("kde-plasma/kwin-5.15.5                              4:33\n\
                            Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33 @ {}\n",
-                        ts(4 * 60 + 33));
+                        fmt_time(ts(4 * 60 + 33), &st));
         emlop().args(a).write_stdin(i).assert().success().stdout(o);
     }
 
