@@ -414,24 +414,31 @@ pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
 mod tests {
     use super::{timespan_next, Timespan};
     use assert_cmd::Command;
-    use chrono::{DateTime, Datelike, FixedOffset, TimeZone, Utc, Weekday};
     use escargot::CargoBuild;
     use lazy_static::lazy_static;
     use std::{collections::HashMap,
               path::PathBuf,
               thread,
               time::{Duration, SystemTime, UNIX_EPOCH}};
+    use time::{format_description::well_known::Rfc3339, OffsetDateTime, Weekday};
 
     /// Return the current time + offset. To make tests more reproducible, we wait until we're close
     /// to the start of a whole second before returning.
-    fn ts(secs: i64) -> DateTime<FixedOffset> {
+    fn ts(secs: i64) -> OffsetDateTime {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         if now.subsec_millis() > 100 {
             thread::sleep(Duration::from_millis(25));
             ts(secs)
         } else {
-            FixedOffset::east(0).timestamp(now.as_secs() as i64 + secs, 0)
+            parse_unix(now.as_secs() as i64 + secs)
         }
+    }
+
+    fn parse_3339(s: &str) -> OffsetDateTime {
+        OffsetDateTime::parse(s, &Rfc3339).unwrap()
+    }
+    fn parse_unix(epoch: i64) -> OffsetDateTime {
+        OffsetDateTime::from_unix_timestamp(epoch).unwrap()
     }
 
     lazy_static! {
@@ -846,6 +853,7 @@ mod tests {
         }
     }
 
+    // FIXME: try different timezones, in particular Australia/Melbourne
     #[test]
     fn timespan_next_() {
         for t in &[// input                   year       month      week       day
@@ -857,16 +865,16 @@ mod tests {
                    "2020-02-28T12:34:00+00:00 2021-01-01 2020-03-01 2020-03-02 2020-02-29"]
         {
             let v: Vec<&str> = t.split_whitespace().collect();
-            let i = DateTime::parse_from_rfc3339(v[0]).unwrap().timestamp();
-            let y = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[1])).unwrap();
-            let m = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[2])).unwrap();
-            let w = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[3])).unwrap();
-            let d = DateTime::parse_from_rfc3339(&format!("{}T00:00:00+00:00", v[4])).unwrap();
-            assert_eq!(y, Utc.timestamp(timespan_next(i, Timespan::Year), 0), "year {}", v[0]);
-            assert_eq!(m, Utc.timestamp(timespan_next(i, Timespan::Month), 0), "month {}", v[0]);
-            assert_eq!(w, Utc.timestamp(timespan_next(i, Timespan::Week), 0), "week {}", v[0]);
-            assert_eq!(Weekday::Mon, Utc.timestamp(timespan_next(i, Timespan::Week), 0).weekday());
-            assert_eq!(d, Utc.timestamp(timespan_next(i, Timespan::Day), 0), "day {}", v[0]);
+            let i = parse_3339(v[0]).unix_timestamp();
+            let y = parse_3339(&format!("{}T00:00:00+00:00", v[1]));
+            let m = parse_3339(&format!("{}T00:00:00+00:00", v[2]));
+            let w = parse_3339(&format!("{}T00:00:00+00:00", v[3]));
+            let d = parse_3339(&format!("{}T00:00:00+00:00", v[4]));
+            assert_eq!(y, parse_unix(timespan_next(i, Timespan::Year)), "year {}", v[0]);
+            assert_eq!(m, parse_unix(timespan_next(i, Timespan::Month)), "month {}", v[0]);
+            assert_eq!(w, parse_unix(timespan_next(i, Timespan::Week)), "week {}", v[0]);
+            assert_eq!(Weekday::Monday, parse_unix(timespan_next(i, Timespan::Week)).weekday());
+            assert_eq!(d, parse_unix(timespan_next(i, Timespan::Day)), "day {}", v[0]);
         }
     }
 }
