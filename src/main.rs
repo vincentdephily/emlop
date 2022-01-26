@@ -86,23 +86,6 @@ pub fn parse_limit(s: &str) -> Result<u16, String> {
 }
 
 
-#[derive(Debug, Clone, Copy)]
-pub enum Timespan {
-    Year,
-    Month,
-    Week,
-    Day,
-}
-pub fn parse_timespan(s: &str, _arg: ()) -> Result<Timespan, String> {
-    match s {
-        "y" => Ok(Timespan::Year),
-        "m" => Ok(Timespan::Month),
-        "w" => Ok(Timespan::Week),
-        "d" => Ok(Timespan::Day),
-        _ => Err("Valid values are y(ear), m(onth), w(eek), d(ay)".into()),
-    }
-}
-
 #[derive(Clone, Copy, Default)]
 pub struct Show {
     pub pkg: bool,

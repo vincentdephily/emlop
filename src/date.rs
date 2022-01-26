@@ -151,11 +151,83 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Timespan {
+    Year,
+    Month,
+    Week,
+    Day,
+}
+pub fn parse_timespan(s: &str, _arg: ()) -> Result<Timespan, String> {
+    match s {
+        "y" => Ok(Timespan::Year),
+        "m" => Ok(Timespan::Month),
+        "w" => Ok(Timespan::Week),
+        "d" => Ok(Timespan::Day),
+        _ => Err("Valid values are y(ear), m(onth), w(eek), d(ay)".into()),
+    }
+}
+/// Given a unix timestamp, truncate it to midnight and advance by the given number of years/months/days.
+/// We avoid DST issues by switching to 12:00.
+/// See https://github.com/chronotope/chrono/issues/290
+pub fn timespan_next(ts: i64, add: Timespan) -> i64 {
+    use chrono::{Datelike, Duration, Local, TimeZone, Timelike, Weekday};
+
+    let mut d = Local.timestamp(ts, 0).with_minute(0).unwrap().with_second(0).unwrap();
+    match add {
+        Timespan::Year => {
+            d = d.with_day(1).unwrap().with_month(1).unwrap().with_year(d.year() + 1).unwrap()
+        },
+        Timespan::Month => {
+            d = d.with_day(1)
+                 .unwrap()
+                 .with_month0((d.month0() + 1) % 12)
+                 .unwrap()
+                 .with_year(if d.month() == 12 { d.year() + 1 } else { d.year() })
+                 .unwrap()
+        },
+        Timespan::Week => {
+            let till_monday = match d.weekday() {
+                Weekday::Mon => 7,
+                Weekday::Tue => 6,
+                Weekday::Wed => 5,
+                Weekday::Thu => 4,
+                Weekday::Fri => 3,
+                Weekday::Sat => 2,
+                Weekday::Sun => 1,
+            };
+            d = d.with_hour(12).unwrap() + Duration::days(till_monday)
+        },
+        Timespan::Day => d = d.with_hour(12).unwrap() + Duration::days(1),
+    }
+    let res = d.with_hour(0).unwrap().timestamp();
+    debug!("{} + {:?} = {}", fmt_utctime(ts), add, fmt_utctime(res));
+    res
+}
+pub fn timespan_header(ts: i64, timespan: Timespan) -> String {
+    use chrono::{Local, TimeZone};
+
+    match timespan {
+        Timespan::Year => format!("{}", Local.timestamp(ts, 0).format("%Y ")),
+        Timespan::Month => format!("{}", Local.timestamp(ts, 0).format("%Y-%m ")),
+        Timespan::Week => format!("{}", Local.timestamp(ts, 0).format("%Y-%W ")),
+        Timespan::Day => format!("{}", Local.timestamp(ts, 0).format("%Y-%m-%d ")),
+    }
+}
+
+
 #[cfg(test)]
 mod test {
     use super::*;
     use std::convert::TryInto;
-    use time::format_description::well_known::Rfc3339;
+    use time::{format_description::well_known::Rfc3339, Weekday};
+
+    fn parse_3339(s: &str) -> OffsetDateTime {
+        OffsetDateTime::parse(s, &Rfc3339).unwrap()
+    }
+    fn parse_unix(epoch: i64) -> OffsetDateTime {
+        OffsetDateTime::from_unix_timestamp(epoch).unwrap()
+    }
 
     #[test]
     fn date() {
@@ -190,5 +262,30 @@ mod test {
         assert!(parse_date("152271000o", tz_utc).is_err());
         assert!(parse_date("1 day 3 centuries", tz_utc).is_err());
         assert!(parse_date("a while ago", tz_utc).is_err());
+    }
+
+    // FIXME: try different timezones, in particular Australia/Melbourne
+    #[test]
+    fn timespan_next_() {
+        for t in &[// input                   year       month      week       day
+                   "2019-01-01T00:00:00+00:00 2020-01-01 2019-02-01 2019-01-07 2019-01-02",
+                   "2019-01-01T23:59:59+00:00 2020-01-01 2019-02-01 2019-01-07 2019-01-02",
+                   "2019-01-30T00:00:00+00:00 2020-01-01 2019-02-01 2019-02-04 2019-01-31",
+                   "2019-01-31T00:00:00+00:00 2020-01-01 2019-02-01 2019-02-04 2019-02-01",
+                   "2019-12-31T00:00:00+00:00 2020-01-01 2020-01-01 2020-01-06 2020-01-01",
+                   "2020-02-28T12:34:00+00:00 2021-01-01 2020-03-01 2020-03-02 2020-02-29"]
+        {
+            let v: Vec<&str> = t.split_whitespace().collect();
+            let i = parse_3339(v[0]).unix_timestamp();
+            let y = parse_3339(&format!("{}T00:00:00+00:00", v[1]));
+            let m = parse_3339(&format!("{}T00:00:00+00:00", v[2]));
+            let w = parse_3339(&format!("{}T00:00:00+00:00", v[3]));
+            let d = parse_3339(&format!("{}T00:00:00+00:00", v[4]));
+            assert_eq!(y, parse_unix(timespan_next(i, Timespan::Year)), "year {}", v[0]);
+            assert_eq!(m, parse_unix(timespan_next(i, Timespan::Month)), "month {}", v[0]);
+            assert_eq!(w, parse_unix(timespan_next(i, Timespan::Week)), "week {}", v[0]);
+            assert_eq!(Weekday::Monday, parse_unix(timespan_next(i, Timespan::Week)).weekday());
+            assert_eq!(d, parse_unix(timespan_next(i, Timespan::Day)), "day {}", v[0]);
+        }
     }
 }
