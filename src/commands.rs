@@ -29,7 +29,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 let started = merges.remove(key).unwrap_or(ts + 1);
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}{}",
-                         fmt_time(ts, &st),
+                         fmt_time(ts, st),
                          st.dur_p, fmt_duration(st.dur_t, ts - started),
                          st.merge_p, p.ebuild_version(), st.merge_s).unwrap_or(());
             },
@@ -42,7 +42,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9} {}{}{}",
-                         fmt_time(ts, &st),
+                         fmt_time(ts, st),
                          st.dur_p, fmt_duration(st.dur_t, ts - started),
                          st.unmerge_p, p.ebuild_version(), st.unmerge_s).unwrap_or(());
             },
@@ -53,7 +53,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                 found_one = true;
                 #[rustfmt::skip]
                 writeln!(stdout(), "{} {}{:>9}{} Sync",
-                         fmt_time(ts, &st),
+                         fmt_time(ts, st),
                          st.dur_p, fmt_duration(st.dur_t, ts - syncstart), st.dur_s).unwrap_or(());
             },
         }
@@ -346,7 +346,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                  st.cnt_p, totunknown, st.cnt_s,
                  st.dur_p, fmt_duration(st.dur_t, totelapsed), st.dur_s,
                  st.dur_p, fmt_duration(st.dur_t, totpredict), st.dur_s,
-                 st.dur_p, fmt_time(now + totpredict, &st), st.dur_s)?;
+                 st.dur_p, fmt_time(now + totpredict, st), st.dur_s)?;
     } else {
         writeln!(tw, "No pretended merge found")?;
     }
