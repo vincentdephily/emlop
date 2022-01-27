@@ -16,7 +16,14 @@ use time::UtcOffset;
 
 fn main() {
     let args = cli::build_cli().get_matches();
-    stderrlog::new().verbosity(args.occurrences_of("verbose") as usize).init().unwrap();
+    let level = match args.occurrences_of("verbose") {
+        0 => LevelFilter::Error,
+        1 => LevelFilter::Warn,
+        2 => LevelFilter::Info,
+        3 => LevelFilter::Debug,
+        _ => LevelFilter::Trace,
+    };
+    env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
     debug!("{:?}", args);
     let styles = Styles::from_args(&args);
     let mut tw = TabWriter::new(stdout());
