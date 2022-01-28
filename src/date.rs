@@ -2,7 +2,7 @@ use crate::Styles;
 use anyhow::{bail, Error};
 use log::{debug, warn};
 use regex::Regex;
-use std::{convert::{TryFrom, TryInto},
+use std::{convert::TryFrom,
           str::FromStr,
           time::{SystemTime, UNIX_EPOCH}};
 use time::{macros::format_description, parsing::Parsed, Date, Duration, Month, OffsetDateTime,
@@ -30,13 +30,7 @@ pub fn fmt_utctime(ts: i64) -> String {
 /// Format dates according to user preferences
 pub fn fmt_time(ts: i64, style: &Styles) -> String {
     let fmt = format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]");
-    let offset_secs = Duration::new(style.date_offset.whole_seconds().try_into().unwrap(), 0);
-    OffsetDateTime::from_unix_timestamp(ts).unwrap()
-                                           .replace_offset(style.date_offset)
-                                           .checked_add(offset_secs)
-                                           .unwrap()
-                                           .format(&fmt)
-                                           .unwrap()
+    OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(style.date_offset).format(&fmt).unwrap()
 }
 
 pub fn epoch_now() -> i64 {
@@ -166,10 +160,9 @@ pub fn parse_timespan(s: &str, _arg: ()) -> Result<Timespan, String> {
     }
 }
 impl Timespan {
-    // FIXME: respect utc/local choice
     /// Given a unix timestamp, advance to the beginning of the next year/month/week/day.
-    pub fn next(&self, ts: i64) -> i64 {
-        let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().date();
+    pub fn next(&self, ts: i64, offset: UtcOffset) -> i64 {
+        let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset).date();
         let d2 = match self {
             Timespan::Year => Date::from_calendar_date(d.year() + 1, Month::January, 1).unwrap(),
             Timespan::Month => {
@@ -190,14 +183,13 @@ impl Timespan {
             },
             Timespan::Day => d.checked_add(Duration::DAY).unwrap(),
         };
-        let res = d2.with_hms(0, 0, 0).unwrap().assume_utc().unix_timestamp();
+        let res = d2.with_hms(0, 0, 0).unwrap().assume_offset(offset).unix_timestamp();
         debug!("{} + {:?} = {}", fmt_utctime(ts), self, fmt_utctime(res));
         res
     }
 
-    // FIXME: respect utc/local choice
-    pub fn header(&self, ts: i64) -> String {
-        let d = OffsetDateTime::from_unix_timestamp(ts).unwrap();
+    pub fn header(&self, ts: i64, offset: UtcOffset) -> String {
+        let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset);
         match self {
             Timespan::Year => d.format(format_description!("[year] ")).unwrap(),
             Timespan::Month => d.format(format_description!("[year]-[month] ")).unwrap(),
@@ -215,10 +207,10 @@ mod test {
     use time::{format_description::well_known::Rfc3339, Weekday};
 
     fn parse_3339(s: &str) -> OffsetDateTime {
-        OffsetDateTime::parse(s, &Rfc3339).unwrap()
+        OffsetDateTime::parse(s, &Rfc3339).expect(s)
     }
-    fn parse_unix(epoch: i64) -> OffsetDateTime {
-        OffsetDateTime::from_unix_timestamp(epoch).unwrap()
+    fn ts(t: OffsetDateTime) -> i64 {
+        t.unix_timestamp()
     }
 
     #[test]
@@ -256,28 +248,43 @@ mod test {
         assert!(parse_date("a while ago", tz_utc).is_err());
     }
 
-    // FIXME: try different timezones, in particular Australia/Melbourne
     #[test]
     fn timespan_next_() {
-        for t in &[// input                   year       month      week       day
-                   "2019-01-01T00:00:00+00:00 2020-01-01 2019-02-01 2019-01-07 2019-01-02",
-                   "2019-01-01T23:59:59+00:00 2020-01-01 2019-02-01 2019-01-07 2019-01-02",
-                   "2019-01-30T00:00:00+00:00 2020-01-01 2019-02-01 2019-02-04 2019-01-31",
-                   "2019-01-31T00:00:00+00:00 2020-01-01 2019-02-01 2019-02-04 2019-02-01",
-                   "2019-12-31T00:00:00+00:00 2020-01-01 2020-01-01 2020-01-06 2020-01-01",
-                   "2020-02-28T12:34:00+00:00 2021-01-01 2020-03-01 2020-03-02 2020-02-29"]
+        for t in [// input             year       month      week       day
+                  "2019-01-01T00:00:00 2020-01-01 2019-02-01 2019-01-07 2019-01-02",
+                  "2019-01-01T23:59:59 2020-01-01 2019-02-01 2019-01-07 2019-01-02",
+                  "2019-01-30T00:00:00 2020-01-01 2019-02-01 2019-02-04 2019-01-31",
+                  "2019-01-31T00:00:00 2020-01-01 2019-02-01 2019-02-04 2019-02-01",
+                  "2019-12-31T00:00:00 2020-01-01 2020-01-01 2020-01-06 2020-01-01",
+                  "2020-02-28T12:34:00 2021-01-01 2020-03-01 2020-03-02 2020-02-29"]
         {
+            // Convert the test string into test data (base input, and results depending on
+            // timespan). The same test data works whatever the timeone, but the actual timestamp
+            // returned by the function is offset.
             let v: Vec<&str> = t.split_whitespace().collect();
-            let i = parse_3339(v[0]).unix_timestamp();
-            let y = parse_3339(&format!("{}T00:00:00+00:00", v[1]));
-            let m = parse_3339(&format!("{}T00:00:00+00:00", v[2]));
-            let w = parse_3339(&format!("{}T00:00:00+00:00", v[3]));
-            let d = parse_3339(&format!("{}T00:00:00+00:00", v[4]));
-            assert_eq!(y, parse_unix(Timespan::Year.next(i)), "year {}", v[0]);
-            assert_eq!(m, parse_unix(Timespan::Month.next(i)), "month {}", v[0]);
-            assert_eq!(w, parse_unix(Timespan::Week.next(i)), "week {}", v[0]);
-            assert_eq!(Weekday::Monday, parse_unix(Timespan::Week.next(i)).weekday());
-            assert_eq!(d, parse_unix(Timespan::Day.next(i)), "day {}", v[0]);
+            let (base_s, year_s, month_s, week_s, day_s) = (v[0], v[1], v[2], v[3], v[4]);
+            let base_utc = parse_3339(&format!("{base_s}+00:00"));
+            for offset_s in ["+00:00", "+05:00", "-10:30"] {
+                let base = parse_3339(&format!("{base_s}{offset_s}"));
+                let year = parse_3339(&format!("{year_s}T00:00:00{offset_s}"));
+                let month = parse_3339(&format!("{month_s}T00:00:00{offset_s}"));
+                let week = parse_3339(&format!("{week_s}T00:00:00{offset_s}"));
+                let day = parse_3339(&format!("{day_s}T00:00:00{offset_s}"));
+                // Check our test data is correct
+                let offset = base.offset();
+                assert!(base < year && base < month && base < week && base < day,
+                        "{base} < {year} / {month} / {week} / {day}");
+                assert_eq!(ts(base), ts(base_utc) - offset.whole_seconds() as i64);
+                assert_eq!(Month::January, year.month());
+                assert_eq!(1, year.day());
+                assert_eq!(1, month.day());
+                assert_eq!(Weekday::Monday, week.weekday());
+                // Check the tested code is correct
+                assert_eq!(ts(year), Timespan::Year.next(ts(base), offset), "{base} Y {year}");
+                assert_eq!(ts(month), Timespan::Month.next(ts(base), offset), "{base} M {month}");
+                assert_eq!(ts(week), Timespan::Week.next(ts(base), offset), "{base} W {week}");
+                assert_eq!(ts(day), Timespan::Day.next(ts(base), offset), "{base} D {day}");
+            }
         }
     }
 }
