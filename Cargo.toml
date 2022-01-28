@@ -10,7 +10,8 @@ homepage = "https://github.com/vincentdephily/emlop"
 repository = "https://github.com/vincentdephily/emlop"
 authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Illia Shestakov <ishestakov@airmail.cc>"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.58.1"
 
 [dependencies]
 ansi_term = "0.12.1"
