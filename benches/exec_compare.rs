@@ -48,7 +48,7 @@ fn main() {
         // Show recent sync history
         ("ls", "genlop", &["-r","-d","1 week ago"],      None),
         ("ls", "qlop",   &["-st","-d","1 week ago"],     None),
-        ("ls", "emlop",  &["l","-ss","-f","1 week ago"], None),
+        ("ls", "emlop",  &["l","-ss","-f","1 week"], None),
         // Read only part of a file
         ("ld1", "genlop", &["-l", "--date","2015-01-01","--date","2015-01-10"], None),
         ("ld1", "qlop",   &["-mv","--date","2015-01-01","--date","2015-01-10"], None),
