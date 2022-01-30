@@ -115,6 +115,7 @@ impl FromStr for Show {
 #[derive(Clone, Copy)]
 pub enum DurationStyle {
     HMS,
+    HMSFixed,
     S,
 }
 impl FromStr for DurationStyle {
@@ -122,8 +123,9 @@ impl FromStr for DurationStyle {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "hms" => Ok(DurationStyle::HMS),
+            "hms_fixed" => Ok(DurationStyle::HMSFixed),
             "s" => Ok(DurationStyle::S),
-            _ => Err("Valid values are 'hms', 's'.".into()),
+            _ => Err("Valid values are 'hms', 'hms_fixed', 's'.".into()),
         }
     }
 }
@@ -131,11 +133,11 @@ pub fn fmt_duration(style: DurationStyle, secs: i64) -> String {
     if secs < 0 {
         return String::from("?");
     }
+    let h = secs / 3600;
+    let m = secs % 3600 / 60;
+    let s = secs % 60;
     match style {
         DurationStyle::HMS => {
-            let h = secs / 3600;
-            let m = secs % 3600 / 60;
-            let s = secs % 60;
             if h > 0 {
                 format!("{}:{:02}:{:02}", h, m, s)
             } else if m > 0 {
@@ -144,6 +146,7 @@ pub fn fmt_duration(style: DurationStyle, secs: i64) -> String {
                 format!("{}", s)
             }
         },
+        DurationStyle::HMSFixed => format!("{}:{:02}:{:02}", h, m, s),
         DurationStyle::S => format!("{}", secs),
     }
 }
@@ -217,19 +220,20 @@ mod tests {
 
     #[test]
     fn duration() {
-        for (hms, s, i) in &[("0", "0", 0),
-                             ("1", "1", 1),
-                             ("59", "59", 59),
-                             ("1:00", "60", 60),
-                             ("1:01", "61", 61),
-                             ("59:59", "3599", 3599),
-                             ("1:00:00", "3600", 3600),
-                             ("99:59:59", "359999", 359999),
-                             ("100:00:00", "360000", 360000),
-                             ("?", "?", -1),
-                             ("?", "?", -123456)]
+        for (hms, hms_fixed, s, i) in &[("0", "0:00:00", "0", 0),
+                                        ("1", "0:00:01", "1", 1),
+                                        ("59", "0:00:59", "59", 59),
+                                        ("1:00", "0:01:00", "60", 60),
+                                        ("1:01", "0:01:01", "61", 61),
+                                        ("59:59", "0:59:59", "3599", 3599),
+                                        ("1:00:00", "1:00:00", "3600", 3600),
+                                        ("99:59:59", "99:59:59", "359999", 359999),
+                                        ("100:00:00", "100:00:00", "360000", 360000),
+                                        ("?", "?", "?", -1),
+                                        ("?", "?", "?", -123456)]
         {
             assert_eq!(*hms, fmt_duration(DurationStyle::HMS, *i));
+            assert_eq!(*hms_fixed, fmt_duration(DurationStyle::HMSFixed, *i));
             assert_eq!(*s, fmt_duration(DurationStyle::S, *i));
         }
     }

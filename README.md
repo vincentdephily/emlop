@@ -74,13 +74,13 @@ Show statistics about sucessful merges and syncs:
 
 Options common to all subcommands:
 
-    -f, --from <date>         Only parse log entries after <date>.
-    -t, --to <date>           Only parse log entries before <date>.
-        --duration <hms,s>    Format durations in hours:minutes:seconds or in seconds. [default: hms]
-    -F, --logfile <file>      Location of emerge log file. [default: /var/log/emerge.log]
-    -v                        Show warnings (-v), info (-vv) and debug (-vvv) messages (errors are always displayed).
-        --color <when>        Enable color (auto/always/never/y/n). [default: auto]
-    -h, --help                Show short (-h) or detailed (--help) help.
+    -f, --from <date>                Only parse log entries after <date>.
+    -t, --to <date>                  Only parse log entries before <date>.
+        --duration <hms,hms_fixed,s> Format durations in hours:minutes:seconds, minutes:seconds or seconds. [default: hms]
+    -F, --logfile <file>             Location of emerge log file. [default: /var/log/emerge.log]
+    -v                               Show warnings (-v), info (-vv) and debug (-vvv) messages (errors are always displayed).
+        --color <when>               Enable color (auto/always/never/y/n). [default: auto]
+    -h, --help                       Show short (-h) or detailed (--help) help.
 
 ### Examples
 
