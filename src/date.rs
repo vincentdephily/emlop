@@ -21,16 +21,42 @@ pub fn get_offset(utc: bool) -> UtcOffset {
     }
 }
 
+// It'd be nice to support user-defined formats, but lifetimes make this a bit akward.
+// See <https://github.com/time-rs/time/issues/429>
+pub struct DateStyle(&'static [time::format_description::FormatItem<'static>]);
+impl FromStr for DateStyle {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let fmt = match s {
+            "ymd" | "d" => format_description!("[year]-[month]-[day]"),
+            "ymdhms" | "dt" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
+            "ymdhmso" | "dto" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
+            "rfc3339" | "3339" => format_description!("[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour sign:mandatory]:[offset_minute]"),
+            "rfc2822" | "2822" => format_description!("[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
+            "compact" => format_description!("[year][month][day][hour][minute][second]"),
+            "unix" => &[],
+            _ => return Err(format!("Invalid date format {s}")),
+        };
+        Ok(Self(fmt))
+    }
+}
+
 /// Format standardized utc dates
 pub fn fmt_utctime(ts: i64) -> String {
     let fmt = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z");
     OffsetDateTime::from_unix_timestamp(ts).unwrap().format(&fmt).unwrap()
 }
 
-/// Format dates according to user preferences
+/// Format dates according to user preferencess
 pub fn fmt_time(ts: i64, style: &Styles) -> String {
-    let fmt = format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]");
-    OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(style.date_offset).format(&fmt).unwrap()
+    if style.date_fmt.0.is_empty() {
+        ts.to_string()
+    } else {
+        OffsetDateTime::from_unix_timestamp(ts).unwrap()
+                                               .to_offset(style.date_offset)
+                                               .format(&style.date_fmt.0)
+                                               .unwrap()
+    }
 }
 
 pub fn epoch_now() -> i64 {

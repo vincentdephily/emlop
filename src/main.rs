@@ -4,7 +4,7 @@ mod date;
 mod parser;
 mod proces;
 
-use crate::commands::*;
+use crate::{commands::*, date::*};
 use ansi_term::{Color::*, Style};
 use anyhow::Error;
 use clap::{value_t, ArgMatches, Error as ClapError, ErrorKind};
@@ -164,6 +164,7 @@ pub struct Styles {
     cnt_s: String,
     dur_t: DurationStyle,
     date_offset: UtcOffset,
+    date_fmt: DateStyle,
 }
 impl Styles {
     fn from_args(args: &ArgMatches) -> Self {
@@ -172,12 +173,13 @@ impl Styles {
             Some("never") | Some("n") => false,
             _ => atty::is(atty::Stream::Stdout),
         };
-        let duration = value_t!(args, "duration", DurationStyle).unwrap();
+        let dur_fmt = value_t!(args, "duration", DurationStyle).unwrap();
+        let date_fmt = value_t!(args, "date", DateStyle).unwrap();
         let utc = args.is_present("utc");
-        Styles::new(color, duration, utc)
+        Styles::new(color, dur_fmt, date_fmt, utc)
     }
 
-    fn new(color: bool, duration: DurationStyle, utc: bool) -> Self {
+    fn new(color: bool, duration: DurationStyle, date: DateStyle, utc: bool) -> Self {
         if color {
             Styles { pkg_p: Style::new().fg(Green).bold().prefix().to_string(),
                      merge_p: Style::new().fg(Green).bold().prefix().to_string(),
@@ -189,7 +191,8 @@ impl Styles {
                      cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
                      cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string(),
                      dur_t: duration,
-                     date_offset: date::get_offset(utc) }
+                     date_offset: date::get_offset(utc),
+                     date_fmt: date }
         } else {
             Styles { pkg_p: String::new(),
                      merge_p: String::from(">>> "),
@@ -201,7 +204,8 @@ impl Styles {
                      cnt_p: String::new(),
                      cnt_s: String::new(),
                      dur_t: duration,
-                     date_offset: date::get_offset(utc) }
+                     date_offset: date::get_offset(utc),
+                     date_fmt: date }
         }
     }
 }

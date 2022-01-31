@@ -31,8 +31,6 @@ https://github.com/BurntSushi/bstr
 
 ## Features
 ### Optional --headers
-### Apply `--utc` to date formating
-### Options to format dates differently
 ### Use colors to carry mmore information
 * Color-code predict durations ?
 * Dark-green for packages not in world file ?

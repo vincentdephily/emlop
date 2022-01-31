@@ -368,7 +368,6 @@ pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{date::*, *};
     use assert_cmd::Command;
     use escargot::CargoBuild;
     use lazy_static::lazy_static;
@@ -506,14 +505,13 @@ mod tests {
     #[test]
     fn predict_emerge_p() {
         let _cache_cargo_build = emlop();
-        let st = Styles::new(false, DurationStyle::HMS, true);
         let t = vec![// Check garbage input
                      ("blah blah\n", format!("No pretended merge found\n"), 2),
                      // Check all-unknowns
                      ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
                       format!("dev-lang/unknown-1.42                                  ?\n\
                                Estimate for 1 ebuilds (1 unknown, 0 elapsed)          0 @ {}\n",
-                              fmt_time(ts(0), &st)),
+                              ts(0)),
                       0),
                      // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
                      ("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
@@ -523,10 +521,10 @@ mod tests {
                                dev-lang/unknown-1.42                                  ?\n\
                                dev-qt/qtgui-5.9.4-r3                               4:36\n\
                                Estimate for 3 ebuilds (1 unknown, 0 elapsed)       8:20 @ {}\n",
-                              fmt_time(ts(8 * 60 + 20), &st)),
+                              ts(8 * 60 + 20)),
                       0),];
         for (i, o, e) in t {
-            emlop().args(&["-F", "test/emerge.10000.log", "p"])
+            emlop().args(&["-F", "test/emerge.10000.log", "p", "--date", "unix"])
                    .write_stdin(i)
                    .assert()
                    .code(e)
@@ -758,12 +756,11 @@ mod tests {
     #[test]
     fn negative_merge_time_pred() {
         let _cache_cargo_build = emlop();
-        let st = Styles::new(false, DurationStyle::HMS, true);
-        let a = vec!["-F", "test/emerge.negtime.log", "p"];
+        let a = vec!["-F", "test/emerge.negtime.log", "p", "--date", "unix"];
         let i = "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n";
         let o = format!("kde-plasma/kwin-5.15.5                              4:33\n\
                            Estimate for 1 ebuilds (0 unknown, 0 elapsed)       4:33 @ {}\n",
-                        fmt_time(ts(4 * 60 + 33), &st));
+                        ts(4 * 60 + 33));
         emlop().args(a).write_stdin(i).assert().success().stdout(o);
     }
 
