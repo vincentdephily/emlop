@@ -406,38 +406,38 @@ mod tests {
         let t: Vec<(&[&str], &str, i32)> = vec![
             // Basic test
             (&["-F", "test/emerge.10000.log", "l", "client"],
-             "2018-02-04 04:55:19 +00:00     35:46 >>> mail-client/thunderbird-52.6.0\n\
-              2018-02-04 05:42:48 +00:00     47:29 >>> www-client/firefox-58.0.1\n\
-              2018-02-09 11:04:59 +00:00     47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
-              2018-02-12 10:14:11 +00:00        31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
-              2018-02-16 04:41:39 +00:00   6:03:14 >>> www-client/chromium-64.0.3282.140\n\
-              2018-02-19 17:35:41 +00:00   7:56:03 >>> www-client/chromium-64.0.3282.167\n\
-              2018-02-22 13:32:53 +00:00        44 >>> www-client/links-2.14-r1\n\
-              2018-02-28 09:14:37 +00:00      6:02 >>> www-client/falkon-3.0.0\n\
-              2018-03-06 04:19:52 +00:00   7:42:07 >>> www-client/chromium-64.0.3282.186\n\
-              2018-03-12 10:35:22 +00:00        14 >>> x11-apps/xlsclients-1.1.4\n\
-              2018-03-12 11:03:53 +00:00        16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n",
+             "2018-02-04 04:55:19     35:46 >>> mail-client/thunderbird-52.6.0\n\
+              2018-02-04 05:42:48     47:29 >>> www-client/firefox-58.0.1\n\
+              2018-02-09 11:04:59     47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
+              2018-02-12 10:14:11        31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
+              2018-02-16 04:41:39   6:03:14 >>> www-client/chromium-64.0.3282.140\n\
+              2018-02-19 17:35:41   7:56:03 >>> www-client/chromium-64.0.3282.167\n\
+              2018-02-22 13:32:53        44 >>> www-client/links-2.14-r1\n\
+              2018-02-28 09:14:37      6:02 >>> www-client/falkon-3.0.0\n\
+              2018-03-06 04:19:52   7:42:07 >>> www-client/chromium-64.0.3282.186\n\
+              2018-03-12 10:35:22        14 >>> x11-apps/xlsclients-1.1.4\n\
+              2018-03-12 11:03:53        16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n",
              0),
             // Check output when duration isn't known
             (&["-F", "test/emerge.10000.log", "l", "-s", "m", "mlt", "-e", "--from", "2018-02-18 12:37:00"],
-             "2018-02-18 12:37:09 +00:00         ? >>> media-libs/mlt-6.4.1-r6\n\
-              2018-02-27 15:10:05 +00:00        43 >>> media-libs/mlt-6.4.1-r6\n\
-              2018-02-27 16:48:40 +00:00        39 >>> media-libs/mlt-6.4.1-r6\n",
+             "2018-02-18 12:37:09         ? >>> media-libs/mlt-6.4.1-r6\n\
+              2018-02-27 15:10:05        43 >>> media-libs/mlt-6.4.1-r6\n\
+              2018-02-27 16:48:40        39 >>> media-libs/mlt-6.4.1-r6\n",
              0),
             // Check output of sync events
             (&["-F", "test/emerge.10000.log", "l", "-ss", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
-             "2018-03-07 11:37:05 +00:00        38 Sync\n\
-              2018-03-07 13:56:09 +00:00        40 Sync\n",
+             "2018-03-07 11:37:05        38 Sync\n\
+              2018-03-07 13:56:09        40 Sync\n",
              0),
             // Check output of all events
             (&["-F", "test/emerge.10000.log", "l", "--show", "a", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
-             "2018-03-07 10:43:10 +00:00        14 >>> sys-apps/the_silver_searcher-2.0.0\n\
-              2018-03-07 11:37:05 +00:00        38 Sync\n\
-              2018-03-07 12:49:09 +00:00         2 <<< sys-apps/util-linux-2.30.2\n\
-              2018-03-07 12:49:13 +00:00      1:01 >>> sys-apps/util-linux-2.30.2-r1\n\
-              2018-03-07 13:56:09 +00:00        40 Sync\n\
-              2018-03-07 13:59:38 +00:00         2 <<< dev-libs/nspr-4.17\n\
-              2018-03-07 13:59:41 +00:00        24 >>> dev-libs/nspr-4.18\n",
+             "2018-03-07 10:43:10        14 >>> sys-apps/the_silver_searcher-2.0.0\n\
+              2018-03-07 11:37:05        38 Sync\n\
+              2018-03-07 12:49:09         2 <<< sys-apps/util-linux-2.30.2\n\
+              2018-03-07 12:49:13      1:01 >>> sys-apps/util-linux-2.30.2-r1\n\
+              2018-03-07 13:56:09        40 Sync\n\
+              2018-03-07 13:59:38         2 <<< dev-libs/nspr-4.17\n\
+              2018-03-07 13:59:41        24 >>> dev-libs/nspr-4.18\n",
              0)
         ];
         for (a, o, e) in t {
@@ -447,24 +447,21 @@ mod tests {
 
     #[test]
     fn timezone() {
-        let t: Vec<(&[&str], &str, &str)> = vec![
+        let t: Vec<(&str, &str)> = vec![
             // UTC
-            (&["-F", "test/emerge.dst.log", "l"],
-             "UTC",
+            ("UTC",
              "2021-03-26 17:07:08 +00:00        20 >>> dev-libs/libksba-1.5.0\n\
               2021-03-26 17:08:20 +00:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
               2021-03-29 10:57:14 +00:00        12 >>> sys-apps/install-xattr-0.8\n\
               2021-03-29 10:57:45 +00:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
             // Moscow (east)
-            (&["-F", "test/emerge.dst.log", "l"],
-             "Europe/Moscow",
+            ("Europe/Moscow",
              "2021-03-26 20:07:08 +03:00        20 >>> dev-libs/libksba-1.5.0\n\
               2021-03-26 20:08:20 +03:00      1:12 >>> sys-boot/grub-2.06_rc1\n\
               2021-03-29 13:57:14 +03:00        12 >>> sys-apps/install-xattr-0.8\n\
               2021-03-29 13:57:45 +03:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
             // Newfoundland (west, non-whole)
-            (&["-F", "test/emerge.dst.log", "l"],
-             "Canada/Newfoundland",
+            ("Canada/Newfoundland",
              "2021-03-26 13:37:08 -03:30        20 >>> dev-libs/libksba-1.5.0\n\
               2021-03-26 13:38:20 -03:30      1:12 >>> sys-boot/grub-2.06_rc1\n\
               2021-03-29 07:27:14 -03:30        12 >>> sys-apps/install-xattr-0.8\n\
@@ -483,8 +480,11 @@ mod tests {
             //  2021-03-29 11:57:14 +01:00        12 >>> sys-apps/install-xattr-0.8\n\
             //  2021-03-29 11:57:45 +01:00        31 >>> sys-devel/m4-1.4.18-r2\n"),
         ];
-        for (a, t, o) in t {
-            emlop().args(a).env("TZ", t).assert().stdout(o);
+        for (t, o) in t {
+            emlop().args(&["-F", "test/emerge.dst.log", "l", "--date", "dto"])
+                   .env("TZ", t)
+                   .assert()
+                   .stdout(o);
         }
     }
 
@@ -729,13 +729,13 @@ mod tests {
         for (a, o) in vec![
                  // For `log` we show an unknown time.
                  (vec!["-F", "test/emerge.negtime.log", "l", "-sms"],
-                  format!("2019-06-05 08:32:10 +00:00      1:09 Sync\n\
-                           2019-06-05 11:26:54 +00:00      5:56 >>> kde-plasma/kwin-5.15.5\n\
-                           2019-06-06 02:11:48 +00:00        26 >>> kde-apps/libktnef-19.04.1\n\
-                           2019-06-06 02:16:01 +00:00        34 >>> net-misc/chrony-3.3\n\
-                           2019-06-05 10:18:28 +00:00         ? Sync\n\
-                           2019-06-05 10:21:02 +00:00         ? >>> kde-plasma/kwin-5.15.5\n\
-                           2019-06-08 21:33:36 +00:00      3:10 >>> kde-plasma/kwin-5.15.5\n")),
+                  format!("2019-06-05 08:32:10      1:09 Sync\n\
+                           2019-06-05 11:26:54      5:56 >>> kde-plasma/kwin-5.15.5\n\
+                           2019-06-06 02:11:48        26 >>> kde-apps/libktnef-19.04.1\n\
+                           2019-06-06 02:16:01        34 >>> net-misc/chrony-3.3\n\
+                           2019-06-05 10:18:28         ? Sync\n\
+                           2019-06-05 10:21:02         ? >>> kde-plasma/kwin-5.15.5\n\
+                           2019-06-08 21:33:36      3:10 >>> kde-plasma/kwin-5.15.5\n")),
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
                  (vec!["-F", "test/emerge.negtime.log", "s", "-sa"],
                   format!("kde-apps/libktnef      1          26        26      0         0         ?\n\

@@ -88,7 +88,7 @@ Accepts formats like '2018-03-04', '2018-03-04 12:34:56', '2018-03-04T12:34', '1
              .global(true)
              .possible_values(&["ymd","d","ymdhms","dt","ymdhmso","dto","rfc3339","3339","rfc2822","2822","compact","unix"])
              .hide_possible_values(true)
-             .default_value("ymdhmso")
+             .default_value("ymdhms")
              .help("Output dates in different formats (get the list with `--date help`)."))
         .arg(Arg::with_name("logfile")
              .value_name("file")
