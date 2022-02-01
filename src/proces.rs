@@ -91,7 +91,7 @@ mod tests {
     use crate::proces::*;
 
     fn parse_ps_time(s: &str) -> i64 {
-        let fmt = format_description!("[month repr:short] [day] [hour]:[minute]:[second] [year]");
+        let fmt = format_description!("[month repr:short] [day padding:space] [hour]:[minute]:[second] [year]");
         PrimitiveDateTime::parse(s, &fmt).expect(&format!("Cannot parse {}", s))
                                          .assume_utc() // We run ps with TZ=UTC
                                          .unix_timestamp()
