@@ -32,14 +32,14 @@ did make some outputs more compact.
 Default qlop duration output depends on length: `45s` -> `3′45″` -> `1:23:45`. Machine output
 applies to dates and durations at the same time.
 
-|                                                   | genlop | qlop       | emlop   |
-| :------------------------------------------------ | :----: | :--------: | :-----: |
-| Output density                                    | sparse | medium     | compact |
-| Colorized output                                  | yes    | yes        | yes     |
-| Date output options                               | utc    | iso,unix   | -       |
-| Duration output style (seconds,hh:mm:ss,text)     | text   | hms,s,text | hms,s   |
-| Aligned output                                    | some   | some       | all     |
-| Headers                                           | no     | no         | no      |
+|                                               | genlop | qlop       | emlop           |
+|:----------------------------------------------|:------:|:----------:|:---------------:|
+| Output density                                | sparse | medium     | compact         |
+| Colorized output                              | yes    | yes        | yes             |
+| Date output options                           | utc    | iso,unix   | -               |
+| Duration output style (seconds,hh:mm:ss,text) | text   | hms,s,text | hms,hms_fixed,s |
+| Aligned output                                | some   | some       | all             |
+| Headers                                       | no     | no         | no              |
 
 ## Merge log
 
