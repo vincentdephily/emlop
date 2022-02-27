@@ -282,7 +282,7 @@ pub fn cmd_predict(tw: &mut TabWriter<Stdout>,
                     timevec.insert(ts - start_ts);
                 }
             },
-            _ => unreachable!("Should only receive Hist::{Start,Stop}"),
+            _ => unreachable!("Should only receive Hist::{{Start,Stop}}"),
         }
     }
 
