@@ -17,7 +17,7 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found_one = false;
-    let mut syncstart: i64 = 0;
+    let mut sync_start: Option<i64> = None;
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -47,14 +47,19 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
                          st.unmerge_p, p.ebuild_version(), st.unmerge_s).unwrap_or(());
             },
             Hist::SyncStart { ts } => {
-                syncstart = ts;
+                // Some sync starts have multiple entries in old logs
+                sync_start = Some(ts);
             },
-            Hist::SyncStop { ts } => {
-                found_one = true;
-                #[rustfmt::skip]
-                writeln!(stdout(), "{} {}{:>9}{} Sync",
-                         fmt_time(ts, st),
-                         st.dur_p, fmt_duration(st.dur_t, ts - syncstart), st.dur_s).unwrap_or(());
+            Hist::SyncStop { ts, repo } => {
+                if let Some(start_ts) = sync_start.take() {
+                    found_one = true;
+                    #[rustfmt::skip]
+                    writeln!(stdout(), "{} {}{:>9}{} Sync {repo}",
+                             fmt_time(ts, st),
+                             st.dur_p, fmt_duration(st.dur_t, ts - start_ts), st.dur_s).unwrap_or(());
+                } else {
+                    warn!("Sync stop without a start at {ts}")
+                }
             },
         }
     }
@@ -81,14 +86,6 @@ impl Times {
             self.vals.insert(0, t);
             self.tot += t;
         }
-    }
-    fn is_empty(&self) -> bool {
-        self.count == 0
-    }
-    fn clear(&mut self) {
-        self.vals.clear();
-        self.count = 0;
-        self.tot = 0;
     }
     /// Predict the next data point by looking at past ones
     fn pred(&self, lim: u16) -> i64 {
@@ -122,8 +119,8 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
-    let mut sync_start: i64 = 0;
-    let mut sync_time = Times::new();
+    let mut sync_start: Option<i64> = None;
+    let mut sync_time: BTreeMap<String, Times> = BTreeMap::new();
     let mut nextts = 0;
     let mut curts = 0;
     for p in hist {
@@ -163,10 +160,16 @@ pub fn cmd_stats(tw: &mut TabWriter<Stdout>,
                 }
             },
             Hist::SyncStart { ts } => {
-                sync_start = ts;
+                // Some sync starts have multiple entries in old logs
+                sync_start = Some(ts);
             },
-            Hist::SyncStop { ts } => {
-                sync_time.insert(ts - sync_start);
+            Hist::SyncStop { ts, repo } => {
+                if let Some(start_ts) = sync_start.take() {
+                    let times = sync_time.entry(repo).or_insert_with(Times::new);
+                    times.insert(ts - start_ts);
+                } else {
+                    warn!("Sync stop without a start at {ts}")
+                }
             },
         }
     }
@@ -181,7 +184,7 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                    lim: u16,
                    show: Show,
                    group_by: &str,
-                   sync_time: &Times,
+                   sync_time: &BTreeMap<String, Times>,
                    pkg_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
     if show.pkg && !pkg_time.is_empty() {
@@ -222,13 +225,15 @@ fn cmd_stats_group(tw: &mut TabWriter<Stdout>,
                  st.dur_s)?;
     }
     if show.sync && !sync_time.is_empty() {
-        #[rustfmt::skip]
-        writeln!(tw, "{}Sync\t{}{:>5}\t{}{:>10}\t{}{:>8}{}",
-                 group_by,
-                 st.cnt_p, sync_time.count,
-                 st.dur_p, fmt_duration(st.dur_t, sync_time.tot),
-                 st.dur_p, fmt_duration(st.dur_t, sync_time.pred(lim)),
-                 st.dur_s)?;
+        for (repo, time) in sync_time {
+            #[rustfmt::skip]
+            writeln!(tw, "{}Sync {repo}\t{}{:>5}\t{}{:>10}\t{}{:>8}{}",
+                     group_by,
+                     st.cnt_p, time.count,
+                     st.dur_p, fmt_duration(st.dur_t, time.tot),
+                     st.dur_p, fmt_duration(st.dur_t, time.pred(lim)),
+                     st.dur_s)?;
+        }
     }
     Ok(())
 }
@@ -426,16 +431,16 @@ mod tests {
              0),
             // Check output of sync events
             (&["-F", "test/emerge.10000.log", "l", "-ss", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
-             "2018-03-07 11:37:05        38 Sync\n\
-              2018-03-07 13:56:09        40 Sync\n",
+             "2018-03-07 11:37:05        38 Sync gentoo\n\
+              2018-03-07 13:56:09        40 Sync gentoo\n",
              0),
             // Check output of all events
             (&["-F", "test/emerge.10000.log", "l", "--show", "a", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
              "2018-03-07 10:43:10        14 >>> sys-apps/the_silver_searcher-2.0.0\n\
-              2018-03-07 11:37:05        38 Sync\n\
+              2018-03-07 11:37:05        38 Sync gentoo\n\
               2018-03-07 12:49:09         2 <<< sys-apps/util-linux-2.30.2\n\
               2018-03-07 12:49:13      1:01 >>> sys-apps/util-linux-2.30.2-r1\n\
-              2018-03-07 13:56:09        40 Sync\n\
+              2018-03-07 13:56:09        40 Sync gentoo\n\
               2018-03-07 13:59:38         2 <<< dev-libs/nspr-4.17\n\
               2018-03-07 13:59:41        24 >>> dev-libs/nspr-4.18\n",
              0)
@@ -546,11 +551,11 @@ mod tests {
               x11-apps/xlsclients               1          14        14      1         1         1\n",
              0),
             (&["-F","test/emerge.10000.log","s","client","-ss"],
-             "Sync    150     1:19:28        30\n",
+             "Sync gentoo    150     1:19:07        30\n",
              0),
             (&["-F","test/emerge.10000.log","s","client","-sst"],
-             "Total     11    24:00:24   2:10:56     10        27         2\n\
-              Sync     150     1:19:28        30\n",
+             "Total           11    24:00:24   2:10:56     10        27         2\n\
+              Sync gentoo    150     1:19:07        30\n",
              0),
             (&["-F","test/emerge.10000.log","s","client","-sa"],
              "kde-frameworks/kxmlrpcclient      2          47        23      2         4         2\n\
@@ -561,7 +566,7 @@ mod tests {
               www-client/links                  1          44        44      1         1         1\n\
               x11-apps/xlsclients               1          14        14      1         1         1\n\
               Total                            11    24:00:24   2:10:56     10        27         2\n\
-              Sync                            150     1:19:28        30\n",
+              Sync gentoo                     150     1:19:07        30\n",
              0),
             (&["-F","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
              "",
@@ -653,50 +658,50 @@ mod tests {
               2018-03-09 Total     50        7458       149     49       140         2\n\
               2018-03-12 Total     95        4380        46     95       213         2\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gy"],
-             "2018 Sync    150        4768        30\n"),
+             "2018 Sync gentoo    150        4747        30\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gm"],
-             "2018-02 Sync     90        2429        18\n\
-              2018-03 Sync     60        2339        30\n"),
+             "2018-02 Sync gentoo     90        2411        18\n\
+              2018-03 Sync gentoo     60        2336        30\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gw"],
-             "2018-05 Sync      3         162        54\n\
-              2018-06 Sync     31         957        30\n\
-              2018-07 Sync     17         391        21\n\
-              2018-08 Sync     20         503        25\n\
-              2018-09 Sync     39        1906        71\n\
-              2018-10 Sync     36         728        27\n\
-              2018-11 Sync      4         121        30\n"),
+             "2018-05 Sync gentoo      3         160        53\n\
+              2018-06 Sync gentoo     31         951        30\n\
+              2018-07 Sync gentoo     17         388        20\n\
+              2018-08 Sync gentoo     20         500        25\n\
+              2018-09 Sync gentoo     39        1899        70\n\
+              2018-10 Sync gentoo     36         728        27\n\
+              2018-11 Sync gentoo      4         121        30\n"),
             (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gd"],
-             "2018-02-03 Sync      1          69        69\n\
-              2018-02-04 Sync      2          93        46\n\
-              2018-02-05 Sync      7         188        26\n\
-              2018-02-06 Sync      7         237        33\n\
-              2018-02-07 Sync      7         223        31\n\
-              2018-02-08 Sync      7         217        31\n\
-              2018-02-09 Sync      3          92        30\n\
-              2018-02-12 Sync      4          87        21\n\
-              2018-02-13 Sync      2          46        23\n\
-              2018-02-14 Sync      3          85        28\n\
-              2018-02-15 Sync      4          77        19\n\
-              2018-02-16 Sync      3          68        22\n\
-              2018-02-18 Sync      1          28        28\n\
-              2018-02-19 Sync      2          61        30\n\
-              2018-02-20 Sync      5         120        24\n\
-              2018-02-21 Sync      4          90        22\n\
-              2018-02-22 Sync      2          51        25\n\
-              2018-02-23 Sync      6         158        26\n\
-              2018-02-24 Sync      1          23        23\n\
-              2018-02-26 Sync      4          69        17\n\
-              2018-02-27 Sync      8         211        26\n\
-              2018-02-28 Sync      7         136        19\n\
-              2018-03-01 Sync      8         569        71\n\
-              2018-03-02 Sync     10         548        54\n\
-              2018-03-03 Sync      2         373       186\n\
-              2018-03-05 Sync      9          46         5\n\
-              2018-03-06 Sync      8         183        22\n\
-              2018-03-07 Sync      4         120        30\n\
-              2018-03-08 Sync      8         157        19\n\
-              2018-03-09 Sync      7         222        31\n\
-              2018-03-12 Sync      4         121        30\n"),
+             "2018-02-03 Sync gentoo      1          68        68\n\
+              2018-02-04 Sync gentoo      2          92        46\n\
+              2018-02-05 Sync gentoo      7         186        26\n\
+              2018-02-06 Sync gentoo      7         237        33\n\
+              2018-02-07 Sync gentoo      7         221        31\n\
+              2018-02-08 Sync gentoo      7         215        30\n\
+              2018-02-09 Sync gentoo      3          92        30\n\
+              2018-02-12 Sync gentoo      4          87        21\n\
+              2018-02-13 Sync gentoo      2          45        22\n\
+              2018-02-14 Sync gentoo      3          85        28\n\
+              2018-02-15 Sync gentoo      4          76        19\n\
+              2018-02-16 Sync gentoo      3          67        22\n\
+              2018-02-18 Sync gentoo      1          28        28\n\
+              2018-02-19 Sync gentoo      2          61        30\n\
+              2018-02-20 Sync gentoo      5         119        23\n\
+              2018-02-21 Sync gentoo      4          89        22\n\
+              2018-02-22 Sync gentoo      2          51        25\n\
+              2018-02-23 Sync gentoo      6         157        26\n\
+              2018-02-24 Sync gentoo      1          23        23\n\
+              2018-02-26 Sync gentoo      4          69        17\n\
+              2018-02-27 Sync gentoo      8         208        26\n\
+              2018-02-28 Sync gentoo      7         135        19\n\
+              2018-03-01 Sync gentoo      8         568        71\n\
+              2018-03-02 Sync gentoo     10         547        54\n\
+              2018-03-03 Sync gentoo      2         372       186\n\
+              2018-03-05 Sync gentoo      9          46         5\n\
+              2018-03-06 Sync gentoo      8         183        22\n\
+              2018-03-07 Sync gentoo      4         120        30\n\
+              2018-03-08 Sync gentoo      8         157        19\n\
+              2018-03-09 Sync gentoo      7         222        31\n\
+              2018-03-12 Sync gentoo      4         121        30\n"),
         ];
         let mut tots: HashMap<&str, (u64, u64, u64, u64)> = HashMap::new();
         let to_u64 = |v: &Vec<&str>, i: usize| v.get(i).unwrap().parse::<u64>().unwrap();
@@ -707,11 +712,20 @@ mod tests {
             for l in o.lines() {
                 let cols: Vec<&str> = l.split_ascii_whitespace().collect();
                 let tot = tots.entry(a.last().unwrap()).or_insert((0, 0, 0, 0));
-                (*tot).0 += to_u64(&cols, 2);
-                (*tot).1 += to_u64(&cols, 3);
-                if cols.len() > 5 {
-                    (*tot).2 += to_u64(&cols, 5);
-                    (*tot).3 += to_u64(&cols, 6);
+                match cols.len() {
+                    // Sync
+                    6 => {
+                        (*tot).0 += to_u64(&cols, 3);
+                        (*tot).1 += to_u64(&cols, 4);
+                    }
+                    // merge
+                    8 => {
+                        (*tot).0 += to_u64(&cols, 2);
+                        (*tot).1 += to_u64(&cols, 3);
+                        (*tot).2 += to_u64(&cols, 5);
+                        (*tot).3 += to_u64(&cols, 6);
+                    }
+                    _ => panic!("Unexpected col count {l}")
                 }
             }
         }
@@ -729,11 +743,11 @@ mod tests {
         for (a, o) in vec![
                  // For `log` we show an unknown time.
                  (vec!["-F", "test/emerge.negtime.log", "l", "-sms"],
-                  format!("2019-06-05 08:32:10      1:09 Sync\n\
+                  format!("2019-06-05 08:32:10      1:06 Sync gentoo\n\
                            2019-06-05 11:26:54      5:56 >>> kde-plasma/kwin-5.15.5\n\
                            2019-06-06 02:11:48        26 >>> kde-apps/libktnef-19.04.1\n\
                            2019-06-06 02:16:01        34 >>> net-misc/chrony-3.3\n\
-                           2019-06-05 10:18:28         ? Sync\n\
+                           2019-06-05 10:18:28         ? Sync gentoo\n\
                            2019-06-05 10:21:02         ? >>> kde-plasma/kwin-5.15.5\n\
                            2019-06-08 21:33:36      3:10 >>> kde-plasma/kwin-5.15.5\n")),
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
@@ -742,7 +756,7 @@ mod tests {
                            kde-plasma/kwin        3        9:06      4:33      2         3         1\n\
                            net-misc/chrony        1          34        34      0         0         ?\n\
                            Total                  5       10:06      2:01      2         3         1\n\
-                           Sync                   2        1:09      1:09\n")),]
+                           Sync gentoo            2        1:06      1:06\n")),]
         {
             emlop().args(a).assert().success().stdout(o);
         }

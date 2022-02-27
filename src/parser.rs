@@ -25,7 +25,7 @@ pub enum Hist {
     /// Sync started (might never complete).
     SyncStart { ts: i64 },
     /// Sync completed.
-    SyncStop { ts: i64 },
+    SyncStop { ts: i64, repo: String },
 }
 impl Hist {
     pub fn ebuild(&self) -> &str {
@@ -319,17 +319,29 @@ fn parse_unmergestop(enabled: bool,
     Some(Hist::UnmergeStop { ts, key, pos })
 }
 fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
-    if !enabled || line != "=== sync" {
-        return None;
+    // Old portage logs 'Starting rsync with <url>', new portage logs 'Syncing repository <name>',
+    // and intermediate versions log both. This makes it hard to properly match a start repo string
+    // to a stop repo string across portage versions. Since syncs are not concurrent, we simply
+    // ignore the start repo string.
+    if enabled && (line.starts_with(">>> Syncing") || line.starts_with(">>> Starting rsync") || line.starts_with(">>> starting rsync")) {
+        Some(Hist::SyncStart { ts })
+    } else {
+        None
     }
-    Some(Hist::SyncStart { ts })
 }
 fn parse_syncstop(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
-    // Old portage logs 'completed with <source>', new portage logs 'completed for <destination>'
+    // Old portage logs 'completed with <url>', new portage logs 'completed for <name>'
     if !enabled || !line.starts_with("=== Sync completed") {
         return None;
     }
-    Some(Hist::SyncStop { ts })
+    let repo = match line.rsplit_once(['/', ' ']) {
+        Some((_, r)) => String::from(r),
+        _ => {
+            warn!("Can't find sync repo name in {ts} {line}");
+            String::from("unknown")
+        },
+    };
+    Some(Hist::SyncStop { ts, repo })
 }
 fn parse_pretend(line: &str, re: &Regex) -> Option<Pretend> {
     let c = re.captures(line)?;
@@ -382,8 +394,8 @@ mod tests {
                 Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version(), p.iter()),
                 Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version(), "1)1"),
                 Hist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version(), "1)1"),
-                Hist::SyncStart { ts } => ("SStart", ts, "c/e", "1", "1)1"),
-                Hist::SyncStop { ts } => ("SStop", ts, "c/e", "1", "1)1"),
+                Hist::SyncStart { ts, .. } => ("SStart", ts, "c/e", "1", "1)1"),
+                Hist::SyncStop { ts, .. } => ("SStop", ts, "c/e", "1", "1)1"),
             };
             *counts.entry(kind.to_string()).or_insert(0) += 1;
             *counts.entry(ebuild.to_string()).or_insert(0) += 1;
@@ -461,7 +473,7 @@ mod tests {
                          ("MStop", if m { 832 } else { 0 }),
                          ("UStart", if u { 832 } else { 0 }),
                          ("UStop", if u { 832 } else { 0 }),
-                         ("SStart", if s { 163 } else { 0 }),
+                         ("SStart", if s { 326 } else { 0 }),
                          ("SStop", if s { 150 } else { 0 })];
             chk_hist("10000", m, u, s, None, None, None, false, t);
         }
@@ -492,17 +504,17 @@ mod tests {
     fn parse_hist_filter_ts() {
         let (umin, umax, fmin, fmax) = (std::i64::MIN, std::i64::MAX, 1517609348, 1520891098);
         #[rustfmt::skip]
-        let t = vec![(Some(umin),       None,           889, 832, 832, 832, 163, 150),
-                     (Some(fmin),       None,           889, 832, 832, 832, 163, 150),
-                     (None,             Some(umax),     889, 832, 832, 832, 163, 150),
-                     (None,             Some(fmax),     889, 832, 832, 832, 163, 150),
-                     (Some(fmin),       Some(fmax),     889, 832, 832, 832, 163, 150),
+        let t = vec![(Some(umin),       None,           889, 832, 832, 832, 326, 150),
+                     (Some(fmin),       None,           889, 832, 832, 832, 326, 150),
+                     (None,             Some(umax),     889, 832, 832, 832, 326, 150),
+                     (None,             Some(fmax),     889, 832, 832, 832, 326, 150),
+                     (Some(fmin),       Some(fmax),     889, 832, 832, 832, 326, 150),
                      (Some(fmax),       None,             0,   0,   0,   0,   0,   0),
                      (None,             Some(fmin),       0,   1,   0,   0,   0,   0), //fist line of this file happens to be a stop
                      (None,             Some(umin),       0,   0,   0,   0,   0,   0),
                      (Some(umax),       None,             0,   0,   0,   0,   0,   0),
-                     (Some(1517917751), Some(1517931835), 6,   6,   5,   5,   2,   2),
-                     (Some(1517959010), Some(1518176159), 24, 21,  23,  23,  16,  16),
+                     (Some(1517917751), Some(1517931835), 6,   6,   5,   5,   4,   2),
+                     (Some(1517959010), Some(1518176159), 24, 21,  23,  23,  32,  16),
         ];
         for (min, max, m1, m2, u1, u2, s1, s2) in t {
             let c = vec![("MStart", m1),

@@ -33,7 +33,6 @@ impl std::fmt::Display for Info {
     }
 }
 
-
 /// Get command name, arguments, start time, and pid for one process.
 fn get_proc_info(filter: Option<&str>,
                  entry: &DirEntry,
@@ -57,7 +56,7 @@ fn get_proc_info(filter: Option<&str>,
     // Parse arguments
     let mut cmdline = String::new();
     File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
-    cmdline = cmdline.replace("\0", " ").trim().into();
+    cmdline = cmdline.replace('\0', " ").trim().into();
     // Done
     Some(Info { cmdline, start: time_ref + (start_time / clocktick) as i64, pid })
 }
