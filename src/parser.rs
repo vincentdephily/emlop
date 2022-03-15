@@ -323,7 +323,11 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
     // and intermediate versions log both. This makes it hard to properly match a start repo string
     // to a stop repo string across portage versions. Since syncs are not concurrent, we simply
     // ignore the start repo string.
-    if enabled && (line.starts_with(">>> Syncing") || line.starts_with(">>> Starting rsync") || line.starts_with(">>> starting rsync")) {
+    if enabled
+       && (line.starts_with(">>> Syncing")
+           || line.starts_with(">>> Starting rsync")
+           || line.starts_with(">>> starting rsync"))
+    {
         Some(Hist::SyncStart { ts })
     } else {
         None

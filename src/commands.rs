@@ -717,15 +717,15 @@ mod tests {
                     6 => {
                         (*tot).0 += to_u64(&cols, 3);
                         (*tot).1 += to_u64(&cols, 4);
-                    }
+                    },
                     // merge
                     8 => {
                         (*tot).0 += to_u64(&cols, 2);
                         (*tot).1 += to_u64(&cols, 3);
                         (*tot).2 += to_u64(&cols, 5);
                         (*tot).3 += to_u64(&cols, 6);
-                    }
-                    _ => panic!("Unexpected col count {l}")
+                    },
+                    _ => panic!("Unexpected col count {l}"),
                 }
             }
         }
