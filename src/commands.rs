@@ -408,7 +408,7 @@ mod tests {
     #[test]
     fn log() {
         #[rustfmt::skip]
-        let t: Vec<(&[&str], &str, i32)> = vec![
+        let t: Vec<(&[&str], &str)> = vec![
             // Basic test
             (&["-F", "test/emerge.10000.log", "l", "client"],
              "2018-02-04 04:55:19     35:46 >>> mail-client/thunderbird-52.6.0\n\
@@ -421,19 +421,57 @@ mod tests {
               2018-02-28 09:14:37      6:02 >>> www-client/falkon-3.0.0\n\
               2018-03-06 04:19:52   7:42:07 >>> www-client/chromium-64.0.3282.186\n\
               2018-03-12 10:35:22        14 >>> x11-apps/xlsclients-1.1.4\n\
-              2018-03-12 11:03:53        16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n",
-             0),
+              2018-03-12 11:03:53        16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
             // Check output when duration isn't known
             (&["-F", "test/emerge.10000.log", "l", "-s", "m", "mlt", "-e", "--from", "2018-02-18 12:37:00"],
              "2018-02-18 12:37:09         ? >>> media-libs/mlt-6.4.1-r6\n\
               2018-02-27 15:10:05        43 >>> media-libs/mlt-6.4.1-r6\n\
-              2018-02-27 16:48:40        39 >>> media-libs/mlt-6.4.1-r6\n",
-             0),
+              2018-02-27 16:48:40        39 >>> media-libs/mlt-6.4.1-r6\n"),
             // Check output of sync events
             (&["-F", "test/emerge.10000.log", "l", "-ss", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
              "2018-03-07 11:37:05        38 Sync gentoo\n\
-              2018-03-07 13:56:09        40 Sync gentoo\n",
-             0),
+              2018-03-07 13:56:09        40 Sync gentoo\n"),
+            (&["-F", "test/emerge.sync.log", "l", "-ss"],
+             "2007-04-06 04:43:38     26:02 Sync gentoo-portage\n\
+              2007-04-09 21:30:01     19:20 Sync gentoo-portage\n\
+              2007-04-16 21:52:59     59:53 Sync gentoo-portage\n\
+              2007-04-19 19:05:59     31:53 Sync gentoo-portage\n\
+              2007-05-09 02:14:35   2:15:34 Sync gentoo-portage\n\
+              2016-01-08 21:17:59        38 Sync gentoo\n\
+              2016-01-10 23:31:57        49 Sync gentoo\n\
+              2017-02-03 21:14:50        53 Sync gentoo\n\
+              2017-02-06 21:06:18        55 Sync gentoo\n\
+              2017-02-07 21:00:51      3:01 Sync gentoo\n\
+              2017-02-09 22:06:12     13:22 Sync gentoo\n\
+              2017-02-12 15:59:38        39 Sync gentoo\n\
+              2017-02-12 20:43:23      1:48 Sync gentoo\n\
+              2017-02-13 21:11:46      8:12 Sync gentoo\n\
+              2017-03-11 20:59:57      8:26 Sync gentoo\n\
+              2017-03-16 21:17:59        27 Sync gentoo\n\
+              2017-03-22 22:13:50   1:00:31 Sync gentoo\n\
+              2017-03-31 20:07:49      1:40 Sync gentoo\n\
+              2017-04-03 20:10:55        24 Sync gentoo\n\
+              2017-04-04 20:11:08        19 Sync gentoo\n\
+              2020-06-16 08:53:33         6 Sync gentoo\n\
+              2020-06-16 08:53:34         1 Sync moltonel\n\
+              2020-06-16 15:40:57        14 Sync gentoo\n\
+              2020-06-16 15:41:07        10 Sync moltonel\n\
+              2020-06-16 15:54:16         6 Sync gentoo\n\
+              2020-06-16 15:54:21         5 Sync steam-overlay\n\
+              2020-06-16 15:54:24         3 Sync moltonel\n\
+              2020-06-16 16:21:41         3 Sync gentoo\n\
+              2020-06-16 16:21:42         1 Sync steam-overlay\n\
+              2020-06-16 16:21:44         2 Sync moltonel\n\
+              2020-06-16 20:58:00         7 Sync moltonel\n\
+              2020-06-16 21:36:46         4 Sync gentoo\n\
+              2020-06-16 21:36:47         1 Sync steam-overlay\n\
+              2020-06-16 21:36:48         1 Sync moltonel\n\
+              2020-06-17 20:24:00        30 Sync gentoo\n\
+              2020-06-17 20:24:02         2 Sync steam-overlay\n\
+              2020-06-17 20:24:03         1 Sync moltonel\n\
+              2020-06-18 16:21:54         6 Sync gentoo\n\
+              2020-06-18 16:21:55         1 Sync steam-overlay\n\
+              2020-06-18 16:21:56         1 Sync moltonel\n"),
             // Check output of all events
             (&["-F", "test/emerge.10000.log", "l", "--show", "a", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
              "2018-03-07 10:43:10        14 >>> sys-apps/the_silver_searcher-2.0.0\n\
@@ -442,11 +480,10 @@ mod tests {
               2018-03-07 12:49:13      1:01 >>> sys-apps/util-linux-2.30.2-r1\n\
               2018-03-07 13:56:09        40 Sync gentoo\n\
               2018-03-07 13:59:38         2 <<< dev-libs/nspr-4.17\n\
-              2018-03-07 13:59:41        24 >>> dev-libs/nspr-4.18\n",
-             0)
+              2018-03-07 13:59:41        24 >>> dev-libs/nspr-4.18\n")
         ];
-        for (a, o, e) in t {
-            emlop().args(a).assert().code(e).stdout(o);
+        for (a, o) in t {
+            emlop().args(a).assert().stdout(o);
         }
     }
 
@@ -550,8 +587,11 @@ mod tests {
               www-client/links                  1          44        44      1         1         1\n\
               x11-apps/xlsclients               1          14        14      1         1         1\n",
              0),
-            (&["-F","test/emerge.10000.log","s","client","-ss"],
-             "Sync gentoo    150     1:19:07        30\n",
+            (&["-F","test/emerge.sync.log","s","-ss"],
+             "Sync gentoo             22     1:43:13        21\n\
+              Sync gentoo-portage      5     4:32:42     54:32\n\
+              Sync moltonel            8          26         3\n\
+              Sync steam-overlay       5          10         2\n",
              0),
             (&["-F","test/emerge.10000.log","s","client","-sst"],
              "Total           11    24:00:24   2:10:56     10        27         2\n\

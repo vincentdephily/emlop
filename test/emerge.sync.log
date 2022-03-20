@@ -1,0 +1,308 @@
+1175824892: Started emerge on: Apr 06, 2007 03:01:32
+1175824892:  *** emerge  sync
+1175824892:  === sync
+1175824893: >>> starting rsync with rsync://140.211.166.165/gentoo-portage
+1175826441:  *** terminating.
+1175826443: Started emerge on: Apr 06, 2007 03:27:23
+1175826443:  *** emerge  sync
+1175826443:  === sync
+1175826445: >>> starting rsync with rsync://134.68.220.97/gentoo-portage
+1175830271: >>> Starting retry 1 of 3 with rsync://134.68.220.74/gentoo-portage
+1175832671: Started emerge on: Apr 06, 2007 05:11:11
+1175832671:  *** emerge --verbose --ask rsync
+1175832675:  >>> emerge (1 of 3) sys-apps/attr-2.4.19-r1 to /
+1175832727: Started emerge on: Apr 06, 2007 05:12:07
+1175832727:  *** emerge --verbose --ask rsync
+1175832731:  *** terminating.
+1175833050:  *** emerge  sync
+1175833050:  === sync
+1175833056: >>> starting rsync with rsync://209.177.148.226/gentoo-portage
+1175834618: === Sync completed with rsync://209.177.148.226/gentoo-portage
+1175834697:  *** terminating.
+1175873082:  ::: completed emerge (64 of 137) sys-apps/acl-2.2.39-r1 to /
+1175873100:  --- AUTOCLEAN: Nothing unmerged.
+1175873100:  >>> emerge (66 of 137) x11-misc/util-macros-1.1.0 to /
+1176153020: Started emerge on: Apr 09, 2007 22:10:20
+1176153020:  *** emerge  sync
+1176153020:  === sync
+1176153041: >>> Starting rsync with rsync://140.211.166.165/gentoo-portage
+1176153295: Started emerge on: Apr 09, 2007 22:14:55
+1176153474:  *** terminating.
+1176154201: === Sync completed with rsync://140.211.166.165/gentoo-portage
+1176154230:  *** terminating.
+1176746077: Started emerge on: Apr 16, 2007 18:54:37
+1176746077:  *** emerge  sync
+1176746077:  === sync
+1176746089: >>> Starting rsync with rsync://140.211.166.165/gentoo-portage
+1176746116: >>> Starting retry 1 of 3 with rsync://64.127.121.98/gentoo-portage
+1176746142: >>> Starting retry 2 of 3 with rsync://134.68.220.74/gentoo-portage
+1176746169: >>> Starting retry 3 of 3 with rsync://209.177.148.226/gentoo-portage
+1176746184:  *** terminating.
+1176746201: Started emerge on: Apr 16, 2007 18:56:41
+1176746201:  *** emerge  sync
+1176746201:  === sync
+1176746219: >>> Starting rsync with rsync://140.211.166.165/gentoo-portage
+1176746246: >>> Starting retry 1 of 3 with rsync://134.68.220.97/gentoo-portage
+1176746272: >>> Starting retry 2 of 3 with rsync://134.68.220.73/gentoo-portage
+1176746298: >>> Starting retry 3 of 3 with rsync://64.127.121.98/gentoo-portage
+1176746314:  *** terminating.
+1176756781: Started emerge on: Apr 16, 2007 21:53:01
+1176756781:  *** emerge  sync
+1176756781:  === sync
+1176756786: >>> Starting rsync with rsync://64.127.121.98/gentoo-portage
+1176756812: >>> Starting retry 1 of 3 with rsync://140.211.166.165/gentoo-portage
+1176760379: === Sync completed with rsync://140.211.166.165/gentoo-portage
+1176760408:  *** terminating.
+1177007296: Started emerge on: Apr 19, 2007 19:28:16
+1177007296:  *** emerge  sync
+1177007296:  === sync
+1177007309: >>> Starting rsync with rsync://134.68.220.97/gentoo-portage
+1177007335: >>> Starting retry 1 of 3 with rsync://134.68.220.73/gentoo-portage
+1177007362: >>> Starting retry 2 of 3 with rsync://209.177.148.226/gentoo-portage
+1177007388: >>> Starting retry 3 of 3 with rsync://140.211.166.165/gentoo-portage
+1177007404:  *** terminating.
+1177007637: Started emerge on: Apr 19, 2007 19:33:57
+1177007637:  *** emerge  sync
+1177007637:  === sync
+1177007646: >>> Starting rsync with rsync://140.211.166.165/gentoo-portage
+1177009559: === Sync completed with rsync://140.211.166.165/gentoo-portage
+1177009587:  *** terminating.
+1177861444: Started emerge on: Apr 29, 2007 16:44:04
+1177861444:  *** emerge  sync
+1177861444:  === sync
+1177861448: >>> Starting rsync with rsync://140.211.166.165/gentoo-portage
+1177861459:  *** terminating.
+1178658580: Started emerge on: May 08, 2007 22:09:40
+1178658580:  *** emerge  sync
+1178658580:  === sync
+1178658582: >>> Starting rsync with rsync://134.68.220.73/gentoo-portage
+1178660134: >>> Starting retry 1 of 3 with rsync://64.127.121.98/gentoo-portage
+1178661189: >>> Starting retry 2 of 3 with rsync://209.177.148.226/gentoo-portage
+1178662269: >>> Starting retry 3 of 3 with rsync://134.68.220.74/gentoo-portage
+1178666181: Started emerge on: May 09, 2007 00:16:21
+1178668582: Started emerge on: May 09, 2007 00:56:22
+1178668582:  *** emerge  sync
+1178668582:  === sync
+1178668584: >>> Starting rsync with rsync://64.127.121.98/gentoo-portage
+1178668585:  *** terminating.
+1178668660: Started emerge on: May 09, 2007 00:57:40
+1178668660:  *** emerge  sync
+1178668660:  === sync
+1178668662: >>> Starting rsync with rsync://209.177.148.226/gentoo-portage
+1178668667:  *** terminating.
+1178668741: Started emerge on: May 09, 2007 00:59:01
+1178668741:  *** emerge  sync
+1178668741:  === sync
+1178668741: >>> Starting rsync with rsync://140.211.166.165/gentoo-portage
+1178672548: >>> Starting retry 1 of 3 with rsync://134.68.220.73/gentoo-portage
+1178676875: === Sync completed with rsync://134.68.220.73/gentoo-portage
+1178676900:  *** terminating.
+1452287841: Started emerge on: Jan 08, 2016 21:17:20
+1452287841:  *** emerge --quiet-build=y --sync
+1452287841:  === sync
+1452287841: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1452287841: >>> Starting rsync with rsync://176.28.50.119/gentoo-portage
+1452287879: === Sync completed for gentoo
+1452287880:  *** terminating.
+1452375944: Started emerge on: Jan 09, 2016 21:45:43
+1452375944:  *** emerge --quiet-build=y --sync
+1452375944:  === sync
+1452375944: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1452375974: >>> Starting rsync with rsync://81.91.253.252/gentoo-portage
+1452375990: >>> Starting retry 1 of 4 with rsync://91.186.30.235/gentoo-portage
+1452375993: >>> Starting retry 2 of 4 with rsync://176.28.50.119/gentoo-portage
+1452376008: >>> Starting retry 3 of 4 with rsync://[2a01:488:67:1000:b01c:3277:0:1]/gentoo-portage
+1452376008: >>> Starting retry 4 of 4 with rsync://[2a01:90:200:10::1a]/gentoo-portage
+1452376012:  *** terminating.
+1452468667: Started emerge on: Jan 10, 2016 23:31:07
+1452468667:  *** emerge --quiet-build=y --sync
+1452468667:  === sync
+1452468667: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1452468668: >>> Starting rsync with rsync://81.91.253.252/gentoo-portage
+1452468717: === Sync completed for gentoo
+1452468718:  *** terminating.
+1486156437: Started emerge on: Feb 03, 2017 21:13:56
+1486156437:  *** emerge --quiet-build=y --sync
+1486156437:  === sync
+1486156437: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1486156437: >>> Starting rsync with rsync://81.91.253.252/gentoo-portage
+1486156490: === Sync completed for gentoo
+1486156490:  *** terminating.
+1486162791:  ::: completed emerge (3 of 26) virtual/libiconv-0-r2 to /
+1486162791:  >>> emerge (4 of 26) net-libs/libasyncns-0.8-r3 to /
+1486162791:  === (4 of 26) Cleaning (net-libs/libasyncns-0.8-r3::/usr/portage/net-libs/libasyncns/libasyncns-0.8-r3.ebuild)
+1486162791:  === (4 of 26) Compiling/Merging (net-libs/libasyncns-0.8-r3::/usr/portage/net-libs/libasyncns/libasyncns-0.8-r3.ebuild)
+1486162810:  === (4 of 26) Merging (net-libs/libasyncns-0.8-r3::/usr/portage/net-libs/libasyncns/libasyncns-0.8-r3.ebuild)
+1486162813:  >>> AUTOCLEAN: net-libs/libasyncns:0
+1486162813:  === Unmerging... (net-libs/libasyncns-0.8-r3)
+1486162817:  >>> unmerge success: net-libs/libasyncns-0.8-r3
+1486162820:  === (4 of 26) Post-Build Cleaning (net-libs/libasyncns-0.8-r3::/usr/portage/net-libs/libasyncns/libasyncns-0.8-r3.ebuild)
+1486162820:  ::: completed emerge (4 of 26) net-libs/libasyncns-0.8-r3 to /
+1486162820:  >>> emerge (5 of 26) dev-libs/json-c-0.12 to /
+1486415123: Started emerge on: Feb 06, 2017 21:05:22
+1486415123:  *** emerge --quiet-build=y --sync
+1486415123:  === sync
+1486415123: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1486415123: >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
+1486415178: === Sync completed for gentoo
+1486415178:  *** terminating.
+1486501069: Started emerge on: Feb 07, 2017 20:57:49
+1486501069:  *** emerge --quiet-build=y --sync
+1486501069:  === sync
+1486501069: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1486501070: >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
+1486501251: === Sync completed for gentoo
+1486501252:  *** terminating.
+1486677169: Started emerge on: Feb 09, 2017 21:52:48
+1486677169:  *** emerge --quiet-build=y --sync
+1486677169:  === sync
+1486677169: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1486677170: >>> Starting rsync with rsync://176.28.50.119/gentoo-portage
+1486677972: === Sync completed for gentoo
+1486677973:  *** terminating.
+1486915137: Started emerge on: Feb 12, 2017 15:58:56
+1486915137:  *** emerge --quiet-build=y --sync
+1486915137:  === sync
+1486915137: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1486915139: >>> Starting rsync with rsync://176.28.50.119/gentoo-portage
+1486915178: === Sync completed for gentoo
+1486915179:  *** terminating.
+1486932095: Started emerge on: Feb 12, 2017 20:41:34
+1486932095:  *** emerge --quiet-build=y --sync
+1486932095:  === sync
+1486932095: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1486932095: >>> Starting rsync with rsync://176.28.50.119/gentoo-portage
+1486932203: === Sync completed for gentoo
+1486932204:  *** terminating.
+1487019813: Started emerge on: Feb 13, 2017 21:03:32
+1487019813:  *** emerge --quiet-build=y --sync
+1487019813:  === sync
+1487019813: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1487019814: >>> Starting rsync with rsync://176.28.50.119/gentoo-portage
+1487020306: === Sync completed for gentoo
+1487020307:  *** terminating.
+1489265491: Started emerge on: Mar 11, 2017 20:51:31
+1489265491:  *** emerge --quiet-build=y --sync
+1489265491:  === sync
+1489265491: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1489265491: >>> Starting rsync with rsync://81.91.253.252/gentoo-portage
+1489265898: Started emerge on: Mar 11, 2017 20:58:17
+1489265935:  === (1 of 1) Compiling/Merging (sci-geosciences/josm-99999::/usr/portage/sci-geosciences/josm/josm-99999.ebuild)
+1489265997: === Sync completed for gentoo
+1489265998:  *** terminating.
+1489699052: Started emerge on: Mar 16, 2017 21:17:31
+1489699052:  *** emerge --quiet-build=y --sync
+1489699052:  === sync
+1489699052: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1489699052: >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
+1489699079: === Sync completed for gentoo
+1489699080:  *** terminating.
+1490217188: Started emerge on: Mar 22, 2017 21:13:08
+1490217188:  *** emerge --quiet-build=y --sync
+1490217188:  === sync
+1490217188: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1490217199: >>> Starting rsync with rsync://176.28.50.119/gentoo-portage
+1490220830: === Sync completed for gentoo
+1490220831:  *** terminating.
+1490990769: Started emerge on: Mar 31, 2017 21:06:09
+1490990769:  *** emerge --quiet-build=y --sync
+1490990769:  === sync
+1490990769: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1490990769: >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
+1490990869: === Sync completed for gentoo
+1490990871:  *** terminating.
+1491250230: Started emerge on: Apr 03, 2017 21:10:30
+1491250230:  *** emerge --quiet-build=y --sync
+1491250230:  === sync
+1491250230: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1491250231: >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
+1491250255: === Sync completed for gentoo
+1491250256:  *** terminating.
+1491336649: Started emerge on: Apr 04, 2017 21:10:48
+1491336649:  *** emerge --quiet-build=y --sync
+1491336649:  === sync
+1491336649: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1491336649: >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
+1491336668: === Sync completed for gentoo
+1491336669:  *** terminating.
+1592297607: Started emerge on: Jun 16, 2020 09:53:26
+1592297607:  *** emerge --quiet-build=y --sync
+1592297607:  === sync
+1592297607: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592297613: === Sync completed for gentoo
+1592297613: >>> Syncing repository 'moltonel' into '/var/db/repos/moltonel'...
+1592297614: === Sync completed for moltonel
+1592297614:  *** terminating.
+1592321981: Started emerge on: Jun 16, 2020 16:39:41
+1592321981:  *** emerge --quiet-build=y --sync
+1592321981:  === sync
+1592321981: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592321984:  *** terminating.
+1592322043: Started emerge on: Jun 16, 2020 16:40:42
+1592322043:  *** emerge --quiet-build=y --sync
+1592322043:  === sync
+1592322043: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592322057: === Sync completed for gentoo
+1592322057: >>> Syncing repository 'moltonel' into '/var/db/repos/moltonel'...
+1592322067: === Sync completed for moltonel
+1592322067:  *** terminating.
+1592322850: Started emerge on: Jun 16, 2020 16:54:10
+1592322850:  *** emerge --quiet-build=y --sync
+1592322850:  === sync
+1592322850: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592322856: === Sync completed for gentoo
+1592322856: >>> Syncing repository 'steam-overlay' into '/var/db/repos/steam-overlay'...
+1592322861: === Sync completed for steam-overlay
+1592322861: >>> Syncing repository 'moltonel' into '/var/db/repos/moltonel'...
+1592322864: === Sync completed for moltonel
+1592322864:  *** terminating.
+1592324498: Started emerge on: Jun 16, 2020 17:21:38
+1592324498:  *** emerge --quiet-build=y --sync
+1592324498:  === sync
+1592324498: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592324501: === Sync completed for gentoo
+1592324501: >>> Syncing repository 'steam-overlay' into '/var/db/repos/steam-overlay'...
+1592324502: === Sync completed for steam-overlay
+1592324502: >>> Syncing repository 'moltonel' into '/var/db/repos/moltonel'...
+1592324504: === Sync completed for moltonel
+1592324505:  *** terminating.
+1592341053: Started emerge on: Jun 16, 2020 21:57:32
+1592341053:  *** emerge --quiet-build=y --sync
+1592341053:  === sync
+1592341053: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592341063: !!! git fetch error in /usr/portage
+1592341063: >>> Syncing repository 'steam-overlay' into '/var/db/repos/steam-overlay'...
+1592341073: !!! git fetch error in /var/db/repos/steam-overlay
+1592341073: >>> Syncing repository 'moltonel' into '/var/db/repos/moltonel'...
+1592341080: === Sync completed for moltonel
+1592341080:  *** terminating.
+1592343402: Started emerge on: Jun 16, 2020 22:36:41
+1592343402:  *** emerge --quiet-build=y --sync
+1592343402:  === sync
+1592343402: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592343406: === Sync completed for gentoo
+1592343406: >>> Syncing repository 'steam-overlay' into '/var/db/repos/steam-overlay'...
+1592343407: === Sync completed for steam-overlay
+1592343407: >>> Syncing repository 'moltonel' into '/var/db/repos/moltonel'...
+1592343408: === Sync completed for moltonel
+1592343408:  *** terminating.
+1592425410: Started emerge on: Jun 17, 2020 21:23:30
+1592425410:  *** emerge --quiet-build=y --sync
+1592425410:  === sync
+1592425410: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592425440: === Sync completed for gentoo
+1592425440: >>> Syncing repository 'steam-overlay' into '/var/db/repos/steam-overlay'...
+1592425442: === Sync completed for steam-overlay
+1592425442: >>> Syncing repository 'moltonel' into '/var/db/repos/moltonel'...
+1592425443: === Sync completed for moltonel
+1592425444:  *** terminating.
+1592497308: Started emerge on: Jun 18, 2020 17:21:48
+1592497308:  *** emerge --quiet-build=y --sync
+1592497308:  === sync
+1592497308: >>> Syncing repository 'gentoo' into '/usr/portage'...
+1592497314: === Sync completed for gentoo
+1592497314: >>> Syncing repository 'steam-overlay' into '/var/db/repos/steam-overlay'...
+1592497315: === Sync completed for steam-overlay
+1592497315: >>> Syncing repository 'moltonel' into '/var/db/repos/moltonel'...
+1592497316: === Sync completed for moltonel
+1592497316:  *** terminating.
