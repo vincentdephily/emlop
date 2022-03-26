@@ -93,14 +93,15 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
              .value_name("format")
              .long("duration")
              .global(true)
-             .possible_values(&["hms","hms_fixed","s"])
+             .possible_values(&["hms","hms_fixed","s","human"])
              .hide_possible_values(true)
              .default_value("hms")
              .help("Output durations in different formats.")
              .long_help("Output durations in different formats.
-    hms:         10:30
-    hms_fixed: 0:10:30
-    s:             630
+    hms:                       10:30
+    hms_fixed:               0:10:30
+    s:                           630
+    human:    10 minutes, 30 seconds
 "))
         .arg(Arg::with_name("date")
              .value_name("format")
