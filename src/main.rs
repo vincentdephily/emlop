@@ -3,15 +3,14 @@ mod commands;
 mod date;
 mod parser;
 mod proces;
+mod table;
 
 use crate::{commands::*, date::*};
 use ansi_term::{Color::*, Style};
 use anyhow::Error;
 use clap::{value_t, ArgMatches, Error as ClapError, ErrorKind};
 use log::*;
-use std::{io::{stdout, Write},
-          str::FromStr};
-use tabwriter::TabWriter;
+use std::str::FromStr;
 use time::UtcOffset;
 
 fn main() {
@@ -26,15 +25,13 @@ fn main() {
     env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
     debug!("{:?}", args);
     let styles = Styles::from_args(&args);
-    let mut tw = TabWriter::new(stdout());
     let res = match args.subcommand() {
         ("log", Some(sub_args)) => cmd_list(&args, sub_args, &styles),
-        ("stats", Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, &styles),
-        ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args, &styles),
+        ("stats", Some(sub_args)) => cmd_stats(&args, sub_args, &styles),
+        ("predict", Some(sub_args)) => cmd_predict(&args, sub_args, &styles),
         ("complete", Some(sub_args)) => cmd_complete(sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
     };
-    tw.flush().unwrap_or(());
     match res {
         Ok(true) => ::std::process::exit(0),
         Ok(false) => ::std::process::exit(2),
@@ -179,7 +176,6 @@ pub struct Styles {
     merge_p: String,
     merge_s: String,
     unmerge_p: String,
-    unmerge_s: String,
     dur_p: String,
     dur_s: String,
     cnt_p: String,
@@ -207,7 +203,6 @@ impl Styles {
                      merge_p: Style::new().fg(Green).bold().prefix().to_string(),
                      merge_s: Style::new().fg(Green).bold().suffix().to_string(),
                      unmerge_p: Style::new().fg(Red).bold().prefix().to_string(),
-                     unmerge_s: Style::new().fg(Red).bold().suffix().to_string(),
                      dur_p: Style::new().fg(Purple).bold().prefix().to_string(),
                      dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
                      cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
@@ -220,7 +215,6 @@ impl Styles {
                      merge_p: String::from(">>> "),
                      merge_s: String::new(),
                      unmerge_p: String::from("<<< "),
-                     unmerge_s: String::new(),
                      dur_p: String::new(),
                      dur_s: String::new(),
                      cnt_p: String::new(),

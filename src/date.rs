@@ -217,10 +217,10 @@ impl Timespan {
     pub fn header(&self, ts: i64, offset: UtcOffset) -> String {
         let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset);
         match self {
-            Timespan::Year => d.format(format_description!("[year] ")).unwrap(),
-            Timespan::Month => d.format(format_description!("[year]-[month] ")).unwrap(),
-            Timespan::Week => d.format(format_description!("[year]-[week_number] ")).unwrap(),
-            Timespan::Day => d.format(format_description!("[year]-[month]-[day] ")).unwrap(),
+            Timespan::Year => d.format(format_description!("[year]")).unwrap(),
+            Timespan::Month => d.format(format_description!("[year]-[month]")).unwrap(),
+            Timespan::Week => d.format(format_description!("[year]-[week_number]")).unwrap(),
+            Timespan::Day => d.format(format_description!("[year]-[month]-[day]")).unwrap(),
         }
     }
 }
