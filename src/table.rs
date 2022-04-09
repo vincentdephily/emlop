@@ -23,6 +23,8 @@ pub struct Table<const N: usize> {
     lineend: Vec<u8>,
     /// Column alignments (defaults to Right)
     aligns: [Align; N],
+    /// Margin between columns, printed left of the column, defaults to `"  "`
+    margins: [&'static str; N],
 }
 
 impl<const N: usize> Table<N> {
@@ -33,11 +35,17 @@ impl<const N: usize> Table<N> {
                widths: [0; N],
                empty: [true; N],
                lineend: format!("{}\n", lineend).into(),
-               aligns: [Align::Right; N] }
+               aligns: [Align::Right; N],
+               margins: ["  "; N] }
     }
     /// Specify column alignments
     pub fn align(mut self, col: usize, align: Align) -> Self {
         self.aligns[col] = align;
+        self
+    }
+    /// Specify column left margin (1st printted column never has a left margin)
+    pub fn margin(mut self, col: usize, margin: &'static str) -> Self {
+        self.margins[col] = margin;
         self
     }
     /// Add a section header
@@ -62,7 +70,6 @@ impl<const N: usize> Table<N> {
             for s in row[i] {
                 let p = self.buf.len();
                 write!(self.buf, "{}", s).expect("write to buf");
-                //s.write(self.buf);
                 if self.buf.get(p).map_or_else(|| false, |c| !c.is_ascii_control()) {
                     len += self.buf.len() - p;
                 }
@@ -94,7 +101,7 @@ impl<const N: usize> Drop for Table<N> {
                 }
                 // Min space between columns
                 if !first {
-                    out.write_all("  ".as_bytes()).unwrap_or(());
+                    out.write_all(self.margins[i].as_bytes()).unwrap_or(());
                 }
                 first = false;
                 // Write the cell with alignment
