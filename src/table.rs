@@ -40,6 +40,15 @@ impl<const N: usize> Table<N> {
         self.aligns[col] = align;
         self
     }
+    /// Add a section header
+    pub fn header(&mut self, enabled: bool, row: [&[&dyn Display]; N]) {
+        if enabled {
+            if !self.rows.is_empty() {
+                self.row([&[]; N]);
+            }
+            self.row(row);
+        }
+    }
     /// Add one row of data
     ///
     /// The number of cells is set by const generic.

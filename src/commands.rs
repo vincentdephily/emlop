@@ -18,7 +18,8 @@ pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found_one = false;
     let mut sync_start: Option<i64> = None;
-    let mut tbl = Table::<3>::new(&st.merge_s).align(2, Align::Left);
+    let mut tbl = Table::<3>::new(&st.merge_s).align(0, Align::Left).align(2, Align::Left);
+    tbl.header(show.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -123,8 +124,8 @@ pub fn cmd_stats(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result
                 nextts = timespan.next(t, st.date_offset);
                 curts = t;
             } else if t > nextts {
-                let group_by = timespan.header(curts, st.date_offset);
-                cmd_stats_group(&mut tbl, st, lim, show, &group_by, &sync_time, &pkg_time)?;
+                let group = timespan.at(curts, st.date_offset);
+                cmd_stats_group(&mut tbl, st, lim, show, group, &sync_time, &pkg_time)?;
                 sync_time.clear();
                 pkg_time.clear();
                 nextts = timespan.next(t, st.date_offset);
@@ -166,9 +167,9 @@ pub fn cmd_stats(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result
             },
         }
     }
-    let group_by =
-        timespan_opt.map_or(String::new(), |timespan| timespan.header(curts, st.date_offset));
-    cmd_stats_group(&mut tbl, st, lim, show, &group_by, &sync_time, &pkg_time)?;
+    let group =
+        timespan_opt.map_or((String::new(), ""), |timespan| timespan.at(curts, st.date_offset));
+    cmd_stats_group(&mut tbl, st, lim, show, group, &sync_time, &pkg_time)?;
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
 
@@ -176,13 +177,22 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                    st: &Styles,
                    lim: u16,
                    show: Show,
-                   group_by: &str,
+                   group: (String, &str),
                    sync_time: &BTreeMap<String, Times>,
                    pkg_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
+    tbl.header(show.header && show.pkg | show.tot && !pkg_time.is_empty(),
+               [&[&group.1],
+                &[&"Package"],
+                &[&"Merge count"],
+                &[&"Total time"],
+                &[&"Predict time"],
+                &[&"Unmerge count"],
+                &[&"Total time"],
+                &[&"Predict time"]]);
     if show.pkg && !pkg_time.is_empty() {
         for (pkg, (merge, unmerge)) in pkg_time {
-            tbl.row([&[&group_by],
+            tbl.row([&[&group.0],
                      &[&st.pkg_p, &pkg],
                      &[&st.cnt_p, &merge.count],
                      &[&st.dur_p, &fmt_duration(st.dur_t, merge.tot)],
@@ -203,7 +213,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
             unmerge_time += unmerge.tot;
             unmerge_count += unmerge.count;
         }
-        tbl.row([&[&group_by],
+        tbl.row([&[&group.0],
                  &[&"Total"],
                  &[&st.cnt_p, &merge_count],
                  &[&st.dur_p, &fmt_duration(st.dur_t, merge_time)],
@@ -216,8 +226,17 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                                  unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
     }
     if show.sync && !sync_time.is_empty() {
+        tbl.header(show.header,
+                   [&[&group.1],
+                    &[&"Repo"],
+                    &[&"Sync count"],
+                    &[&"Total time"],
+                    &[&"Predict time"],
+                    &[&""],
+                    &[&""],
+                    &[&""]]);
         for (repo, time) in sync_time {
-            tbl.row([&[&group_by],
+            tbl.row([&[&group.0],
                      &[&"Sync ", &repo],
                      &[&st.cnt_p, &time.count],
                      &[&st.dur_p, &fmt_duration(st.dur_t, time.tot)],

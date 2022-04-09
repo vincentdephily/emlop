@@ -92,6 +92,7 @@ pub fn parse_limit(s: &str) -> Result<u16, String> {
 
 #[derive(Clone, Copy, Default)]
 pub struct Show {
+    pub header: bool,
     pub pkg: bool,
     pub tot: bool,
     pub sync: bool,
@@ -101,7 +102,8 @@ pub struct Show {
 impl FromStr for Show {
     type Err = String;
     fn from_str(show: &str) -> Result<Self, Self::Err> {
-        Ok(Self { pkg: show.contains(&"p") || show.contains(&"a"),
+        Ok(Self { header: show.contains(&"h"),
+                  pkg: show.contains(&"p") || show.contains(&"a") || show == "h",
                   tot: show.contains(&"t") || show.contains(&"a"),
                   sync: show.contains(&"s") || show.contains(&"a"),
                   merge: show.contains(&"m") || show.contains(&"a"),
