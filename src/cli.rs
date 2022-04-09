@@ -22,19 +22,19 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
     let arg_show_l = Arg::with_name("show")
         .short("s")
         .long("show")
-        .value_name("m,u,s,a")
-        .validator(|s| find_invalid("musa", &s))
+        .value_name("h,m,u,s,a")
+        .validator(|s| find_invalid("hmusa", &s))
         .default_value("m")
-        .help("Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll.")
+        .help("Show (h)eaders, (m)erges, (u)nmerges, (s)yncs, and/or (a)ll.")
         .long_help("Show individual (m)erges, (u)nmerges, portage tree (s)yncs, \
                     or (a)ll of these (any letters combination).");
     let arg_show_s = Arg::with_name("show")
         .short("s")
         .long("show")
-        .value_name("p,t,s,a")
-        .validator(|s| find_invalid("ptsa", &s))
+        .value_name("h,p,t,s,a")
+        .validator(|s| find_invalid("hptsa", &s))
         .default_value("p")
-        .help("Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll.")
+        .help("Show (h)eaders, (p)ackages, (t)otals, (s)yncs, and/or (a)ll.")
         .long_help("Show per-(p)ackage merges/unmerges, (t)otal merges/unmerges, \
                     portage tree (s)yncs, or (a)ll of these (any letters combination).");
     let arg_group =
@@ -93,14 +93,15 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
              .value_name("format")
              .long("duration")
              .global(true)
-             .possible_values(&["hms","hms_fixed","s"])
+             .possible_values(&["hms","hms_fixed","s","human"])
              .hide_possible_values(true)
              .default_value("hms")
              .help("Output durations in different formats.")
              .long_help("Output durations in different formats.
-    hms:         10:30
-    hms_fixed: 0:10:30
-    s:             630
+    hms:                       10:30
+    hms_fixed:               0:10:30
+    s:                           630
+    human:    10 minutes, 30 seconds
 "))
         .arg(Arg::with_name("date")
              .value_name("format")

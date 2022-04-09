@@ -21,7 +21,7 @@ pub struct Info {
 impl std::fmt::Display for Info {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let pid = format!("Pid {}: ", self.pid);
-        let capacity = f.precision().unwrap_or(100).saturating_sub(pid.len());
+        let capacity = f.precision().unwrap_or(45).saturating_sub(pid.len());
         let cmdlen = self.cmdline.len();
         if capacity >= cmdlen || cmdlen < 4 {
             write!(f, "{}{}", pid, &self.cmdline)

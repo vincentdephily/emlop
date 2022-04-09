@@ -3,15 +3,14 @@ mod commands;
 mod date;
 mod parser;
 mod proces;
+mod table;
 
 use crate::{commands::*, date::*};
 use ansi_term::{Color::*, Style};
 use anyhow::Error;
 use clap::{value_t, ArgMatches, Error as ClapError, ErrorKind};
 use log::*;
-use std::{io::{stdout, Write},
-          str::FromStr};
-use tabwriter::TabWriter;
+use std::str::FromStr;
 use time::UtcOffset;
 
 fn main() {
@@ -26,15 +25,13 @@ fn main() {
     env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
     debug!("{:?}", args);
     let styles = Styles::from_args(&args);
-    let mut tw = TabWriter::new(stdout());
     let res = match args.subcommand() {
         ("log", Some(sub_args)) => cmd_list(&args, sub_args, &styles),
-        ("stats", Some(sub_args)) => cmd_stats(&mut tw, &args, sub_args, &styles),
-        ("predict", Some(sub_args)) => cmd_predict(&mut tw, &args, sub_args, &styles),
+        ("stats", Some(sub_args)) => cmd_stats(&args, sub_args, &styles),
+        ("predict", Some(sub_args)) => cmd_predict(&args, sub_args, &styles),
         ("complete", Some(sub_args)) => cmd_complete(sub_args),
         (other, _) => unimplemented!("{} subcommand", other),
     };
-    tw.flush().unwrap_or(());
     match res {
         Ok(true) => ::std::process::exit(0),
         Ok(false) => ::std::process::exit(2),
@@ -95,6 +92,7 @@ pub fn parse_limit(s: &str) -> Result<u16, String> {
 
 #[derive(Clone, Copy, Default)]
 pub struct Show {
+    pub header: bool,
     pub pkg: bool,
     pub tot: bool,
     pub sync: bool,
@@ -104,7 +102,8 @@ pub struct Show {
 impl FromStr for Show {
     type Err = String;
     fn from_str(show: &str) -> Result<Self, Self::Err> {
-        Ok(Self { pkg: show.contains(&"p") || show.contains(&"a"),
+        Ok(Self { header: show.contains(&"h"),
+                  pkg: show.contains(&"p") || show.contains(&"a") || show == "h",
                   tot: show.contains(&"t") || show.contains(&"a"),
                   sync: show.contains(&"s") || show.contains(&"a"),
                   merge: show.contains(&"m") || show.contains(&"a"),
@@ -116,7 +115,8 @@ impl FromStr for Show {
 pub enum DurationStyle {
     HMS,
     HMSFixed,
-    S,
+    Secs,
+    Human,
 }
 impl FromStr for DurationStyle {
     type Err = String;
@@ -124,7 +124,8 @@ impl FromStr for DurationStyle {
         match s {
             "hms" => Ok(DurationStyle::HMS),
             "hms_fixed" => Ok(DurationStyle::HMSFixed),
-            "s" => Ok(DurationStyle::S),
+            "s" => Ok(DurationStyle::Secs),
+            "human" => Ok(DurationStyle::Human),
             _ => Err("Valid values are 'hms', 'hms_fixed', 's'.".into()),
         }
     }
@@ -133,21 +134,38 @@ pub fn fmt_duration(style: DurationStyle, secs: i64) -> String {
     if secs < 0 {
         return String::from("?");
     }
-    let h = secs / 3600;
-    let m = secs % 3600 / 60;
-    let s = secs % 60;
     match style {
-        DurationStyle::HMS => {
-            if h > 0 {
-                format!("{}:{:02}:{:02}", h, m, s)
-            } else if m > 0 {
-                format!("{}:{:02}", m, s)
-            } else {
-                format!("{}", s)
-            }
+        DurationStyle::HMS if secs >= 3600 => {
+            format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
         },
-        DurationStyle::HMSFixed => format!("{}:{:02}:{:02}", h, m, s),
-        DurationStyle::S => format!("{}", secs),
+        DurationStyle::HMS if secs >= 60 => format!("{}:{:02}", secs % 3600 / 60, secs % 60),
+        DurationStyle::HMS => format!("{}", secs),
+        DurationStyle::HMSFixed => {
+            format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
+        },
+        DurationStyle::Human if secs == 0 => String::from("0 second"),
+        DurationStyle::Human => {
+            let mut buf = String::with_capacity(16);
+            fmt_duration_append(&mut buf, secs / 86400, "day");
+            fmt_duration_append(&mut buf, secs % 86400 / 3600, "hour");
+            fmt_duration_append(&mut buf, secs % 3600 / 60, "minute");
+            fmt_duration_append(&mut buf, secs % 60, "second");
+            buf
+        },
+        DurationStyle::Secs => format!("{}", secs),
+    }
+}
+fn fmt_duration_append(buf: &mut String, num: i64, what: &'static str) {
+    use std::fmt::Write;
+
+    if num == 0 {
+        return;
+    }
+    let prefix = if buf.is_empty() { "" } else { ", " };
+    if num == 1 {
+        write!(buf, "{prefix}{num} {what}").expect("write to string");
+    } else {
+        write!(buf, "{prefix}{num} {what}s").expect("write to string");
     }
 }
 
@@ -160,7 +178,6 @@ pub struct Styles {
     merge_p: String,
     merge_s: String,
     unmerge_p: String,
-    unmerge_s: String,
     dur_p: String,
     dur_s: String,
     cnt_p: String,
@@ -188,7 +205,6 @@ impl Styles {
                      merge_p: Style::new().fg(Green).bold().prefix().to_string(),
                      merge_s: Style::new().fg(Green).bold().suffix().to_string(),
                      unmerge_p: Style::new().fg(Red).bold().prefix().to_string(),
-                     unmerge_s: Style::new().fg(Red).bold().suffix().to_string(),
                      dur_p: Style::new().fg(Purple).bold().prefix().to_string(),
                      dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
                      cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
@@ -201,7 +217,6 @@ impl Styles {
                      merge_p: String::from(">>> "),
                      merge_s: String::new(),
                      unmerge_p: String::from("<<< "),
-                     unmerge_s: String::new(),
                      dur_p: String::new(),
                      dur_s: String::new(),
                      cnt_p: String::new(),
@@ -220,21 +235,24 @@ mod tests {
 
     #[test]
     fn duration() {
-        for (hms, hms_fixed, s, i) in &[("0", "0:00:00", "0", 0),
-                                        ("1", "0:00:01", "1", 1),
-                                        ("59", "0:00:59", "59", 59),
-                                        ("1:00", "0:01:00", "60", 60),
-                                        ("1:01", "0:01:01", "61", 61),
-                                        ("59:59", "0:59:59", "3599", 3599),
-                                        ("1:00:00", "1:00:00", "3600", 3600),
-                                        ("99:59:59", "99:59:59", "359999", 359999),
-                                        ("100:00:00", "100:00:00", "360000", 360000),
-                                        ("?", "?", "?", -1),
-                                        ("?", "?", "?", -123456)]
+        for (hms, hms_fixed, secs, human, i) in
+            [("0", "0:00:00", "0", "0 second", 0),
+             ("1", "0:00:01", "1", "1 second", 1),
+             ("59", "0:00:59", "59", "59 seconds", 59),
+             ("1:00", "0:01:00", "60", "1 minute", 60),
+             ("1:01", "0:01:01", "61", "1 minute, 1 second", 61),
+             ("59:59", "0:59:59", "3599", "59 minutes, 59 seconds", 3599),
+             ("1:00:00", "1:00:00", "3600", "1 hour", 3600),
+             ("48:00:01", "48:00:01", "172801", "2 days, 1 second", 172801),
+             ("99:59:59", "99:59:59", "359999", "4 days, 3 hours, 59 minutes, 59 seconds", 359999),
+             ("100:00:00", "100:00:00", "360000", "4 days, 4 hours", 360000),
+             ("?", "?", "?", "?", -1),
+             ("?", "?", "?", "?", -123456)]
         {
-            assert_eq!(*hms, fmt_duration(DurationStyle::HMS, *i));
-            assert_eq!(*hms_fixed, fmt_duration(DurationStyle::HMSFixed, *i));
-            assert_eq!(*s, fmt_duration(DurationStyle::S, *i));
+            assert_eq!(hms, fmt_duration(DurationStyle::HMS, i));
+            assert_eq!(hms_fixed, fmt_duration(DurationStyle::HMSFixed, i));
+            assert_eq!(human, fmt_duration(DurationStyle::Human, i));
+            assert_eq!(secs, fmt_duration(DurationStyle::Secs, i));
         }
     }
 }

@@ -149,7 +149,6 @@ dependencies = [
  "log",
  "regex",
  "sysconf",
- "tabwriter",
  "time",
 ]
 
@@ -405,17 +404,6 @@ dependencies = [
  "kernel32-sys",
  "libc",
  "winapi 0.2.8",
-]
-
-[[package]]
-name = "tabwriter"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36205cfc997faadcc4b0b87aaef3fbedafe20d38d4959a7ca6ff803564051111"
-dependencies = [
- "lazy_static",
- "regex",
- "unicode-width",
 ]
 
 [[package]]
