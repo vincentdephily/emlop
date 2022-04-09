@@ -84,6 +84,9 @@ impl<const N: usize> Drop for Table<N> {
         let mut out = stdout.lock();
         for row in &self.rows {
             let mut first = true;
+            // Clippy suggests `for (i, <item>) in row.iter().enumerate().take(N)` which IMHO
+            // doesn't make sense here.
+            #[allow(clippy::needless_range_loop)]
             for i in 0..N {
                 // Skip fully-empty columns
                 if self.empty[i] {
