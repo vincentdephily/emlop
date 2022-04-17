@@ -138,9 +138,9 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
                              .unwrap()
                              .with_offset_hour(offset.whole_hours())
                              .unwrap()
-                             .with_offset_minute(offset.minutes_past_hour().abs() as u8)
+                             .with_offset_minute_signed(offset.minutes_past_hour())
                              .unwrap()
-                             .with_offset_second(offset.seconds_past_minute().abs() as u8)
+                             .with_offset_second_signed(offset.seconds_past_minute())
                              .unwrap();
     // See <https://github.com/time-rs/time/issues/428>
     let rest = p.parse_items(s.as_bytes(), &[
