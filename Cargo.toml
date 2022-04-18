@@ -12,6 +12,7 @@ authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Illia Shestakov <ishestakov@airmail.cc>"]
 edition = "2021"
 rust-version = "1.58.1"
+exclude = ["/benches/*.log"]
 
 [dependencies]
 ansi_term = "0.12.1"
@@ -37,3 +38,5 @@ codegen-units = 1
 incremental = false
 lto = true
 panic = "abort"
+
+
