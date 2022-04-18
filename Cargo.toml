@@ -1,6 +1,6 @@
 [package]
 name = "emlop"
-version = "0.4.2"
+version = "0.5.0"
 description = "A fast, accurate, ergonomic emerge.log parser"
 keywords = ["gentoo", "portage", "emerge"]
 categories = ["command-line-utilities", "parsing"]
@@ -9,7 +9,8 @@ license = "GPL-3.0-only"
 homepage = "https://github.com/vincentdephily/emlop"
 repository = "https://github.com/vincentdephily/emlop"
 authors = ["Vincent de Phily <moltonel@gmail.com>",
-           "Illia Shestakov <ishestakov@airmail.cc>"]
+           "Illia Shestakov <ishestakov@airmail.cc>",
+           "Alexis <flexibeast@gmail.com>"]
 edition = "2021"
 rust-version = "1.58.1"
 exclude = ["/benches/*.log"]

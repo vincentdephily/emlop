@@ -1,3 +1,36 @@
+# 0.5.0 Unreleased
+
+Feature release: date and duration parsing/formating, per-repo sync stats
+
+* Added a `--utc` flag to use that timezone when displaying or parsing (command-line) dates
+* Added a `--date` argument to change date output format
+  - The default format no longer includes the utc offset
+* New duration output formats
+  - `hms_fixed` (eg "00:01:23", thanks to Flexibeast)
+  - `human` (eg "1 munute, 23 seconds")
+* Added optional column headers for `log` and `stats` (part of `--show` argument)
+* Sync events in `log` and `stat` commands now mention the synced repo
+  - The stats make sense again, on systems with multiple portage repos
+* Simplified the format of `--from`/`--to` arguments
+  - For example, you can write `1w` or `1 week` instead  of `1 week ago`
+  - Some wordyer variants are no longer supported
+
+There are also a number of significant internal changes and refactorings:
+
+* Ported away from the `chrono` crate
+  - It's lacking maintenance and suffering from unsoundness
+  - One caveat is that the new crate (`time`) only supports getting the current UTC offset, meaning
+    that DST changes are no longer reported in emlop's output (the datetime is still correct, but
+    the offset may not be correct for that date). This will hopefully be supported at some stage.
+* New table alignment engine
+  - Left-aligned columns are now only as wide as necessary
+  - Marginally faster than the generic crate
+  - Easier to add features (headers, csv, sorting...)
+* Other internal changes
+  - More robust unittests
+  - Dep updates including some audit fixes
+  - Refactorings
+
 # 0.4.2 2021-08-19
 
 Maintenance release
