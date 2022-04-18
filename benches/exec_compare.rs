@@ -31,68 +31,63 @@ fn main() {
     // Test definitions: (test suite, program name, program args, stdin)
     #[rustfmt::skip]
     let defs: Vec<(&str,&str,&[&str],Option<&str>)> = vec![
-        // Simply cat the file, as a theoretical max speed reference
-        ("cat", "cat",  &["/var/log/emerge.log"],   None),
         // Show version, useful to bench startup cost
         ("v", "genlop", &["-v"], None),
         ("v", "qlop",   &["-V"], None),
         ("v", "emlop",  &["-V"], None),
-        // Minimal "show all merges" command
-        ("l", "genlop", &["-l"], None),
-        ("l", "qlop",   &["-m"], None),
-        ("l", "emlop",  &["l"],  None),
+        // Minimal "show all merges" command (genlop adds version, emlop adds version+duration)
+        ("l", "genlop", &["-f","./benches/emerge.log","-l"], None),
+        ("l", "qlop",   &["-f","./benches/emerge.log","-m"], None),
+        ("l", "emlop",  &["-F","./benches/emerge.log","l"],  None),
         // Show all merges+unmegres with version and duration
-        ("ltmu", "genlop", &["-lut"],     None),
-        ("ltmu", "qlop",   &["-muUvt"],   None),
-        ("ltmu", "emlop",  &["l","-smu"], None),
+        ("ltmu", "genlop", &["-f","./benches/emerge.log","-lut"],     None),
+        ("ltmu", "qlop",   &["-f","./benches/emerge.log","-muUvt"],   None),
+        ("ltmu", "emlop",  &["-F","./benches/emerge.log","l","-smu"], None),
         // Show recent sync history
-        ("ls", "genlop", &["-r","-d","1 week ago"],      None),
-        ("ls", "qlop",   &["-st","-d","1 week ago"],     None),
-        ("ls", "emlop",  &["l","-ss","-f","1 week"], None),
+        ("ls", "genlop", &["-f","./benches/emerge.log","-r","-d","1 week ago"],  None),
+        ("ls", "qlop",   &["-f","./benches/emerge.log","-st","-d","1 week ago"], None),
+        ("ls", "emlop",  &["-F","./benches/emerge.log","l","-ss","-f","1w"],     None),
         // Read only part of a file
-        ("ld1", "genlop", &["-l", "--date","2015-01-01","--date","2015-01-10"], None),
-        ("ld1", "qlop",   &["-mv","--date","2015-01-01","--date","2015-01-10"], None),
-        ("ld1", "emlop",  &["l",  "--from","2015-01-01","--to",  "2015-01-10"], None),
-        ("ld2", "genlop", &["-l", "--date","2018-01-01","--date","2018-12-31"], None),
-        ("ld2", "qlop",   &["-mv","--date","2018-01-01","--date","2018-12-31"], None),
-        ("ld2", "emlop",  &["l",  "--from","2018-01-01","--to",  "2018-12-31"], None),
-        ("ld3", "genlop", &["-l", "--date","2016-01-01","--date","2018-12-31"], None),
-        ("ld3", "qlop",   &["-mv","--date","2016-01-01","--date","2018-12-31"], None),
-        ("ld3", "emlop",  &["l",  "--from","2016-01-01","--to",  "2018-12-31"], None),
+        ("ld1", "genlop", &["-f","./benches/emerge.log","-l", "--date","2019-02-01","--date","2019-02-28"], None),
+        ("ld1", "qlop",   &["-f","./benches/emerge.log","-mv","--date","2019-02-01","--date","2019-02-28"], None),
+        ("ld1", "emlop",  &["-F","./benches/emerge.log","l",  "--from","2019-02-01","--to",  "2019-02-28"], None),
+        ("ld2", "genlop", &["-f","./benches/emerge.log","-l", "--date","2020-10-01","--date","2020-10-31"], None),
+        ("ld2", "qlop",   &["-f","./benches/emerge.log","-mv","--date","2020-10-01","--date","2020-10-31"], None),
+        ("ld2", "emlop",  &["-F","./benches/emerge.log","l",  "--from","2020-10-01","--to",  "2020-10-31"], None),
         // Read a small file
-        ("lf", "genlop", &["-l","-f", "test/emerge.10000.log"], None),
-        ("lf", "qlop",   &["-mv","-f","test/emerge.10000.log"], None),
-        ("lf", "emlop",  &["l", "-F", "test/emerge.10000.log"], None),
+        ("lf", "genlop", &["-f","./benches/emerge.log","-l"], None),
+        ("lf", "qlop",   &["-f","./benches/emerge.log","-mv"], None),
+        ("lf", "emlop",  &["-F","./benches/emerge.log","l"], None),
         // Force/prevent color output
-        ("lc", "emlop",  &["l","--color=y"],   None),
-        ("ln", "genlop", &["-l","-n"],         None),
-        ("ln", "qlop",   &["-mv","--nocolor"], None),
-        ("ln", "emlop",  &["l","--color=n"],   None),
+        ("lc", "emlop",  &["-f","./benches/emerge.log","l","--color=y"],   None),
+        ("ln", "genlop", &["-f","./benches/emerge.log","-l","-n"],         None),
+        ("ln", "qlop",   &["-f","./benches/emerge.log","-mv","--nocolor"], None),
+        ("ln", "emlop",  &["-F","./benches/emerge.log","l","--color=n"],   None),
         // Simple package merge log
-        ("egcc", "genlop", &["-e","gcc"],     None),
-        ("egcc", "qlop",   &["gcc"],          None),
-        ("egcc", "emlop",  &["l","gcc","-e"], None),
-        // Version+duration package merge+unmerge log
-        ("tgcc", "genlop", &["-tlu","gcc"],          None),
-        ("tgcc", "qlop",   &["-tvmuU","gcc"],        None),
-        ("tgcc", "emlop",  &["l","gcc","-e","-smu"], None),
+        ("egcc", "genlop", &["-f","./benches/emerge.log","-e","gcc"],     None),
+        ("egcc", "qlop",   &["-f","./benches/emerge.log","gcc"],          None),
+        ("egcc", "emlop",  &["-F","./benches/emerge.log","l","gcc","-e"], None),
+        // Version+duration package merge+unmerge log (can't show just package unmerges iin genlop)
+        ("tgcc", "genlop", &["-f","./benches/emerge.log","-te","gcc"],          None),
+        ("tgcc", "qlop",   &["-f","./benches/emerge.log","-tvmuU","gcc"],        None),
+        ("tgcc", "emlop",  &["-F","./benches/emerge.log","l","gcc","-e","-smu"], None),
         // Predict current merge
         ("c", "genlop", &["-c"], None),
         ("c", "qlop",   &["-r"], None),
         ("c", "emlop",  &["p"],  None),
         // Predict merge list
-        ("pgcc", "genlop", &["-p"], Some("benches/emerge-p.gcc.out")),
-        ("pgcc", "emlop",  &["p"],  Some("benches/emerge-p.gcc.out")),
-        ("pqt",  "genlop", &["-p"], Some("benches/emerge-p.qt.out")),
-        ("pqt",  "emlop",  &["p"],  Some("benches/emerge-p.qt.out")),
-        ("pkde", "genlop", &["-p"], Some("benches/emerge-p.kde.out")),
-        ("pkde", "emlop",  &["p"],  Some("benches/emerge-p.kde.out")),
+        ("pgcc", "genlop", &["-f","./benches/emerge.log","-p"], Some("benches/emerge-p.gcc.out")),
+        ("pgcc", "emlop",  &["-F","./benches/emerge.log","p"],  Some("benches/emerge-p.gcc.out")),
+        ("pqt",  "genlop", &["-f","./benches/emerge.log","-p"], Some("benches/emerge-p.qt.out")),
+        ("pqt",  "emlop",  &["-F","./benches/emerge.log","p"],  Some("benches/emerge-p.qt.out")),
+        ("pkde", "genlop", &["-f","./benches/emerge.log","-p"], Some("benches/emerge-p.kde.out")),
+        ("pkde", "emlop",  &["-F","./benches/emerge.log","p"],  Some("benches/emerge-p.kde.out")),
         // Show all info about a specific package
-        ("igcc", "genlop", &["-i","gcc"],     None),
-        ("igcc", "qlop",   &["-c","gcc"],     None),
-        ("igcc", "emlop",  &["s","gcc","-e"], None),
+        ("igcc", "genlop", &["-f","./benches/emerge.log","-i","gcc"],     None),
+        ("igcc", "qlop",   &["-f","./benches/emerge.log","-c","gcc"],     None),
+        ("igcc", "emlop",  &["-F","./benches/emerge.log","s","gcc","-e"], None),
         // Show overall stats
-        ("s", "emlop",  &["s","-sa"], None),
+        ("s", "emlop",  &["-F","./benches/emerge.log","s","-sa"], None),
     ];
 
     // CLI definition
