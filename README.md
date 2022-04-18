@@ -13,11 +13,12 @@ ergonomic, see [COMPARISON](COMPARISON.md).
 
 ### Using portage
 
-Not available in main portage tree yet, see [gentoo bug 649904](https://bugs.gentoo.org/649904). In
-the meantime, get it from the [guru](https://wiki.gentoo.org/wiki/Project:GURU)
-[moltonel](https://github.com/vincentdephily/moltonel-ebuilds) overlay: install
+Enable the [GURU](https://wiki.gentoo.org/wiki/Project:GURU) or
+[moltonel](https://github.com/vincentdephily/moltonel-ebuilds) overlay (install
 [eselect-repository](https://wiki.gentoo.org/wiki/Eselect/Repository) and run `eselect repository
-enable moltonel` before running `emerge emlop` as ususal.
+enable GURU`), then run `emerge emlop` as ususal.
+
+For availablility in main portage tree, see [gentoo bug 649904](https://bugs.gentoo.org/649904).
 
 ### Using cargo
 
@@ -54,9 +55,8 @@ script for bash/zsh/fish with the `complete` subcommand.
 Show log of sucessful merges and syncs:
 
     emlop log [OPTIONS] [package]
-        <package>                 Display only packages matching <package>.
-        -s, --show <m,u,s,a>      Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll. [default: m]
-        -e, --exact               Match package with a string instead of a regex.
+        -s, --show <h,m,u,s,a>     Show (h)eaders, (m)erges, (u)nmerges, (s)yncs, and/or (a)ll. [default: m]
+        -e, --exact                Match package with a string instead of a regex.
 
 Predict merge time for current or pretended merges:
 
@@ -66,71 +66,74 @@ Predict merge time for current or pretended merges:
 Show statistics about sucessful merges and syncs:
 
     emlop stats [OPTIONS] [package]
-        <package>                  Show only packages matching <package>.
-        -s, --show <p,t,s,a>       Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll. [default: p]
+        -s, --show <h,p,t,s,a>     Show (h)eaders, (p)ackages, (t)otals, (s)yncs, and/or (a)ll. [default: p]
         -g, --groupby <y,m,w,d>    Group by (y)ear, (m)onth, (w)eek, or (d)ay.
         -e, --exact                Match package with a string instead of a regex.
             --limit <limit>        Use the last N merge times to predict next merge time. [default: 10]
 
 Options common to all subcommands:
 
-    -f, --from <date>                Only parse log entries after <date>.
-    -t, --to <date>                  Only parse log entries before <date>.
-        --duration <hms,hms_fixed,s> Format durations in hours:minutes:seconds, minutes:seconds or seconds. [default: hms]
-    -F, --logfile <file>             Location of emerge log file. [default: /var/log/emerge.log]
-    -v                               Show warnings (-v), info (-vv) and debug (-vvv) messages (errors are always displayed).
-        --color <when>               Enable color (auto/always/never/y/n). [default: auto]
-    -h, --help                       Show short (-h) or detailed (--help) help.
+        --utc                  Parse/display dates in UTC instead of local time
+    -f, --from <date>          Only parse log entries after <date>.
+    -t, --to <date>            Only parse log entries before <date>.
+        --duration <format>    Output durations in different formats. [default: hms]
+        --date <format>        Output dates in different formats. [default: ymdhms]
+    -F, --logfile <file>       Location of emerge log file. [default: /var/log/emerge.log]
+    -v                         Increase verbosity (can be given multiple times).
+        --color <when>         Enable color (auto/always/never/y/n). [default: auto]
+    -h, --help                 Show short (-h) or detailed (--help) help.
+    -V, --version              Prints version information
 
 ### Examples
 
 Show merge log with date, time, and package name:
 
     $ emlop log | tail
-    2018-01-29 10:20:52 +00:00        13 >>> net-wireless/iw-4.9
-    2018-01-29 10:21:21 +00:00        29 >>> dev-libs/librdkafka-0.11.3
-    2018-01-29 10:22:27 +00:00      1:06 >>> net-misc/curl-7.58.0
-    2018-01-29 11:09:20 +00:00      1:23 >>> media-libs/openexr-2.2.0-r2
-    2018-01-29 11:12:18 +00:00      2:58 >>> media-gfx/imagemagick-7.0.7.19
-    2018-01-29 11:12:42 +00:00        24 >>> kde-frameworks/kimageformats-5.42.0
-    2018-01-29 11:25:32 +00:00     12:50 >>> media-gfx/inkscape-0.92.2
-    2018-01-29 12:36:52 +00:00   1:11:20 >>> dev-lang/rust-1.23.0-r1
-    2018-01-29 12:37:08 +00:00        16 >>> virtual/rust-1.23.0
-    2018-01-29 12:41:54 +00:00      4:46 >>> dev-util/cargo-0.24.0
+    2018-01-29 10:20:52       13 >>> net-wireless/iw-4.9
+    2018-01-29 10:21:21       29 >>> dev-libs/librdkafka-0.11.3
+    2018-01-29 10:22:27     1:06 >>> net-misc/curl-7.58.0
+    2018-01-29 11:09:20     1:23 >>> media-libs/openexr-2.2.0-r2
+    2018-01-29 11:12:18     2:58 >>> media-gfx/imagemagick-7.0.7.19
+    2018-01-29 11:12:42       24 >>> kde-frameworks/kimageformats-5.42.0
+    2018-01-29 11:25:32    12:50 >>> media-gfx/inkscape-0.92.2
+    2018-01-29 12:36:52  1:11:20 >>> dev-lang/rust-1.23.0-r1
+    2018-01-29 12:37:08       16 >>> virtual/rust-1.23.0
+    2018-01-29 12:41:54     4:46 >>> dev-util/cargo-0.24.0
 
 Show same merge and unmerge log, filtering packages by regexp:
 
     $ emlop l -smu gcc | tail
-    2020-04-19 19:48:54 +01:00         2 <<< sys-devel/gcc-9.3.0
-    2020-04-19 19:48:58 +01:00   1:35:55 >>> sys-devel/gcc-9.3.0
-    2020-06-29 21:23:04 +01:00         2 <<< sys-devel/gcc-config-2.2.1
-    2020-06-29 21:23:05 +01:00         8 >>> sys-devel/gcc-config-2.3
-    2020-07-09 19:15:31 +01:00         2 <<< sys-devel/gcc-9.3.0
-    2020-07-09 19:15:36 +01:00   1:36:22 >>> sys-devel/gcc-9.3.0-r1
-    2020-07-25 23:08:53 +01:00         3 <<< sys-devel/gcc-config-2.3
-    2020-07-25 23:08:57 +01:00        24 >>> sys-devel/gcc-config-2.3.1
-    2020-08-29 10:36:11 +01:00         1 <<< sys-devel/gcc-9.3.0-r1
-    2020-08-29 10:36:19 +01:00   1:44:56 >>> sys-devel/gcc-9.3.0-r1
+    2020-04-19 19:48:54        2 <<< sys-devel/gcc-9.3.0
+    2020-04-19 19:48:58  1:35:55 >>> sys-devel/gcc-9.3.0
+    2020-06-29 21:23:04        2 <<< sys-devel/gcc-config-2.2.1
+    2020-06-29 21:23:05        8 >>> sys-devel/gcc-config-2.3
+    2020-07-09 19:15:31        2 <<< sys-devel/gcc-9.3.0
+    2020-07-09 19:15:36  1:36:22 >>> sys-devel/gcc-9.3.0-r1
+    2020-07-25 23:08:53        3 <<< sys-devel/gcc-config-2.3
+    2020-07-25 23:08:57       24 >>> sys-devel/gcc-config-2.3.1
+    2020-08-29 10:36:11        1 <<< sys-devel/gcc-9.3.0-r1
+    2020-08-29 10:36:19  1:44:56 >>> sys-devel/gcc-9.3.0-r1
 
 Show syncs of the last 7 days:
 
-    $ emlop l --from '1 week ago' -ss
-    2018-11-28 21:53:42 +00:00        13 Sync
-    2018-11-30 09:18:43 +00:00         7 Sync
-    2018-12-01 17:48:37 +00:00         3 Sync
-    2018-12-03 09:30:02 +00:00        11 Sync
-    2018-12-04 09:52:12 +00:00         8 Sync
-    2018-12-04 17:01:06 +00:00         8 Sync
-    2018-12-05 09:43:17 +00:00         4 Sync
+    $ emlop l --from '1 week' -ss
+    2022-04-05 09:10:17  3 Sync gentoo
+    2022-04-05 09:10:20  3 Sync guru
+    2022-04-06 09:04:18  4 Sync gentoo
+    2022-04-06 09:04:19  1 Sync guru
+    2022-04-09 10:41:03  6 Sync gentoo
+    2022-04-09 10:41:04  1 Sync guru
+    2022-04-11 09:42:15  5 Sync gentoo
+    2022-04-11 09:42:16  0 Sync guru
 
 Show currently emerging packages, how long they have been running, and predict how long is left:
 
     $ emlop p
-    Pid 27455: ...n-exec/python3.5/emerge -O chromium         33
-    Pid 27848: ...on-exec/python3.5/emerge -O firefox         29
-    www-client/firefox-58.0.1                              53:37 - 24
-    www-client/chromium-65.0.3325.146                    6:01:02 - 28
-    Estimate for 2 ebuilds (0 unknown, 52 elapsed)       6:53:47 @ 2019-10-09 11:17:42 +01:00
+    Pid 27455: ...n-exec/python3.5/emerge -O chromium       33
+    Pid 27848: ...on-exec/python3.5/emerge -O firefox       29
+    www-client/firefox-58.0.1                            53:37 - 24
+    www-client/chromium-65.0.3325.146                  6:01:02 - 28
+    Estimate for 2 ebuilds (0 unknown, 52 elapsed)     6:53:47 @ 2019-10-09 11:17:42
 
 Predict merge time from an `emerge --pretend` output, taking currently elapsed time into account:
 
@@ -139,66 +142,66 @@ Predict merge time from an `emerge --pretend` output, taking currently elapsed t
     www-client/chromium-65.0.3325.146                    5:49:38 - 1:10:55
     www-client/firefox-58.0.1                              53:37
     kde-apps/konqueror-17.12.3                              3:46
-    Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06 @ 2019-10-09 11:17:42 +01:00
+    Estimate for 3 ebuilds (0 unknown, 1:10:55 elapsed)  5:36:06 @ 2019-10-09 11:17:42
 
-Show merge and unmerge count, total time, and predicted time:
+Show merge stats for gtk packages, with colum headers:
 
-    $ emlop s gtk
-    dev-cpp/gtkmm                       2        2:20      1:10      1         1         1
-    dev-python/pygtk                    1          51        51      1         1         1
-    dev-util/gtk-doc-am                 3          38        12      3         3         1
-    dev-util/gtk-update-icon-cache      9        1:36        10      8        10         1
-    media-libs/clutter-gtk              1          16        16      1         2         2
-    net-libs/gtk-vnc                    1          32        32      1        10        10
-    net-libs/webkit-gtk                 1       30:07     30:07      1         2         2
-    x11-libs/colord-gtk                 1          15        15      1         2         2
-    x11-libs/gtk+                      15       35:19      2:18     13        17         1
-    x11-libs/gtksourceview              1          22        22      1         2         2
-    x11-libs/wxGTK                      3        8:35      2:51      1         1         1
-    x11-misc/xdg-user-dirs-gtk          1          11        11      1         2         2
-    x11-themes/gtk-engines-adwaita      1          11        11      0         0         ?
+    $ emlop s gtk -sh
+    Package                         Merge count  Total time  Predict time  Unmerge count  Total time  Predict time
+    dev-cpp/gtkmm                             2        2:38          1:19              1           2             2
+    dev-util/gtk-doc                          1          25            25              0           0             ?
+    dev-util/gtk-update-icon-cache            3          47            15              2           3             1
+    kde-plasma/breeze-gtk                    10        2:53            17              9          23             2
+    kde-plasma/kde-gtk-config                 9        3:19            22              8          16             2
+    net-wireless/iwgtk                        1           7             7              0           0             ?
+    sci-calculators/qalculate-gtk             1          47            47              0           0             ?
+    x11-libs/gtk+                             6       15:08          2:31              4          10             2
+    x11-libs/wxGTK                            1        2:23          2:23              0           0             ?
+    x11-misc/appmenu-gtk-module               2          28            14              1           2             2
+    x11-misc/xdg-user-dirs-gtk                1          14            14              0           0             ?
+    x11-themes/gtk-engines-adwaita            1          14            14              0           0             ?
 
 Show monthly stats (merge and unmerge count, total time, predicted time) for this year:
 
-    $ emlop s -gm -st --from '1 year ago'
-    2019-09 Total    136     6:33:24      2:53    140      3:32         1
-    2019-10 Total    497    12:58:47      1:34    559     12:37         1
-    2019-11 Total   1202    23:27:11      1:10   1193     25:55         1
-    2019-12 Total   1032    27:46:22      1:36   1021     24:02         1
-    2020-01 Total    436    18:18:36      2:31    427     11:32         1
-    2020-02 Total    540    16:46:42      1:51    512     14:50         1
-    2020-03 Total    665    33:25:03      3:00    653     19:52         1
-    2020-04 Total    635    33:32:31      3:10    618     21:58         2
-    2020-05 Total    479    21:19:04      2:40    451     11:59         1
-    2020-06 Total    701    14:26:32      1:14    659     33:08         3
-    2020-07 Total    451    15:24:06      2:02    433     14:13         1
-    2020-08 Total    425    11:58:29      1:41    427     20:08         2
-    2020-09 Total    462    11:51:32      1:32    424     11:44         1
+    $ emlop s -gm -st --from 1y
+    2019-09 Total   136   6:33:24  2:53   140   3:32  1
+    2019-10 Total   497  12:58:47  1:34   559  12:37  1
+    2019-11 Total  1202  23:27:11  1:10  1193  25:55  1
+    2019-12 Total  1032  27:46:22  1:36  1021  24:02  1
+    2020-01 Total   436  18:18:36  2:31   427  11:32  1
+    2020-02 Total   540  16:46:42  1:51   512  14:50  1
+    2020-03 Total   665  33:25:03  3:00   653  19:52  1
+    2020-04 Total   635  33:32:31  3:10   618  21:58  2
+    2020-05 Total   479  21:19:04  2:40   451  11:59  1
+    2020-06 Total   701  14:26:32  1:14   659  33:08  3
+    2020-07 Total   451  15:24:06  2:02   433  14:13  1
+    2020-08 Total   425  11:58:29  1:41   427  20:08  2
+    2020-09 Total   462  11:51:32  1:32   424  11:44  1
 
 Show yearly evolution of a package's average merge time:
 
     $ emlop s -gy chromium
-    2010 www-client/chromium     11     6:49:32     37:24     10         8         1
-    2011 www-client/chromium     28    25:24:48     58:40     23      1:15         4
-    2012 www-client/chromium     10    12:35:13   1:15:31     11        53         4
-    2016 www-client/chromium      8    16:05:00   2:00:37      7        11         1
-    2017 www-client/chromium     22    58:04:19   3:09:17     22        41         1
-    2018 www-client/chromium     14    83:54:26   6:00:59     14        27         1
-    2019 www-client/chromium      5    10:03:15   2:00:39      6        15         2
+    2010 www-client/chromium  11   6:49:32    37:24  10     8  1
+    2011 www-client/chromium  28  25:24:48    58:40  23  1:15  4
+    2012 www-client/chromium  10  12:35:13  1:15:31  11    53  4
+    2016 www-client/chromium   8  16:05:00  2:00:37   7    11  1
+    2017 www-client/chromium  22  58:04:19  3:09:17  22    41  1
+    2018 www-client/chromium  14  83:54:26  6:00:59  14    27  1
+    2019 www-client/chromium   5  10:03:15  2:00:39   6    15  2
 
 Show number of syncs per week:
 
     $ emlop s -gw -ss | tail
-    2018-40 Sync        1:35      8        11
-    2018-41 Sync        1:22     10         8
-    2018-42 Sync        1:26     11         7
-    2018-43 Sync        1:02      9         6
-    2018-44 Sync        1:23     13         6
-    2018-45 Sync        1:06      9         7
-    2018-46 Sync        1:27     11         7
-    2018-47 Sync        1:14      8         9
-    2018-48 Sync          31      4         7
-    2018-49 Sync          31      4         7
+    2022-11 Sync gentoo     8    47     5
+    2022-11 Sync guru       8     6     1
+    2022-12 Sync gentoo    12  3:32    20
+    2022-12 Sync guru      12    24     2
+    2022-13 Sync gentoo    12    43     3
+    2022-13 Sync guru      12    10     1
+    2022-14 Sync gentoo    15    55     3
+    2022-14 Sync guru      15    15     1
+    2022-15 Sync gentoo     1     5     5
+    2022-15 Sync guru       1     0     ?
 
 ## Contributing
 

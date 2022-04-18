@@ -2,7 +2,7 @@
 
 Original motivation for Emlop was a faster/more accurate version of `genlop -p`, and learning
 Rust. It has since gained features and maturity to compete on all fronts. This file compares
-`genlop-0.30.10`, `qlop-0.90`, and `emlop-0.4.0`. Please report any outdated/incorrect info using
+`genlop-0.30.10`, `qlop-0.93.3`, and `emlop-0.5.0`. Please report any outdated/incorrect info using
 [the issue tracker](https://github.com/vincentdephily/emlop/issues).
 
 Known emegre log parsers:
@@ -32,32 +32,35 @@ did make some outputs more compact.
 Default qlop duration output depends on length: `45s` -> `3′45″` -> `1:23:45`. Machine output
 applies to dates and durations at the same time.
 
-|                                               | genlop | qlop       | emlop           |
-|:----------------------------------------------|:------:|:----------:|:---------------:|
-| Output density                                | sparse | medium     | compact         |
-| Colorized output                              | yes    | yes        | yes             |
-| Date output options                           | utc    | iso,unix   | -               |
-| Duration output style (seconds,hh:mm:ss,text) | text   | hms,s,text | hms,hms_fixed,s |
-| Aligned output                                | some   | some       | all             |
-| Headers                                       | no     | no         | no              |
+|                           | genlop | qlop          | emlop   |
+| :------------------------ | :----: | :-----------: | :-----: |
+| Output density            | sparse | medium        | compact |
+| Colorized output          | yes    | yes           | yes     |
+| Date output formats       | -      | rfc3339,ts    | many    |
+| Timezone options          | utc    | -             | utc     |
+| Duration output formats   | text   | hms,secs,text | many    |
+| Aligned output            | some   | some          | all     |
+| Headers                   | no     | no            | yes     |
 
 ## Merge log
 
-|                                                       | genlop | qlop  | emlop |
-| :---------------------------------------------------- | :----: | :---: | :---: |
-| Display merges                                        | yes    | yes   | yes   |
-| Display syncs                                         | yes    | yes   | yes   |
-| Display unmerges                                      | yes    | yes   | yes   |
-| Distinguish autoclean/manual unmerges                 | no     | yes   | no    |
-| Display unmerge/sync time                             | no     | yes   | yes   |
-| Display interrupted merges                            | no     | no    | no    |
-| Display currently installed package's USE/CFLAGS/date | yes    | no    | no    |
-| Display merge begin time or end time                  | end    | begin | end   |
+|                                                       | genlop | qlop   | emlop    |
+| :---------------------------------------------------- | :----: | :----: | :------: |
+| Display merges                                        | yes    | yes    | yes      |
+| Display syncs (single entry or per repository         | single | single | per-repo |
+| Display unmerges                                      | yes    | yes    | yes      |
+| Distinguish autoclean/manual unmerges                 | no     | yes    | no       |
+| Display unmerge/sync duration                         | no     | yes    | yes      |
+| Display interrupted merges                            | no     | no     | no       |
+| Display currently installed package's USE/CFLAGS/date | yes    | no     | no       |
+| Display merge begin time or end time                  | end    | either | end      |
 
-If the log file is truncated and contains a merge end event without a merge start : qlop displays
-nothing, genlop displays a buggy time, emlop displays the time as `?`.
+If the log contains a merge end event without a merge start, qlop displays nothing, genlop displays
+a buggy time, and emlop displays the time as `?`. Qlop also displays nothing when time jumps
+backward. As a result, qlop may report fewer total merges than {gen,em}lop.
 
-Qlop also misses about 3% of merges compared to {gen,em}lop, for some other reason.
+Qlop sync duration only corresponds to the first repo (typically `gentoo`). Emlop sync duration
+ignores the pre-sync setup time (usually 0 or 1 seconds).
 
 ## Merge stats
 
@@ -75,14 +78,20 @@ sometimes incompatible flags.
 ## Filtering
 
 Genlop switches case-sensitivity using `-s` vs `-S` flag. Emlop doesn't have a flag, but regexp can
-be prepended with `(?-i)` should case-sensitivity ever be needed. qlop only supports plaintext
+be prepended with `(?-i)` should case-sensitivity ever be needed. Qlop only supports plaintext
 whole-word matching.
 
-Genlop and qlop use a single flag for min/max date, so it isn't possible to specify only a max date.
+Genlop and qlop use a single flag for min/max date, so it isn't possible to specify only a max
+date.
+
+For relative dates, genlop accepts fancy strings like "last month" or "2 weeks ago", qlop is a bit
+less flexible but less verbose (no "ago" needed), and emlop only accepts a number of days/weeks/etc
+which can be abbreviated (for example "1 week, 3 days" -> "1w3d").
 
 |                                                        | genlop | qlop  | emlop  |
 | :----------------------------------------------------- | :----: | :---: | :----: |
 | Limit log parsing by date                              | yes    | yes   | yes    |
+| Limit log to last operation                            | no     | yes   | no     |
 | Plaintext exact package search                         | yes    | yes   | yes    |
 | Regexp package search                                  | yes    | no    | yes    |
 | Regexp case-sensitivity switch                         | flag   | n/a   | syntax |
@@ -118,27 +127,29 @@ estimate the resulting speedup factor.
 ## Speed
 
 Here are timings for some common commands (in milliseconds, 95th centile of 50 runs, output to
-Alacritty terminal) measured using `benches/exec_compare.rs`, on an i7-9750H with an SSD and an
-emerge.log with ~11K merges.
+Alacritty terminal) measured using `benches/exec_compare.rs`, on a Ryzen 7 4700U with an SSD and the
+`benches/emerge.log` file with ~10K merges.
 
-The commands were selected to be comparable, but Some differences do influence timings: emlop always
-show merge time and package version in "log" mode, which takes some more work. Filtering by
-plaintext isn't noticeably faster than by case-(in)sensitive regexp ({gen,em}lop only).
+The commands were selected to be comparable, but Some differences do influence timings. Emlop always
+show merge time and package version in "log" mode. Genlop can't show unmerges of specific pacakeg
+only. Qlop -r still searches the log for unfinished merges when it doesn't find an ongoing
+merge. Filtering by plaintext isn't noticeably faster than by case-(in)sensitive regexp ({gen,em}lop
+only).
 
 |                                                               | genlop | qlop | emlop |
 | :-------------------------------------------------------------| -----: | ---: | ----: |
-| `genlop -l; qlop -m; emlop l`                                 |    385 |   52 |    24 |
-| `genlop -lut; qlop -muUvt; emlop l -smu`                      |    600 |   72 |    42 |
-| `genlop -e gcc; qlop gcc; emlop l -e gcc`                     |    322 |   20 |    14 |
-| `genlop -tlu gcc; qlop -tvmuU gcc; emlop l -smu -e gcc`       |    606 |   24 |    17 |
-| `emerge dummybuild&;genlop -c;qlop -r;emlop p`                |    355 |   34 |    24 |
-| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`    |    353 |  n/a |    23 |
-| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`     |   3380 |  n/a |    25 |
-| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`    |  21047 |  n/a |    25 |
+| `genlop -l; qlop -m; emlop l`                                 |    461 |   91 |    89 |
+| `genlop -lut; qlop -muUvt; emlop l -smu`                      |    702 |  152 |   139 |
+| `genlop -e gcc; qlop gcc; emlop l -e gcc`                     |    386 |   34 |    41 |
+| `genlop -te gcc; qlop -tvmuU gcc; emlop l -smu -e gcc`        |    414 |   44 |    48 |
+| `emerge dummybuild&;genlop -c;qlop -r;emlop p`                |    438 |   23 |    27 |
+| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`    |    406 |  n/a |    58 |
+| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`     |   3224 |  n/a |    60 |
+| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`    |  20407 |  n/a |    59 |
 
-Emlop is faster than qlop, which is much faster than genlop. None of the timings are showstoppers on
-this fast machine, except for `emerge -p` ETA (not implemented by qlop) which is prohibitively slow
-in genlop.
+Emlop and qlop are similarly fast, their time is often dominated by the terminal emulator used
+(alacritty used in this bench is particularly fast). Genlop is noticably slow, especially for
+`emerge -p` ETAs.
 
 ## misc
 
