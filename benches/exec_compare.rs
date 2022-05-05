@@ -59,7 +59,7 @@ fn main() {
         ("lf", "qlop",   &["-f","./benches/emerge.log","-mv"], None),
         ("lf", "emlop",  &["-F","./benches/emerge.log","l"], None),
         // Force/prevent color output
-        ("lc", "emlop",  &["-f","./benches/emerge.log","l","--color=y"],   None),
+        ("lc", "emlop",  &["-F","./benches/emerge.log","l","--color=y"],   None),
         ("ln", "genlop", &["-f","./benches/emerge.log","-l","-n"],         None),
         ("ln", "qlop",   &["-f","./benches/emerge.log","-mv","--nocolor"], None),
         ("ln", "emlop",  &["-F","./benches/emerge.log","l","--color=n"],   None),
