@@ -374,12 +374,13 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Resu
 
 pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
     let shell = match subargs.value_of("shell") {
-        Some("bash") => clap::Shell::Bash,
-        Some("zsh") => clap::Shell::Zsh,
-        Some("fish") => clap::Shell::Fish,
+        Some("bash") => clap_complete::Shell::Bash,
+        Some("zsh") => clap_complete::Shell::Zsh,
+        Some("fish") => clap_complete::Shell::Fish,
         o => bail!("Unsupported shell {:?}", o),
     };
-    cli::build_cli_nocomplete().gen_completions_to("emlop", shell, &mut std::io::stdout());
+    let mut cli = cli::build_cli_nocomplete();
+    clap_complete::generate(shell, &mut cli, "emlop", &mut std::io::stdout());
     Ok(true)
 }
 

@@ -1,7 +1,7 @@
 use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 
 /// Generate cli argument parser without the `complete` subcommand.
-pub fn build_cli_nocomplete() -> App<'static, 'static> {
+pub fn build_cli_nocomplete() -> App<'static> {
     let arg_limit =
         Arg::with_name("limit").long("limit")
                                .takes_value(true)
@@ -10,7 +10,7 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
     let arg_pkg =
         Arg::with_name("package").takes_value(true).help("Show only packages matching <package>.");
     let arg_exact =
-        Arg::with_name("exact").short("e")
+        Arg::with_name("exact").short('e')
                                .long("exact")
                                .help("Match package with a string instead of a regex.")
                                .long_help(
@@ -20,7 +20,7 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
                     matches on whole name, or whole category/name if it contains a /.",
         );
     let arg_show_l = Arg::with_name("show")
-        .short("s")
+        .short('s')
         .long("show")
         .value_name("h,m,u,s,a")
         .validator(|s| find_invalid("hmusa", &s))
@@ -29,7 +29,7 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
         .long_help("Show individual (m)erges, (u)nmerges, portage tree (s)yncs, \
                     or (a)ll of these (any letters combination).");
     let arg_show_s = Arg::with_name("show")
-        .short("s")
+        .short('s')
         .long("show")
         .value_name("h,p,t,s,a")
         .validator(|s| find_invalid("hptsa", &s))
@@ -38,7 +38,7 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
         .long_help("Show per-(p)ackage merges/unmerges, (t)otal merges/unmerges, \
                     portage tree (s)yncs, or (a)ll of these (any letters combination).");
     let arg_group =
-        Arg::with_name("group").short("g")
+        Arg::with_name("group").short('g')
                                .long("groupby")
                                .value_name("y,m,w,d")
                                .possible_values(&["y", "m", "w", "d"])
@@ -57,7 +57,7 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
         .setting(AppSettings::DisableHelpSubcommand)
         .setting(AppSettings::InferSubcommands)
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .setting(AppSettings::VersionlessSubcommands)
+        // FIXME clap3 what's the equivalent ? .setting(AppSettings::VersionlessSubcommands)
         .about("A fast, accurate, ergonomic EMerge LOg Parser.\n\
                 https://github.com/vincentdephily/emlop")
         .after_help("Subcommands can be abbreviated down to a single letter.\n\
@@ -71,7 +71,7 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
              .help("Parse/display dates in UTC instead of local time"))
         .arg(Arg::with_name("from")
              .value_name("date")
-             .short("f")
+             .short('f')
              .long("from")
              .global(true)
              .takes_value(true)
@@ -81,7 +81,7 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
                          '2018-03-04T12:34', '1 year, 2 months', '10d', and unix timestamps."))
         .arg(Arg::with_name("to")
              .value_name("date")
-             .short("t")
+             .short('t')
              .long("to")
              .global(true)
              .takes_value(true)
@@ -123,13 +123,13 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
         .arg(Arg::with_name("logfile")
              .value_name("file")
              .long("logfile")
-             .short("F")
+             .short('F')
              .global(true)
              .takes_value(true)
              .default_value("/var/log/emerge.log")
              .help("Location of emerge log file."))
         .arg(Arg::with_name("verbose")
-             .short("v")
+             .short('v')
              .global(true)
              .multiple(true)
              .help("Increase verbosity (can be given multiple times).")
@@ -180,7 +180,7 @@ pub fn build_cli_nocomplete() -> App<'static, 'static> {
 }
 
 /// Generate cli argument parser.
-pub fn build_cli() -> App<'static, 'static> {
+pub fn build_cli() -> App<'static> {
     let c = build_cli_nocomplete();
     c.subcommand(SubCommand::with_name("complete")
                  .about("Generate shell completion script.")

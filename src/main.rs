@@ -8,7 +8,7 @@ mod table;
 use crate::{commands::*, date::*};
 use ansi_term::{Color::*, Style};
 use anyhow::Error;
-use clap::{value_t, ArgMatches, Error as ClapError, ErrorKind};
+use clap::{value_t, ArgMatches, Command, Error as ClapError, ErrorKind};
 use log::*;
 use std::str::FromStr;
 use time::UtcOffset;
@@ -26,11 +26,12 @@ fn main() {
     debug!("{:?}", args);
     let styles = Styles::from_args(&args);
     let res = match args.subcommand() {
-        ("log", Some(sub_args)) => cmd_list(&args, sub_args, &styles),
-        ("stats", Some(sub_args)) => cmd_stats(&args, sub_args, &styles),
-        ("predict", Some(sub_args)) => cmd_predict(&args, sub_args, &styles),
-        ("complete", Some(sub_args)) => cmd_complete(sub_args),
-        (other, _) => unimplemented!("{} subcommand", other),
+        Some(("log", sub_args)) => cmd_list(&args, sub_args, &styles),
+        Some(("stats", sub_args)) => cmd_stats(&args, sub_args, &styles),
+        Some(("predict", sub_args)) => cmd_predict(&args, sub_args, &styles),
+        Some(("complete", sub_args)) => cmd_complete(sub_args),
+        Some((other, _)) => unimplemented!("{} subcommand", other),
+        None => panic!("should always have a sub ?"), // FIXME clap3 migration
     };
     match res {
         Ok(true) => ::std::process::exit(0),
@@ -57,9 +58,9 @@ pub fn value<T, P>(matches: &ArgMatches, name: &str, parse: P) -> T
     let s = matches.value_of(name).unwrap_or_else(|| panic!("Argument {} missing", name));
     match parse(s) {
         Ok(v) => v,
-        Err(e) => ClapError { message: format!("Invalid argument '--{} {}': {}", name, s, e),
-                              kind: ErrorKind::InvalidValue,
-                              info: None }.exit(),
+        Err(e) => Command::new("emlop").error(ErrorKind::InvalidValue,
+                                              format!("Invalid argument '--{name} {s}': {e}"))
+                                       .exit(),
     }
 }
 
@@ -75,9 +76,9 @@ pub fn value_opt<T, P, A>(matches: &ArgMatches, name: &str, parse: P, arg: A) ->
     let s = matches.value_of(name)?;
     match parse(s, arg) {
         Ok(v) => Some(v),
-        Err(e) => ClapError { message: format!("Invalid argument '--{} {}': {}", name, s, e),
-                              kind: ErrorKind::InvalidValue,
-                              info: None }.exit(),
+        Err(e) => Command::new("emlop").error(ErrorKind::InvalidValue,
+                                              format!("Invalid argument '--{name} {s}': {e}"))
+                                       .exit(),
     }
 }
 
