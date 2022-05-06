@@ -57,6 +57,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         .disable_help_subcommand(true)
         .infer_subcommands(true)
         .arg_required_else_help(true)
+        .subcommand_required(true)
         .about("A fast, accurate, ergonomic EMerge LOg Parser.\n\
                 https://github.com/vincentdephily/emlop")
         .after_help("Subcommands can be abbreviated down to a single letter.\n\

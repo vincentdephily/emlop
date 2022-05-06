@@ -845,6 +845,7 @@ mod tests {
                  (&[], 2),
                  (&["s", "--foo"], 2),
                  (&["badcmd"], 2),
+                 (&["--utc"], 2),
                  // Bad arguments (emlop)
                  (&["l", "--logfile", "notfound"], 2),
                  (&["s", "--logfile", "notfound"], 2),
