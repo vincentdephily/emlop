@@ -56,11 +56,12 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         .global_setting(AppSettings::DeriveDisplayOrder)
         .disable_help_subcommand(true)
         .infer_subcommands(true)
+        .infer_long_args(true)
         .arg_required_else_help(true)
         .subcommand_required(true)
         .about("A fast, accurate, ergonomic EMerge LOg Parser.\n\
                 https://github.com/vincentdephily/emlop")
-        .after_help("Subcommands can be abbreviated down to a single letter.\n\
+        .after_help("Subcommands and long args can be abbreviated (eg `emlop l --dur s`).\n\
                      Subcommands have their own -h / --help.\n\
                      Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of argument errors.")
         .mut_arg("help", |a| a.help("Show short (-h) or detailed (--help) help."))
