@@ -7,7 +7,7 @@ use std::{collections::{BTreeMap, HashMap},
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
-    let show = value_t!(subargs, "show", Show).unwrap();
+    let show = subargs.value_of_t("show").unwrap();
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
@@ -101,7 +101,7 @@ impl Times {
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
-    let show = value_t!(subargs, "show", Show).unwrap();
+    let show = subargs.value_of_t("show").unwrap();
     let timespan_opt = value_opt(subargs, "group", parse_timespan, ());
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, st.date_offset),
@@ -552,7 +552,7 @@ mod tests {
     fn predict_tty() {
         emlop().args(&["p", "-F", "test/emerge.10000.log"])
                .assert()
-               .code(2)
+               .code(1)
                .stdout("No pretended merge found\n");
     }
 
@@ -562,7 +562,7 @@ mod tests {
     fn predict_emerge_p() {
         let _cache_cargo_build = emlop();
         let t = vec![// Check garbage input
-                     ("blah blah\n", format!("No pretended merge found\n"), 2),
+                     ("blah blah\n", format!("No pretended merge found\n"), 1),
                      // Check all-unknowns
                      ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
                       format!("dev-lang/unknown-1.42                         ? \n\
@@ -624,7 +624,7 @@ mod tests {
              0),
             (&["-F","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
              "",
-             2),
+             1),
         ];
         for (a, o, e) in t {
             emlop().args(a).assert().code(e).stdout(o);
@@ -835,34 +835,34 @@ mod tests {
     #[test]
     fn exit_status() {
         // 0: no problem
-        // 1: user or program error
-        // 2: command ran properly but didn't find anything
+        // 1: command ran properly but didn't find anything
+        // 2: user or program error
         let t: Vec<(&[&str], i32)> =
             vec![// Help, version, badarg (clap)
                  (&["-h"], 0),
                  (&["-V"], 0),
                  (&["l", "-h"], 0),
-                 (&[], 1),
-                 (&["s", "--foo"], 1),
-                 (&["badcmd"], 1),
+                 (&[], 2),
+                 (&["s", "--foo"], 2),
+                 (&["badcmd"], 2),
                  // Bad arguments (emlop)
-                 (&["l", "--logfile", "notfound"], 1),
-                 (&["s", "--logfile", "notfound"], 1),
-                 (&["p", "--logfile", "notfound"], 1),
-                 (&["l", "bad regex [a-z"], 1),
-                 (&["s", "bad regex [a-z"], 1),
-                 (&["p", "bad regex [a-z"], 1),
+                 (&["l", "--logfile", "notfound"], 2),
+                 (&["s", "--logfile", "notfound"], 2),
+                 (&["p", "--logfile", "notfound"], 2),
+                 (&["l", "bad regex [a-z"], 2),
+                 (&["s", "bad regex [a-z"], 2),
+                 (&["p", "bad regex [a-z"], 2),
                  // Normal behaviour
-                 (&["-F", "test/emerge.10000.log", "p"], 2),
+                 (&["-F", "test/emerge.10000.log", "p"], 1),
                  (&["-F", "test/emerge.10000.log", "l"], 0),
-                 (&["-F", "test/emerge.10000.log", "l", "-s"], 0),
+                 (&["-F", "test/emerge.10000.log", "l", "-sm"], 0),
                  (&["-F", "test/emerge.10000.log", "l", "-e", "icu"], 0),
-                 (&["-F", "test/emerge.10000.log", "l", "-e", "unknown"], 2),
-                 (&["-F", "test/emerge.10000.log", "l", "--from", "2018-09-28"], 2),
-                 (&["-F", "test/emerge.10000.log", "l", "-s", "--from", "2018-09-28"], 2),
+                 (&["-F", "test/emerge.10000.log", "l", "-e", "unknown"], 1),
+                 (&["-F", "test/emerge.10000.log", "l", "--from", "2018-09-28"], 1),
+                 (&["-F", "test/emerge.10000.log", "l", "-sm", "--from", "2018-09-28"], 1),
                  (&["-F", "test/emerge.10000.log", "s"], 0),
                  (&["-F", "test/emerge.10000.log", "s", "-e", "icu"], 0),
-                 (&["-F", "test/emerge.10000.log", "s", "-e", "unknown"], 2),];
+                 (&["-F", "test/emerge.10000.log", "s", "-e", "unknown"], 1),];
         for (a, e) in t {
             emlop().args(a).assert().code(e);
         }

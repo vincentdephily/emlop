@@ -8,7 +8,7 @@ mod table;
 use crate::{commands::*, date::*};
 use ansi_term::{Color::*, Style};
 use anyhow::Error;
-use clap::{value_t, ArgMatches, Command, Error as ClapError, ErrorKind};
+use clap::{ArgMatches, Command, ErrorKind};
 use log::*;
 use std::str::FromStr;
 use time::UtcOffset;
@@ -30,18 +30,17 @@ fn main() {
         Some(("stats", sub_args)) => cmd_stats(&args, sub_args, &styles),
         Some(("predict", sub_args)) => cmd_predict(&args, sub_args, &styles),
         Some(("complete", sub_args)) => cmd_complete(sub_args),
-        Some((other, _)) => unimplemented!("{} subcommand", other),
-        None => panic!("should always have a sub ?"), // FIXME clap3 migration
+        _ => unreachable!("clap should have exited already"),
     };
     match res {
         Ok(true) => ::std::process::exit(0),
-        Ok(false) => ::std::process::exit(2),
+        Ok(false) => ::std::process::exit(1),
         Err(e) => {
             match e.source() {
                 Some(s) => error!("{}: {}", e, s),
                 None => error!("{}", e),
             }
-            ::std::process::exit(1)
+            ::std::process::exit(2)
         },
     }
 }
@@ -194,8 +193,8 @@ impl Styles {
             Some("never") | Some("n") => false,
             _ => atty::is(atty::Stream::Stdout),
         };
-        let dur_fmt = value_t!(args, "duration", DurationStyle).unwrap();
-        let date_fmt = value_t!(args, "date", DateStyle).unwrap();
+        let dur_fmt = args.value_of_t("duration").unwrap();
+        let date_fmt = args.value_of_t("date").unwrap();
         let utc = args.is_present("utc");
         Styles::new(color, dur_fmt, date_fmt, utc)
     }

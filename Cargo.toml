@@ -19,8 +19,9 @@ exclude = ["/benches/*.log"]
 ansi_term = "0.12.1"
 anyhow = "1.0.32"
 atty = "0.2.14"
-clap = {version = "3.1.15", features = ["cargo"]}
-clap_complete = "3.1.3"
+clap = { version = "3.1.15", default_features = false, features = ["cargo", "color", "suggestions"] }
+# Waiting on https://github.com/clap-rs/clap/issues/3697 to relax version
+clap_complete = "=3.1.0"
 crossbeam-channel = "0.5.0"
 env_logger = {version = "0.9.0", default_features = false, features = ["termcolor", "atty"]}
 log = "0.4.11"
