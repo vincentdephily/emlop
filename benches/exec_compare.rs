@@ -216,7 +216,9 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
 
     // Output the results
     let mut tw = TabWriter::new(stderr());
-    writeln!(tw, "\ntest\tcmd\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tbucketed values")
+    let mut prev = String::new();
+    let mut color = "";
+    writeln!(tw, "\n\x1B[36mtest\tcmd\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tbucketed values")
         .unwrap();
     for (key, vals) in times {
         let ss: SummStats<f64> = vals.iter().cloned().collect();
@@ -226,8 +228,14 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
             .map(|v| (v / bucket as f64).round() as u64 * bucket)
             .for_each(|v| *hist.entry(v).or_insert(0) += 1);
         let hist = hist.iter().map(|(k, v)| format!("{}:{}", k, v)).collect::<Vec<_>>().join(",");
+        let cmd = key.split_once("\t").expect("key without a tab").0;
+        if prev != cmd {
+            color = if color == "\x1B[00m" { "\x1B[37m" } else { "\x1B[00m" };
+            prev = cmd.into();
+        }
         writeln!(tw,
-                 "{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}",
+                 "{}{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}",
+                 color,
                  key,
                  ss.min().unwrap(),
                  pc.percentile(&0.95).unwrap().unwrap(),
