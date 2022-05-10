@@ -1,10 +1,11 @@
 # Unreleased
 
-Maintenance release: Cli refinements
+Maintenance release: Cli refinements and parser optimization
 
 * Long args like `--duration` can now be abbreviated
 * Bash completion no longer wrongly suggests `-V`/`--version` for subcommands
 * Exit code on error changed to `1` for empty results and `2` for plain errors
+* Parser performance improvement
 
 # 0.5.0 2022-04-18
 

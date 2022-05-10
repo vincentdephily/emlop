@@ -84,7 +84,7 @@ pub struct Pretend {
 }
 
 /// Parse emerge log into a channel of `Parsed` enums.
-pub fn new_hist(filename: String,
+pub fn new_hist(file: String,
                 min_ts: Option<i64>,
                 max_ts: Option<i64>,
                 show: Show,
@@ -92,25 +92,27 @@ pub fn new_hist(filename: String,
                 search_exact: bool)
                 -> Result<Receiver<Hist>, Error> {
     debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}",
-           filename, min_ts, max_ts, search_str, search_exact);
-    let reader = File::open(&filename).with_context(|| format!("Cannot open {:?}", filename))?;
+           file, min_ts, max_ts, search_str, search_exact);
+    let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = unbounded();
-    // https://docs.rs/crossbeam/0.7.1/crossbeam/thread/index.html
     let filter_ts = filter_ts_fn(min_ts, max_ts);
     let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
     let show_merge = show.merge || show.pkg || show.tot;
     let show_unmerge = show.unmerge || show.pkg || show.tot;
     thread::spawn(move || {
         let mut prev_t = 0;
-        for (curline, l) in BufReader::new(reader).lines().enumerate() {
-            match l {
-                Ok(ref line) => {
-                    // Got a line, see if one of the funs match it
-                    if let Some((t, s)) = parse_ts(line, &filter_ts) {
+        let mut curline = 1;
+        let mut buf = BufReader::new(reader);
+        let mut line = String::new();
+        loop {
+            match buf.read_line(&mut line) {
+                // End of file
+                Ok(0) => break,
+                // Got a line, see if one of the funs match it
+                Ok(_) => {
+                    if let Some((t, s)) = parse_ts(&line, &filter_ts) {
                         if prev_t > t {
-                            warn!("{}:{}: System clock jump: {} -> {}",
-                                  filename,
-                                  curline,
+                            warn!("{file}:{curline}: System clock jump: {} -> {}",
                                   fmt_utctime(prev_t),
                                   fmt_utctime(t));
                         }
@@ -134,11 +136,11 @@ pub fn new_hist(filename: String,
                         }
                     }
                 },
-                Err(e) => {
-                    // Could be invalid UTF8, system read error...
-                    warn!("{}:{}: {}", filename, curline, e)
-                },
+                // Could be invalid UTF8, system read error...
+                Err(e) => warn!("{file}:{curline}: {e}"),
             }
+            line.clear();
+            curline += 1;
         }
     });
     Ok(rx)
@@ -151,19 +153,26 @@ pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pretend>
     debug!("new_pretend input={}", filename);
     let mut out: Vec<Pretend> = vec![];
     let re = Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap();
-    for (curline, l) in BufReader::new(reader).lines().enumerate() {
-        match l {
-            Ok(ref line) => {
-                // Got a line, see if one of the funs match it
-                if let Some(found) = parse_pretend(line, &re) {
+    let mut curline = 1;
+    let mut buf = BufReader::new(reader);
+    let mut line = String::new();
+    loop {
+        match buf.read_line(&mut line) {
+            // End of file
+            Ok(0) => break,
+            // Got a line, see if one of the funs match it
+            Ok(_) => {
+                if let Some(found) = parse_pretend(&line, &re) {
                     out.push(found)
                 }
             },
+            // Could be invalid UTF8, system read error...
             Err(e) => {
-                // Could be invalid UTF8, system read error...
                 warn!("{}:{}: {}", filename, curline, e)
             },
         }
+        line.clear();
+        curline += 1;
     }
     out
 }
@@ -339,7 +348,7 @@ fn parse_syncstop(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
         return None;
     }
     let repo = match line.rsplit_once(['/', ' ']) {
-        Some((_, r)) => String::from(r),
+        Some((_, r)) => String::from(r.trim()),
         _ => {
             warn!("Can't find sync repo name in {ts} {line}");
             String::from("unknown")
