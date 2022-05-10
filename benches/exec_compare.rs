@@ -54,10 +54,6 @@ fn main() {
         ("ld2", "genlop", &["-f","./benches/emerge.log","-l", "--date","2020-10-01","--date","2020-10-31"], None),
         ("ld2", "qlop",   &["-f","./benches/emerge.log","-mv","--date","2020-10-01","--date","2020-10-31"], None),
         ("ld2", "emlop",  &["-F","./benches/emerge.log","l",  "--from","2020-10-01","--to",  "2020-10-31"], None),
-        // Read a small file
-        ("lf", "genlop", &["-f","./benches/emerge.log","-l"], None),
-        ("lf", "qlop",   &["-f","./benches/emerge.log","-mv"], None),
-        ("lf", "emlop",  &["-F","./benches/emerge.log","l"], None),
         // Force/prevent color output
         ("lc", "emlop",  &["-F","./benches/emerge.log","l","--color=y"],   None),
         ("ln", "genlop", &["-f","./benches/emerge.log","-l","-n"],         None),
