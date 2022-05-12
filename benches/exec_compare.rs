@@ -11,13 +11,13 @@
 //!    content: |
 //!     package = { name = "exec_compare", version = "0.1.0", edition = "2018"}
 //!     [dependencies]
-//!     clap = "*"
-//!     stats-cli = "*"
-//!     tabwriter = "*"
-//!     rand = "*"
+//!     clap = "3.1.18"
+//!     stats-cli = "3.0.1"
+//!     tabwriter = "1.2.1"
+//!     rand = "0.8.5"
 //! scriptisto-end
 
-use clap::{value_t, values_t, App, AppSettings, Arg};
+use clap::{Arg, Command as ClapCmd};
 use inc_stats::*;
 use rand::prelude::SliceRandom;
 use std::{collections::BTreeMap,
@@ -94,10 +94,8 @@ fn main() {
     allsets.sort();
     allsets.dedup();
     let allsets_str = allsets.join(",");
-    let cli = App::new("emlop-bench")
+    let cli = ClapCmd::new("emlop-bench")
         .about("Quick script to benchmark *lop implementations.")
-        .global_setting(AppSettings::ColoredHelp)
-        .global_setting(AppSettings::DeriveDisplayOrder)
         .after_help("All benchmarks are biased. Some tips to be less wrong:\n\
  * Make your system is as idle as possible, shutdown unneeded apps (browser, im, cron...).\n\
  * Don't compare numbers collected at different times or on different machines.\n\
@@ -105,43 +103,43 @@ fn main() {
  * The terminal emulator's speed makes a big difference. Reduce the scroll buffer size and check performance-related settings.\n\
  * Use -n option (redirect to /dev/null) to ignore terminal overhead.\n\
  * Pipe to cat to disable colors (see also color-specific sets).")
-        .arg(Arg::with_name("programs")
+        .arg(Arg::new("programs")
              .help("Programs to test, formated as 'NAME[:PATH][,...]': coma-separated list, name can \
 be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/emlop,q'")
-             .short("p")
+             .short('p')
              .takes_value(true)
-             .multiple(true)
-             .use_delimiter(true)
+             .multiple_values(true)
+             .use_value_delimiter(true)
              .default_value("emlop"))
-        .arg(Arg::with_name("sets")
+        .arg(Arg::new("sets")
              .help("Test sets")
-             .short("s")
+             .short('s')
              .takes_value(true)
-             .multiple(true)
-             .use_delimiter(true)
+             .multiple_values(true)
+             .use_value_delimiter(true)
              .possible_values(&allsets)
              .hide_possible_values(true)
              .default_value(&allsets_str))
-        .arg(Arg::with_name("runs")
+        .arg(Arg::new("runs")
              .help("Number of iterations")
-             .short("r")
+             .short('r')
              .takes_value(true)
              .default_value("10"))
-        .arg(Arg::with_name("bucket")
+        .arg(Arg::new("bucket")
              .help("Size of histogram buckets")
-             .short("b")
+             .short('b')
              .takes_value(true)
              .default_value("5"))
-        .arg(Arg::with_name("nullout")
-             .short("n")
+        .arg(Arg::new("nullout")
+             .short('n')
              .help("Send test program outputs to /dev/null"))
         .get_matches();
 
     // CLI parsing
-    let runs = value_t!(cli, "runs", usize).unwrap();
-    let bucket = value_t!(cli, "bucket", u64).unwrap();
-    let progs = values_t!(cli.values_of("programs"), String).unwrap();
-    let sets = values_t!(cli.values_of("sets"), String).unwrap();
+    let runs = cli.value_of_t("runs").unwrap();
+    let bucket: u64 = cli.value_of_t("bucket").unwrap();
+    let progs: Vec<String> = cli.values_of_t("programs").unwrap();
+    let sets: Vec<String> = cli.values_of_t("sets").unwrap();
     let nullout = cli.is_present("nullout");
 
     // Construct the test list.
