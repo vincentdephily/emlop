@@ -22,7 +22,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         Arg::new("show").short('s')
                         .long("show")
                         .value_name("h,m,u,s,a")
-                        .validator(|s| find_invalid("hmusa", &s))
+                        .validator(|s| find_invalid("hmusa", s))
                         .default_value("m")
                         .help("Show (h)eaders, (m)erges, (u)nmerges, (s)yncs, and/or (a)ll.")
                         .long_help(
@@ -33,7 +33,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         Arg::new("show").short('s')
                         .long("show")
                         .value_name("h,p,t,s,a")
-                        .validator(|s| find_invalid("hptsa", &s))
+                        .validator(|s| find_invalid("hptsa", s))
                         .default_value("p")
                         .help("Show (h)eaders, (p)ackages, (t)otals, (s)yncs, and/or (a)ll.")
                         .long_help(
@@ -178,8 +178,8 @@ pub fn build_cli_nocomplete() -> Command<'static> {
 
 /// Generate cli argument parser.
 pub fn build_cli() -> Command<'static> {
-    let c = build_cli_nocomplete();
-    c.subcommand(
+    build_cli_nocomplete()
+        .subcommand(
                  Command::new("complete").about("Generate shell completion script.")
                                          .long_about(
         "Write shell completion script to stdout.\n\n\
@@ -201,6 +201,6 @@ fn find_invalid(valid: &'static str, s: &str) -> Result<(), String> {
     debug_assert!(valid.is_ascii()); // Because we use `chars()` we need to stick to ascii for `valid`.
     match s.chars().find(|&c| !(valid.contains(c))) {
         None => Ok(()),
-        Some(p) => Err(p.to_string()),
+        Some(_) => Err(String::new()),
     }
 }
