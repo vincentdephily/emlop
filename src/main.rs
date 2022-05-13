@@ -24,11 +24,10 @@ fn main() {
     };
     env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
     debug!("{:?}", args);
-    let styles = Styles::from_args(&args);
     let res = match args.subcommand() {
-        Some(("log", sub_args)) => cmd_list(&args, sub_args, &styles),
-        Some(("stats", sub_args)) => cmd_stats(&args, sub_args, &styles),
-        Some(("predict", sub_args)) => cmd_predict(&args, sub_args, &styles),
+        Some(("log", sub_args)) => cmd_list(sub_args),
+        Some(("stats", sub_args)) => cmd_stats(sub_args),
+        Some(("predict", sub_args)) => cmd_predict(sub_args),
         Some(("complete", sub_args)) => cmd_complete(sub_args),
         _ => unreachable!("clap should have exited already"),
     };
@@ -92,7 +91,6 @@ pub fn parse_limit(s: &str) -> Result<u16, String> {
 
 #[derive(Clone, Copy, Default)]
 pub struct Show {
-    pub header: bool,
     pub pkg: bool,
     pub tot: bool,
     pub sync: bool,
@@ -102,8 +100,7 @@ pub struct Show {
 impl FromStr for Show {
     type Err = String;
     fn from_str(show: &str) -> Result<Self, Self::Err> {
-        Ok(Self { header: show.contains(&"h"),
-                  pkg: show.contains(&"p") || show.contains(&"a") || show == "h",
+        Ok(Self { pkg: show.contains(&"p") || show.contains(&"a"),
                   tot: show.contains(&"t") || show.contains(&"a"),
                   sync: show.contains(&"s") || show.contains(&"a"),
                   merge: show.contains(&"m") || show.contains(&"a"),
@@ -182,6 +179,7 @@ pub struct Styles {
     dur_s: String,
     cnt_p: String,
     cnt_s: String,
+    header: bool,
     dur_t: DurationStyle,
     date_offset: UtcOffset,
     date_fmt: DateStyle,
@@ -193,13 +191,14 @@ impl Styles {
             Some("never") | Some("n") => false,
             _ => atty::is(atty::Stream::Stdout),
         };
+        let header = args.is_present("header");
         let dur_fmt = args.value_of_t("duration").unwrap();
         let date_fmt = args.value_of_t("date").unwrap();
         let utc = args.is_present("utc");
-        Styles::new(color, dur_fmt, date_fmt, utc)
+        Styles::new(color, header, dur_fmt, date_fmt, utc)
     }
 
-    fn new(color: bool, duration: DurationStyle, date: DateStyle, utc: bool) -> Self {
+    fn new(color: bool, header: bool, duration: DurationStyle, date: DateStyle, utc: bool) -> Self {
         if color {
             Styles { pkg_p: Style::new().fg(Green).bold().prefix().to_string(),
                      merge_p: Style::new().fg(Green).bold().prefix().to_string(),
@@ -209,6 +208,7 @@ impl Styles {
                      dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
                      cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
                      cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string(),
+                     header,
                      dur_t: duration,
                      date_offset: date::get_offset(utc),
                      date_fmt: date }
@@ -221,6 +221,7 @@ impl Styles {
                      dur_s: String::new(),
                      cnt_p: String::new(),
                      cnt_s: String::new(),
+                     header,
                      dur_t: duration,
                      date_offset: date::get_offset(utc),
                      date_fmt: date }

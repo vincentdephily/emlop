@@ -21,10 +21,10 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let arg_show_l =
         Arg::new("show").short('s')
                         .long("show")
-                        .value_name("h,m,u,s,a")
-                        .validator(|s| find_invalid("hmusa", s))
+                        .value_name("m,u,s,a")
+                        .validator(|s| find_invalid("musa", s))
                         .default_value("m")
-                        .help("Show (h)eaders, (m)erges, (u)nmerges, (s)yncs, and/or (a)ll.")
+                        .help("Show(m)erges, (u)nmerges, (s)yncs, and/or (a)ll.")
                         .long_help(
                                    "Show individual (m)erges, (u)nmerges, portage tree (s)yncs, \
                     or (a)ll of these (any letters combination).",
@@ -32,10 +32,10 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let arg_show_s =
         Arg::new("show").short('s')
                         .long("show")
-                        .value_name("h,p,t,s,a")
-                        .validator(|s| find_invalid("hptsa", s))
+                        .value_name("p,t,s,a")
+                        .validator(|s| find_invalid("ptsa", s))
                         .default_value("p")
-                        .help("Show (h)eaders, (p)ackages, (t)otals, (s)yncs, and/or (a)ll.")
+                        .help("Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll.")
                         .long_help(
                                    "Show per-(p)ackage merges/unmerges, (t)otal merges/unmerges, \
                     portage tree (s)yncs, or (a)ll of these (any letters combination).",
@@ -89,6 +89,11 @@ pub fn build_cli_nocomplete() -> Command<'static> {
              .long_help("Only parse log entries before <date>.\n\
                          Accepts formats like '2018-03-04', '2018-03-04 12:34:56', \
                          '2018-03-04T12:34', '1 year, 2 months', '10d', and unix timestamps."))
+        .arg(Arg::new("header")
+             .short('H')
+             .long("header")
+             .global(true)
+             .help("Show table header"))
         .arg(Arg::new("duration")
              .value_name("format")
              .long("duration")

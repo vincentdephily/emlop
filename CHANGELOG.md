@@ -3,6 +3,9 @@
 Maintenance release: Cli refinements and parser optimization
 
 * Long args like `--duration` can now be abbreviated
+* Moved `--show h` option value to a dedicated `--headers`/`-H` flag
+  - Fixes surprising behavior when only `h` was specified
+  - More discoverable
 * Bash completion no longer wrongly suggests `-V`/`--version` for subcommands
 * Exit code on error changed to `1` for empty results and `2` for plain errors
 * Parser performance improvement

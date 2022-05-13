@@ -6,21 +6,22 @@ use std::{collections::{BTreeMap, HashMap},
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
-    let show = subargs.value_of_t("show").unwrap();
+pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
+    let st = &Styles::from_args(args);
+    let show = args.value_of_t("show").unwrap();
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
-                        subargs.value_of("package"),
-                        subargs.is_present("exact"))?;
+                        args.value_of("package"),
+                        args.is_present("exact"))?;
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found_one = false;
     let mut sync_start: Option<i64> = None;
     let mut tbl =
         Table::<3>::new(&st.merge_s).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
-    tbl.header(show.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
+    tbl.header(st.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -100,16 +101,17 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
-    let show = subargs.value_of_t("show").unwrap();
-    let timespan_opt = value_opt(subargs, "group", parse_timespan, ());
+pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
+    let st = &Styles::from_args(args);
+    let show = args.value_of_t("show").unwrap();
+    let timespan_opt = value_opt(args, "group", parse_timespan, ());
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
-                        subargs.value_of("package"),
-                        subargs.is_present("exact"))?;
-    let lim = value(subargs, "limit", parse_limit);
+                        args.value_of("package"),
+                        args.is_present("exact"))?;
+    let lim = value(args, "limit", parse_limit);
     let mut tbl =
         Table::<8>::new(&st.dur_s).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
@@ -183,7 +185,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                    sync_time: &BTreeMap<String, Times>,
                    pkg_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
-    tbl.header(show.header && show.pkg | show.tot && !pkg_time.is_empty(),
+    tbl.header(st.header && show.pkg | show.tot && !pkg_time.is_empty(),
                [&[&group.1],
                 &[&"Package"],
                 &[&"Merge count"],
@@ -228,7 +230,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                                  unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
     }
     if show.sync && !sync_time.is_empty() {
-        tbl.header(show.header,
+        tbl.header(st.header,
                    [&[&group.1],
                     &[&"Repo"],
                     &[&"Sync count"],
@@ -254,9 +256,10 @@ fn cmd_stats_group(tbl: &mut Table<8>,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
+pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
+    let st = &Styles::from_args(args);
     let now = epoch_now();
-    let lim = value(subargs, "limit", parse_limit);
+    let lim = value(args, "limit", parse_limit);
     let mut tbl =
         Table::<3>::new(&st.dur_s).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 
