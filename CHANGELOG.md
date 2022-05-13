@@ -1,4 +1,12 @@
-# 0.5.0 Unreleased
+# Unreleased
+
+Maintenance release: Cli refinements
+
+* Long args like `--duration` can now be abbreviated
+* Bash completion no longer wrongly suggests `-V`/`--version` for subcommands
+* Exit code on error changed to `1` for empty results and `2` for plain errors
+
+# 0.5.0 2022-04-18
 
 Feature release: date and duration parsing/formating, per-repo sync stats
 
