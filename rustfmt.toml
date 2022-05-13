@@ -4,4 +4,5 @@ imports_granularity = "Crate"
 use_small_heuristics = "Max"
 blank_lines_upper_bound = 2
 match_block_trailing_comma = true
-edition = "2018"
+edition = "2021"
+error_on_line_overflow = true

@@ -8,6 +8,7 @@ Maintenance release: Cli refinements and parser optimization
   - More discoverable
 * Bash completion no longer wrongly suggests `-V`/`--version` for subcommands
 * Exit code on error changed to `1` for empty results and `2` for plain errors
+* Improved and reorganized inline help
 * Parser performance improvement
 
 # 0.5.0 2022-04-18
