@@ -7,14 +7,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        timezone: [UTC, Europe/Dublin, Canada/Newfoundland, Australia/Melbourne, Pacific/Kiritimati]
+        timezone: [UTC, Europe/Dublin, Canada/Newfoundland, Pacific/Kiritimati]
+        toolchain: [1.58.1, stable]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ matrix.toolchain }}
           profile: minimal
           override: true
       - uses: actions-rs/cargo@v1

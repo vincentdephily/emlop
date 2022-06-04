@@ -9,7 +9,6 @@
 use crate::{date::*, *};
 use std::{fs::{read_dir, DirEntry, File},
           io::{self, prelude::*}};
-use sysconf::raw::{sysconf, SysconfVariable};
 
 #[derive(Debug)]
 pub struct Info {
@@ -65,7 +64,9 @@ fn get_proc_info(filter: Option<&str>,
 pub fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
-    let clocktick = sysconf(SysconfVariable::ScClkTck).unwrap() as i64;
+    // SAFETY: returns a system constant, only failure mode shoulfd be a zero/negative value
+    let clocktick = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
+    assert!(clocktick > 0, "Failed getting system clock ticks");
     let mut uptimestr = String::new();
     File::open("/proc/uptime")?.read_to_string(&mut uptimestr)?;
     let uptime = i64::from_str(uptimestr.split('.').next().unwrap()).unwrap();

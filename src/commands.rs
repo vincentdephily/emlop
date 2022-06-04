@@ -6,21 +6,22 @@ use std::{collections::{BTreeMap, HashMap},
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_list(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
-    let show = value_t!(subargs, "show", Show).unwrap();
+pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
+    let st = &Styles::from_args(args);
+    let show = args.value_of_t("show").unwrap();
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
-                        subargs.value_of("package"),
-                        subargs.is_present("exact"))?;
+                        args.value_of("package"),
+                        args.is_present("exact"))?;
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found_one = false;
     let mut sync_start: Option<i64> = None;
     let mut tbl =
         Table::<3>::new(&st.merge_s).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
-    tbl.header(show.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
+    tbl.header(st.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -100,16 +101,17 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
-    let show = value_t!(subargs, "show", Show).unwrap();
-    let timespan_opt = value_opt(subargs, "group", parse_timespan, ());
+pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
+    let st = &Styles::from_args(args);
+    let show = args.value_of_t("show").unwrap();
+    let timespan_opt = value_opt(args, "group", parse_timespan, ());
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
-                        subargs.value_of("package"),
-                        subargs.is_present("exact"))?;
-    let lim = value(subargs, "limit", parse_limit);
+                        args.value_of("package"),
+                        args.is_present("exact"))?;
+    let lim = value(args, "limit", parse_limit);
     let mut tbl =
         Table::<8>::new(&st.dur_s).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
@@ -183,7 +185,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                    sync_time: &BTreeMap<String, Times>,
                    pkg_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
-    tbl.header(show.header && show.pkg | show.tot && !pkg_time.is_empty(),
+    tbl.header(st.header && show.pkg | show.tot && !pkg_time.is_empty(),
                [&[&group.1],
                 &[&"Package"],
                 &[&"Merge count"],
@@ -228,7 +230,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                                  unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
     }
     if show.sync && !sync_time.is_empty() {
-        tbl.header(show.header,
+        tbl.header(st.header,
                    [&[&group.1],
                     &[&"Repo"],
                     &[&"Sync count"],
@@ -254,9 +256,10 @@ fn cmd_stats_group(tbl: &mut Table<8>,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Result<bool, Error> {
+pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
+    let st = &Styles::from_args(args);
     let now = epoch_now();
-    let lim = value(subargs, "limit", parse_limit);
+    let lim = value(args, "limit", parse_limit);
     let mut tbl =
         Table::<3>::new(&st.dur_s).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 
@@ -374,12 +377,13 @@ pub fn cmd_predict(args: &ArgMatches, subargs: &ArgMatches, st: &Styles) -> Resu
 
 pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
     let shell = match subargs.value_of("shell") {
-        Some("bash") => clap::Shell::Bash,
-        Some("zsh") => clap::Shell::Zsh,
-        Some("fish") => clap::Shell::Fish,
+        Some("bash") => clap_complete::Shell::Bash,
+        Some("zsh") => clap_complete::Shell::Zsh,
+        Some("fish") => clap_complete::Shell::Fish,
         o => bail!("Unsupported shell {:?}", o),
     };
-    cli::build_cli_nocomplete().gen_completions_to("emlop", shell, &mut std::io::stdout());
+    let mut cli = cli::build_cli_nocomplete();
+    clap_complete::generate(shell, &mut cli, "emlop", &mut std::io::stdout());
     Ok(true)
 }
 
@@ -551,7 +555,7 @@ mod tests {
     fn predict_tty() {
         emlop().args(&["p", "-F", "test/emerge.10000.log"])
                .assert()
-               .code(2)
+               .code(1)
                .stdout("No pretended merge found\n");
     }
 
@@ -561,7 +565,7 @@ mod tests {
     fn predict_emerge_p() {
         let _cache_cargo_build = emlop();
         let t = vec![// Check garbage input
-                     ("blah blah\n", format!("No pretended merge found\n"), 2),
+                     ("blah blah\n", format!("No pretended merge found\n"), 1),
                      // Check all-unknowns
                      ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
                       format!("dev-lang/unknown-1.42                         ? \n\
@@ -623,7 +627,7 @@ mod tests {
              0),
             (&["-F","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
              "",
-             2),
+             1),
         ];
         for (a, o, e) in t {
             emlop().args(a).assert().code(e).stdout(o);
@@ -834,34 +838,35 @@ mod tests {
     #[test]
     fn exit_status() {
         // 0: no problem
-        // 1: user or program error
-        // 2: command ran properly but didn't find anything
+        // 1: command ran properly but didn't find anything
+        // 2: user or program error
         let t: Vec<(&[&str], i32)> =
             vec![// Help, version, badarg (clap)
                  (&["-h"], 0),
                  (&["-V"], 0),
                  (&["l", "-h"], 0),
-                 (&[], 1),
-                 (&["s", "--foo"], 1),
-                 (&["badcmd"], 1),
+                 (&[], 2),
+                 (&["s", "--foo"], 2),
+                 (&["badcmd"], 2),
+                 (&["--utc"], 2),
                  // Bad arguments (emlop)
-                 (&["l", "--logfile", "notfound"], 1),
-                 (&["s", "--logfile", "notfound"], 1),
-                 (&["p", "--logfile", "notfound"], 1),
-                 (&["l", "bad regex [a-z"], 1),
-                 (&["s", "bad regex [a-z"], 1),
-                 (&["p", "bad regex [a-z"], 1),
+                 (&["l", "--logfile", "notfound"], 2),
+                 (&["s", "--logfile", "notfound"], 2),
+                 (&["p", "--logfile", "notfound"], 2),
+                 (&["l", "bad regex [a-z"], 2),
+                 (&["s", "bad regex [a-z"], 2),
+                 (&["p", "bad regex [a-z"], 2),
                  // Normal behaviour
-                 (&["-F", "test/emerge.10000.log", "p"], 2),
+                 (&["-F", "test/emerge.10000.log", "p"], 1),
                  (&["-F", "test/emerge.10000.log", "l"], 0),
-                 (&["-F", "test/emerge.10000.log", "l", "-s"], 0),
+                 (&["-F", "test/emerge.10000.log", "l", "-sm"], 0),
                  (&["-F", "test/emerge.10000.log", "l", "-e", "icu"], 0),
-                 (&["-F", "test/emerge.10000.log", "l", "-e", "unknown"], 2),
-                 (&["-F", "test/emerge.10000.log", "l", "--from", "2018-09-28"], 2),
-                 (&["-F", "test/emerge.10000.log", "l", "-s", "--from", "2018-09-28"], 2),
+                 (&["-F", "test/emerge.10000.log", "l", "-e", "unknown"], 1),
+                 (&["-F", "test/emerge.10000.log", "l", "--from", "2018-09-28"], 1),
+                 (&["-F", "test/emerge.10000.log", "l", "-sm", "--from", "2018-09-28"], 1),
                  (&["-F", "test/emerge.10000.log", "s"], 0),
                  (&["-F", "test/emerge.10000.log", "s", "-e", "icu"], 0),
-                 (&["-F", "test/emerge.10000.log", "s", "-e", "unknown"], 2),];
+                 (&["-F", "test/emerge.10000.log", "s", "-e", "unknown"], 1),];
         for (a, e) in t {
             emlop().args(a).assert().code(e);
         }

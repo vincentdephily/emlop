@@ -11,13 +11,13 @@
 //!    content: |
 //!     package = { name = "exec_compare", version = "0.1.0", edition = "2018"}
 //!     [dependencies]
-//!     clap = "*"
-//!     stats-cli = "*"
-//!     tabwriter = "*"
-//!     rand = "*"
+//!     clap = "3.1.18"
+//!     stats-cli = "3.0.1"
+//!     tabwriter = "1.2.1"
+//!     rand = "0.8.5"
 //! scriptisto-end
 
-use clap::{value_t, values_t, App, AppSettings, Arg};
+use clap::{Arg, Command as ClapCmd};
 use inc_stats::*;
 use rand::prelude::SliceRandom;
 use std::{collections::BTreeMap,
@@ -54,12 +54,8 @@ fn main() {
         ("ld2", "genlop", &["-f","./benches/emerge.log","-l", "--date","2020-10-01","--date","2020-10-31"], None),
         ("ld2", "qlop",   &["-f","./benches/emerge.log","-mv","--date","2020-10-01","--date","2020-10-31"], None),
         ("ld2", "emlop",  &["-F","./benches/emerge.log","l",  "--from","2020-10-01","--to",  "2020-10-31"], None),
-        // Read a small file
-        ("lf", "genlop", &["-f","./benches/emerge.log","-l"], None),
-        ("lf", "qlop",   &["-f","./benches/emerge.log","-mv"], None),
-        ("lf", "emlop",  &["-F","./benches/emerge.log","l"], None),
         // Force/prevent color output
-        ("lc", "emlop",  &["-f","./benches/emerge.log","l","--color=y"],   None),
+        ("lc", "emlop",  &["-F","./benches/emerge.log","l","--color=y"],   None),
         ("ln", "genlop", &["-f","./benches/emerge.log","-l","-n"],         None),
         ("ln", "qlop",   &["-f","./benches/emerge.log","-mv","--nocolor"], None),
         ("ln", "emlop",  &["-F","./benches/emerge.log","l","--color=n"],   None),
@@ -98,10 +94,8 @@ fn main() {
     allsets.sort();
     allsets.dedup();
     let allsets_str = allsets.join(",");
-    let cli = App::new("emlop-bench")
+    let cli = ClapCmd::new("emlop-bench")
         .about("Quick script to benchmark *lop implementations.")
-        .global_setting(AppSettings::ColoredHelp)
-        .global_setting(AppSettings::DeriveDisplayOrder)
         .after_help("All benchmarks are biased. Some tips to be less wrong:\n\
  * Make your system is as idle as possible, shutdown unneeded apps (browser, im, cron...).\n\
  * Don't compare numbers collected at different times or on different machines.\n\
@@ -109,43 +103,43 @@ fn main() {
  * The terminal emulator's speed makes a big difference. Reduce the scroll buffer size and check performance-related settings.\n\
  * Use -n option (redirect to /dev/null) to ignore terminal overhead.\n\
  * Pipe to cat to disable colors (see also color-specific sets).")
-        .arg(Arg::with_name("programs")
+        .arg(Arg::new("programs")
              .help("Programs to test, formated as 'NAME[:PATH][,...]': coma-separated list, name can \
 be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/emlop,q'")
-             .short("p")
+             .short('p')
              .takes_value(true)
-             .multiple(true)
-             .use_delimiter(true)
+             .multiple_values(true)
+             .use_value_delimiter(true)
              .default_value("emlop"))
-        .arg(Arg::with_name("sets")
+        .arg(Arg::new("sets")
              .help("Test sets")
-             .short("s")
+             .short('s')
              .takes_value(true)
-             .multiple(true)
-             .use_delimiter(true)
+             .multiple_values(true)
+             .use_value_delimiter(true)
              .possible_values(&allsets)
              .hide_possible_values(true)
              .default_value(&allsets_str))
-        .arg(Arg::with_name("runs")
+        .arg(Arg::new("runs")
              .help("Number of iterations")
-             .short("r")
+             .short('r')
              .takes_value(true)
              .default_value("10"))
-        .arg(Arg::with_name("bucket")
+        .arg(Arg::new("bucket")
              .help("Size of histogram buckets")
-             .short("b")
+             .short('b')
              .takes_value(true)
              .default_value("5"))
-        .arg(Arg::with_name("nullout")
-             .short("n")
+        .arg(Arg::new("nullout")
+             .short('n')
              .help("Send test program outputs to /dev/null"))
         .get_matches();
 
     // CLI parsing
-    let runs = value_t!(cli, "runs", usize).unwrap();
-    let bucket = value_t!(cli, "bucket", u64).unwrap();
-    let progs = values_t!(cli.values_of("programs"), String).unwrap();
-    let sets = values_t!(cli.values_of("sets"), String).unwrap();
+    let runs = cli.value_of_t("runs").unwrap();
+    let bucket: u64 = cli.value_of_t("bucket").unwrap();
+    let progs: Vec<String> = cli.values_of_t("programs").unwrap();
+    let sets: Vec<String> = cli.values_of_t("sets").unwrap();
     let nullout = cli.is_present("nullout");
 
     // Construct the test list.
@@ -216,7 +210,9 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
 
     // Output the results
     let mut tw = TabWriter::new(stderr());
-    writeln!(tw, "\ntest\tcmd\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tbucketed values")
+    let mut prev = String::new();
+    let mut color = "";
+    writeln!(tw, "\n\x1B[36mtest\tcmd\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tbucketed values")
         .unwrap();
     for (key, vals) in times {
         let ss: SummStats<f64> = vals.iter().cloned().collect();
@@ -226,8 +222,14 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
             .map(|v| (v / bucket as f64).round() as u64 * bucket)
             .for_each(|v| *hist.entry(v).or_insert(0) += 1);
         let hist = hist.iter().map(|(k, v)| format!("{}:{}", k, v)).collect::<Vec<_>>().join(",");
+        let cmd = key.split_once("\t").expect("key without a tab").0;
+        if prev != cmd {
+            color = if color == "\x1B[00m" { "\x1B[37m" } else { "\x1B[00m" };
+            prev = cmd.into();
+        }
         writeln!(tw,
-                 "{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}",
+                 "{}{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}",
+                 color,
                  key,
                  ss.min().unwrap(),
                  pc.percentile(&0.95).unwrap().unwrap(),
