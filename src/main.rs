@@ -96,6 +96,7 @@ pub struct Show {
     pub sync: bool,
     pub merge: bool,
     pub unmerge: bool,
+    pub emerge: bool,
 }
 impl FromStr for Show {
     type Err = String;
@@ -104,7 +105,8 @@ impl FromStr for Show {
                   tot: show.contains(&"t") || show.contains(&"a"),
                   sync: show.contains(&"s") || show.contains(&"a"),
                   merge: show.contains(&"m") || show.contains(&"a"),
-                  unmerge: show.contains(&"u") || show.contains(&"a") })
+                  unmerge: show.contains(&"u") || show.contains(&"a"),
+                  emerge: show.contains(&"e") || show.contains(&"a") })
     }
 }
 

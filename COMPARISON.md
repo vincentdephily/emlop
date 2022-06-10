@@ -131,7 +131,7 @@ Alacritty terminal) measured using `benches/exec_compare.rs`, on a Ryzen 7 4700U
 `benches/emerge.log` file with ~10K merges.
 
 The commands were selected to be comparable, but Some differences do influence timings. Emlop always
-show merge time and package version in "log" mode. Genlop can't show unmerges of specific pacakeg
+show merge time and package version in "log" mode. Genlop can't show unmerges of specific package
 only. Qlop -r still searches the log for unfinished merges when it doesn't find an ongoing
 merge. Filtering by plaintext isn't noticeably faster than by case-(in)sensitive regexp ({gen,em}lop
 only).

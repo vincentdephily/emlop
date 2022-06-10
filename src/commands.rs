@@ -259,6 +259,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
 pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let now = epoch_now();
+    let show: Show = args.value_of_t("show").unwrap();
     let lim = value(args, "limit", parse_limit);
     let mut tbl =
         Table::<3>::new(&st.dur_s).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
@@ -267,7 +268,9 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let mut cms = std::i64::MAX;
     for i in get_all_info(Some("emerge"))? {
         cms = std::cmp::min(cms, i.start);
-        tbl.row([&[&i], &[&st.dur_p, &fmt_duration(st.dur_t, now - i.start)], &[]]);
+        if show.emerge {
+            tbl.row([&[&i], &[&st.dur_p, &fmt_duration(st.dur_t, now - i.start)], &[]]);
+        }
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
@@ -349,26 +352,30 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         };
 
         // Done
-        tbl.row([&[&st.pkg_p, &ebuild, &'-', &version],
-                 &[&st.dur_p, &pred_fmt],
-                 &[&st.dur_s, &elapsed_fmt]]);
+        if show.merge {
+            tbl.row([&[&st.pkg_p, &ebuild, &'-', &version],
+                     &[&st.dur_p, &pred_fmt],
+                     &[&st.dur_s, &elapsed_fmt]]);
+        }
     }
     if totcount > 0 {
-        tbl.row([&[&"Estimate for ",
-                   &st.cnt_p,
-                   &totcount,
-                   &st.cnt_s,
-                   &" ebuild (",
-                   &st.cnt_p,
-                   &totunknown,
-                   &st.cnt_s,
-                   &" unknown, ",
-                   &st.dur_p,
-                   &fmt_duration(st.dur_t, totelapsed),
-                   &st.dur_s,
-                   &" elapsed)"],
-                 &[&st.dur_p, &fmt_duration(st.dur_t, totpredict), &st.dur_s],
-                 &[&"@ ", &st.dur_p, &fmt_time(now + totpredict, st)]]);
+        if show.tot {
+            tbl.row([&[&"Estimate for ",
+                       &st.cnt_p,
+                       &totcount,
+                       &st.cnt_s,
+                       &" ebuild (",
+                       &st.cnt_p,
+                       &totunknown,
+                       &st.cnt_s,
+                       &" unknown, ",
+                       &st.dur_p,
+                       &fmt_duration(st.dur_t, totelapsed),
+                       &st.dur_s,
+                       &" elapsed)"],
+                     &[&st.dur_p, &fmt_duration(st.dur_t, totpredict), &st.dur_s],
+                     &[&"@ ", &st.dur_p, &fmt_time(now + totpredict, st)]]);
+        }
     } else {
         tbl.row([&[&"No pretended merge found"], &[], &[]]);
     }

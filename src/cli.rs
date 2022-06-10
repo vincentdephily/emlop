@@ -47,6 +47,19 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                              t: Total package merges/unmerges\n  \
                                              s: Repository syncs\n  \
                                              a: All of the above");
+    let show_p = Arg::new("show").short('s')
+                                 .long("show")
+                                 .value_name("e,m,t,a")
+                                 .validator(|s| find_invalid("emta", s))
+                                 .default_value("emt")
+                                 .display_order(3)
+                                 .help_heading("FILTER")
+                                 .help("Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll.")
+                                 .long_help("Show (any combination of)\n  \
+                                             e: Current emerge processes\n  \
+                                             m: Package merges\n  \
+                                             t: Total estimate\n  \
+                                             a: All of the above");
 
     let limit = Arg::new("limit").long("limit")
                                  .takes_value(true)
@@ -180,6 +193,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let cmd_pred =
         Command::new("predict").about("Predict merge time for current or pretended merges.")
                                .long_about(h)
+                               .arg(show_p)
                                .arg(&limit);
 
     let h = "Show statistics about sucessful (un)merges (overall or per-package) and syncs.

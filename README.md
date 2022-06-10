@@ -61,7 +61,8 @@ Show log of sucessful merges and syncs:
 Predict merge time for current or pretended merges:
 
     emlop predict [OPTIONS]
-        --limit <limit>   Use the last N merge times to predict next merge time. [default: 10]
+        -s, --show <e,m,t,a>    Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll. [default: emt]
+        --limit <limit>         Use the last N merge times to predict next merge time. [default: 10]
 
 Show statistics about sucessful merges and syncs:
 
