@@ -131,7 +131,7 @@ pub fn new_hist(file: String,
                             tx.send(found).unwrap()
                         } else if let Some(found) = parse_syncstart(show.sync, t, s) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) = parse_syncstop(show.sync, t, s) {
+                        } else if let Some(found) = parse_syncstop(show.sync, t, s, &filter_pkg) {
                             tx.send(found).unwrap()
                         }
                     }
@@ -342,7 +342,11 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
         None
     }
 }
-fn parse_syncstop(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
+fn parse_syncstop(enabled: bool,
+                  ts: i64,
+                  line: &str,
+                  filter_pkg: impl Fn(&str) -> bool)
+                  -> Option<Hist> {
     // Old portage logs 'completed with <url>', new portage logs 'completed for <name>'
     if !enabled || !line.starts_with("=== Sync completed") {
         return None;
@@ -354,6 +358,9 @@ fn parse_syncstop(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
             String::from("unknown")
         },
     };
+    if !(filter_pkg)(&repo) {
+        return None;
+    }
     Some(Hist::SyncStop { ts, repo })
 }
 fn parse_pretend(line: &str, re: &Regex) -> Option<Pretend> {

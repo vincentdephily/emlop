@@ -617,20 +617,22 @@ mod tests {
               Sync moltonel         8       26      3\n\
               Sync steam-overlay    5       10      2\n",
              0),
+            (&["-F","test/emerge.sync.log","s","-ss","gentoo"],
+             "Sync gentoo          22  1:43:13     21\n\
+              Sync gentoo-portage   5  4:32:42  54:32\n",
+             0),
             (&["-F","test/emerge.10000.log","s","client","-sst"],
-             "Total         11  24:00:24  2:10:56  10  27  2\n\
-              Sync gentoo  150   1:19:07       30           \n",
+             "Total  11  24:00:24  2:10:56  10  27  2\n",
              0),
             (&["-F","test/emerge.10000.log","s","client","-sa"],
-             "kde-frameworks/kxmlrpcclient    2        47       23   2   4  2\n\
-              mail-client/thunderbird         2   1:23:44    41:52   2   6  3\n\
-              www-client/chromium             3  21:41:24  7:13:48   3  12  4\n\
-              www-client/falkon               1      6:02     6:02   0   0  ?\n\
-              www-client/firefox              1     47:29    47:29   1   3  3\n\
-              www-client/links                1        44       44   1   1  1\n\
-              x11-apps/xlsclients             1        14       14   1   1  1\n\
-              Total                          11  24:00:24  2:10:56  10  27  2\n\
-              Sync gentoo                   150   1:19:07       30           \n",
+             "kde-frameworks/kxmlrpcclient   2        47       23   2   4  2\n\
+              mail-client/thunderbird        2   1:23:44    41:52   2   6  3\n\
+              www-client/chromium            3  21:41:24  7:13:48   3  12  4\n\
+              www-client/falkon              1      6:02     6:02   0   0  ?\n\
+              www-client/firefox             1     47:29    47:29   1   3  3\n\
+              www-client/links               1        44       44   1   1  1\n\
+              x11-apps/xlsclients            1        14       14   1   1  1\n\
+              Total                         11  24:00:24  2:10:56  10  27  2\n",
              0),
             (&["-F","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
              "",
