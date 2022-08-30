@@ -6,7 +6,6 @@ mod proces;
 mod table;
 
 use crate::{commands::*, date::*};
-use ansi_term::{Color::*, Style};
 use anyhow::Error;
 use clap::{ArgMatches, Command, ErrorKind};
 use log::*;
@@ -202,14 +201,14 @@ impl Styles {
 
     fn new(color: bool, header: bool, duration: DurationStyle, date: DateStyle, utc: bool) -> Self {
         if color {
-            Styles { pkg_p: Style::new().fg(Green).bold().prefix().to_string(),
-                     merge_p: Style::new().fg(Green).bold().prefix().to_string(),
-                     merge_s: Style::new().fg(Green).bold().suffix().to_string(),
-                     unmerge_p: Style::new().fg(Red).bold().prefix().to_string(),
-                     dur_p: Style::new().fg(Purple).bold().prefix().to_string(),
-                     dur_s: Style::new().fg(Purple).bold().suffix().to_string(),
-                     cnt_p: Style::new().fg(Yellow).dimmed().prefix().to_string(),
-                     cnt_s: Style::new().fg(Yellow).dimmed().suffix().to_string(),
+            Styles { pkg_p: String::from("\x1B[1;32m"),
+                     merge_p: String::from("\x1B[1;32m"),
+                     merge_s: String::from("\x1B[0m"),
+                     unmerge_p: String::from("\x1B[1;31m"),
+                     dur_p: String::from("\x1B[1;35m"),
+                     dur_s: String::from("\x1B[0m"),
+                     cnt_p: String::from("\x1B[2;33m"),
+                     cnt_s: String::from("\x1B[0m"),
                      header,
                      dur_t: duration,
                      date_offset: date::get_offset(utc),

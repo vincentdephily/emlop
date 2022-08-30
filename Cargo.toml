@@ -16,7 +16,6 @@ rust-version = "1.58.1"
 exclude = ["/benches/*.log"]
 
 [dependencies]
-ansi_term = "0.12.1"
 anyhow = "1.0.32"
 atty = "0.2.14"
 clap = { version = "3.1.15", default_features = false, features = ["cargo", "color", "suggestions"] }
