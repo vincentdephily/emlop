@@ -20,7 +20,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let mut found_one = false;
     let mut sync_start: Option<i64> = None;
     let mut tbl =
-        Table::<3>::new(&st.merge_s).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
+        Table::<3>::new(&st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
     tbl.header(st.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
     for p in hist {
         match p {
@@ -32,8 +32,8 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 found_one = true;
                 let started = merges.remove(key).unwrap_or(ts + 1);
                 tbl.row([&[&fmt_time(ts, st)],
-                         &[&st.dur_p, &fmt_duration(st.dur_t, ts - started)],
-                         &[&st.merge_p, &p.ebuild_version()]]);
+                         &[&st.dur, &fmt_duration(st.dur_t, ts - started)],
+                         &[&st.merge, &p.ebuild_version()]]);
             },
             Hist::UnmergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if an unmerge started but never finished
@@ -43,8 +43,8 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 found_one = true;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 tbl.row([&[&fmt_time(ts, st)],
-                         &[&st.dur_p, &fmt_duration(st.dur_t, ts - started)],
-                         &[&st.unmerge_p, &p.ebuild_version()]]);
+                         &[&st.dur, &fmt_duration(st.dur_t, ts - started)],
+                         &[&st.unmerge, &p.ebuild_version()]]);
             },
             Hist::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
@@ -54,8 +54,8 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 if let Some(start_ts) = sync_start.take() {
                     found_one = true;
                     tbl.row([&[&fmt_time(ts, st)],
-                             &[&st.dur_p, &fmt_duration(st.dur_t, ts - start_ts)],
-                             &[&st.dur_s, &"Sync ", &repo]]);
+                             &[&st.dur, &fmt_duration(st.dur_t, ts - start_ts)],
+                             &[&st.clr, &"Sync ", &repo]]);
                 } else {
                     warn!("Sync stop without a start at {ts}")
                 }
@@ -113,7 +113,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         args.is_present("exact"))?;
     let lim = value(args, "limit", parse_limit);
     let mut tbl =
-        Table::<8>::new(&st.dur_s).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
+        Table::<8>::new(&st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
@@ -197,13 +197,13 @@ fn cmd_stats_group(tbl: &mut Table<8>,
     if show.pkg && !pkg_time.is_empty() {
         for (pkg, (merge, unmerge)) in pkg_time {
             tbl.row([&[&group.0],
-                     &[&st.pkg_p, &pkg],
-                     &[&st.cnt_p, &merge.count],
-                     &[&st.dur_p, &fmt_duration(st.dur_t, merge.tot)],
-                     &[&st.dur_p, &fmt_duration(st.dur_t, merge.pred(lim))],
-                     &[&st.cnt_p, &unmerge.count],
-                     &[&st.dur_p, &fmt_duration(st.dur_t, unmerge.tot)],
-                     &[&st.dur_p, &fmt_duration(st.dur_t, unmerge.pred(lim))]]);
+                     &[&st.pkg, &pkg],
+                     &[&st.cnt, &merge.count],
+                     &[&st.dur, &fmt_duration(st.dur_t, merge.tot)],
+                     &[&st.dur, &fmt_duration(st.dur_t, merge.pred(lim))],
+                     &[&st.cnt, &unmerge.count],
+                     &[&st.dur, &fmt_duration(st.dur_t, unmerge.tot)],
+                     &[&st.dur, &fmt_duration(st.dur_t, unmerge.pred(lim))]]);
         }
     }
     if show.tot && !pkg_time.is_empty() {
@@ -219,13 +219,13 @@ fn cmd_stats_group(tbl: &mut Table<8>,
         }
         tbl.row([&[&group.0],
                  &[&"Total"],
-                 &[&st.cnt_p, &merge_count],
-                 &[&st.dur_p, &fmt_duration(st.dur_t, merge_time)],
-                 &[&st.dur_p,
+                 &[&st.cnt, &merge_count],
+                 &[&st.dur, &fmt_duration(st.dur_t, merge_time)],
+                 &[&st.dur,
                    &fmt_duration(st.dur_t, merge_time.checked_div(merge_count).unwrap_or(-1))],
-                 &[&st.cnt_p, &unmerge_count],
-                 &[&st.dur_p, &fmt_duration(st.dur_t, unmerge_time)],
-                 &[&st.dur_p,
+                 &[&st.cnt, &unmerge_count],
+                 &[&st.dur, &fmt_duration(st.dur_t, unmerge_time)],
+                 &[&st.dur,
                    &fmt_duration(st.dur_t,
                                  unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
     }
@@ -242,9 +242,9 @@ fn cmd_stats_group(tbl: &mut Table<8>,
         for (repo, time) in sync_time {
             tbl.row([&[&group.0],
                      &[&"Sync ", &repo],
-                     &[&st.cnt_p, &time.count],
-                     &[&st.dur_p, &fmt_duration(st.dur_t, time.tot)],
-                     &[&st.dur_p, &fmt_duration(st.dur_t, time.pred(lim))],
+                     &[&st.cnt, &time.count],
+                     &[&st.dur, &fmt_duration(st.dur_t, time.tot)],
+                     &[&st.dur, &fmt_duration(st.dur_t, time.pred(lim))],
                      &[],
                      &[],
                      &[]]);
@@ -262,14 +262,14 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let show: Show = args.value_of_t("show").unwrap();
     let lim = value(args, "limit", parse_limit);
     let mut tbl =
-        Table::<3>::new(&st.dur_s).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
+        Table::<3>::new(&st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
     for i in get_all_info(Some("emerge"))? {
         cms = std::cmp::min(cms, i.start);
         if show.emerge {
-            tbl.row([&[&i], &[&st.dur_p, &fmt_duration(st.dur_t, now - i.start)], &[]]);
+            tbl.row([&[&i], &[&st.dur, &fmt_duration(st.dur_t, now - i.start)], &[]]);
         }
     }
     if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
@@ -327,7 +327,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         let k = (ebuild, version);
         let (elapsed, elapsed_fmt) = match started.remove(&k) {
             Some(s) if s > cms => {
-                (now - s, format!("- {}{}{}", st.dur_p, fmt_duration(st.dur_t, now - s), st.dur_s))
+                (now - s, format!("- {}{}{}", st.dur, fmt_duration(st.dur_t, now - s), st.clr))
             },
             _ => (0, "".into()),
         };
@@ -353,28 +353,28 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
 
         // Done
         if show.merge {
-            tbl.row([&[&st.pkg_p, &ebuild, &'-', &version],
-                     &[&st.dur_p, &pred_fmt],
-                     &[&st.dur_s, &elapsed_fmt]]);
+            tbl.row([&[&st.pkg, &ebuild, &'-', &version],
+                     &[&st.dur, &pred_fmt],
+                     &[&st.clr, &elapsed_fmt]]);
         }
     }
     if totcount > 0 {
         if show.tot {
             tbl.row([&[&"Estimate for ",
-                       &st.cnt_p,
+                       &st.cnt,
                        &totcount,
-                       &st.cnt_s,
+                       &st.clr,
                        &" ebuild (",
-                       &st.cnt_p,
+                       &st.cnt,
                        &totunknown,
-                       &st.cnt_s,
+                       &st.clr,
                        &" unknown, ",
-                       &st.dur_p,
+                       &st.dur,
                        &fmt_duration(st.dur_t, totelapsed),
-                       &st.dur_s,
+                       &st.clr,
                        &" elapsed)"],
-                     &[&st.dur_p, &fmt_duration(st.dur_t, totpredict), &st.dur_s],
-                     &[&"@ ", &st.dur_p, &fmt_time(now + totpredict, st)]]);
+                     &[&st.dur, &fmt_duration(st.dur_t, totpredict), &st.clr],
+                     &[&"@ ", &st.dur, &fmt_time(now + totpredict, st)]]);
         }
     } else {
         tbl.row([&[&"No pretended merge found"], &[], &[]]);
