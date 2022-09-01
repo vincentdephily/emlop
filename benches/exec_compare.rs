@@ -36,54 +36,54 @@ fn main() {
         ("v", "qlop",   &["-V"], None),
         ("v", "emlop",  &["-V"], None),
         // Minimal "show all merges" command (genlop adds version, emlop adds version+duration)
-        ("l", "genlop", &["-f","./benches/emerge.log","-l"], None),
-        ("l", "qlop",   &["-f","./benches/emerge.log","-m"], None),
-        ("l", "emlop",  &["-F","./benches/emerge.log","l"],  None),
+        ("l", "genlop", &["-f","{emerge.log}","-l"], None),
+        ("l", "qlop",   &["-f","{emerge.log}","-m"], None),
+        ("l", "emlop",  &["-F","{emerge.log}","l"],  None),
         // Show all merges+unmegres with version and duration
-        ("ltmu", "genlop", &["-f","./benches/emerge.log","-lut"],     None),
-        ("ltmu", "qlop",   &["-f","./benches/emerge.log","-muUvt"],   None),
-        ("ltmu", "emlop",  &["-F","./benches/emerge.log","l","-smu"], None),
+        ("ltmu", "genlop", &["-f","{emerge.log}","-lut"],     None),
+        ("ltmu", "qlop",   &["-f","{emerge.log}","-muUvt"],   None),
+        ("ltmu", "emlop",  &["-F","{emerge.log}","l","-smu"], None),
         // Show recent sync history
-        ("ls", "genlop", &["-f","./benches/emerge.log","-r","-d","1 week ago"],  None),
-        ("ls", "qlop",   &["-f","./benches/emerge.log","-st","-d","1 week ago"], None),
-        ("ls", "emlop",  &["-F","./benches/emerge.log","l","-ss","-f","1w"],     None),
+        ("ls", "genlop", &["-f","{emerge.log}","-r","-d","1 week ago"],  None),
+        ("ls", "qlop",   &["-f","{emerge.log}","-st","-d","1 week ago"], None),
+        ("ls", "emlop",  &["-F","{emerge.log}","l","-ss","-f","1w"],     None),
         // Read only part of a file
-        ("ld1", "genlop", &["-f","./benches/emerge.log","-l", "--date","2019-02-01","--date","2019-02-28"], None),
-        ("ld1", "qlop",   &["-f","./benches/emerge.log","-mv","--date","2019-02-01","--date","2019-02-28"], None),
-        ("ld1", "emlop",  &["-F","./benches/emerge.log","l",  "--from","2019-02-01","--to",  "2019-02-28"], None),
-        ("ld2", "genlop", &["-f","./benches/emerge.log","-l", "--date","2020-10-01","--date","2020-10-31"], None),
-        ("ld2", "qlop",   &["-f","./benches/emerge.log","-mv","--date","2020-10-01","--date","2020-10-31"], None),
-        ("ld2", "emlop",  &["-F","./benches/emerge.log","l",  "--from","2020-10-01","--to",  "2020-10-31"], None),
+        ("ld1", "genlop", &["-f","{emerge.log}","-l", "--date","2019-02-01","--date","2019-02-28"], None),
+        ("ld1", "qlop",   &["-f","{emerge.log}","-mv","--date","2019-02-01","--date","2019-02-28"], None),
+        ("ld1", "emlop",  &["-F","{emerge.log}","l",  "--from","2019-02-01","--to",  "2019-02-28"], None),
+        ("ld2", "genlop", &["-f","{emerge.log}","-l", "--date","2020-10-01","--date","2020-10-31"], None),
+        ("ld2", "qlop",   &["-f","{emerge.log}","-mv","--date","2020-10-01","--date","2020-10-31"], None),
+        ("ld2", "emlop",  &["-F","{emerge.log}","l",  "--from","2020-10-01","--to",  "2020-10-31"], None),
         // Force/prevent color output
-        ("lc", "emlop",  &["-F","./benches/emerge.log","l","--color=y"],   None),
-        ("ln", "genlop", &["-f","./benches/emerge.log","-l","-n"],         None),
-        ("ln", "qlop",   &["-f","./benches/emerge.log","-mv","--nocolor"], None),
-        ("ln", "emlop",  &["-F","./benches/emerge.log","l","--color=n"],   None),
+        ("lc", "emlop",  &["-F","{emerge.log}","l","--color=y"],   None),
+        ("ln", "genlop", &["-f","{emerge.log}","-l","-n"],         None),
+        ("ln", "qlop",   &["-f","{emerge.log}","-mv","--nocolor"], None),
+        ("ln", "emlop",  &["-F","{emerge.log}","l","--color=n"],   None),
         // Simple package merge log
-        ("egcc", "genlop", &["-f","./benches/emerge.log","-e","gcc"],     None),
-        ("egcc", "qlop",   &["-f","./benches/emerge.log","gcc"],          None),
-        ("egcc", "emlop",  &["-F","./benches/emerge.log","l","gcc","-e"], None),
+        ("egcc", "genlop", &["-f","{emerge.log}","-e","gcc"],     None),
+        ("egcc", "qlop",   &["-f","{emerge.log}","gcc"],          None),
+        ("egcc", "emlop",  &["-F","{emerge.log}","l","gcc","-e"], None),
         // Version+duration package merge+unmerge log (can't show just package unmerges iin genlop)
-        ("tgcc", "genlop", &["-f","./benches/emerge.log","-te","gcc"],          None),
-        ("tgcc", "qlop",   &["-f","./benches/emerge.log","-tvmuU","gcc"],        None),
-        ("tgcc", "emlop",  &["-F","./benches/emerge.log","l","gcc","-e","-smu"], None),
+        ("tgcc", "genlop", &["-f","{emerge.log}","-te","gcc"],          None),
+        ("tgcc", "qlop",   &["-f","{emerge.log}","-tvmuU","gcc"],        None),
+        ("tgcc", "emlop",  &["-F","{emerge.log}","l","gcc","-e","-smu"], None),
         // Predict current merge
         ("c", "genlop", &["-c"], None),
         ("c", "qlop",   &["-r"], None),
         ("c", "emlop",  &["p"],  None),
         // Predict merge list
-        ("pgcc", "genlop", &["-f","./benches/emerge.log","-p"], Some("benches/emerge-p.gcc.out")),
-        ("pgcc", "emlop",  &["-F","./benches/emerge.log","p"],  Some("benches/emerge-p.gcc.out")),
-        ("pqt",  "genlop", &["-f","./benches/emerge.log","-p"], Some("benches/emerge-p.qt.out")),
-        ("pqt",  "emlop",  &["-F","./benches/emerge.log","p"],  Some("benches/emerge-p.qt.out")),
-        ("pkde", "genlop", &["-f","./benches/emerge.log","-p"], Some("benches/emerge-p.kde.out")),
-        ("pkde", "emlop",  &["-F","./benches/emerge.log","p"],  Some("benches/emerge-p.kde.out")),
+        ("pgcc", "genlop", &["-f","{emerge.log}","-p"], Some("benches/emerge-p.gcc.out")),
+        ("pgcc", "emlop",  &["-F","{emerge.log}","p"],  Some("benches/emerge-p.gcc.out")),
+        ("pqt",  "genlop", &["-f","{emerge.log}","-p"], Some("benches/emerge-p.qt.out")),
+        ("pqt",  "emlop",  &["-F","{emerge.log}","p"],  Some("benches/emerge-p.qt.out")),
+        ("pkde", "genlop", &["-f","{emerge.log}","-p"], Some("benches/emerge-p.kde.out")),
+        ("pkde", "emlop",  &["-F","{emerge.log}","p"],  Some("benches/emerge-p.kde.out")),
         // Show all info about a specific package
-        ("igcc", "genlop", &["-f","./benches/emerge.log","-i","gcc"],     None),
-        ("igcc", "qlop",   &["-f","./benches/emerge.log","-c","gcc"],     None),
-        ("igcc", "emlop",  &["-F","./benches/emerge.log","s","gcc","-e"], None),
+        ("igcc", "genlop", &["-f","{emerge.log}","-i","gcc"],     None),
+        ("igcc", "qlop",   &["-f","{emerge.log}","-c","gcc"],     None),
+        ("igcc", "emlop",  &["-F","{emerge.log}","s","gcc","-e"], None),
         // Show overall stats
-        ("s", "emlop",  &["-F","./benches/emerge.log","s","-sa"], None),
+        ("s", "emlop",  &["-F","{emerge.log}","s","-sa"], None),
     ];
 
     // CLI definition
@@ -133,6 +133,11 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         .arg(Arg::new("nullout")
              .short('n')
              .help("Send test program outputs to /dev/null"))
+        .arg(Arg::new("logfile")
+             .help("Emerge log file")
+             .short('f')
+             .takes_value(true)
+             .default_value("./benches/emerge.log"))
         .get_matches();
 
     // CLI parsing
@@ -141,9 +146,10 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     let progs: Vec<String> = cli.values_of_t("programs").unwrap();
     let sets: Vec<String> = cli.values_of_t("sets").unwrap();
     let nullout = cli.is_present("nullout");
+    let logfile: String = cli.value_of_t("logfile").unwrap();
 
     // Construct the test list.
-    let mut tests = Vec::<(String, &str, &[&str], Option<&str>)>::new();
+    let mut tests = Vec::<(String, &str, Vec<&str>, Option<&str>)>::new();
     for p in progs.iter() {
         // Resolve this program's name and path
         let (p1, p2) = p.split_at(p.find(':').unwrap_or(p.len()));
@@ -162,13 +168,14 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         for &(set, prg, args, si) in &defs {
             if &prg == pname && sets.contains(&set.to_string()) {
                 found.push(set);
+                let args: Vec<&str> = args.iter().map(|&s| if s == "{emerge.log}" {&logfile} else {s}).collect();
                 let cmd = format!("{}\t{} {}{}",
                                   set,
                                   ppath,
                                   args.join(" "),
                                   si.map_or(String::new(), |s| format!(" < {}", s)));
                 for _ in 0..runs {
-                    tests.push((cmd.clone(), ppath, args, si));
+                    tests.push((cmd.clone(), ppath, args.clone(), si));
                 }
             }
         }
