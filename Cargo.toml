@@ -12,7 +12,7 @@ authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Illia Shestakov <ishestakov@airmail.cc>",
            "Alexis <flexibeast@gmail.com>"]
 edition = "2021"
-rust-version = "1.58.1"
+rust-version = "1.59.0"
 exclude = ["/benches/*.log"]
 
 [dependencies]
