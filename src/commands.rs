@@ -20,7 +20,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let mut found_one = false;
     let mut sync_start: Option<i64> = None;
     let mut tbl =
-        Table::<3>::new(&st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
+        Table::<3>::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
     tbl.header(st.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
     for p in hist {
         match p {
@@ -113,7 +113,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         args.is_present("exact"))?;
     let lim = value(args, "limit", parse_limit);
     let mut tbl =
-        Table::<8>::new(&st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
+        Table::<8>::new(st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
@@ -262,7 +262,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let show: Show = args.value_of_t("show").unwrap();
     let lim = value(args, "limit", parse_limit);
     let mut tbl =
-        Table::<3>::new(&st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
+        Table::<3>::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;

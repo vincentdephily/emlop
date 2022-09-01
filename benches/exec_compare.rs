@@ -168,7 +168,8 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         for &(set, prg, args, si) in &defs {
             if &prg == pname && sets.contains(&set.to_string()) {
                 found.push(set);
-                let args: Vec<&str> = args.iter().map(|&s| if s == "{emerge.log}" {&logfile} else {s}).collect();
+                let args: Vec<&str> =
+                    args.iter().map(|&s| if s == "{emerge.log}" { &logfile } else { s }).collect();
                 let cmd = format!("{}\t{} {}{}",
                                   set,
                                   ppath,
