@@ -227,18 +227,15 @@ fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<impl Fn(&str) -> 
     })
 }
 
-/// Split "categ/name-version" into "categ/name" and "version"
-fn split_atom(atom: &str) -> Option<(&str, &str)> {
-    let mut start = 0;
+/// Find position of "version" in "categ/name-version" and filter on pkg name
+fn find_version(atom: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<usize> {
+    let mut pos = 0;
     loop {
-        let pos = atom[start..].find('-')?;
-        if atom.len() <= start + pos + 1 {
-            return None;
+        pos += atom[pos..].find('-')?;
+        if pos > 0 && atom.as_bytes().get(pos + 1)?.is_ascii_digit() {
+            return filter_pkg(&atom[..pos]).then_some(pos + 1);
         }
-        if atom.as_bytes()[start + pos + 1].is_ascii_digit() && pos > 0 {
-            return Some((&atom[..start + pos], &atom[start + pos + 1..]));
-        }
-        start += if pos == 0 { 1 } else { pos };
+        pos += 1;
     }
 }
 
@@ -266,14 +263,8 @@ fn parse_start(enabled: bool,
     let t3 = tokens.nth(2)?;
     let t5 = tokens.nth(1)?;
     let t6 = tokens.next()?;
-    let (ebuild, version) = split_atom(t6)?;
-    if !(filter_pkg)(ebuild) {
-        return None;
-    }
-    let key = format!("{}-{}{}{}", ebuild, version, t5, &t3[1..]);
-    let pos1 = ebuild.len() + 1;
-    let pos2 = pos1 + version.len();
-    Some(Hist::MergeStart { ts, key, pos1, pos2 })
+    let pos1 = find_version(t6, &filter_pkg)?;
+    Some(Hist::MergeStart { ts, key: format!("{}{}{}", t6, t5, &t3[1..]), pos1, pos2: t6.len() })
 }
 fn parse_stop(enabled: bool,
               ts: i64,
@@ -287,14 +278,8 @@ fn parse_stop(enabled: bool,
     let t4 = tokens.nth(3)?;
     let t6 = tokens.nth(1)?;
     let t7 = tokens.next()?;
-    let (ebuild, version) = split_atom(t7)?;
-    if !(filter_pkg)(ebuild) {
-        return None;
-    }
-    let key = format!("{}-{}{}{}", ebuild, version, t6, &t4[1..]);
-    let pos1 = ebuild.len() + 1;
-    let pos2 = pos1 + version.len();
-    Some(Hist::MergeStop { ts, key, pos1, pos2 })
+    let pos1 = find_version(t7, &filter_pkg)?;
+    Some(Hist::MergeStop { ts, key: format!("{}{}{}", t7, t6, &t4[1..]), pos1, pos2: t7.len() })
 }
 fn parse_unmergestart(enabled: bool,
                       ts: i64,
@@ -306,13 +291,9 @@ fn parse_unmergestart(enabled: bool,
     }
     let mut tokens = line.split_ascii_whitespace();
     let t3 = tokens.nth(2)?;
-    let (ebuild, version) = split_atom(&t3[1..t3.len() - 1])?;
-    if !(filter_pkg)(ebuild) {
-        return None;
-    }
-    let key = format!("{}-{}", ebuild, version);
-    let pos = ebuild.len() + 1;
-    Some(Hist::UnmergeStart { ts, key, pos })
+    let ebuild_version = &t3[1..t3.len() - 1];
+    let pos = find_version(&ebuild_version, &filter_pkg)?;
+    Some(Hist::UnmergeStart { ts, key: ebuild_version.to_owned(), pos })
 }
 fn parse_unmergestop(enabled: bool,
                      ts: i64,
@@ -323,13 +304,9 @@ fn parse_unmergestop(enabled: bool,
         return None;
     }
     let mut tokens = line.split_ascii_whitespace();
-    let (ebuild, version) = split_atom(tokens.nth(3)?)?;
-    if !(filter_pkg)(ebuild) {
-        return None;
-    }
-    let key = format!("{}-{}", ebuild, version);
-    let pos = ebuild.len() + 1;
-    Some(Hist::UnmergeStop { ts, key, pos })
+    let t3 = tokens.nth(3)?;
+    let pos = find_version(t3, &filter_pkg)?;
+    Some(Hist::UnmergeStop { ts, key: t3.to_owned(), pos })
 }
 fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
     // Old portage logs 'Starting rsync with <url>', new portage logs 'Syncing repository <name>',
@@ -581,30 +558,32 @@ mod tests {
     }
 
     #[test]
-    fn split_atom_() {
-        assert_eq!(None, split_atom(""));
-        assert_eq!(None, split_atom("a"));
-        assert_eq!(None, split_atom("-"));
-        assert_eq!(None, split_atom("42"));
-        assert_eq!(None, split_atom("-42"));
-        assert_eq!(None, split_atom("42-"));
-        assert_eq!(None, split_atom("a-/"));
-        assert_eq!(Some(("a", "0")), split_atom("a-0"));
-        assert_eq!(Some(("a", "1")), split_atom("a-1"));
-        assert_eq!(Some(("a", "2")), split_atom("a-2"));
-        assert_eq!(Some(("a", "3")), split_atom("a-3"));
-        assert_eq!(Some(("a", "4")), split_atom("a-4"));
-        assert_eq!(Some(("a", "5")), split_atom("a-5"));
-        assert_eq!(Some(("a", "6")), split_atom("a-6"));
-        assert_eq!(Some(("a", "7")), split_atom("a-7"));
-        assert_eq!(Some(("a", "8")), split_atom("a-8"));
-        assert_eq!(Some(("a", "9")), split_atom("a-9"));
-        assert_eq!(None, split_atom("a-:"));
-        assert_eq!(Some(("a-b", "2")), split_atom("a-b-2"));
-        assert_eq!(Some(("a-b", "2-3")), split_atom("a-b-2-3"));
-        assert_eq!(Some(("a-b", "2-3_r1")), split_atom("a-b-2-3_r1"));
-        assert_eq!(Some(("a-b", "2foo-4")), split_atom("a-b-2foo-4"));
-        assert_eq!(Some(("a-b", "2foo-4-")), split_atom("a-b-2foo-4-"));
-        assert_eq!(Some(("Noël", "2-bêta")), split_atom("Noël-2-bêta"));
+    fn split_atom() {
+        let f = &filter_pkg_fn(None, false).unwrap();
+        let g = |s| find_version(s, f).map(|n| (&s[..n - 1], &s[n..]));
+        assert_eq!(None, g(""));
+        assert_eq!(None, g("a"));
+        assert_eq!(None, g("-"));
+        assert_eq!(None, g("42"));
+        assert_eq!(None, g("-42"));
+        assert_eq!(None, g("42-"));
+        assert_eq!(None, g("a-/"));
+        assert_eq!(Some(("a", "0")), g("a-0"));
+        assert_eq!(Some(("a", "1")), g("a-1"));
+        assert_eq!(Some(("a", "2")), g("a-2"));
+        assert_eq!(Some(("a", "3")), g("a-3"));
+        assert_eq!(Some(("a", "4")), g("a-4"));
+        assert_eq!(Some(("a", "5")), g("a-5"));
+        assert_eq!(Some(("a", "6")), g("a-6"));
+        assert_eq!(Some(("a", "7")), g("a-7"));
+        assert_eq!(Some(("a", "8")), g("a-8"));
+        assert_eq!(Some(("a", "9")), g("a-9"));
+        assert_eq!(None, g("a-:"));
+        assert_eq!(Some(("a-b", "2")), g("a-b-2"));
+        assert_eq!(Some(("a-b", "2-3")), g("a-b-2-3"));
+        assert_eq!(Some(("a-b", "2-3_r1")), g("a-b-2-3_r1"));
+        assert_eq!(Some(("a-b", "2foo-4")), g("a-b-2foo-4"));
+        assert_eq!(Some(("a-b", "2foo-4-")), g("a-b-2foo-4-"));
+        assert_eq!(Some(("Noël", "2-bêta")), g("Noël-2-bêta"));
     }
 }
