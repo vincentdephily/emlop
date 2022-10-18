@@ -103,9 +103,9 @@ pub fn new_hist(file: String,
         let mut prev_t = 0;
         let mut curline = 1;
         let mut buf = BufReader::new(reader);
-        let mut line = String::new();
+        let mut line = Vec::with_capacity(255);
         loop {
-            match buf.read_line(&mut line) {
+            match buf.read_until('\n' as u8, &mut line) {
                 // End of file
                 Ok(0) => break,
                 // Got a line, see if one of the funs match it
@@ -242,14 +242,18 @@ fn split_atom(atom: &str) -> Option<(&str, &str)> {
     }
 }
 
-fn parse_ts(line: &str, filter_ts: impl Fn(i64) -> bool) -> Option<(i64, &str)> {
-    let (ts_str, rest) = line.split_at(line.find(':')?);
-    let ts = ts_str.parse::<i64>().ok()?;
-    if !(filter_ts)(ts) {
-        return None;
+/// Parse and filter timestamp
+// TODO from_utf8(s.trim_ascii_start()) https://github.com/rust-lang/rust/issues/94035
+fn parse_ts(line: &[u8], filter_ts: impl Fn(i64) -> bool) -> Option<(i64, &str)> {
+    use atoi::FromRadix10;
+    match i64::from_radix_10(line) {
+        (ts, n) if n != 0 && (filter_ts)(ts) => {
+            Some((ts, std::str::from_utf8(&line[(n + 1)..]).ok()?.trim_start()))
+        },
+        _ => None,
     }
-    Some((ts, rest[2..].trim_start()))
 }
+
 fn parse_start(enabled: bool,
                ts: i64,
                line: &str,

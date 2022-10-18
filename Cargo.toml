@@ -17,6 +17,7 @@ exclude = ["/benches/*.log"]
 
 [dependencies]
 anyhow = "1.0.32"
+atoi = "2.0.0"
 atty = "0.2.14"
 clap = { version = "3.1.15", default_features = false, features = ["cargo", "color", "suggestions"] }
 clap_complete = "3.1.4"
