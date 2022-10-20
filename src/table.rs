@@ -1,5 +1,5 @@
 use std::{fmt::Display,
-          io::{stdout, Write as _}};
+          io::{stdout, BufWriter, Write as _}};
 
 #[derive(Clone, Copy)]
 pub enum Align {
@@ -87,8 +87,7 @@ impl<const N: usize> Drop for Table<N> {
     /// Table is rendered to stdout when it goes out of scope
     fn drop(&mut self) {
         let spaces = [b' '; 128];
-        let stdout = stdout();
-        let mut out = stdout.lock();
+        let mut out = BufWriter::new(stdout().lock());
         for row in &self.rows {
             let mut first = true;
             // Clippy suggests `for (i, <item>) in row.iter().enumerate().take(N)` which IMHO
