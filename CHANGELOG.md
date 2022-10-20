@@ -11,6 +11,8 @@ Maintenance release: Cli refinements and parser optimization
 * Exit code on error changed to `1` for empty results and `2` for plain errors
 * Improved and reorganized inline help
 * Parser performance improvement
+* Internal stuff
+  - Increased MSRV to 1.62
 
 # 0.5.0 2022-04-18
 
