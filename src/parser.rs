@@ -95,11 +95,11 @@ pub fn new_hist(file: String,
            file, min_ts, max_ts, search_str, search_exact);
     let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = unbounded();
-    let filter_ts = filter_ts_fn(min_ts, max_ts);
+    let (ts_min, ts_max) = filter_ts(min_ts, max_ts);
     let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
-    let show_merge = show.merge || show.pkg || show.tot;
-    let show_unmerge = show.unmerge || show.pkg || show.tot;
     thread::spawn(move || {
+        let show_merge = show.merge || show.pkg || show.tot;
+        let show_unmerge = show.unmerge || show.pkg || show.tot;
         let mut prev_t = 0;
         let mut curline = 1;
         let mut buf = BufReader::new(reader);
@@ -110,7 +110,7 @@ pub fn new_hist(file: String,
                 Ok(0) => break,
                 // Got a line, see if one of the funs match it
                 Ok(_) => {
-                    if let Some((t, s)) = parse_ts(&line, &filter_ts) {
+                    if let Some((t, s)) = parse_ts(&line, ts_min, ts_max) {
                         if prev_t > t {
                             warn!("{file}:{curline}: System clock jump: {} -> {}",
                                   fmt_utctime(prev_t),
@@ -178,8 +178,8 @@ pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pretend>
 }
 
 
-/// Create a closure that matches timestamp depending on options.
-fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> impl Fn(i64) -> bool {
+/// Return min/max timestamp depending on options.
+fn filter_ts(min: Option<i64>, max: Option<i64>) -> (i64, i64) {
     match (min, max) {
         (None, None) => info!("Date filter: None"),
         (Some(a), None) => info!("Date filter: after {}", fmt_utctime(a)),
@@ -188,9 +188,7 @@ fn filter_ts_fn(min: Option<i64>, max: Option<i64>) -> impl Fn(i64) -> bool {
             info!("Date filter: between {} and {}", fmt_utctime(a), fmt_utctime(b))
         },
     }
-    let mi = min.unwrap_or(std::i64::MIN);
-    let ma = max.unwrap_or(std::i64::MAX);
-    move |n| n >= mi && n <= ma
+    (min.unwrap_or(std::i64::MIN), max.unwrap_or(std::i64::MAX))
 }
 
 /// Create a closure that matches package depending on options.
@@ -241,10 +239,10 @@ fn find_version(atom: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<usize> 
 
 /// Parse and filter timestamp
 // TODO from_utf8(s.trim_ascii_start()) https://github.com/rust-lang/rust/issues/94035
-fn parse_ts(line: &[u8], filter_ts: impl Fn(i64) -> bool) -> Option<(i64, &str)> {
+fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &str)> {
     use atoi::FromRadix10;
     match i64::from_radix_10(line) {
-        (ts, n) if n != 0 && (filter_ts)(ts) => {
+        (ts, n) if n != 0 && ts >= min && ts <= max => {
             Some((ts, std::str::from_utf8(&line[(n + 1)..]).ok()?.trim_start()))
         },
         _ => None,
