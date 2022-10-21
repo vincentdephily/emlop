@@ -9,6 +9,7 @@ use log::*;
 use regex::{Regex, RegexBuilder};
 use std::{fs::File,
           io::{BufRead, BufReader, Read},
+          str::from_utf8,
           thread};
 
 /// Items sent on the channel returned by `new_hist()`.
@@ -239,11 +240,15 @@ fn find_version(atom: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<usize> 
 
 /// Parse and filter timestamp
 // TODO from_utf8(s.trim_ascii_start()) https://github.com/rust-lang/rust/issues/94035
-fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &str)> {
+fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     use atoi::FromRadix10;
     match i64::from_radix_10(line) {
         (ts, n) if n != 0 && ts >= min && ts <= max => {
-            Some((ts, std::str::from_utf8(&line[(n + 1)..]).ok()?.trim_start()))
+            let mut line = &line[(n + 1)..];
+            while let Some(32) = line.get(0) {
+                line = &line[1..];
+            }
+            Some((ts, &line))
         },
         _ => None,
     }
@@ -251,13 +256,13 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &str)> {
 
 fn parse_start(enabled: bool,
                ts: i64,
-               line: &str,
+               line: &[u8],
                filter_pkg: impl Fn(&str) -> bool)
                -> Option<Hist> {
-    if !enabled || !line.starts_with(">>> emer") {
+    if !enabled || !line.starts_with(b">>> emer") {
         return None;
     }
-    let mut tokens = line.split_ascii_whitespace();
+    let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(2)?;
     let t5 = tokens.nth(1)?;
     let t6 = tokens.next()?;
@@ -266,13 +271,13 @@ fn parse_start(enabled: bool,
 }
 fn parse_stop(enabled: bool,
               ts: i64,
-              line: &str,
+              line: &[u8],
               filter_pkg: impl Fn(&str) -> bool)
               -> Option<Hist> {
-    if !enabled || !line.starts_with("::: comp") {
+    if !enabled || !line.starts_with(b"::: comp") {
         return None;
     }
-    let mut tokens = line.split_ascii_whitespace();
+    let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t4 = tokens.nth(3)?;
     let t6 = tokens.nth(1)?;
     let t7 = tokens.next()?;
@@ -281,13 +286,13 @@ fn parse_stop(enabled: bool,
 }
 fn parse_unmergestart(enabled: bool,
                       ts: i64,
-                      line: &str,
+                      line: &[u8],
                       filter_pkg: impl Fn(&str) -> bool)
                       -> Option<Hist> {
-    if !enabled || !line.starts_with("=== Unmerging...") {
+    if !enabled || !line.starts_with(b"=== Unmerging...") {
         return None;
     }
-    let mut tokens = line.split_ascii_whitespace();
+    let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(2)?;
     let ebuild_version = &t3[1..t3.len() - 1];
     let pos = find_version(&ebuild_version, &filter_pkg)?;
@@ -295,26 +300,26 @@ fn parse_unmergestart(enabled: bool,
 }
 fn parse_unmergestop(enabled: bool,
                      ts: i64,
-                     line: &str,
+                     line: &[u8],
                      filter_pkg: impl Fn(&str) -> bool)
                      -> Option<Hist> {
-    if !enabled || !line.starts_with(">>> unmerge success") {
+    if !enabled || !line.starts_with(b">>> unmerge success") {
         return None;
     }
-    let mut tokens = line.split_ascii_whitespace();
+    let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(3)?;
     let pos = find_version(t3, &filter_pkg)?;
     Some(Hist::UnmergeStop { ts, key: t3.to_owned(), pos })
 }
-fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
+fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
     // Old portage logs 'Starting rsync with <url>', new portage logs 'Syncing repository <name>',
     // and intermediate versions log both. This makes it hard to properly match a start repo string
     // to a stop repo string across portage versions. Since syncs are not concurrent, we simply
     // ignore the start repo string.
     if enabled
-       && (line.starts_with(">>> Syncing")
-           || line.starts_with(">>> Starting rsync")
-           || line.starts_with(">>> starting rsync"))
+       && (line.starts_with(b">>> Syncing")
+           || line.starts_with(b">>> Starting rsync")
+           || line.starts_with(b">>> starting rsync"))
     {
         Some(Hist::SyncStart { ts })
     } else {
@@ -323,13 +328,14 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &str) -> Option<Hist> {
 }
 fn parse_syncstop(enabled: bool,
                   ts: i64,
-                  line: &str,
+                  line: &[u8],
                   filter_pkg: impl Fn(&str) -> bool)
                   -> Option<Hist> {
     // Old portage logs 'completed with <url>', new portage logs 'completed for <name>'
-    if !enabled || !line.starts_with("=== Sync completed") {
+    if !enabled || !line.starts_with(b"=== Sync completed") {
         return None;
     }
+    let line = from_utf8(line).ok()?;
     let repo = match line.rsplit_once(['/', ' ']) {
         Some((_, r)) => String::from(r.trim()),
         _ => {
