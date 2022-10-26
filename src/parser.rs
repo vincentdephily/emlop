@@ -4,7 +4,7 @@
 
 use crate::{date::fmt_utctime, Show};
 use anyhow::{Context, Error};
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{bounded, Receiver, Sender};
 use log::*;
 use regex::{Regex, RegexBuilder};
 use std::{fs::File,
@@ -95,7 +95,7 @@ pub fn new_hist(file: String,
     debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}",
            file, min_ts, max_ts, search_str, search_exact);
     let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
-    let (tx, rx): (Sender<Hist>, Receiver<Hist>) = unbounded();
+    let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts);
     let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
     thread::spawn(move || {
