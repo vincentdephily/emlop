@@ -267,7 +267,8 @@ fn parse_start(enabled: bool,
     let t5 = tokens.nth(1)?;
     let t6 = tokens.next()?;
     let pos1 = find_version(t6, &filter_pkg)?;
-    Some(Hist::MergeStart { ts, key: format!("{}{}{}", t6, t5, &t3[1..]), pos1, pos2: t6.len() })
+    let key = String::with_capacity(t6.len() + t5.len() + t3.len() - 1) + t6 + t5 + &t3[1..];
+    Some(Hist::MergeStart { ts, key, pos1, pos2: t6.len() })
 }
 fn parse_stop(enabled: bool,
               ts: i64,
@@ -282,7 +283,8 @@ fn parse_stop(enabled: bool,
     let t6 = tokens.nth(1)?;
     let t7 = tokens.next()?;
     let pos1 = find_version(t7, &filter_pkg)?;
-    Some(Hist::MergeStop { ts, key: format!("{}{}{}", t7, t6, &t4[1..]), pos1, pos2: t7.len() })
+    let key = String::with_capacity(t7.len() + t6.len() + t4.len() - 1) + t7 + t6 + &t4[1..];
+    Some(Hist::MergeStop { ts, key, pos1, pos2: t7.len() })
 }
 fn parse_unmergestart(enabled: bool,
                       ts: i64,
