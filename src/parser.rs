@@ -97,7 +97,7 @@ pub fn new_hist(file: String,
     let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts);
-    let filter_pkg = filter_pkg_fn(search_str, search_exact)?;
+    let filter = FilterPkg::try_new(search_str, search_exact)?;
     thread::spawn(move || {
         let show_merge = show.merge || show.pkg || show.tot;
         let show_unmerge = show.unmerge || show.pkg || show.tot;
@@ -118,21 +118,17 @@ pub fn new_hist(file: String,
                                   fmt_utctime(t));
                         }
                         prev_t = t;
-                        if let Some(found) = parse_start(show_merge, t, s, &filter_pkg) {
+                        if let Some(found) = parse_start(show_merge, t, s, &filter) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) = parse_stop(show_merge, t, s, &filter_pkg) {
+                        } else if let Some(found) = parse_stop(show_merge, t, s, &filter) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) =
-                            parse_unmergestart(show_unmerge, t, s, &filter_pkg)
-                        {
+                        } else if let Some(found) = parse_unmergestart(show_unmerge, t, s, &filter) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) =
-                            parse_unmergestop(show_unmerge, t, s, &filter_pkg)
-                        {
+                        } else if let Some(found) = parse_unmergestop(show_unmerge, t, s, &filter) {
                             tx.send(found).unwrap()
                         } else if let Some(found) = parse_syncstart(show.sync, t, s) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) = parse_syncstop(show.sync, t, s, &filter_pkg) {
+                        } else if let Some(found) = parse_syncstop(show.sync, t, s, &filter) {
                             tx.send(found).unwrap()
                         }
                     }
@@ -192,47 +188,51 @@ fn filter_ts(min: Option<i64>, max: Option<i64>) -> (i64, i64) {
     (min.unwrap_or(std::i64::MIN), max.unwrap_or(std::i64::MAX))
 }
 
-/// Create a closure that matches package depending on options.
-fn filter_pkg_fn(package: Option<&str>, exact: bool) -> Result<impl Fn(&str) -> bool, Error> {
-    enum FilterPkg {
-        True,
-        Eq { e: String },
-        Ends { e: String },
-        Re { r: Regex },
+/// Matches package depending on options.
+enum FilterPkg {
+    True,
+    Eq { e: String },
+    Ends { e: String },
+    Re { r: Regex },
+}
+impl FilterPkg {
+    fn try_new(package: Option<&str>, exact: bool) -> Result<Self, Error> {
+        Ok(match (&package, exact) {
+            (None, _) => {
+                info!("Package filter: None");
+                FilterPkg::True
+            },
+            (Some(search), true) if search.contains('/') => {
+                info!("Package filter: categ/name == {}", search);
+                FilterPkg::Eq { e: search.to_string() }
+            },
+            (Some(search), true) => {
+                info!("Package filter: name == {}", search);
+                FilterPkg::Ends { e: format!("/{}", search) }
+            },
+            (Some(search), false) => {
+                info!("Package filter: categ/name ~= {}", search);
+                FilterPkg::Re { r: RegexBuilder::new(search).case_insensitive(true).build()? }
+            },
+        })
     }
-    let fp = match (&package, exact) {
-        (None, _) => {
-            info!("Package filter: None");
-            FilterPkg::True
-        },
-        (Some(search), true) if search.contains('/') => {
-            info!("Package filter: categ/name == {}", search);
-            FilterPkg::Eq { e: search.to_string() }
-        },
-        (Some(search), true) => {
-            info!("Package filter: name == {}", search);
-            FilterPkg::Ends { e: format!("/{}", search) }
-        },
-        (Some(search), false) => {
-            info!("Package filter: categ/name ~= {}", search);
-            FilterPkg::Re { r: RegexBuilder::new(search).case_insensitive(true).build()? }
-        },
-    };
-    Ok(move |s: &str| match &fp {
-        FilterPkg::True => true,
-        FilterPkg::Eq { e } => e == s,
-        FilterPkg::Ends { e } => s.ends_with(e),
-        FilterPkg::Re { r } => r.is_match(s),
-    })
+    fn is_match(&self, s: &str) -> bool {
+        match &self {
+            FilterPkg::True => true,
+            FilterPkg::Eq { e } => e == s,
+            FilterPkg::Ends { e } => s.ends_with(e),
+            FilterPkg::Re { r } => r.is_match(s),
+        }
+    }
 }
 
 /// Find position of "version" in "categ/name-version" and filter on pkg name
-fn find_version(atom: &str, filter_pkg: impl Fn(&str) -> bool) -> Option<usize> {
+fn find_version(atom: &str, filter: &FilterPkg) -> Option<usize> {
     let mut pos = 0;
     loop {
         pos += atom[pos..].find('-')?;
         if pos > 0 && atom.as_bytes().get(pos + 1)?.is_ascii_digit() {
-            return filter_pkg(&atom[..pos]).then_some(pos + 1);
+            return filter.is_match(&atom[..pos]).then_some(pos + 1);
         }
         pos += 1;
     }
@@ -254,11 +254,7 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     }
 }
 
-fn parse_start(enabled: bool,
-               ts: i64,
-               line: &[u8],
-               filter_pkg: impl Fn(&str) -> bool)
-               -> Option<Hist> {
+fn parse_start(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> emer") {
         return None;
     }
@@ -266,15 +262,11 @@ fn parse_start(enabled: bool,
     let t3 = tokens.nth(2)?;
     let t5 = tokens.nth(1)?;
     let t6 = tokens.next()?;
-    let pos1 = find_version(t6, &filter_pkg)?;
+    let pos1 = find_version(t6, &filter)?;
     let key = String::with_capacity(t6.len() + t5.len() + t3.len() - 1) + t6 + t5 + &t3[1..];
     Some(Hist::MergeStart { ts, key, pos1, pos2: t6.len() })
 }
-fn parse_stop(enabled: bool,
-              ts: i64,
-              line: &[u8],
-              filter_pkg: impl Fn(&str) -> bool)
-              -> Option<Hist> {
+fn parse_stop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b"::: comp") {
         return None;
     }
@@ -282,35 +274,27 @@ fn parse_stop(enabled: bool,
     let t4 = tokens.nth(3)?;
     let t6 = tokens.nth(1)?;
     let t7 = tokens.next()?;
-    let pos1 = find_version(t7, &filter_pkg)?;
+    let pos1 = find_version(t7, &filter)?;
     let key = String::with_capacity(t7.len() + t6.len() + t4.len() - 1) + t7 + t6 + &t4[1..];
     Some(Hist::MergeStop { ts, key, pos1, pos2: t7.len() })
 }
-fn parse_unmergestart(enabled: bool,
-                      ts: i64,
-                      line: &[u8],
-                      filter_pkg: impl Fn(&str) -> bool)
-                      -> Option<Hist> {
+fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b"=== Unmerging...") {
         return None;
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(2)?;
     let ebuild_version = &t3[1..t3.len() - 1];
-    let pos = find_version(&ebuild_version, &filter_pkg)?;
+    let pos = find_version(&ebuild_version, &filter)?;
     Some(Hist::UnmergeStart { ts, key: ebuild_version.to_owned(), pos })
 }
-fn parse_unmergestop(enabled: bool,
-                     ts: i64,
-                     line: &[u8],
-                     filter_pkg: impl Fn(&str) -> bool)
-                     -> Option<Hist> {
+fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> unmerge success") {
         return None;
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(3)?;
-    let pos = find_version(t3, &filter_pkg)?;
+    let pos = find_version(t3, &filter)?;
     Some(Hist::UnmergeStop { ts, key: t3.to_owned(), pos })
 }
 fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
@@ -328,11 +312,7 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
         None
     }
 }
-fn parse_syncstop(enabled: bool,
-                  ts: i64,
-                  line: &[u8],
-                  filter_pkg: impl Fn(&str) -> bool)
-                  -> Option<Hist> {
+fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     // Old portage logs 'completed with <url>', new portage logs 'completed for <name>'
     if !enabled || !line.starts_with(b"=== Sync completed") {
         return None;
@@ -345,11 +325,12 @@ fn parse_syncstop(enabled: bool,
             String::from("unknown")
         },
     };
-    if !(filter_pkg)(&repo) {
+    if !filter.is_match(&repo) {
         return None;
     }
     Some(Hist::SyncStop { ts, repo })
 }
+
 fn parse_pretend(line: &str, re: &Regex) -> Option<Pretend> {
     let c = re.captures(line)?;
     Some(Pretend { ebuild: c.get(1).unwrap().as_str().to_string(),
@@ -565,8 +546,8 @@ mod tests {
 
     #[test]
     fn split_atom() {
-        let f = &filter_pkg_fn(None, false).unwrap();
-        let g = |s| find_version(s, f).map(|n| (&s[..n - 1], &s[n..]));
+        let f = FilterPkg::try_new(None, false).unwrap();
+        let g = |s| find_version(s, &f).map(|n| (&s[..n - 1], &s[n..]));
         assert_eq!(None, g(""));
         assert_eq!(None, g("a"));
         assert_eq!(None, g("-"));
