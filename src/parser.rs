@@ -16,9 +16,9 @@ use std::{fs::File,
 #[derive(Debug)]
 pub enum Hist {
     /// Merge started (might never complete).
-    MergeStart { ts: i64, key: String, pos1: usize, pos2: usize },
+    MergeStart { ts: i64, key: String, pos: usize},
     /// Merge completed.
-    MergeStop { ts: i64, key: String, pos1: usize, pos2: usize },
+    MergeStop { ts: i64, key: String, pos: usize},
     /// Unmerge started (might never complete).
     UnmergeStart { ts: i64, key: String, pos: usize },
     /// Unmerge completed.
@@ -31,8 +31,8 @@ pub enum Hist {
 impl Hist {
     pub fn ebuild(&self) -> &str {
         match self {
-            Self::MergeStart { key, pos1, .. } => &key[..(*pos1 - 1)],
-            Self::MergeStop { key, pos1, .. } => &key[..(*pos1 - 1)],
+            Self::MergeStart { key, pos, .. } => &key[..(*pos - 1)],
+            Self::MergeStop { key, pos, .. } => &key[..(*pos - 1)],
             Self::UnmergeStart { key, pos, .. } => &key[..(*pos - 1)],
             Self::UnmergeStop { key, pos, .. } => &key[..(*pos - 1)],
             _ => unreachable!("No ebuild for {:?}", self),
@@ -40,8 +40,8 @@ impl Hist {
     }
     pub fn version(&self) -> &str {
         match self {
-            Self::MergeStart { key, pos1, pos2, .. } => &key[*pos1..*pos2],
-            Self::MergeStop { key, pos1, pos2, .. } => &key[*pos1..*pos2],
+            Self::MergeStart { key, pos, .. } => &key[*pos..],
+            Self::MergeStop { key, pos, .. } => &key[*pos..],
             Self::UnmergeStart { key, pos, .. } => &key[*pos..],
             Self::UnmergeStop { key, pos, .. } => &key[*pos..],
             _ => unreachable!("No version for {:?}", self),
@@ -49,19 +49,11 @@ impl Hist {
     }
     pub fn ebuild_version(&self) -> &str {
         match self {
-            Self::MergeStart { key, pos2, .. } => &key[..*pos2],
-            Self::MergeStop { key, pos2, .. } => &key[..*pos2],
+            Self::MergeStart { key, .. } => key,
+            Self::MergeStop { key, .. } => key,
             Self::UnmergeStart { key, .. } => key,
             Self::UnmergeStop { key, .. } => key,
             _ => unreachable!("No ebuild/version for {:?}", self),
-        }
-    }
-    #[cfg(test)]
-    pub fn iter(&self) -> &str {
-        match self {
-            Self::MergeStart { key, pos2, .. } => &key[*pos2..],
-            Self::MergeStop { key, pos2, .. } => &key[*pos2..],
-            _ => unreachable!("No iter for {:?}", self),
         }
     }
     pub fn ts(&self) -> i64 {
@@ -259,24 +251,18 @@ fn parse_start(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Optio
         return None;
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
-    let t3 = tokens.nth(2)?;
-    let t5 = tokens.nth(1)?;
-    let t6 = tokens.next()?;
-    let pos1 = find_version(t6, &filter)?;
-    let key = String::with_capacity(t6.len() + t5.len() + t3.len() - 1) + t6 + t5 + &t3[1..];
-    Some(Hist::MergeStart { ts, key, pos1, pos2: t6.len() })
+    let t6 = tokens.nth(5)?;
+    let pos = find_version(t6, &filter)?;
+    Some(Hist::MergeStart { ts, key: t6.to_owned(), pos })
 }
 fn parse_stop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b"::: comp") {
         return None;
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
-    let t4 = tokens.nth(3)?;
-    let t6 = tokens.nth(1)?;
-    let t7 = tokens.next()?;
-    let pos1 = find_version(t7, &filter)?;
-    let key = String::with_capacity(t7.len() + t6.len() + t4.len() - 1) + t7 + t6 + &t4[1..];
-    Some(Hist::MergeStop { ts, key, pos1, pos2: t7.len() })
+    let t7 = tokens.nth(6)?;
+    let pos = find_version(t7, &filter)?;
+    Some(Hist::MergeStop { ts, key: t7.to_owned(), pos })
 }
 fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b"=== Unmerging...") {
@@ -373,17 +359,16 @@ mod tests {
                             exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();
-        let re_iter = Regex::new("^[1-9][0-9]*\\)[1-9][0-9]*$").unwrap();
         let mut counts: HashMap<String, usize> = HashMap::new();
         // Check that all items look valid
         for p in hist {
-            let (kind, ts, ebuild, version, iter) = match p {
-                Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version(), p.iter()),
-                Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version(), p.iter()),
-                Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version(), "1)1"),
-                Hist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version(), "1)1"),
-                Hist::SyncStart { ts, .. } => ("SStart", ts, "c/e", "1", "1)1"),
-                Hist::SyncStop { ts, .. } => ("SStop", ts, "c/e", "1", "1)1"),
+            let (kind, ts, ebuild, version) = match p {
+                Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
+                Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
+                Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
+                Hist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version()),
+                Hist::SyncStart { ts, .. } => ("SStart", ts, "c/e", "1"),
+                Hist::SyncStop { ts, .. } => ("SStop", ts, "c/e", "1"),
             };
             *counts.entry(kind.to_string()).or_insert(0) += 1;
             *counts.entry(ebuild.to_string()).or_insert(0) += 1;
@@ -392,7 +377,6 @@ mod tests {
                     fmt_utctime(ts));
             assert!(re_atom.is_match(ebuild), "Invalid ebuild atom {}", ebuild);
             assert!(re_version.is_match(version), "Invalid version {}", version);
-            assert!(re_iter.is_match(iter), "Invalid iteration {}", iter);
         }
         // Check that we got the right number of each kind
         for (t, ref c) in expect_counts {
