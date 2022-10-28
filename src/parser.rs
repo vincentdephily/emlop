@@ -16,9 +16,9 @@ use std::{fs::File,
 #[derive(Debug)]
 pub enum Hist {
     /// Merge started (might never complete).
-    MergeStart { ts: i64, key: String, pos: usize},
+    MergeStart { ts: i64, key: String, pos: usize },
     /// Merge completed.
-    MergeStop { ts: i64, key: String, pos: usize},
+    MergeStop { ts: i64, key: String, pos: usize },
     /// Unmerge started (might never complete).
     UnmergeStart { ts: i64, key: String, pos: usize },
     /// Unmerge completed.
@@ -98,7 +98,7 @@ pub fn new_hist(file: String,
         let mut buf = BufReader::new(reader);
         let mut line = Vec::with_capacity(255);
         loop {
-            match buf.read_until('\n' as u8, &mut line) {
+            match buf.read_until(b'\n', &mut line) {
                 // End of file
                 Ok(0) => break,
                 // Got a line, see if one of the funs match it
@@ -110,11 +110,12 @@ pub fn new_hist(file: String,
                                   fmt_utctime(t));
                         }
                         prev_t = t;
-                        if let Some(found) = parse_start(show_merge, t, s, &filter) {
+                        if let Some(found) = parse_mergestart(show_merge, t, s, &filter) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) = parse_stop(show_merge, t, s, &filter) {
+                        } else if let Some(found) = parse_mergestop(show_merge, t, s, &filter) {
                             tx.send(found).unwrap()
-                        } else if let Some(found) = parse_unmergestart(show_unmerge, t, s, &filter) {
+                        } else if let Some(found) = parse_unmergestart(show_unmerge, t, s, &filter)
+                        {
                             tx.send(found).unwrap()
                         } else if let Some(found) = parse_unmergestop(show_unmerge, t, s, &filter) {
                             tx.send(found).unwrap()
@@ -237,33 +238,35 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     match i64::from_radix_10(line) {
         (ts, n) if n != 0 && ts >= min && ts <= max => {
             let mut line = &line[(n + 1)..];
-            while let Some(32) = line.get(0) {
+            while let Some(32) = line.first() {
                 line = &line[1..];
             }
-            Some((ts, &line))
+            Some((ts, line))
         },
         _ => None,
     }
 }
 
-fn parse_start(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
+fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> emer") {
         return None;
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t6 = tokens.nth(5)?;
-    let pos = find_version(t6, &filter)?;
+    let pos = find_version(t6, filter)?;
     Some(Hist::MergeStart { ts, key: t6.to_owned(), pos })
 }
-fn parse_stop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
+
+fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b"::: comp") {
         return None;
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t7 = tokens.nth(6)?;
-    let pos = find_version(t7, &filter)?;
+    let pos = find_version(t7, filter)?;
     Some(Hist::MergeStop { ts, key: t7.to_owned(), pos })
 }
+
 fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b"=== Unmerging...") {
         return None;
@@ -271,18 +274,20 @@ fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(2)?;
     let ebuild_version = &t3[1..t3.len() - 1];
-    let pos = find_version(&ebuild_version, &filter)?;
+    let pos = find_version(ebuild_version, filter)?;
     Some(Hist::UnmergeStart { ts, key: ebuild_version.to_owned(), pos })
 }
+
 fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> unmerge success") {
         return None;
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(3)?;
-    let pos = find_version(t3, &filter)?;
+    let pos = find_version(t3, filter)?;
     Some(Hist::UnmergeStop { ts, key: t3.to_owned(), pos })
 }
+
 fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
     // Old portage logs 'Starting rsync with <url>', new portage logs 'Syncing repository <name>',
     // and intermediate versions log both. This makes it hard to properly match a start repo string
