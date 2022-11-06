@@ -152,10 +152,15 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .possible_values(&["auto", "always", "never", "y", "n"])
                                  .hide_possible_values(true)
                                  .default_value("auto")
+                                 .default_missing_value("y")
                                  .value_name("when")
                                  .display_order(54)
                                  .help_heading("FORMAT")
-                                 .help("Enable color (auto/always/never/y/n).");
+                                 .help("Enable color (auto/always/never/y/n).")
+                                 .long_help("Enable color (auto/always/never/y/n).\n  \
+                                             auto:             colored if on tty\n  \
+                                             (empty)|always|y: colored\n  \
+                                             never|n:          not colored");
 
     let logfile = Arg::new("logfile").value_name("file")
                                      .long("logfile")
