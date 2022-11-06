@@ -100,6 +100,17 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                        Accepts formats like '2018-03-04', \
                                        '2018-03-04 12:34:56', '2018-03-04T12:34', \
                                        '1 year, 2 months', '10d', and unix timestamps.");
+    let first = Arg::new("first").short('N')
+                                 .long("first")
+                                 .value_name("num")
+                                 .display_order(4)
+                                 .default_missing_value("1")
+                                 .value_parser(clap::value_parser!(usize))
+                                 .help_heading("FILTER")
+                                 .help("Show only the first <num> entries.")
+                                 .long_help("Show only the first <num> entries.\n  \
+                                             (empty)|1: first entry\n  \
+                                             5:         first 5 entries\n");
 
     let header = Arg::new("header").short('H')
                                    .long("header")
@@ -188,6 +199,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
              * Syncs:      date, duration, repository.";
     let cmd_log = Command::new("log").about("Show log of sucessful merges, unmerges and syncs.")
                                      .long_about(h)
+                                     .arg(first)
                                      .arg(show_l)
                                      .arg(&exact)
                                      .arg(&pkg);

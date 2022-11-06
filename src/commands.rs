@@ -15,9 +15,10 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                         show,
                         args.value_of("package"),
                         args.is_present("exact"))?;
+    let first = *args.get_one("first").unwrap_or(&usize::MAX);
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
-    let mut found_one = false;
+    let mut found = 0;
     let mut sync_start: Option<i64> = None;
     let mut tbl =
         Table::<3>::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
@@ -29,7 +30,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 merges.insert(key, ts);
             },
             Hist::MergeStop { ts, ref key, .. } => {
-                found_one = true;
+                found += 1;
                 let started = merges.remove(key).unwrap_or(ts + 1);
                 tbl.row([&[&fmt_time(ts, st)],
                          &[&st.dur, &fmt_duration(st.dur_t, ts - started)],
@@ -40,7 +41,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 unmerges.insert(key, ts);
             },
             Hist::UnmergeStop { ts, ref key, .. } => {
-                found_one = true;
+                found += 1;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 tbl.row([&[&fmt_time(ts, st)],
                          &[&st.dur, &fmt_duration(st.dur_t, ts - started)],
@@ -52,7 +53,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
             },
             Hist::SyncStop { ts, repo } => {
                 if let Some(start_ts) = sync_start.take() {
-                    found_one = true;
+                    found += 1;
                     tbl.row([&[&fmt_time(ts, st)],
                              &[&st.dur, &fmt_duration(st.dur_t, ts - start_ts)],
                              &[&st.clr, &"Sync ", &repo]]);
@@ -61,8 +62,11 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 }
             },
         }
+        if found >= first {
+            break;
+        }
     }
-    Ok(found_one)
+    Ok(found > 0)
 }
 
 /// Wrapper to extract stats from a list of data points (durations).

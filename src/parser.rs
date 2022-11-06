@@ -111,18 +111,30 @@ pub fn new_hist(file: String,
                         }
                         prev_t = t;
                         if let Some(found) = parse_mergestart(show_merge, t, s, &filter) {
-                            tx.send(found).unwrap()
+                            if let Err(_) = tx.send(found) {
+                                break;
+                            }
                         } else if let Some(found) = parse_mergestop(show_merge, t, s, &filter) {
-                            tx.send(found).unwrap()
+                            if let Err(_) = tx.send(found) {
+                                break;
+                            }
                         } else if let Some(found) = parse_unmergestart(show_unmerge, t, s, &filter)
                         {
-                            tx.send(found).unwrap()
+                            if let Err(_) = tx.send(found) {
+                                break;
+                            }
                         } else if let Some(found) = parse_unmergestop(show_unmerge, t, s, &filter) {
-                            tx.send(found).unwrap()
+                            if let Err(_) = tx.send(found) {
+                                break;
+                            }
                         } else if let Some(found) = parse_syncstart(show.sync, t, s) {
-                            tx.send(found).unwrap()
+                            if let Err(_) = tx.send(found) {
+                                break;
+                            }
                         } else if let Some(found) = parse_syncstop(show.sync, t, s, &filter) {
-                            tx.send(found).unwrap()
+                            if let Err(_) = tx.send(found) {
+                                break;
+                            }
                         }
                     }
                 },
