@@ -111,6 +111,17 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .long_help("Show only the first <num> entries.\n  \
                                              (empty)|1: first entry\n  \
                                              5:         first 5 entries\n");
+    let last = Arg::new("last").short('n')
+                               .long("last")
+                               .value_name("num")
+                               .display_order(5)
+                               .default_missing_value("1")
+                               .value_parser(clap::value_parser!(usize))
+                               .help_heading("FILTER")
+                               .help("Show only the last <num> entries.")
+                               .long_help("Show only the last <num> entries.\n  \
+                                             (empty)|1: last entry\n  \
+                                             5:         last 5 entries\n");
 
     let header = Arg::new("header").short('H')
                                    .long("header")
@@ -200,6 +211,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let cmd_log = Command::new("log").about("Show log of sucessful merges, unmerges and syncs.")
                                      .long_about(h)
                                      .arg(first)
+                                     .arg(last)
                                      .arg(show_l)
                                      .arg(&exact)
                                      .arg(&pkg);

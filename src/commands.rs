@@ -16,12 +16,15 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                         args.value_of("package"),
                         args.is_present("exact"))?;
     let first = *args.get_one("first").unwrap_or(&usize::MAX);
+    let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
-    let mut tbl =
-        Table::<3>::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
+    let mut tbl = Table::<3>::new(st.clr).align(0, Align::Left)
+                                         .align(2, Align::Left)
+                                         .margin(2, " ")
+                                         .last(last);
     tbl.header(st.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
     for p in hist {
         match p {

@@ -1,4 +1,5 @@
-use std::{fmt::Display,
+use std::{collections::VecDeque,
+          fmt::Display,
           io::{stdout, BufWriter, Write as _}};
 
 #[derive(Clone, Copy)]
@@ -14,7 +15,7 @@ pub struct Table<const N: usize> {
     /// Having a single buffer noticable speed things up by reducing allocations.
     buf: Vec<u8>,
     /// Visible length, and start/stop index into buffer
-    rows: Vec<[(usize, usize, usize); N]>,
+    rows: VecDeque<[(usize, usize, usize); N]>,
     /// Max column widths seen so far
     widths: [usize; N],
     /// Whether a column is fully empty and should be skipped
@@ -25,18 +26,21 @@ pub struct Table<const N: usize> {
     aligns: [Align; N],
     /// Margin between columns, printed left of the column, defaults to `"  "`
     margins: [&'static str; N],
+    /// Only print last N rows
+    last: usize,
 }
 
 impl<const N: usize> Table<N> {
     /// Initialize new table
     pub fn new(lineend: &str) -> Table<N> {
-        Self { rows: Vec::with_capacity(32),
+        Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
                widths: [0; N],
                empty: [true; N],
                lineend: format!("{}\n", lineend).into(),
                aligns: [Align::Right; N],
-               margins: ["  "; N] }
+               margins: ["  "; N],
+               last: usize::MAX }
     }
     /// Specify column alignments
     pub fn align(mut self, col: usize, align: Align) -> Self {
@@ -48,6 +52,12 @@ impl<const N: usize> Table<N> {
         self.margins[col] = margin;
         self
     }
+    /// Specify column left margin (1st printted column never has a left margin)
+    pub fn last(mut self, last: usize) -> Self {
+        self.last = last;
+        self
+    }
+    /// Add a section header
     /// Add a section header
     pub fn header(&mut self, enabled: bool, row: [&[&dyn Display]; N]) {
         if enabled {
@@ -79,7 +89,10 @@ impl<const N: usize> Table<N> {
             self.empty[i] &= len == 0;
             idxrow[i] = (len, pos0, pos2);
         }
-        self.rows.push(idxrow);
+        self.rows.push_back(idxrow);
+        if self.rows.len() > self.last {
+            self.rows.pop_front();
+        }
     }
 }
 
