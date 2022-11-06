@@ -3,7 +3,7 @@
 //! Instantiate a `Parser` and iterate over it to retrieve the events.
 
 use crate::{date::fmt_utctime, Show};
-use anyhow::{Context, Error};
+use anyhow::{bail, Context, Error};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use log::*;
 use regex::{Regex, RegexBuilder};
@@ -88,7 +88,7 @@ pub fn new_hist(file: String,
            file, min_ts, max_ts, search_str, search_exact);
     let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
-    let (ts_min, ts_max) = filter_ts(min_ts, max_ts);
+    let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
     let filter = FilterPkg::try_new(search_str, search_exact)?;
     thread::spawn(move || {
         let show_merge = show.merge || show.pkg || show.tot;
@@ -181,16 +181,21 @@ pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pretend>
 
 
 /// Return min/max timestamp depending on options.
-fn filter_ts(min: Option<i64>, max: Option<i64>) -> (i64, i64) {
+fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
     match (min, max) {
         (None, None) => info!("Date filter: None"),
         (Some(a), None) => info!("Date filter: after {}", fmt_utctime(a)),
         (None, Some(b)) => info!("Date filter: before {}", fmt_utctime(b)),
-        (Some(a), Some(b)) => {
+        (Some(a), Some(b)) if a < b => {
             info!("Date filter: between {} and {}", fmt_utctime(a), fmt_utctime(b))
         },
+        (Some(a), Some(b)) => {
+            bail!("Invalid date filter: {} <= {}, did you swap --to and --from ?",
+                  fmt_utctime(a),
+                  fmt_utctime(b))
+        },
     }
-    (min.unwrap_or(std::i64::MIN), max.unwrap_or(std::i64::MAX))
+    Ok((min.unwrap_or(std::i64::MIN), max.unwrap_or(std::i64::MAX)))
 }
 
 /// Matches package depending on options.
