@@ -43,10 +43,10 @@ fn main() {
         ("ltmu", "genlop", &["-f","{emerge.log}","-lut"],     None),
         ("ltmu", "qlop",   &["-f","{emerge.log}","-muUvt"],   None),
         ("ltmu", "emlop",  &["-F","{emerge.log}","l","-smu"], None),
-        // Show recent sync history
-        ("ls", "genlop", &["-f","{emerge.log}","-r","-d","1 week ago"],  None),
-        ("ls", "qlop",   &["-f","{emerge.log}","-st","-d","1 week ago"], None),
-        ("ls", "emlop",  &["-F","{emerge.log}","l","-ss","-f","1w"],     None),
+        // Show sync history
+        ("ls", "genlop", &["-f","{emerge.log}","-r"],      None),
+        ("ls", "qlop",   &["-f","{emerge.log}","-st"],     None),
+        ("ls", "emlop",  &["-F","{emerge.log}","l","-ss"], None),
         // Read only part of a file
         ("ld1", "genlop", &["-f","{emerge.log}","-l", "--date","2019-02-01","--date","2019-02-28"], None),
         ("ld1", "qlop",   &["-f","{emerge.log}","-mv","--date","2019-02-01","--date","2019-02-28"], None),
@@ -55,6 +55,7 @@ fn main() {
         ("ld2", "qlop",   &["-f","{emerge.log}","-mv","--date","2020-10-01","--date","2020-10-31"], None),
         ("ld2", "emlop",  &["-F","{emerge.log}","l",  "--from","2020-10-01","--to",  "2020-10-31"], None),
         // Force/prevent color output
+        ("lc", "qlop",   &["-f","{emerge.log}","-mv","--color"],   None),
         ("lc", "emlop",  &["-F","{emerge.log}","l","--color=y"],   None),
         ("ln", "genlop", &["-f","{emerge.log}","-l","-n"],         None),
         ("ln", "qlop",   &["-f","{emerge.log}","-mv","--nocolor"], None),
@@ -64,7 +65,7 @@ fn main() {
         ("egcc", "qlop",   &["-f","{emerge.log}","gcc"],          None),
         ("egcc", "emlop",  &["-F","{emerge.log}","l","gcc","-e"], None),
         // Version+duration package merge+unmerge log (can't show just package unmerges iin genlop)
-        ("tgcc", "genlop", &["-f","{emerge.log}","-te","gcc"],          None),
+        ("tgcc", "genlop", &["-f","{emerge.log}","-te","gcc"],           None),
         ("tgcc", "qlop",   &["-f","{emerge.log}","-tvmuU","gcc"],        None),
         ("tgcc", "emlop",  &["-F","{emerge.log}","l","gcc","-e","-smu"], None),
         // Predict current merge
