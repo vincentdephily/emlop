@@ -230,7 +230,7 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         let hist = hist.iter().map(|(k, v)| format!("{}:{}", k, v)).collect::<Vec<_>>().join(",");
         let cmd = key.split_once("\t").expect("key without a tab").0;
         if prev != cmd {
-            color = if color == "\x1B[00m" { "\x1B[37m" } else { "\x1B[00m" };
+            color = if color == "\x1B[00m" { "\x1B[90m" } else { "\x1B[00m" };
             prev = cmd.into();
         }
         writeln!(tw,
