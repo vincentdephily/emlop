@@ -218,11 +218,11 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     let mut tw = TabWriter::new(stderr());
     let mut prev = String::new();
     let mut color = "";
-    writeln!(tw, "\n\x1B[36mtest\tcmd\tmin\t95%\t85%\t75%\tmean\tmax\tstddev\ttot\tbucketed values")
+    writeln!(tw, "\n\x1B[36mtest\tcmd\tmax\t95%\t85%\t75%\tmin\tmean\tstddev\ttot\tbucketed values")
         .unwrap();
     for (key, vals) in times {
         let ss: SummStats<f64> = vals.iter().cloned().collect();
-        let mut pc: Percentiles<f64> = vals.iter().cloned().collect();
+        let pc: Percentiles<f64> = vals.iter().cloned().collect();
         let mut hist: BTreeMap<u64, u64> = BTreeMap::new();
         vals.into_iter()
             .map(|v| (v / bucket as f64).round() as u64 * bucket)
@@ -234,15 +234,15 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
             prev = cmd.into();
         }
         writeln!(tw,
-                 "{}{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{:.0}\t{:.0}\t{}",
+                 "{}{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}",
                  color,
                  key,
-                 ss.min().unwrap(),
+                 ss.max().unwrap(),
                  pc.percentile(&0.95).unwrap().unwrap(),
                  pc.percentile(&0.85).unwrap().unwrap(),
                  pc.percentile(&0.75).unwrap().unwrap(),
+                 ss.min().unwrap(),
                  ss.mean().unwrap(),
-                 ss.max().unwrap(),
                  ss.standard_deviation().unwrap_or(0.0),
                  ss.sum(),
                  hist).unwrap();
