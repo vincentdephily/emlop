@@ -171,13 +171,11 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
                 found.push(set);
                 let args: Vec<&str> =
                     args.iter().map(|&s| if s == "{emerge.log}" { &logfile } else { s }).collect();
-                let cmd = format!("{}\t{} {}{}",
-                                  set,
-                                  ppath,
-                                  args.join(" "),
-                                  si.map_or(String::new(), |s| format!(" < {}", s)));
+                let name = format!("{set}\t{ppath} {}{}",
+                                   args.join(" "),
+                                   si.map_or(String::new(), |s| format!(" < {}", s)));
                 for _ in 0..runs {
-                    tests.push((cmd.clone(), ppath, args.clone(), si));
+                    tests.push((name.clone(), ppath, args.clone(), si));
                 }
             }
         }
@@ -207,14 +205,13 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         n -= 1;
         let si = stdin.map_or(Stdio::inherit(), |f| File::open(f).unwrap().into());
         let so = if nullout { Stdio::null() } else { Stdio::inherit() };
+        let err = &format!("Couldn't run {} {:?}", bin, args);
+        let mut cmd = Command::new(bin);
         let start = Instant::now();
-        Command::new(bin).args(args.into_iter())
-                         .stdin(si)
-                         .stdout(so)
-                         .status()
-                         .expect(&format!("Couldn't run {} {:?}", bin, args));
+        cmd.args(args).stdin(si).stdout(so).status().expect(err);
         let elapsed = start.elapsed().as_millis() as f64;
         times.entry(name.clone()).or_insert(vec![]).insert(0, elapsed);
+        times.entry(format!("*\t{bin}")).or_insert(vec![]).insert(0, elapsed);
     }
 
     // Output the results
