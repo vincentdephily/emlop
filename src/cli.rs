@@ -167,6 +167,10 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                              .display_order(53)
                              .help_heading("FORMAT")
                              .help("Parse/display dates in UTC instead of local time");
+    let starttime = Arg::new("starttime").long("starttime")
+                                         .display_order(54)
+                                         .help_heading("FORMAT")
+                                         .help("Display start time instead of end time");
     let color = Arg::new("color").long("color")
                                  .alias("colour")
                                  .global(true)
@@ -176,7 +180,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .default_value("auto")
                                  .default_missing_value("y")
                                  .value_name("when")
-                                 .display_order(54)
+                                 .display_order(55)
                                  .help_heading("FORMAT")
                                  .help("Enable color (auto/always/never/y/n).")
                                  .long_help("Enable color (auto/always/never/y/n).\n  \
@@ -210,6 +214,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
              * Syncs:      date, duration, repository.";
     let cmd_log = Command::new("log").about("Show log of sucessful merges, unmerges and syncs.")
                                      .long_about(h)
+                                     .arg(starttime)
                                      .arg(first)
                                      .arg(last)
                                      .arg(show_l)

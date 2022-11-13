@@ -17,6 +17,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                         args.is_present("exact"))?;
     let first = *args.get_one("first").unwrap_or(&usize::MAX);
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
+    let stt = args.is_present("starttime");
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
@@ -35,7 +36,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
             Hist::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = merges.remove(key).unwrap_or(ts + 1);
-                tbl.row([&[&fmt_time(ts, st)],
+                tbl.row([&[&fmt_time(if stt { started } else { ts }, st)],
                          &[&st.dur, &fmt_duration(st.dur_t, ts - started)],
                          &[&st.merge, &p.ebuild_version()]]);
             },
@@ -46,7 +47,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
             Hist::UnmergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
-                tbl.row([&[&fmt_time(ts, st)],
+                tbl.row([&[&fmt_time(if stt { started } else { ts }, st)],
                          &[&st.dur, &fmt_duration(st.dur_t, ts - started)],
                          &[&st.unmerge, &p.ebuild_version()]]);
             },
@@ -55,10 +56,10 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 sync_start = Some(ts);
             },
             Hist::SyncStop { ts, repo } => {
-                if let Some(start_ts) = sync_start.take() {
+                if let Some(started) = sync_start.take() {
                     found += 1;
-                    tbl.row([&[&fmt_time(ts, st)],
-                             &[&st.dur, &fmt_duration(st.dur_t, ts - start_ts)],
+                    tbl.row([&[&fmt_time(if stt { started } else { ts }, st)],
+                             &[&st.dur, &fmt_duration(st.dur_t, ts - started)],
                              &[&st.clr, &"Sync ", &repo]]);
                 } else {
                     warn!("Sync stop without a start at {ts}")
@@ -436,6 +437,15 @@ mod tests {
         e
     }
 
+    fn emlop_out(args: &str) -> String {
+        let out = emlop().args(args.split_ascii_whitespace())
+                         .output()
+                         .expect(&format!("could not run emlop {:?}", args));
+        assert!(out.status.success());
+        assert!(out.stderr.is_empty());
+        String::from_utf8(out.stdout).expect("Invalid utf8")
+    }
+
     #[test]
     fn log() {
         #[rustfmt::skip]
@@ -516,6 +526,27 @@ mod tests {
         for (a, o) in t {
             emlop().args(a).assert().stdout(o);
         }
+    }
+
+    #[test]
+    fn starttime() {
+        let o1 = emlop_out("-F test/emerge.10000.log l --dat=unix --dur=s");
+        let o2 = emlop_out("-F test/emerge.10000.log l --dat=unix --dur=s --starttime");
+        let mut lines = 0;
+        for (l1, l2) in o1.lines().zip(o2.lines()) {
+            lines += 1;
+            let mut w1 = l1.split_ascii_whitespace();
+            let mut w2 = l2.split_ascii_whitespace();
+            let t1 = dbg!(w1.next()).expect("missing t1").parse::<u64>().expect("bad int t1");
+            let d1 = dbg!(w1.next()).expect("missing d1");
+            let t2 = dbg!(w2.next()).expect("missing t2").parse::<u64>().expect("bad int t2");
+            let d2 = dbg!(w2.next()).expect("missing d2");
+            assert!(d1 == d2);
+            if d1 != "?" {
+                assert!(t2 + d1.parse::<u64>().expect("bad int d1") == t1);
+            }
+        }
+        assert!(lines > 500);
     }
 
     #[test]
