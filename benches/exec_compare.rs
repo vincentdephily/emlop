@@ -186,9 +186,9 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
             .for_each(|s| eprintln!("Test {:?} not defined for {:?}.", s, pname));
     }
 
-    // Load /var/log/emerge.log in the OS cache
+    // Load emerge.log in the OS cache
     assert_eq!(0,
-               Command::new("cat").arg("/var/log/emerge.log")
+               Command::new("cat").arg(&logfile)
                                   .stdout(Stdio::null())
                                   .status()
                                   .unwrap()
