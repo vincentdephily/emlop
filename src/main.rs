@@ -79,6 +79,7 @@ pub fn value_opt<T, P, A>(matches: &ArgMatches, name: &str, parse: P, arg: A) ->
     }
 }
 
+// TODO: clap can validate that
 pub fn parse_limit(s: &str) -> Result<u16, String> {
     u16::from_str(s).map_err(|_| {
                         format!("Must be an integer between {} and {}",
@@ -110,6 +111,22 @@ impl FromStr for Show {
 }
 
 #[derive(Clone, Copy)]
+pub enum Curve {
+    Flat,
+    Arithmetic,
+}
+impl FromStr for Curve {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "f" => Ok(Self::Flat),
+            "a" => Ok(Self::Arithmetic),
+            _ => Err("Valid values are 'f', 'a'.".into()),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 pub enum DurationStyle {
     HMS,
     HMSFixed,
@@ -124,7 +141,7 @@ impl FromStr for DurationStyle {
             "hms_fixed" => Ok(DurationStyle::HMSFixed),
             "s" => Ok(DurationStyle::Secs),
             "human" => Ok(DurationStyle::Human),
-            _ => Err("Valid values are 'hms', 'hms_fixed', 's'.".into()),
+            _ => Err("Valid values are 'hms', 'hms_fixed', 's', 'human'.".into()),
         }
     }
 }

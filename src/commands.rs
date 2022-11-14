@@ -95,12 +95,25 @@ impl Times {
         }
     }
     /// Predict the next data point by looking at past ones
-    fn pred(&self, lim: u16) -> i64 {
-        let (t, c) = self.vals.iter().take(lim as usize).fold((0, 0), |(t, c), v| (t + v, c + 1));
-        if c > 0 {
-            t / c
-        } else {
-            -1 // FIXME Return None
+    fn pred(&self, lim: u16, curve: Curve) -> i64 {
+        if self.vals.is_empty() {
+            return -1; // FIXME Return None
+        }
+        let lim = self.vals.len().min(lim as usize);
+        match curve {
+            // Simple moving average
+            Curve::Flat => self.vals.iter().take(lim).sum::<i64>() / lim as i64,
+            // Arithmically weighted moving average
+            // Eg for 4 values the weights are 4,3,2,1 (most recent value first)
+            Curve::Arithmetic => {
+                let (s, n, w) =
+                    self.vals
+                        .iter()
+                        .take(lim)
+                        .fold((0, lim as i64, 0), |(s, n, w), v| (s + v * n, n - 1, w + n));
+                debug_assert!(n == 0);
+                s / w
+            },
         }
     }
 }
@@ -120,6 +133,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         args.value_of("package"),
                         args.is_present("exact"))?;
     let lim = value(args, "limit", parse_limit);
+    let curve = args.value_of_t("curve").unwrap();
     let mut tbl =
         Table::<8>::new(st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
@@ -137,7 +151,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                 curts = t;
             } else if t > nextts {
                 let group = timespan.at(curts, st.date_offset);
-                cmd_stats_group(&mut tbl, st, lim, show, group, &sync_time, &pkg_time)?;
+                cmd_stats_group(&mut tbl, st, lim, curve, show, group, &sync_time, &pkg_time)?;
                 sync_time.clear();
                 pkg_time.clear();
                 nextts = timespan.next(t, st.date_offset);
@@ -181,13 +195,14 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     }
     let group =
         timespan_opt.map_or((String::new(), ""), |timespan| timespan.at(curts, st.date_offset));
-    cmd_stats_group(&mut tbl, st, lim, show, group, &sync_time, &pkg_time)?;
+    cmd_stats_group(&mut tbl, st, lim, curve, show, group, &sync_time, &pkg_time)?;
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
 
 fn cmd_stats_group(tbl: &mut Table<8>,
                    st: &Styles,
                    lim: u16,
+                   curve: Curve,
                    show: Show,
                    group: (String, &str),
                    sync_time: &BTreeMap<String, Times>,
@@ -208,10 +223,10 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                      &[&st.pkg, &pkg],
                      &[&st.cnt, &merge.count],
                      &[&st.dur, &fmt_duration(st.dur_t, merge.tot)],
-                     &[&st.dur, &fmt_duration(st.dur_t, merge.pred(lim))],
+                     &[&st.dur, &fmt_duration(st.dur_t, merge.pred(lim, curve))],
                      &[&st.cnt, &unmerge.count],
                      &[&st.dur, &fmt_duration(st.dur_t, unmerge.tot)],
-                     &[&st.dur, &fmt_duration(st.dur_t, unmerge.pred(lim))]]);
+                     &[&st.dur, &fmt_duration(st.dur_t, unmerge.pred(lim, curve))]]);
         }
     }
     if show.tot && !pkg_time.is_empty() {
@@ -252,7 +267,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                      &[&"Sync ", &repo],
                      &[&st.cnt, &time.count],
                      &[&st.dur, &fmt_duration(st.dur_t, time.tot)],
-                     &[&st.dur, &fmt_duration(st.dur_t, time.pred(lim))],
+                     &[&st.dur, &fmt_duration(st.dur_t, time.pred(lim, curve))],
                      &[],
                      &[],
                      &[]]);
@@ -269,6 +284,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let now = epoch_now();
     let show: Show = args.value_of_t("show").unwrap();
     let lim = value(args, "limit", parse_limit);
+    let curve = args.value_of_t("curve").unwrap();
     let mut tbl =
         Table::<3>::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 
@@ -345,7 +361,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         totcount += 1;
         let pred_fmt = match times.get(&ebuild) {
             Some(tv) => {
-                let pred = tv.pred(lim);
+                let pred = tv.pred(lim, curve);
                 totpredict += pred;
                 if elapsed > 0 {
                     totelapsed += elapsed;

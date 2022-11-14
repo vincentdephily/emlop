@@ -63,9 +63,21 @@ pub fn build_cli_nocomplete() -> Command<'static> {
 
     let limit = Arg::new("limit").long("limit")
                                  .takes_value(true)
+                                 .value_name("num")
                                  .default_value("10")
                                  .help_heading("STATS")
-                                 .help("Use the last N merge times to predict next merge time.");
+                                 .help("Use the last N merge times to predict durations.");
+    let curve =
+        Arg::new("curve").long("curve")
+                         .value_name("f,a")
+                         .possible_values(&["f", "a"])
+                         .hide_possible_values(true)
+                         .default_value("f")
+                         .help_heading("STATS")
+                         .help("Use (f)lat or (a)rithmetic curve to predict durations.")
+                         .long_help("Use (f)lat or (a)rithmetic curve to predict durations.\n  \
+                                             f: simple average.\n  \
+                                             a: gives more weight to recent merges.");
     let group = Arg::new("group").short('g')
                                  .long("groupby")
                                  .value_name("y,m,w,d")
@@ -228,6 +240,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         Command::new("predict").about("Predict merge time for current or pretended merges.")
                                .long_about(h)
                                .arg(show_p)
+                               .arg(&curve)
                                .arg(&limit);
 
     let h = "Show statistics about sucessful (un)merges (overall or per-package) and syncs.
@@ -243,6 +256,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                              .arg(group)
                              .arg(exact)
                              .arg(pkg)
+                             .arg(curve)
                              .arg(limit);
 
     ////////////////////////////////////////////////////////////
