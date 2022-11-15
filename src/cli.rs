@@ -82,7 +82,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let group = Arg::new("group").short('g')
                                  .long("groupby")
                                  .value_name("y,m,w,d")
-                                 .possible_values(&["y", "m", "w", "d"])
+                                 .possible_values(["y", "m", "w", "d"])
                                  .hide_possible_values(true)
                                  .help_heading("STATS")
                                  .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay.")
@@ -146,8 +146,8 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         Arg::new("date").value_name("format")
                         .long("date")
                         .global(true)
-                        .possible_values(&["ymd", "d", "ymdhms", "dt", "ymdhmso", "dto",
-                                           "rfc3339", "3339", "rfc2822", "2822", "compact", "unix"])
+                        .possible_values(["ymd", "d", "ymdhms", "dt", "ymdhmso", "dto", "rfc3339",
+                                          "3339", "rfc2822", "2822", "compact", "unix"])
                         .hide_possible_values(true)
                         .default_value("ymdhms")
                         .display_order(52)
@@ -164,7 +164,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let duration = Arg::new("duration").value_name("format")
                                        .long("duration")
                                        .global(true)
-                                       .possible_values(&["hms", "hms_fixed", "s", "human"])
+                                       .possible_values(["hms", "hms_fixed", "s", "human"])
                                        .hide_possible_values(true)
                                        .default_value("hms")
                                        .display_order(51)
@@ -188,7 +188,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .alias("colour")
                                  .global(true)
                                  .takes_value(true)
-                                 .possible_values(&["auto", "always", "never", "y", "n"])
+                                 .possible_values(["auto", "always", "never", "y", "n"])
                                  .hide_possible_values(true)
                                  .default_value("auto")
                                  .default_missing_value("y")
@@ -302,7 +302,7 @@ pub fn build_cli() -> Command<'static> {
                   To apply the changes, either restart you shell or `source` the generated file.";
     let shell = Arg::new("shell").help("Target shell")
                                  .required(true)
-                                 .possible_values(&["bash", "zsh", "fish"]);
+                                 .possible_values(["bash", "zsh", "fish"]);
     let cmd = Command::new("complete").about("Generate shell completion script.")
                                       .long_about(labout)
                                       .arg(shell);

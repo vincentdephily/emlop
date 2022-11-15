@@ -91,12 +91,12 @@ pub struct Show {
 impl FromStr for Show {
     type Err = String;
     fn from_str(show: &str) -> Result<Self, Self::Err> {
-        Ok(Self { pkg: show.contains(&"p") || show.contains(&"a"),
-                  tot: show.contains(&"t") || show.contains(&"a"),
-                  sync: show.contains(&"s") || show.contains(&"a"),
-                  merge: show.contains(&"m") || show.contains(&"a"),
-                  unmerge: show.contains(&"u") || show.contains(&"a"),
-                  emerge: show.contains(&"e") || show.contains(&"a") })
+        Ok(Self { pkg: show.contains('p') || show.contains('a'),
+                  tot: show.contains('t') || show.contains('a'),
+                  sync: show.contains('s') || show.contains('a'),
+                  merge: show.contains('m') || show.contains('a'),
+                  unmerge: show.contains('u') || show.contains('a'),
+                  emerge: show.contains('e') || show.contains('a') })
     }
 }
 

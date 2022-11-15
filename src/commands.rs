@@ -22,10 +22,8 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
-    let mut tbl = Table::<3>::new(st.clr).align(0, Align::Left)
-                                         .align(2, Align::Left)
-                                         .margin(2, " ")
-                                         .last(last);
+    let mut tbl =
+        Table::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ").last(last);
     tbl.header(st.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
     for p in hist {
         match p {
@@ -134,8 +132,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         args.is_present("exact"))?;
     let lim = *args.get_one("limit").unwrap();
     let curve = *args.get_one("curve").unwrap();
-    let mut tbl =
-        Table::<8>::new(st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
+    let mut tbl = Table::new(st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
@@ -199,6 +196,8 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
 
+// Reducing the arg count here doesn't seem worth it, for either readability or performance
+#[allow(clippy::too_many_arguments)]
 fn cmd_stats_group(tbl: &mut Table<8>,
                    st: &Styles,
                    lim: u16,
@@ -285,8 +284,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let show: Show = args.value_of_t("show").unwrap();
     let lim = *args.get_one("limit").unwrap();
     let curve = *args.get_one("curve").unwrap();
-    let mut tbl =
-        Table::<3>::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
+    let mut tbl = Table::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
