@@ -129,7 +129,7 @@ fn parse_date_ago(s: &str) -> Result<i64, Error> {
 
 /// Parse rfc3339-like format with added flexibility
 fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
-    use time::format_description::{modifier::*, Component, FormatItem::*};
+    use time::format_description::parse_owned;
     let mut p = Parsed::new().with_hour_24(0)
                              .unwrap()
                              .with_minute(0)
@@ -143,26 +143,8 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
                              .with_offset_second_signed(offset.seconds_past_minute())
                              .unwrap();
     // See <https://github.com/time-rs/time/issues/428>
-    let rest = p.parse_items(s.as_bytes(), &[
-        Component(Component::Year(Year::default())),
-        Literal(b"-"),
-        Component(Component::Month(Month::default())),
-        Literal(b"-"),
-        Component(Component::Day(Day::default())),
-        Optional(&Compound(&[
-            First(&[
-                Literal(b"T"),
-                Literal(b" ")
-            ]),
-            Component(Component::Hour(Hour::default())),
-            Literal(b":"),
-            Component(Component::Minute(Minute::default())),
-            Optional(&Compound(&[
-                Literal(b":"),
-                Component(Component::Second(Second::default()))
-            ]))
-        ]))
-    ])?;
+    let fmt = parse_owned("[year]-[month]-[day][optional [[first [[[][\\]][T][ ]][hour]:[minute][optional [:[second]]]]]").unwrap();
+    let rest = p.parse_items(s.as_bytes(), &[fmt])?;
     if !rest.is_empty() {
         bail!("Junk at end")
     }
