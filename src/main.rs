@@ -79,16 +79,6 @@ pub fn value_opt<T, P, A>(matches: &ArgMatches, name: &str, parse: P, arg: A) ->
     }
 }
 
-// TODO: clap can validate that
-pub fn parse_limit(s: &str) -> Result<u16, String> {
-    u16::from_str(s).map_err(|_| {
-                        format!("Must be an integer between {} and {}",
-                                std::u16::MIN,
-                                std::u16::MAX)
-                    })
-}
-
-
 #[derive(Clone, Copy, Default)]
 pub struct Show {
     pub pkg: bool,
@@ -118,10 +108,10 @@ pub enum Curve {
 impl FromStr for Curve {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "f" => Ok(Self::Flat),
-            "a" => Ok(Self::Arithmetic),
-            _ => Err("Valid values are 'f', 'a'.".into()),
+        match true {
+            _ if "flat".starts_with(s) => Ok(Self::Flat),
+            _ if "arithmetic".starts_with(s) => Ok(Self::Arithmetic),
+            _ => Err("Valid values are 'flat', 'arithmetic'.".into()),
         }
     }
 }

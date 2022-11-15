@@ -132,8 +132,8 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         show,
                         args.value_of("package"),
                         args.is_present("exact"))?;
-    let lim = value(args, "limit", parse_limit);
-    let curve = args.value_of_t("curve").unwrap();
+    let lim = *args.get_one("limit").unwrap();
+    let curve = *args.get_one("curve").unwrap();
     let mut tbl =
         Table::<8>::new(st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
@@ -283,8 +283,8 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let now = epoch_now();
     let show: Show = args.value_of_t("show").unwrap();
-    let lim = value(args, "limit", parse_limit);
-    let curve = args.value_of_t("curve").unwrap();
+    let lim = *args.get_one("limit").unwrap();
+    let curve = *args.get_one("curve").unwrap();
     let mut tbl =
         Table::<3>::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 

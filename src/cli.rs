@@ -64,20 +64,21 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let limit = Arg::new("limit").long("limit")
                                  .takes_value(true)
                                  .value_name("num")
+                                 .value_parser(clap::value_parser!(u16).range(1..))
                                  .default_value("10")
                                  .help_heading("STATS")
                                  .help("Use the last N merge times to predict durations.");
     let curve =
         Arg::new("curve").long("curve")
                          .value_name("f,a")
-                         .possible_values(&["f", "a"])
-                         .hide_possible_values(true)
+                         .value_parser(clap::value_parser!(crate::Curve))
                          .default_value("f")
                          .help_heading("STATS")
                          .help("Use (f)lat or (a)rithmetic curve to predict durations.")
-                         .long_help("Use (f)lat or (a)rithmetic curve to predict durations.\n  \
-                                             f: simple average.\n  \
-                                             a: gives more weight to recent merges.");
+                         .long_help("Use flat or arithmetic curve to predict durations.\n  \
+                                     flat:       simple average.\n  \
+                                     arithmetic: gives more weight to recent merges.\n\
+                                     Value can be abbreviated");
     let group = Arg::new("group").short('g')
                                  .long("groupby")
                                  .value_name("y,m,w,d")
