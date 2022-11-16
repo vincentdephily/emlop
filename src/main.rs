@@ -88,15 +88,19 @@ pub struct Show {
     pub unmerge: bool,
     pub emerge: bool,
 }
-impl FromStr for Show {
-    type Err = String;
-    fn from_str(show: &str) -> Result<Self, Self::Err> {
-        Ok(Self { pkg: show.contains('p') || show.contains('a'),
-                  tot: show.contains('t') || show.contains('a'),
-                  sync: show.contains('s') || show.contains('a'),
-                  merge: show.contains('m') || show.contains('a'),
-                  unmerge: show.contains('u') || show.contains('a'),
-                  emerge: show.contains('e') || show.contains('a') })
+impl Show {
+    fn parse(show: &str, valid: &str) -> Result<Self, String> {
+        debug_assert!(valid.is_ascii()); // Because we use `chars()` we need to stick to ascii for `valid`.
+        if show.chars().all(|c| valid.contains(c)) {
+            Ok(Self { pkg: show.contains('p') || show.contains('a'),
+                      tot: show.contains('t') || show.contains('a'),
+                      sync: show.contains('s') || show.contains('a'),
+                      merge: show.contains('m') || show.contains('a'),
+                      unmerge: show.contains('u') || show.contains('a'),
+                      emerge: show.contains('e') || show.contains('a') })
+        } else {
+            Err(format!("Valid values are letters of '{valid}'"))
+        }
     }
 }
 

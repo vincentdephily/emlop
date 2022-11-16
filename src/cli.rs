@@ -24,7 +24,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let show_l = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("m,u,s,a")
-                                 .validator(|s| find_invalid("musa", s))
+                                 .value_parser(|s: &str| crate::Show::parse(s, "musa"))
                                  .default_value("m")
                                  .display_order(3)
                                  .help_heading("FILTER")
@@ -37,7 +37,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let show_s = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("p,t,s,a")
-                                 .validator(|s| find_invalid("ptsa", s))
+                                 .value_parser(|s: &str| crate::Show::parse(s, "ptsa"))
                                  .default_value("p")
                                  .display_order(3)
                                  .help_heading("FILTER")
@@ -50,7 +50,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let show_p = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("e,m,t,a")
-                                 .validator(|s| find_invalid("emta", s))
+                                 .value_parser(|s: &str| crate::Show::parse(s, "emta"))
                                  .default_value("emt")
                                  .display_order(3)
                                  .help_heading("FILTER")
@@ -307,13 +307,4 @@ pub fn build_cli() -> Command<'static> {
                                       .long_about(labout)
                                       .arg(shell);
     build_cli_nocomplete().subcommand(cmd)
-}
-
-/// Clap validation helper that checks that all chars are valid.
-fn find_invalid(valid: &'static str, s: &str) -> Result<(), String> {
-    debug_assert!(valid.is_ascii()); // Because we use `chars()` we need to stick to ascii for `valid`.
-    match s.chars().find(|&c| !(valid.contains(c))) {
-        None => Ok(()),
-        Some(_) => Err(String::new()),
-    }
 }

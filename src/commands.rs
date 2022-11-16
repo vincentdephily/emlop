@@ -8,7 +8,7 @@ use std::{collections::{BTreeMap, HashMap},
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
-    let show = args.value_of_t("show").unwrap();
+    let show = *args.get_one("show").unwrap();
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
@@ -122,7 +122,7 @@ impl Times {
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
-    let show = args.value_of_t("show").unwrap();
+    let show = *args.get_one("show").unwrap();
     let timespan_opt = value_opt(args, "group", parse_timespan, ());
     let hist = new_hist(args.value_of("logfile").unwrap().into(),
                         value_opt(args, "from", parse_date, st.date_offset),
@@ -281,7 +281,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
 pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let now = epoch_now();
-    let show: Show = args.value_of_t("show").unwrap();
+    let show: Show = *args.get_one("show").unwrap();
     let lim = *args.get_one("limit").unwrap();
     let curve = *args.get_one("curve").unwrap();
     let mut tbl = Table::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
