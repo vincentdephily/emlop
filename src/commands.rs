@@ -14,10 +14,10 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
                         args.value_of("package"),
-                        args.is_present("exact"))?;
+                        args.get_flag("exact"))?;
     let first = *args.get_one("first").unwrap_or(&usize::MAX);
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
-    let stt = args.is_present("starttime");
+    let stt = args.get_flag("starttime");
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
@@ -129,7 +129,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
                         args.value_of("package"),
-                        args.is_present("exact"))?;
+                        args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
     let curve = *args.get_one("curve").unwrap();
     let mut tbl = Table::new(st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");

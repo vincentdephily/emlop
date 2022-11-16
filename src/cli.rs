@@ -1,4 +1,4 @@
-use clap::{crate_version, Arg, Command};
+use clap::{crate_version, Arg, Command, ArgAction::*};
 
 /// Generate cli argument parser without the `complete` subcommand.
 pub fn build_cli_nocomplete() -> Command<'static> {
@@ -11,6 +11,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .help("    Show only packages matching <package>.");
     let exact = Arg::new("exact").short('e')
                                  .long("exact")
+                                 .action(SetTrue)
                                  .display_order(2)
                                  .help_heading("FILTER")
                                  .help("Match package with a string instead of a regex.")
@@ -138,6 +139,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
 
     let header = Arg::new("header").short('H')
                                    .long("header")
+                                   .action(SetTrue)
                                    .global(true)
                                    .display_order(50)
                                    .help_heading("FORMAT")
@@ -177,10 +179,12 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                                    human:    10 minutes, 30 seconds");
     let utc = Arg::new("utc").long("utc")
                              .global(true)
+                             .action(SetTrue)
                              .display_order(53)
                              .help_heading("FORMAT")
                              .help("Parse/display dates in UTC instead of local time");
     let starttime = Arg::new("starttime").long("starttime")
+                                         .action(SetTrue)
                                          .display_order(54)
                                          .help_heading("FORMAT")
                                          .help("Display start time instead of end time");

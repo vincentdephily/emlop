@@ -201,10 +201,10 @@ impl Styles {
             Some("never") | Some("n") => false,
             _ => atty::is(atty::Stream::Stdout),
         };
-        let header = args.is_present("header");
+        let header = args.get_flag("header");
         let dur_fmt = args.value_of_t("duration").unwrap();
         let date_fmt = args.value_of_t("date").unwrap();
-        let utc = args.is_present("utc");
+        let utc = args.get_flag("utc");
         Styles::new(color, header, dur_fmt, date_fmt, utc)
     }
 
