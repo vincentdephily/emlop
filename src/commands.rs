@@ -93,22 +93,32 @@ impl Times {
         }
     }
     /// Predict the next data point by looking at past ones
-    fn pred(&self, lim: u16, curve: Curve) -> i64 {
+    fn pred(&self, lim: u16, avg: Average) -> i64 {
         if self.vals.is_empty() {
             return -1; // FIXME Return None
         }
-        let lim = self.vals.len().min(lim as usize);
-        match curve {
-            // Simple moving average
-            Curve::Flat => self.vals.iter().take(lim).sum::<i64>() / lim as i64,
+        let l = self.vals.len().min(lim as usize);
+        match avg {
+            // Simple mean
+            Average::Mean => self.vals.iter().take(l).sum::<i64>() / l as i64,
+            // Middle value (or avg of the middle two)
+            Average::Median => {
+                let mut s: Vec<i64> = self.vals.iter().copied().take(l).collect();
+                s.sort_unstable();
+                if l % 2 == 0 {
+                    (s[(l / 2) - 1] + s[l / 2]) / 2
+                } else {
+                    s[l / 2]
+                }
+            },
             // Arithmically weighted moving average
             // Eg for 4 values the weights are 4,3,2,1 (most recent value first)
-            Curve::Arithmetic => {
+            Average::Weighted => {
                 let (s, n, w) =
                     self.vals
                         .iter()
-                        .take(lim)
-                        .fold((0, lim as i64, 0), |(s, n, w), v| (s + v * n, n - 1, w + n));
+                        .take(l)
+                        .fold((0, l as i64, 0), |(s, n, w), v| (s + v * n, n - 1, w + n));
                 debug_assert!(n == 0);
                 s / w
             },
@@ -131,7 +141,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         args.value_of("package"),
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
-    let curve = *args.get_one("curve").unwrap();
+    let avg = *args.get_one("average").unwrap();
     let mut tbl = Table::new(st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
@@ -148,7 +158,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                 curts = t;
             } else if t > nextts {
                 let group = timespan.at(curts, st.date_offset);
-                cmd_stats_group(&mut tbl, st, lim, curve, show, group, &sync_time, &pkg_time)?;
+                cmd_stats_group(&mut tbl, st, lim, avg, show, group, &sync_time, &pkg_time)?;
                 sync_time.clear();
                 pkg_time.clear();
                 nextts = timespan.next(t, st.date_offset);
@@ -192,7 +202,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     }
     let group =
         timespan_opt.map_or((String::new(), ""), |timespan| timespan.at(curts, st.date_offset));
-    cmd_stats_group(&mut tbl, st, lim, curve, show, group, &sync_time, &pkg_time)?;
+    cmd_stats_group(&mut tbl, st, lim, avg, show, group, &sync_time, &pkg_time)?;
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
 
@@ -201,7 +211,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
 fn cmd_stats_group(tbl: &mut Table<8>,
                    st: &Styles,
                    lim: u16,
-                   curve: Curve,
+                   avg: Average,
                    show: Show,
                    group: (String, &str),
                    sync_time: &BTreeMap<String, Times>,
@@ -222,10 +232,10 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                      &[&st.pkg, &pkg],
                      &[&st.cnt, &merge.count],
                      &[&st.dur, &fmt_duration(st.dur_t, merge.tot)],
-                     &[&st.dur, &fmt_duration(st.dur_t, merge.pred(lim, curve))],
+                     &[&st.dur, &fmt_duration(st.dur_t, merge.pred(lim, avg))],
                      &[&st.cnt, &unmerge.count],
                      &[&st.dur, &fmt_duration(st.dur_t, unmerge.tot)],
-                     &[&st.dur, &fmt_duration(st.dur_t, unmerge.pred(lim, curve))]]);
+                     &[&st.dur, &fmt_duration(st.dur_t, unmerge.pred(lim, avg))]]);
         }
     }
     if show.tot && !pkg_time.is_empty() {
@@ -266,7 +276,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                      &[&"Sync ", &repo],
                      &[&st.cnt, &time.count],
                      &[&st.dur, &fmt_duration(st.dur_t, time.tot)],
-                     &[&st.dur, &fmt_duration(st.dur_t, time.pred(lim, curve))],
+                     &[&st.dur, &fmt_duration(st.dur_t, time.pred(lim, avg))],
                      &[],
                      &[],
                      &[]]);
@@ -283,7 +293,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let now = epoch_now();
     let show: Show = *args.get_one("show").unwrap();
     let lim = *args.get_one("limit").unwrap();
-    let curve = *args.get_one("curve").unwrap();
+    let avg = *args.get_one("average").unwrap();
     let mut tbl = Table::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 
     // Gather and print info about current merge process.
@@ -359,7 +369,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         totcount += 1;
         let pred_fmt = match times.get(&ebuild) {
             Some(tv) => {
-                let pred = tv.pred(lim, curve);
+                let pred = tv.pred(lim, avg);
                 totpredict += pred;
                 if elapsed > 0 {
                     totelapsed += elapsed;

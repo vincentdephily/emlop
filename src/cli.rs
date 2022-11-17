@@ -1,4 +1,4 @@
-use clap::{crate_version, Arg, Command, ArgAction::*};
+use clap::{crate_version, Arg, ArgAction::*, Command};
 
 /// Generate cli argument parser without the `complete` subcommand.
 pub fn build_cli_nocomplete() -> Command<'static> {
@@ -69,17 +69,17 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .default_value("10")
                                  .help_heading("STATS")
                                  .help("Use the last N merge times to predict durations.");
-    let curve =
-        Arg::new("curve").long("curve")
-                         .value_name("f,a")
-                         .value_parser(clap::value_parser!(crate::Curve))
-                         .default_value("f")
+    let avg =
+        Arg::new("average").long("avg")
+                         .value_name("fn")
+                         .value_parser(crate::Average::parse)
+                         .default_value("mean")
                          .help_heading("STATS")
-                         .help("Use (f)lat or (a)rithmetic curve to predict durations.")
-                         .long_help("Use flat or arithmetic curve to predict durations.\n  \
-                                     flat:       simple average.\n  \
-                                     arithmetic: gives more weight to recent merges.\n\
-                                     Value can be abbreviated");
+                         .help("Use mean/median/weighted function to predict durations.")
+                         .long_help("Use mean/median/weighted function to predict durations.\n  \
+                                     mean:     simple 'sum/count' average\n  \
+                                     median:   central value, mitigates outliers\n  \
+                                     weighted: 'sum/count' with more weight for recent values");
     let group = Arg::new("group").short('g')
                                  .long("groupby")
                                  .value_name("y,m,w,d")
@@ -219,9 +219,9 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                      .display_order(61)
                                      .help("Increase verbosity (can be given multiple times).")
                                      .long_help("Increase verbosity (defaults to errors only)\n  \
-                                                 -v:      show warnings\n  \
-                                                 -vv:     show info\n  \
-                                                 -vvv:    show debug");
+                                                 -v:   show warnings\n  \
+                                                 -vv:  show info\n  \
+                                                 -vvv: show debug");
 
     ////////////////////////////////////////////////////////////
     // Subcommands
@@ -245,7 +245,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         Command::new("predict").about("Predict merge time for current or pretended merges.")
                                .long_about(h)
                                .arg(show_p)
-                               .arg(&curve)
+                               .arg(&avg)
                                .arg(&limit);
 
     let h = "Show statistics about sucessful (un)merges (overall or per-package) and syncs.
@@ -259,10 +259,10 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                              .long_about(h)
                              .arg(show_s)
                              .arg(group)
-                             .arg(exact)
-                             .arg(pkg)
-                             .arg(curve)
-                             .arg(limit);
+                             .arg(&exact)
+                             .arg(&pkg)
+                             .arg(&avg)
+                             .arg(&limit);
 
     ////////////////////////////////////////////////////////////
     // Main command

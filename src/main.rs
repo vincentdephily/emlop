@@ -105,17 +105,18 @@ impl Show {
 }
 
 #[derive(Clone, Copy)]
-pub enum Curve {
-    Flat,
-    Arithmetic,
+pub enum Average {
+    Mean,
+    Median,
+    Weighted,
 }
-impl FromStr for Curve {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match true {
-            _ if "flat".starts_with(s) => Ok(Self::Flat),
-            _ if "arithmetic".starts_with(s) => Ok(Self::Arithmetic),
-            _ => Err("Valid values are 'flat', 'arithmetic'.".into()),
+impl Average {
+    fn parse(s: &str) -> Result<Self, &'static str> {
+        match s {
+            "mean" => Ok(Self::Mean),
+            "median" => Ok(Self::Median),
+            "weighted" => Ok(Self::Weighted),
+            _ => Err("Valid values are 'mean', 'median', 'weighted'."),
         }
     }
 }
