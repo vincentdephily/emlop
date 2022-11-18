@@ -215,6 +215,14 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                              auto:             colored if on tty\n  \
                                              (empty)|always|y: colored\n  \
                                              never|n:          not colored");
+    let tabs = Arg::new("tabs").long("tabs")
+                               .global(true)
+                               .action(SetTrue)
+                               .display_order(56)
+                               .help_heading("FORMAT")
+                               .help("Separate columns using tabs instead of spaces")
+                               .long_help("Separate columns using tabs instead of spaces\n\
+                                         Useful for machine parsing.");
 
     let logfile = Arg::new("logfile").value_name("file")
                                      .long("logfile")
@@ -309,6 +317,7 @@ Use this to gauge the effect of the --limit and --avg options.";
                          .arg(date)
                          .arg(utc)
                          .arg(color)
+                         .arg(tabs)
                          .arg(logfile)
                          .arg(verbose)
                          .mut_arg("help", |a| {

@@ -1,3 +1,4 @@
+use crate::Styles;
 use std::{collections::VecDeque,
           fmt::Display,
           io::{stdout, BufWriter, Write as _}};
@@ -28,19 +29,22 @@ pub struct Table<const N: usize> {
     margins: [&'static str; N],
     /// Only print last N rows
     last: usize,
+    /// Align using tabs
+    tabs: bool,
 }
 
 impl<const N: usize> Table<N> {
     /// Initialize new table
-    pub fn new(lineend: &str) -> Table<N> {
+    pub fn new(st: &Styles) -> Table<N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
                widths: [0; N],
                empty: [true; N],
-               lineend: format!("{}\n", lineend).into(),
+               lineend: format!("{}\n", st.clr).into(),
                aligns: [Align::Right; N],
                margins: ["  "; N],
-               last: usize::MAX }
+               last: usize::MAX,
+               tabs: st.tabs }
     }
     /// Specify column alignments
     pub fn align(mut self, col: usize, align: Align) -> Self {
@@ -57,7 +61,6 @@ impl<const N: usize> Table<N> {
         self.last = last;
         self
     }
-    /// Add a section header
     /// Add a section header
     pub fn header(&mut self, enabled: bool, row: [&[&dyn Display]; N]) {
         if enabled {
@@ -85,7 +88,9 @@ impl<const N: usize> Table<N> {
                 }
             }
             let pos2 = self.buf.len();
-            self.widths[i] = usize::max(self.widths[i], len);
+            if !self.tabs {
+                self.widths[i] = usize::max(self.widths[i], len);
+            }
             self.empty[i] &= len == 0;
             idxrow[i] = (len, pos0, pos2);
         }
@@ -111,26 +116,33 @@ impl<const N: usize> Drop for Table<N> {
                 if self.empty[i] {
                     continue;
                 }
-                // Min space between columns
-                if !first {
-                    out.write_all(self.margins[i].as_bytes()).unwrap_or(());
+                let (len, pos0, pos1) = row[i];
+                if self.tabs {
+                    if !first {
+                        out.write_all(b"\t").unwrap_or(());
+                    }
+                    out.write_all(&self.buf[pos0..pos1]).unwrap_or(());
+                } else {
+                    // Min space between columns
+                    if !first {
+                        out.write_all(self.margins[i].as_bytes()).unwrap_or(());
+                    }
+                    // Write the cell with alignment
+                    let pad = &spaces[0..usize::min(spaces.len(), self.widths[i] - len)];
+                    match self.aligns[i] {
+                        Align::Right => {
+                            out.write_all(pad).unwrap_or(());
+                            out.write_all(&self.buf[pos0..pos1]).unwrap_or(());
+                        },
+                        Align::Left => {
+                            out.write_all(&self.buf[pos0..pos1]).unwrap_or(());
+                            if i < N - 1 {
+                                out.write_all(pad).unwrap_or(());
+                            }
+                        },
+                    }
                 }
                 first = false;
-                // Write the cell with alignment
-                let (len, pos0, pos1) = row[i];
-                let pad = usize::min(spaces.len(), self.widths[i] - len);
-                match self.aligns[i] {
-                    Align::Right => {
-                        out.write_all(&spaces[0..pad]).unwrap_or(());
-                        out.write_all(&self.buf[pos0..pos1]).unwrap_or(());
-                    },
-                    Align::Left => {
-                        out.write_all(&self.buf[pos0..pos1]).unwrap_or(());
-                        if i < N - 1 {
-                            out.write_all(&spaces[0..pad]).unwrap_or(());
-                        }
-                    },
-                }
             }
             out.write_all(&self.lineend).unwrap_or(());
         }

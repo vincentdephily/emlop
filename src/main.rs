@@ -196,6 +196,7 @@ pub struct Styles {
     dur_t: DurationStyle,
     date_offset: UtcOffset,
     date_fmt: DateStyle,
+    tabs: bool,
 }
 impl Styles {
     fn from_args(args: &ArgMatches) -> Self {
@@ -208,10 +209,17 @@ impl Styles {
         let dur_fmt = *args.get_one("duration").unwrap();
         let date_fmt = args.value_of_t("date").unwrap();
         let utc = args.get_flag("utc");
-        Styles::new(color, header, dur_fmt, date_fmt, utc)
+        let tabs = args.get_flag("tabs");
+        Styles::new(color, header, dur_fmt, date_fmt, utc, tabs)
     }
 
-    fn new(color: bool, header: bool, duration: DurationStyle, date: DateStyle, utc: bool) -> Self {
+    fn new(color: bool,
+           header: bool,
+           duration: DurationStyle,
+           date: DateStyle,
+           utc: bool,
+           tabs: bool)
+           -> Self {
         if color {
             Styles { pkg: "\x1B[1;32m",
                      merge: "\x1B[1;32m",
@@ -222,7 +230,8 @@ impl Styles {
                      header,
                      dur_t: duration,
                      date_offset: date::get_offset(utc),
-                     date_fmt: date }
+                     date_fmt: date,
+                     tabs }
         } else {
             Styles { pkg: "",
                      merge: ">>> ",
@@ -233,7 +242,8 @@ impl Styles {
                      header,
                      dur_t: duration,
                      date_offset: date::get_offset(utc),
-                     date_fmt: date }
+                     date_fmt: date,
+                     tabs }
         }
     }
 }

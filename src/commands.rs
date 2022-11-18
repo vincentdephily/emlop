@@ -23,7 +23,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
     let mut tbl =
-        Table::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ").last(last);
+        Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ").last(last);
     tbl.header(st.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
     for p in hist {
         match p {
@@ -142,7 +142,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("average").unwrap();
-    let mut tbl = Table::new(st.clr).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
+    let mut tbl = Table::new(st).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
@@ -291,7 +291,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let show: Show = *args.get_one("show").unwrap();
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("average").unwrap();
-    let mut tbl = Table::new(st.clr).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
+    let mut tbl = Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
@@ -426,9 +426,10 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let mut tbl = Table::new(st.clr).align(0, Align::Left).align(1, Align::Left);
+    let mut tbl = Table::new(st).align(0, Align::Left).align(1, Align::Left);
     if show.merge {
-        tbl.header(st.header, [&[&"Date"], &[&"Package"], &[&"Real"], &[&"Predicted"], &[&"Error"]]);
+        tbl.header(st.header,
+                   [&[&"Date"], &[&"Package"], &[&"Real"], &[&"Predicted"], &[&"Error"]]);
     }
     for p in hist {
         match p {
@@ -473,7 +474,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     }
     drop(tbl);
     if show.tot {
-        let mut tbl = Table::new(st.clr).align(0, Align::Left);
+        let mut tbl = Table::new(st).align(0, Align::Left);
         tbl.header(st.header, [&[&"Package"], &[&"Error"]]);
         for (p, e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
