@@ -61,6 +61,18 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                              m: Package merges\n  \
                                              t: Total estimate\n  \
                                              a: All of the above");
+    let show_a = Arg::new("show").short('s')
+                                 .long("show")
+                                 .value_name("m,t,a")
+                                 .value_parser(|s: &str| crate::Show::parse(s, "mta"))
+                                 .default_value("mt")
+                                 .display_order(3)
+                                 .help_heading("FILTER")
+                                 .help("Show (m)erges, (t)otals, and/or (a)ll.")
+                                 .long_help("Show (any combination of)\n  \
+                                             m: Package merges\n  \
+                                             t: Totals\n  \
+                                             a: All of the above");
 
     let limit = Arg::new("limit").long("limit")
                                  .takes_value(true)
@@ -262,6 +274,16 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                              .arg(&pkg)
                              .arg(&avg)
                              .arg(&limit);
+    let h = "Compare actual merge time against predicted merge time.
+Use this to gauge the effect of the --limit and --avg options.";
+    let cmd_accuracy =
+        Command::new("accuracy").about("Compare actual merge time against predicted merge time.")
+                                .long_about(h)
+                                .arg(pkg)
+                                .arg(exact)
+                                .arg(show_a)
+                                .arg(avg)
+                                .arg(limit);
 
     ////////////////////////////////////////////////////////////
     // Main command
@@ -295,6 +317,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                          .subcommand(cmd_log)
                          .subcommand(cmd_pred)
                          .subcommand(cmd_stats)
+                         .subcommand(cmd_accuracy)
 }
 
 /// Generate cli argument parser.

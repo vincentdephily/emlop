@@ -27,6 +27,7 @@ fn main() {
         Some(("log", sub_args)) => cmd_list(sub_args),
         Some(("stats", sub_args)) => cmd_stats(sub_args),
         Some(("predict", sub_args)) => cmd_predict(sub_args),
+        Some(("accuracy", sub_args)) => cmd_accuracy(sub_args),
         Some(("complete", sub_args)) => cmd_complete(sub_args),
         _ => unreachable!("clap should have exited already"),
     };

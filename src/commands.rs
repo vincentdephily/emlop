@@ -411,6 +411,78 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     Ok(totcount > 0)
 }
 
+pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
+    let st = &Styles::from_args(args);
+    let show: Show = *args.get_one("show").unwrap();
+    let hist = new_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
+                        value_opt(args, "from", parse_date, st.date_offset),
+                        value_opt(args, "to", parse_date, st.date_offset),
+                        Show { merge: true, ..Show::default() },
+                        args.value_of("package"),
+                        args.get_flag("exact"))?;
+    let lim = *args.get_one("limit").unwrap();
+    let avg = *args.get_one("average").unwrap();
+    let mut pkg_starts: HashMap<String, i64> = HashMap::new();
+    let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
+    let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
+    let mut found = false;
+    let mut tbl = Table::new(st.clr).align(0, Align::Left).align(1, Align::Left);
+    if show.merge {
+        tbl.header(st.header, [&[&"Date"], &[&"Package"], &[&"Real"], &[&"Predicted"], &[&"Error"]]);
+    }
+    for p in hist {
+        match p {
+            Hist::MergeStart { ts, key, .. } => {
+                // This'll overwrite any previous entry, if a merge started but never finished
+                pkg_starts.insert(key, ts);
+            },
+            Hist::MergeStop { ts, ref key, .. } => {
+                found = true;
+                if let Some(start) = pkg_starts.remove(key) {
+                    let times = pkg_times.entry(p.ebuild().to_owned()).or_insert_with(Times::new);
+                    let real = ts - start;
+                    match times.pred(lim, avg) {
+                        -1 => {
+                            if show.merge {
+                                tbl.row([&[&fmt_time(ts, st)],
+                                         &[&st.merge, &p.ebuild_version()],
+                                         &[&st.dur, &st.dur_t.fmt(real)],
+                                         &[],
+                                         &[]])
+                            }
+                        },
+                        pred => {
+                            let err = (pred - real).abs() as f64 * 100.0 / real as f64;
+                            if show.merge {
+                                tbl.row([&[&fmt_time(ts, st)],
+                                         &[&st.merge, &p.ebuild_version()],
+                                         &[&st.dur, &st.dur_t.fmt(real)],
+                                         &[&st.dur, &st.dur_t.fmt(pred)],
+                                         &[&st.cnt, &format!("{:.1}%", err)]])
+                            }
+                            let errs =
+                                pkg_errs.entry(p.ebuild().to_owned()).or_insert_with(Vec::new);
+                            errs.push(err);
+                        },
+                    }
+                    times.insert(real);
+                }
+            },
+            e => panic!("Unexpected {e:?}"),
+        }
+    }
+    drop(tbl);
+    if show.tot {
+        let mut tbl = Table::new(st.clr).align(0, Align::Left);
+        tbl.header(st.header, [&[&"Package"], &[&"Error"]]);
+        for (p, e) in pkg_errs {
+            let avg = e.iter().sum::<f64>() / e.len() as f64;
+            tbl.row([&[&st.pkg, &p], &[&st.cnt, &format!("{:.1}%", avg)]]); //,
+        }
+    }
+    Ok(found)
+}
+
 pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
     let shell = match subargs.value_of("shell") {
         Some("bash") => clap_complete::Shell::Bash,
