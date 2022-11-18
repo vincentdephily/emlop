@@ -128,54 +128,55 @@ pub enum DurationStyle {
     Secs,
     Human,
 }
-impl FromStr for DurationStyle {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl DurationStyle {
+    fn parse(s: &str) -> Result<Self, String> {
         match s {
-            "hms" => Ok(DurationStyle::HMS),
-            "hms_fixed" => Ok(DurationStyle::HMSFixed),
-            "s" => Ok(DurationStyle::Secs),
-            "human" => Ok(DurationStyle::Human),
+            "hms" => Ok(Self::HMS),
+            "hms_fixed" => Ok(Self::HMSFixed),
+            "s" => Ok(Self::Secs),
+            "human" => Ok(Self::Human),
             _ => Err("Valid values are 'hms', 'hms_fixed', 's', 'human'.".into()),
         }
     }
-}
-pub fn fmt_duration(style: DurationStyle, secs: i64) -> String {
-    if secs < 0 {
-        return String::from("?");
-    }
-    match style {
-        DurationStyle::HMS if secs >= 3600 => {
-            format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
-        },
-        DurationStyle::HMS if secs >= 60 => format!("{}:{:02}", secs % 3600 / 60, secs % 60),
-        DurationStyle::HMS => format!("{}", secs),
-        DurationStyle::HMSFixed => {
-            format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
-        },
-        DurationStyle::Human if secs == 0 => String::from("0 second"),
-        DurationStyle::Human => {
-            let mut buf = String::with_capacity(16);
-            fmt_duration_append(&mut buf, secs / 86400, "day");
-            fmt_duration_append(&mut buf, secs % 86400 / 3600, "hour");
-            fmt_duration_append(&mut buf, secs % 3600 / 60, "minute");
-            fmt_duration_append(&mut buf, secs % 60, "second");
-            buf
-        },
-        DurationStyle::Secs => format!("{}", secs),
-    }
-}
-fn fmt_duration_append(buf: &mut String, num: i64, what: &'static str) {
-    use std::fmt::Write;
 
-    if num == 0 {
-        return;
+    fn fmt(&self, secs: i64) -> String {
+        if secs < 0 {
+            return String::from("?");
+        }
+        match &self {
+            Self::HMS if secs >= 3600 => {
+                format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
+            },
+            Self::HMS if secs >= 60 => format!("{}:{:02}", secs % 3600 / 60, secs % 60),
+            Self::HMS => format!("{}", secs),
+            Self::HMSFixed => {
+                format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
+            },
+            Self::Human if secs == 0 => String::from("0 second"),
+            Self::Human => {
+                let mut buf = String::with_capacity(16);
+                Self::fmt_append(&mut buf, secs / 86400, "day");
+                Self::fmt_append(&mut buf, secs % 86400 / 3600, "hour");
+                Self::fmt_append(&mut buf, secs % 3600 / 60, "minute");
+                Self::fmt_append(&mut buf, secs % 60, "second");
+                buf
+            },
+            Self::Secs => format!("{}", secs),
+        }
     }
-    let prefix = if buf.is_empty() { "" } else { ", " };
-    if num == 1 {
-        write!(buf, "{prefix}{num} {what}").expect("write to string");
-    } else {
-        write!(buf, "{prefix}{num} {what}s").expect("write to string");
+
+    fn fmt_append(buf: &mut String, num: i64, what: &'static str) {
+        use std::fmt::Write;
+
+        if num == 0 {
+            return;
+        }
+        let prefix = if buf.is_empty() { "" } else { ", " };
+        if num == 1 {
+            write!(buf, "{prefix}{num} {what}").expect("write to string");
+        } else {
+            write!(buf, "{prefix}{num} {what}s").expect("write to string");
+        }
     }
 }
 
@@ -203,7 +204,7 @@ impl Styles {
             _ => atty::is(atty::Stream::Stdout),
         };
         let header = args.get_flag("header");
-        let dur_fmt = args.value_of_t("duration").unwrap();
+        let dur_fmt = *args.get_one("duration").unwrap();
         let date_fmt = args.value_of_t("date").unwrap();
         let utc = args.get_flag("utc");
         Styles::new(color, header, dur_fmt, date_fmt, utc)
@@ -257,10 +258,10 @@ mod tests {
              ("?", "?", "?", "?", -1),
              ("?", "?", "?", "?", -123456)]
         {
-            assert_eq!(hms, fmt_duration(DurationStyle::HMS, i));
-            assert_eq!(hms_fixed, fmt_duration(DurationStyle::HMSFixed, i));
-            assert_eq!(human, fmt_duration(DurationStyle::Human, i));
-            assert_eq!(secs, fmt_duration(DurationStyle::Secs, i));
+            assert_eq!(hms, DurationStyle::HMS.fmt(i));
+            assert_eq!(hms_fixed, DurationStyle::HMSFixed.fmt(i));
+            assert_eq!(human, DurationStyle::Human.fmt(i));
+            assert_eq!(secs, DurationStyle::Secs.fmt(i));
         }
     }
 }
