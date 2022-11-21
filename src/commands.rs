@@ -525,16 +525,15 @@ mod tests {
     }
     /// Return a `Command` for the main binary, making sure it is compiled first. The first call can
     /// take a while, so do a warmup call before time-sensitive tests.
-    fn emlop() -> Command {
+    fn emlop(args: &str) -> Command {
         let mut e = Command::new(&*EMLOP);
         e.env("TZ", "UTC");
+        e.args(args.split_whitespace());
         e
     }
 
     fn emlop_out(args: &str) -> String {
-        let out = emlop().args(args.split_ascii_whitespace())
-                         .output()
-                         .expect(&format!("could not run emlop {:?}", args));
+        let out = emlop(args).output().expect(&format!("could not run emlop {:?}", args));
         assert!(out.status.success());
         assert!(out.stderr.is_empty());
         String::from_utf8(out.stdout).expect("Invalid utf8")
@@ -542,10 +541,9 @@ mod tests {
 
     #[test]
     fn log() {
-        #[rustfmt::skip]
-        let t: Vec<(&[&str], &str)> = vec![
+        let t: Vec<(&str, &str)> = vec![
             // Basic test
-            (&["-F", "test/emerge.10000.log", "l", "client"],
+            ("-F test/emerge.10000.log l client",
              "2018-02-04 04:55:19    35:46 >>> mail-client/thunderbird-52.6.0\n\
               2018-02-04 05:42:48    47:29 >>> www-client/firefox-58.0.1\n\
               2018-02-09 11:04:59    47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
@@ -558,15 +556,15 @@ mod tests {
               2018-03-12 10:35:22       14 >>> x11-apps/xlsclients-1.1.4\n\
               2018-03-12 11:03:53       16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
             // Check output when duration isn't known
-            (&["-F", "test/emerge.10000.log", "l", "-s", "m", "mlt", "-e", "--from", "2018-02-18 12:37:00"],
+            ("-F test/emerge.10000.log l -s m mlt -e --from 2018-02-18T12:37:00",
              "2018-02-18 12:37:09   ? >>> media-libs/mlt-6.4.1-r6\n\
               2018-02-27 15:10:05  43 >>> media-libs/mlt-6.4.1-r6\n\
               2018-02-27 16:48:40  39 >>> media-libs/mlt-6.4.1-r6\n"),
             // Check output of sync events
-            (&["-F", "test/emerge.10000.log", "l", "-ss", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
+            ("-F test/emerge.10000.log l -ss --from 2018-03-07T10:42:00 --to 2018-03-07T14:00:00",
              "2018-03-07 11:37:05  38 Sync gentoo\n\
               2018-03-07 13:56:09  40 Sync gentoo\n"),
-            (&["-F", "test/emerge.sync.log", "l", "-ss"],
+            ("-F test/emerge.sync.log l -ss",
              "2007-04-06 04:43:38    26:02 Sync gentoo-portage\n\
               2007-04-09 21:30:01    19:20 Sync gentoo-portage\n\
               2007-04-16 21:52:59    59:53 Sync gentoo-portage\n\
@@ -608,7 +606,7 @@ mod tests {
               2020-06-18 16:21:55        1 Sync steam-overlay\n\
               2020-06-18 16:21:56        1 Sync moltonel\n"),
             // Check output of all events
-            (&["-F", "test/emerge.10000.log", "l", "--show", "a", "--from", "2018-03-07 10:42:00", "--to", "2018-03-07 14:00:00"],
+            ("-F test/emerge.10000.log l --show a --from 2018-03-07T10:42:00 --to 2018-03-07T14:00:00",
              "2018-03-07 10:43:10    14 >>> sys-apps/the_silver_searcher-2.0.0\n\
               2018-03-07 11:37:05    38 Sync gentoo\n\
               2018-03-07 12:49:09     2 <<< sys-apps/util-linux-2.30.2\n\
@@ -618,7 +616,7 @@ mod tests {
               2018-03-07 13:59:41    24 >>> dev-libs/nspr-4.18\n")
         ];
         for (a, o) in t {
-            emlop().args(a).assert().stdout(o);
+            emlop(a).assert().stdout(o);
         }
     }
 
@@ -679,10 +677,7 @@ mod tests {
             //  2021-03-29 11:57:45 +01:00    31 >>> sys-devel/m4-1.4.18-r2\n"),
         ];
         for (t, o) in t {
-            emlop().args(&["-F", "test/emerge.dst.log", "l", "--date", "dto"])
-                   .env("TZ", t)
-                   .assert()
-                   .stdout(o);
+            emlop("-F test/emerge.dst.log l --date dto").env("TZ", t).assert().stdout(o);
         }
     }
 
@@ -692,17 +687,14 @@ mod tests {
     #[ignore]
     #[test]
     fn predict_tty() {
-        emlop().args(&["p", "-F", "test/emerge.10000.log"])
-               .assert()
-               .code(1)
-               .stdout("No pretended merge found\n");
+        emlop("p -F test/emerge.10000.log").assert().code(1).stdout("No pretended merge found\n");
     }
 
     /// Ignored by default: depends on there being no currently running emerge.
     #[ignore]
     #[test]
     fn predict_emerge_p() {
-        let _cache_cargo_build = emlop();
+        let _cache_cargo_build = emlop("");
         let t = vec![// Check garbage input
                      ("blah blah\n", format!("No pretended merge found\n"), 1),
                      // Check all-unknowns
@@ -722,19 +714,17 @@ mod tests {
                               ts(8 * 60 + 20)),
                       0),];
         for (i, o, e) in t {
-            emlop().args(&["-F", "test/emerge.10000.log", "p", "--date", "unix"])
-                   .write_stdin(i)
-                   .assert()
-                   .code(e)
-                   .stdout(o);
+            emlop("-F test/emerge.10000.log p --date unix").write_stdin(i)
+                                                           .assert()
+                                                           .code(e)
+                                                           .stdout(o);
         }
     }
 
     #[test]
     fn stats() {
-        #[rustfmt::skip]
-        let t: Vec<(&[&str],&str,i32)> = vec![
-            (&["-F","test/emerge.10000.log","s","client"],
+        let t: Vec<(&str, &str, i32)> = vec![
+            ("-F test/emerge.10000.log s client",
              "kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
               mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
               www-client/chromium           3  21:41:24  7:13:48  3  12  4\n\
@@ -743,20 +733,20 @@ mod tests {
               www-client/links              1        44       44  1   1  1\n\
               x11-apps/xlsclients           1        14       14  1   1  1\n",
              0),
-            (&["-F","test/emerge.sync.log","s","-ss"],
+            ("-F test/emerge.sync.log s -ss",
              "Sync gentoo          22  1:43:13     21\n\
               Sync gentoo-portage   5  4:32:42  54:32\n\
               Sync moltonel         8       26      3\n\
               Sync steam-overlay    5       10      2\n",
              0),
-            (&["-F","test/emerge.sync.log","s","-ss","gentoo"],
+            ("-F test/emerge.sync.log s -ss gentoo",
              "Sync gentoo          22  1:43:13     21\n\
               Sync gentoo-portage   5  4:32:42  54:32\n",
              0),
-            (&["-F","test/emerge.10000.log","s","client","-sst"],
+            ("-F test/emerge.10000.log s client -sst",
              "Total  11  24:00:24  2:10:56  10  27  2\n",
              0),
-            (&["-F","test/emerge.10000.log","s","client","-sa"],
+            ("-F test/emerge.10000.log s client -sa",
              "kde-frameworks/kxmlrpcclient   2        47       23   2   4  2\n\
               mail-client/thunderbird        2   1:23:44    41:52   2   6  3\n\
               www-client/chromium            3  21:41:24  7:13:48   3  12  4\n\
@@ -766,12 +756,12 @@ mod tests {
               x11-apps/xlsclients            1        14       14   1   1  1\n\
               Total                         11  24:00:24  2:10:56  10  27  2\n",
              0),
-            (&["-F","test/emerge.10000.log","s","--from","2018-02-03T23:11:47","--to","2018-02-04","notfound","-sa"],
+            ("-F test/emerge.10000.log s --from 2018-02-03T23:11:47 --to 2018-02-04 notfound -sa",
              "",
              1),
         ];
         for (a, o, e) in t {
-            emlop().args(a).assert().code(e).stdout(o);
+            emlop(a).assert().code(e).stdout(o);
         }
     }
 
@@ -780,14 +770,13 @@ mod tests {
     /// same, and avg*count==tot).
     #[test]
     fn stats_grouped() {
-        #[rustfmt::skip]
-        let t: Vec<(&[&str],&str)> = vec![
-            (&["-F","test/emerge.10000.log","s","--duration","s","-sp","gentoo-sources","-gy"],
+        let t: Vec<(&str, &str)> = vec![
+            ("-F test/emerge.10000.log s --duration s -sp gentoo-sources -gy",
              "2018 sys-kernel/gentoo-sources  10  904  90  11  200  16\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-sp","gentoo-sources","-gm"],
+            ("-F test/emerge.10000.log s --duration s -sp gentoo-sources -gm",
              "2018-02 sys-kernel/gentoo-sources  8  702   87  8  149  18\n\
               2018-03 sys-kernel/gentoo-sources  2  202  101  3   51  17\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-sp","gentoo-sources","-gw"],
+            ("-F test/emerge.10000.log s --duration s -sp gentoo-sources -gw",
              "2018-05 sys-kernel/gentoo-sources  1   81   81  0   0   ?\n\
               2018-06 sys-kernel/gentoo-sources  2  192   96  3  66  22\n\
               2018-07 sys-kernel/gentoo-sources  2  198   99  0   0   ?\n\
@@ -795,7 +784,7 @@ mod tests {
               2018-09 sys-kernel/gentoo-sources  3  236   78  3  61  20\n\
               2018-10 sys-kernel/gentoo-sources  0    0    ?  1  23  23\n\
               2018-11 sys-kernel/gentoo-sources  1  120  120  1  13  13\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-sp","gentoo-sources","-gd"],
+            ("-F test/emerge.10000.log s --duration s -sp gentoo-sources -gd",
              "2018-02-04 sys-kernel/gentoo-sources  1   81   81  0   0   ?\n\
               2018-02-05 sys-kernel/gentoo-sources  1   95   95  0   0   ?\n\
               2018-02-06 sys-kernel/gentoo-sources  0    0    ?  3  66  22\n\
@@ -810,12 +799,12 @@ mod tests {
               2018-03-01 sys-kernel/gentoo-sources  1   82   82  1  15  15\n\
               2018-03-05 sys-kernel/gentoo-sources  0    0    ?  1  23  23\n\
               2018-03-12 sys-kernel/gentoo-sources  1  120  120  1  13  13\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gy"],
+            ("-F test/emerge.10000.log s --duration s -st -gy",
              "2018 Total  831  216426  260  832  2311  2\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gm"],
+            ("-F test/emerge.10000.log s --duration s -st -gm",
              "2018-02 Total  533  158312  297  529  1497  2\n\
               2018-03 Total  298   58114  195  303   814  2\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gw"],
+            ("-F test/emerge.10000.log s --duration s -st -gw",
              "2018-05 Total   63  33577  532   60  132  2\n\
               2018-06 Total   74  10070  136   68  225  3\n\
               2018-07 Total  281  58604  208  258  709  2\n\
@@ -823,7 +812,7 @@ mod tests {
               2018-09 Total   71  14737  207   95  316  3\n\
               2018-10 Total  182  43782  240  187  519  2\n\
               2018-11 Total   95   4380   46   95  213  2\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-st","-gd"],
+            ("-F test/emerge.10000.log s --duration s -st -gd",
              "2018-02-03 Total   32   2741     85   32   70  2\n\
               2018-02-04 Total   31  30836    994   28   62  2\n\
               2018-02-05 Total    4    158     39    3    5  1\n\
@@ -855,12 +844,12 @@ mod tests {
               2018-03-08 Total   74   5441     73   73  202  2\n\
               2018-03-09 Total   50   7458    149   49  140  2\n\
               2018-03-12 Total   95   4380     46   95  213  2\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gy"],
+            ("-F test/emerge.10000.log s --duration s -ss -gy",
              "2018 Sync gentoo  150  4747  30\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gm"],
+            ("-F test/emerge.10000.log s --duration s -ss -gm",
              "2018-02 Sync gentoo  90  2411  18\n\
               2018-03 Sync gentoo  60  2336  30\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gw"],
+            ("-F test/emerge.10000.log s --duration s -ss -gw",
              "2018-05 Sync gentoo   3   160  53\n\
               2018-06 Sync gentoo  31   951  30\n\
               2018-07 Sync gentoo  17   388  20\n\
@@ -868,7 +857,7 @@ mod tests {
               2018-09 Sync gentoo  39  1899  70\n\
               2018-10 Sync gentoo  36   728  27\n\
               2018-11 Sync gentoo   4   121  30\n"),
-            (&["-F","test/emerge.10000.log","s","--duration","s","-ss","-gd"],
+            ("-F test/emerge.10000.log s --duration s -ss -gd",
              "2018-02-03 Sync gentoo   1   68   68\n\
               2018-02-04 Sync gentoo   2   92   46\n\
               2018-02-05 Sync gentoo   7  186   26\n\
@@ -905,11 +894,11 @@ mod tests {
         let to_u64 = |v: &Vec<&str>, i: usize| v.get(i).unwrap().parse::<u64>().unwrap();
         for (a, o) in t {
             // Usual output matching
-            emlop().args(a).assert().success().stdout(o);
+            emlop(a).assert().success().stdout(o);
             // Add up the "count" and "time" columns, grouped by timespan (year/month/week/day)
             for l in o.lines() {
                 let cols: Vec<&str> = l.split_ascii_whitespace().collect();
-                let tot = tots.entry(a.last().unwrap()).or_insert((0, 0, 0, 0));
+                let tot = tots.entry(a.split_whitespace().last().unwrap()).or_insert((0, 0, 0, 0));
                 match cols.len() {
                     // Sync
                     6 => {
@@ -937,10 +926,10 @@ mod tests {
     /// when you're bootstrapping an Gentoo and setting the time halfway through.
     #[test]
     fn negative_merge_time() {
-        let _cache_cargo_build = emlop();
+        let _cache_cargo_build = emlop("");
         for (a, o) in
             vec![// For `log` we show an unknown time.
-                 (vec!["-F", "test/emerge.negtime.log", "l", "-sms"],
+                 ("-F test/emerge.negtime.log l -sms",
                   format!("2019-06-05 08:32:10  1:06 Sync gentoo\n\
                            2019-06-05 11:26:54  5:56 >>> kde-plasma/kwin-5.15.5\n\
                            2019-06-06 02:11:48    26 >>> kde-apps/libktnef-19.04.1\n\
@@ -949,14 +938,14 @@ mod tests {
                            2019-06-05 10:21:02     ? >>> kde-plasma/kwin-5.15.5\n\
                            2019-06-08 21:33:36  3:10 >>> kde-plasma/kwin-5.15.5\n")),
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
-                 (vec!["-F", "test/emerge.negtime.log", "s", "-sa"],
+                 ("-F test/emerge.negtime.log s -sa",
                   format!("kde-apps/libktnef  1     26    26  0  0  ?\n\
                            kde-plasma/kwin    3   9:06  4:33  2  3  1\n\
                            net-misc/chrony    1     34    34  0  0  ?\n\
                            Total              5  10:06  2:01  2  3  1\n\
                            Sync gentoo        2   1:06  1:06         \n")),]
         {
-            emlop().args(a).assert().success().stdout(o);
+            emlop(a).assert().success().stdout(o);
         }
     }
 
@@ -967,13 +956,13 @@ mod tests {
     #[ignore]
     #[test]
     fn negative_merge_time_pred() {
-        let _cache_cargo_build = emlop();
-        let a = vec!["-F", "test/emerge.negtime.log", "p", "--date", "unix"];
+        let _cache_cargo_build = emlop("");
+        let a = "-F test/emerge.negtime.log p --date unix";
         let i = "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n";
         let o = format!("kde-plasma/kwin-5.15.5                        4:33 \n\
                          Estimate for 1 ebuild (0 unknown, 0 elapsed)  4:33 @ {}\n",
                         ts(4 * 60 + 33));
-        emlop().args(a).write_stdin(i).assert().success().stdout(o);
+        emlop(a).write_stdin(i).assert().success().stdout(o);
     }
 
     #[test]
@@ -981,35 +970,34 @@ mod tests {
         // 0: no problem
         // 1: command ran properly but didn't find anything
         // 2: user or program error
-        let t: Vec<(&[&str], i32)> =
-            vec![// Help, version, badarg (clap)
-                 (&["-h"], 0),
-                 (&["-V"], 0),
-                 (&["l", "-h"], 0),
-                 (&[], 2),
-                 (&["s", "--foo"], 2),
-                 (&["badcmd"], 2),
-                 (&["--utc"], 2),
-                 // Bad arguments (emlop)
-                 (&["l", "--logfile", "notfound"], 2),
-                 (&["s", "--logfile", "notfound"], 2),
-                 (&["p", "--logfile", "notfound"], 2),
-                 (&["l", "bad regex [a-z"], 2),
-                 (&["s", "bad regex [a-z"], 2),
-                 (&["p", "bad regex [a-z"], 2),
-                 // Normal behaviour
-                 (&["-F", "test/emerge.10000.log", "p"], 1),
-                 (&["-F", "test/emerge.10000.log", "l"], 0),
-                 (&["-F", "test/emerge.10000.log", "l", "-sm"], 0),
-                 (&["-F", "test/emerge.10000.log", "l", "-e", "icu"], 0),
-                 (&["-F", "test/emerge.10000.log", "l", "-e", "unknown"], 1),
-                 (&["-F", "test/emerge.10000.log", "l", "--from", "2018-09-28"], 1),
-                 (&["-F", "test/emerge.10000.log", "l", "-sm", "--from", "2018-09-28"], 1),
-                 (&["-F", "test/emerge.10000.log", "s"], 0),
-                 (&["-F", "test/emerge.10000.log", "s", "-e", "icu"], 0),
-                 (&["-F", "test/emerge.10000.log", "s", "-e", "unknown"], 1),];
+        let t: Vec<(&str, i32)> = vec![// Help, version, badarg (clap)
+                                       ("-h", 0),
+                                       ("-V", 0),
+                                       ("l -h", 0),
+                                       ("", 2),
+                                       ("s --foo", 2),
+                                       ("badcmd", 2),
+                                       ("--utc", 2),
+                                       // Bad arguments (emlop)
+                                       ("l --logfile notfound", 2),
+                                       ("s --logfile notfound", 2),
+                                       ("p --logfile notfound", 2),
+                                       ("l bad regex [a-z", 2),
+                                       ("s bad regex [a-z", 2),
+                                       ("p bad regex [a-z", 2),
+                                       // Normal behaviour
+                                       ("-F test/emerge.10000.log p", 1),
+                                       ("-F test/emerge.10000.log l", 0),
+                                       ("-F test/emerge.10000.log l -sm", 0),
+                                       ("-F test/emerge.10000.log l -e icu", 0),
+                                       ("-F test/emerge.10000.log l -e unknown", 1),
+                                       ("-F test/emerge.10000.log l --from 2018-09-28", 1),
+                                       ("-F test/emerge.10000.log l -sm --from 2018-09-28", 1),
+                                       ("-F test/emerge.10000.log s", 0),
+                                       ("-F test/emerge.10000.log s -e icu", 0),
+                                       ("-F test/emerge.10000.log s -e unknown", 1),];
         for (a, e) in t {
-            emlop().args(a).assert().code(e);
+            emlop(a).assert().code(e);
         }
     }
 }
