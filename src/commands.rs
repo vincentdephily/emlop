@@ -540,6 +540,33 @@ mod tests {
     }
 
     #[test]
+    fn averages() {
+        use super::Times;
+        use crate::Average;
+        for (lim, mean, median, weighted, vals) in
+            [(10, -1, -1, -1, vec![]),
+             (10, 1, 1, 1, vec![1]),
+             (10, 12 / 2, 6, 21 / 3, vec![2, 10]),
+             (10, 12 / 2, 6, 14 / 3, vec![10, 2]),
+             (10, 15 / 3, 4, (1 + 20 + 12) / (1 + 2 + 3), vec![1, 10, 4]),
+             (10, 15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), vec![1, 10, 3, 1]),
+             (4, 15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), vec![999, 1, 10, 3, 1])]
+        {
+            let mut t = Times::new();
+            for &v in vals.iter() {
+                t.insert(v);
+            }
+            assert_eq!(mean, t.pred(lim, Average::Mean), "mean({lim}, {vals:?}) should = {mean}");
+            assert_eq!(median,
+                       t.pred(lim, Average::Median),
+                       "median({lim}, {vals:?}) should = {median}");
+            assert_eq!(weighted,
+                       t.pred(lim, Average::Weighted),
+                       "weighed({lim}, {vals:?}) should = {weighted}");
+        }
+    }
+
+    #[test]
     fn log() {
         let t: Vec<(&str, &str)> = vec![
             // Basic test
@@ -707,11 +734,11 @@ mod tests {
                      ("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
                        [ebuild   R   ~] dev-lang/unknown-1.42\n\
                        [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
-                      format!("dev-qt/qtcore-5.9.4-r2                        3:44 \n\
+                      format!("dev-qt/qtcore-5.9.4-r2                        3:45 \n\
                                dev-lang/unknown-1.42                            ? \n\
-                               dev-qt/qtgui-5.9.4-r3                         4:36 \n\
-                               Estimate for 3 ebuild (1 unknown, 0 elapsed)  8:20 @ {}\n",
-                              ts(8 * 60 + 20)),
+                               dev-qt/qtgui-5.9.4-r3                         4:24 \n\
+                               Estimate for 3 ebuild (1 unknown, 0 elapsed)  8:09 @ {}\n",
+                              ts(8 * 60 + 9)),
                       0),];
         for (i, o, e) in t {
             emlop("-F test/emerge.10000.log p --date unix").write_stdin(i)
@@ -727,21 +754,21 @@ mod tests {
             ("-F test/emerge.10000.log s client",
              "kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
               mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
-              www-client/chromium           3  21:41:24  7:13:48  3  12  4\n\
+              www-client/chromium           3  21:41:24  7:42:07  3  12  3\n\
               www-client/falkon             1      6:02     6:02  0   0  ?\n\
               www-client/firefox            1     47:29    47:29  1   3  3\n\
               www-client/links              1        44       44  1   1  1\n\
               x11-apps/xlsclients           1        14       14  1   1  1\n",
              0),
             ("-F test/emerge.sync.log s -ss",
-             "Sync gentoo          22  1:43:13     21\n\
-              Sync gentoo-portage   5  4:32:42  54:32\n\
-              Sync moltonel         8       26      3\n\
-              Sync steam-overlay    5       10      2\n",
+             "Sync gentoo          22  1:43:13     10\n\
+              Sync gentoo-portage   5  4:32:42  31:53\n\
+              Sync moltonel         8       26      1\n\
+              Sync steam-overlay    5       10      1\n",
              0),
             ("-F test/emerge.sync.log s -ss gentoo",
-             "Sync gentoo          22  1:43:13     21\n\
-              Sync gentoo-portage   5  4:32:42  54:32\n",
+             "Sync gentoo          22  1:43:13     10\n\
+              Sync gentoo-portage   5  4:32:42  31:53\n",
              0),
             ("-F test/emerge.10000.log s client -sst",
              "Total  11  24:00:24  2:10:56  10  27  2\n",
@@ -749,12 +776,21 @@ mod tests {
             ("-F test/emerge.10000.log s client -sa",
              "kde-frameworks/kxmlrpcclient   2        47       23   2   4  2\n\
               mail-client/thunderbird        2   1:23:44    41:52   2   6  3\n\
-              www-client/chromium            3  21:41:24  7:13:48   3  12  4\n\
+              www-client/chromium            3  21:41:24  7:42:07   3  12  3\n\
               www-client/falkon              1      6:02     6:02   0   0  ?\n\
               www-client/firefox             1     47:29    47:29   1   3  3\n\
               www-client/links               1        44       44   1   1  1\n\
               x11-apps/xlsclients            1        14       14   1   1  1\n\
               Total                         11  24:00:24  2:10:56  10  27  2\n",
+             0),
+            ("-F test/emerge.10000.log s gentoo-sources --avg mean",
+             "sys-kernel/gentoo-sources  10  15:04  1:30  11  3:20  16\n",
+             0),
+            ("-F test/emerge.10000.log s gentoo-sources --avg median",
+             "sys-kernel/gentoo-sources  10  15:04  1:21  11  3:20  13\n",
+             0),
+            ("-F test/emerge.10000.log s gentoo-sources --avg weighted",
+             "sys-kernel/gentoo-sources  10  15:04  1:31  11  3:20  17\n",
              0),
             ("-F test/emerge.10000.log s --from 2018-02-03T23:11:47 --to 2018-02-04 notfound -sa",
              "",
@@ -772,22 +808,22 @@ mod tests {
     fn stats_grouped() {
         let t: Vec<(&str, &str)> = vec![
             ("-F test/emerge.10000.log s --duration s -sp gentoo-sources -gy",
-             "2018 sys-kernel/gentoo-sources  10  904  90  11  200  16\n"),
+             "2018 sys-kernel/gentoo-sources  10  904  81  11  200  13\n"),
             ("-F test/emerge.10000.log s --duration s -sp gentoo-sources -gm",
-             "2018-02 sys-kernel/gentoo-sources  8  702   87  8  149  18\n\
-              2018-03 sys-kernel/gentoo-sources  2  202  101  3   51  17\n"),
+             "2018-02 sys-kernel/gentoo-sources  8  702   80  8  149  13\n\
+              2018-03 sys-kernel/gentoo-sources  2  202  101  3   51  15\n"),
             ("-F test/emerge.10000.log s --duration s -sp gentoo-sources -gw",
              "2018-05 sys-kernel/gentoo-sources  1   81   81  0   0   ?\n\
-              2018-06 sys-kernel/gentoo-sources  2  192   96  3  66  22\n\
+              2018-06 sys-kernel/gentoo-sources  2  192   96  3  66  14\n\
               2018-07 sys-kernel/gentoo-sources  2  198   99  0   0   ?\n\
               2018-08 sys-kernel/gentoo-sources  1   77   77  3  37  12\n\
-              2018-09 sys-kernel/gentoo-sources  3  236   78  3  61  20\n\
+              2018-09 sys-kernel/gentoo-sources  3  236   79  3  61  22\n\
               2018-10 sys-kernel/gentoo-sources  0    0    ?  1  23  23\n\
               2018-11 sys-kernel/gentoo-sources  1  120  120  1  13  13\n"),
             ("-F test/emerge.10000.log s --duration s -sp gentoo-sources -gd",
              "2018-02-04 sys-kernel/gentoo-sources  1   81   81  0   0   ?\n\
               2018-02-05 sys-kernel/gentoo-sources  1   95   95  0   0   ?\n\
-              2018-02-06 sys-kernel/gentoo-sources  0    0    ?  3  66  22\n\
+              2018-02-06 sys-kernel/gentoo-sources  0    0    ?  3  66  14\n\
               2018-02-08 sys-kernel/gentoo-sources  1   97   97  0   0   ?\n\
               2018-02-12 sys-kernel/gentoo-sources  1   80   80  0   0   ?\n\
               2018-02-18 sys-kernel/gentoo-sources  1  118  118  0   0   ?\n\
@@ -845,50 +881,50 @@ mod tests {
               2018-03-09 Total   50   7458    149   49  140  2\n\
               2018-03-12 Total   95   4380     46   95  213  2\n"),
             ("-F test/emerge.10000.log s --duration s -ss -gy",
-             "2018 Sync gentoo  150  4747  30\n"),
+             "2018 Sync gentoo  150  4747  28\n"),
             ("-F test/emerge.10000.log s --duration s -ss -gm",
-             "2018-02 Sync gentoo  90  2411  18\n\
-              2018-03 Sync gentoo  60  2336  30\n"),
+             "2018-02 Sync gentoo  90  2411  15\n\
+              2018-03 Sync gentoo  60  2336  28\n"),
             ("-F test/emerge.10000.log s --duration s -ss -gw",
-             "2018-05 Sync gentoo   3   160  53\n\
-              2018-06 Sync gentoo  31   951  30\n\
-              2018-07 Sync gentoo  17   388  20\n\
-              2018-08 Sync gentoo  20   500  25\n\
-              2018-09 Sync gentoo  39  1899  70\n\
-              2018-10 Sync gentoo  36   728  27\n\
-              2018-11 Sync gentoo   4   121  30\n"),
+             "2018-05 Sync gentoo   3   160  56\n\
+              2018-06 Sync gentoo  31   951  27\n\
+              2018-07 Sync gentoo  17   388  19\n\
+              2018-08 Sync gentoo  20   500  23\n\
+              2018-09 Sync gentoo  39  1899  49\n\
+              2018-10 Sync gentoo  36   728  21\n\
+              2018-11 Sync gentoo   4   121  32\n"),
             ("-F test/emerge.10000.log s --duration s -ss -gd",
              "2018-02-03 Sync gentoo   1   68   68\n\
               2018-02-04 Sync gentoo   2   92   46\n\
-              2018-02-05 Sync gentoo   7  186   26\n\
-              2018-02-06 Sync gentoo   7  237   33\n\
-              2018-02-07 Sync gentoo   7  221   31\n\
-              2018-02-08 Sync gentoo   7  215   30\n\
-              2018-02-09 Sync gentoo   3   92   30\n\
-              2018-02-12 Sync gentoo   4   87   21\n\
+              2018-02-05 Sync gentoo   7  186   32\n\
+              2018-02-06 Sync gentoo   7  237   31\n\
+              2018-02-07 Sync gentoo   7  221   32\n\
+              2018-02-08 Sync gentoo   7  215   21\n\
+              2018-02-09 Sync gentoo   3   92   29\n\
+              2018-02-12 Sync gentoo   4   87   22\n\
               2018-02-13 Sync gentoo   2   45   22\n\
-              2018-02-14 Sync gentoo   3   85   28\n\
-              2018-02-15 Sync gentoo   4   76   19\n\
-              2018-02-16 Sync gentoo   3   67   22\n\
+              2018-02-14 Sync gentoo   3   85   23\n\
+              2018-02-15 Sync gentoo   4   76   18\n\
+              2018-02-16 Sync gentoo   3   67   20\n\
               2018-02-18 Sync gentoo   1   28   28\n\
               2018-02-19 Sync gentoo   2   61   30\n\
-              2018-02-20 Sync gentoo   5  119   23\n\
-              2018-02-21 Sync gentoo   4   89   22\n\
+              2018-02-20 Sync gentoo   5  119   22\n\
+              2018-02-21 Sync gentoo   4   89   21\n\
               2018-02-22 Sync gentoo   2   51   25\n\
-              2018-02-23 Sync gentoo   6  157   26\n\
+              2018-02-23 Sync gentoo   6  157   24\n\
               2018-02-24 Sync gentoo   1   23   23\n\
               2018-02-26 Sync gentoo   4   69   17\n\
-              2018-02-27 Sync gentoo   8  208   26\n\
-              2018-02-28 Sync gentoo   7  135   19\n\
-              2018-03-01 Sync gentoo   8  568   71\n\
-              2018-03-02 Sync gentoo  10  547   54\n\
+              2018-02-27 Sync gentoo   8  208   20\n\
+              2018-02-28 Sync gentoo   7  135   16\n\
+              2018-03-01 Sync gentoo   8  568   30\n\
+              2018-03-02 Sync gentoo  10  547   49\n\
               2018-03-03 Sync gentoo   2  372  186\n\
-              2018-03-05 Sync gentoo   9   46    5\n\
+              2018-03-05 Sync gentoo   9   46    1\n\
               2018-03-06 Sync gentoo   8  183   22\n\
-              2018-03-07 Sync gentoo   4  120   30\n\
-              2018-03-08 Sync gentoo   8  157   19\n\
+              2018-03-07 Sync gentoo   4  120   34\n\
+              2018-03-08 Sync gentoo   8  157   20\n\
               2018-03-09 Sync gentoo   7  222   31\n\
-              2018-03-12 Sync gentoo   4  121   30\n"),
+              2018-03-12 Sync gentoo   4  121   32\n"),
         ];
         let mut tots: HashMap<&str, (u64, u64, u64, u64)> = HashMap::new();
         let to_u64 = |v: &Vec<&str>, i: usize| v.get(i).unwrap().parse::<u64>().unwrap();

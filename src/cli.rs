@@ -85,7 +85,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         Arg::new("average").long("avg")
                          .value_name("fn")
                          .value_parser(crate::Average::parse)
-                         .default_value("mean")
+                         .default_value("median")
                          .help_heading("STATS")
                          .help("Use mean/median/weighted function to predict durations.")
                          .long_help("Use mean/median/weighted function to predict durations.\n  \
