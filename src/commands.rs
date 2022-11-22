@@ -334,7 +334,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     // Build list of pending merges
     let pkgs: Vec<Pkg> = if atty::is(atty::Stream::Stdin) {
         // From resume data + emerge.log after current merge process start time
-        let mut r = get_resume().unwrap_or(vec![]);
+        let mut r = get_resume().unwrap_or_default();
         for p in started.iter()
                         .filter(|&(_, t)| *t > cms)
                         .map(|(&(ref e, ref v), _)| Pkg { ebuild: e.clone(), version: v.clone() })

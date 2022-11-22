@@ -9,7 +9,7 @@ use std::{fs::File,
           io::{BufRead, BufReader, Read}};
 
 /// Package name and version
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Pkg {
     pub ebuild: String,
     pub version: String,
@@ -58,7 +58,7 @@ struct Mtimedb {
 /// Parse portage mtimedb
 pub fn get_resume() -> Result<Vec<Pkg>, Error> {
     let file = "/var/cache/edb/mtimedb";
-    let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
+    let reader = File::open(file).with_context(|| format!("Cannot open {:?}", file))?;
     let db: Mtimedb = from_reader(reader).with_context(|| format!("Cannot parse {:?}", file))?;
     match db.resume {
         Some(r) => Ok(r.mergelist.iter().filter_map(|v| v.get(2).and_then(parse_atom)).collect()),
