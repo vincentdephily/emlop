@@ -1,24 +1,26 @@
 //! Handles parsing of current emerge state.
-//!
-//! Use `new_pretend()` to parse and retrieve `Pretend` structs.
 
+use anyhow::{Context, Error};
 use log::*;
 use regex::Regex;
-use std::io::{BufRead, BufReader, Read};
+use serde::Deserialize;
+use serde_json::from_reader;
+use std::{fs::File,
+          io::{BufRead, BufReader, Read}};
 
-/// Items sent on the channel returned by `new_pretend()`.
-#[derive(Debug)]
-pub struct Pretend {
+/// Package name and version
+#[derive(Debug, PartialEq)]
+pub struct Pkg {
     pub ebuild: String,
     pub version: String,
 }
 
-/// Parse portage pretend output into a Vec of `Parsed` enums.
-pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pretend>
+/// Parse portage pretend output
+pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg>
     where R: Send + 'static
 {
-    debug!("new_pretend input={}", filename);
-    let mut out: Vec<Pretend> = vec![];
+    debug!("get_pretend input={}", filename);
+    let mut out = vec![];
     let re = Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap();
     let mut curline = 1;
     let mut buf = BufReader::new(reader);
@@ -44,10 +46,42 @@ pub fn new_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pretend>
     out
 }
 
-fn parse_pretend(line: &str, re: &Regex) -> Option<Pretend> {
+#[derive(Deserialize, Debug)]
+struct Resume {
+    mergelist: Vec<Vec<String>>,
+}
+#[derive(Deserialize, Debug)]
+struct Mtimedb {
+    resume: Option<Resume>,
+}
+
+/// Parse portage mtimedb
+pub fn get_resume() -> Result<Vec<Pkg>, Error> {
+    let file = "/var/cache/edb/mtimedb";
+    let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
+    let db: Mtimedb = from_reader(reader).with_context(|| format!("Cannot parse {:?}", file))?;
+    match db.resume {
+        Some(r) => Ok(r.mergelist.iter().filter_map(|v| v.get(2).and_then(parse_atom)).collect()),
+        None => Ok(vec![]),
+    }
+}
+
+fn parse_atom(atom: &String) -> Option<Pkg> {
+    let mut pos = 0;
+    loop {
+        pos += atom[pos..].find('-')?;
+        if pos > 0 && atom.as_bytes().get(pos + 1)?.is_ascii_digit() {
+            return Some(Pkg { ebuild: String::from(&atom[..pos]),
+                              version: String::from(&atom[pos + 1..]) });
+        }
+        pos += 1;
+    }
+}
+
+fn parse_pretend(line: &str, re: &Regex) -> Option<Pkg> {
     let c = re.captures(line)?;
-    Some(Pretend { ebuild: c.get(1).unwrap().as_str().to_string(),
-                   version: c.get(2).unwrap().as_str().to_string() })
+    Some(Pkg { ebuild: c.get(1).unwrap().as_str().to_string(),
+               version: c.get(2).unwrap().as_str().to_string() })
 }
 
 #[cfg(test)]
@@ -57,10 +91,10 @@ mod tests {
 
     fn parse_pretend(filename: &str, expect: &Vec<(&str, &str)>) {
         // Setup
-        let pretend = new_pretend(File::open(filename).unwrap(), filename);
+        let pretend = get_pretend(File::open(filename).unwrap(), filename);
         let mut count = 0;
         // Check that all items look valid
-        for Pretend { ebuild, version } in pretend {
+        for Pkg { ebuild, version } in pretend {
             assert_eq!(ebuild, expect[count].0);
             assert_eq!(version, expect[count].1);
             count += 1;

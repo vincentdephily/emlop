@@ -1,7 +1,7 @@
 mod cli;
 mod commands;
 mod date;
-mod parser;
+mod parse;
 mod proces;
 mod table;
 

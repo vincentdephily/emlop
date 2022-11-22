@@ -70,14 +70,14 @@ impl Hist {
 
 
 /// Parse emerge log into a channel of `Parsed` enums.
-pub fn new_hist(file: String,
+pub fn get_hist(file: String,
                 min_ts: Option<i64>,
                 max_ts: Option<i64>,
                 show: Show,
                 search_str: Option<&str>,
                 search_exact: bool)
                 -> Result<Receiver<Hist>, Error> {
-    debug!("new_hist input={} min={:?} max={:?} str={:?} exact={}",
+    debug!("get_hist input={} min={:?} max={:?} str={:?} exact={}",
            file, min_ts, max_ts, search_str, search_exact);
     let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
@@ -325,7 +325,7 @@ mod tests {
             "shortline" => (1327867709, 1327871057),
             o => unimplemented!("Unknown test log file {:?}", o),
         };
-        let hist = new_hist(format!("test/emerge.{}.log", file),
+        let hist = get_hist(format!("test/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
                             Show { merge: parse_merge,

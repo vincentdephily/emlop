@@ -1,4 +1,4 @@
-use crate::{date::*, parser::*, proces::*, table::*, *};
+use crate::{date::*, parse::*, proces::*, table::*, *};
 use anyhow::bail;
 use std::{collections::{BTreeMap, HashMap},
           io::stdin};
@@ -9,7 +9,7 @@ use std::{collections::{BTreeMap, HashMap},
 pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let show = *args.get_one("show").unwrap();
-    let hist = new_hist(args.value_of("logfile").unwrap().into(),
+    let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
@@ -134,7 +134,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let show = *args.get_one("show").unwrap();
     let timespan_opt = value_opt(args, "group", parse_timespan, ());
-    let hist = new_hist(args.value_of("logfile").unwrap().into(),
+    let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
@@ -307,7 +307,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     }
 
     // Parse emerge log.
-    let hist = new_hist(args.value_of("logfile").unwrap().into(),
+    let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         Show { merge: true, ..Show::default() },
@@ -317,8 +317,6 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let mut times: HashMap<String, Times> = HashMap::new();
     for p in hist {
         match p {
-            // We're ignoring iter here (reducing the start->stop matching accuracy) because there's
-            // no iter in the pretend output.
             Hist::MergeStart { ts, .. } => {
                 started.insert((p.ebuild().to_string(), p.version().to_string()), ts);
             },
@@ -333,16 +331,22 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         }
     }
 
-    // Parse list of pending merges (from stdin or from emerge log filtered by cms).
-    // We collect immediately to deal with type mismatches; it should be a small list anyway.
-    let pretend: Vec<Pretend> = if atty::is(atty::Stream::Stdin) {
-        started.iter()
-               .filter(|&(_, t)| *t > cms)
-               .map(|(&(ref e, ref v), _)| Pretend { ebuild: e.to_string(),
-                                                     version: v.to_string() })
-               .collect()
+    // Build list of pending merges
+    let pkgs: Vec<Pkg> = if atty::is(atty::Stream::Stdin) {
+        // From resume data + emerge.log after current merge process start time
+        let mut r = get_resume().unwrap_or(vec![]);
+        for p in started.iter()
+                        .filter(|&(_, t)| *t > cms)
+                        .map(|(&(ref e, ref v), _)| Pkg { ebuild: e.clone(), version: v.clone() })
+        {
+            if !r.contains(&p) {
+                r.push(p)
+            }
+        }
+        r
     } else {
-        new_pretend(stdin(), "STDIN")
+        // From portage's stdout
+        get_pretend(stdin(), "STDIN")
     };
 
     // Gather and print per-package and indivudual stats.
@@ -350,7 +354,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let mut totunknown = 0;
     let mut totpredict = 0;
     let mut totelapsed = 0;
-    for Pretend { ebuild, version } in pretend {
+    for Pkg { ebuild, version } in pkgs {
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
         let k = (ebuild, version);
@@ -414,7 +418,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
 pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let show: Show = *args.get_one("show").unwrap();
-    let hist = new_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
+    let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         Show { merge: true, ..Show::default() },
