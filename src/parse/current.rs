@@ -9,10 +9,36 @@ use std::{fs::File,
           io::{BufRead, BufReader, Read}};
 
 /// Package name and version
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Pkg {
-    pub ebuild: String,
-    pub version: String,
+    key: String,
+    pos: usize,
+}
+impl Pkg {
+    pub fn new(ebuild: &str, version: &str) -> Self {
+        Self { key: format!("{ebuild}-{version}"), pos: ebuild.len() + 1 }
+    }
+    // Algorithm is taken from history.rs and more thoroughly tested there
+    fn try_new(key: &str) -> Option<Self> {
+        let mut pos = 0;
+        loop {
+            pos += key[pos..].find('-')?;
+            if pos > 0 && key.as_bytes().get(pos + 1)?.is_ascii_digit() {
+                return Some(Self { key: key.to_string(), pos: pos + 1 });
+            }
+            pos += 1;
+        }
+    }
+    pub fn ebuild(&self) -> &str {
+        &self.key[..(self.pos - 1)]
+    }
+    #[cfg(test)]
+    pub fn version(&self) -> &str {
+        &self.key[self.pos..]
+    }
+    pub fn ebuild_version(&self) -> &str {
+        &self.key
+    }
 }
 
 /// Parse portage pretend output
@@ -21,35 +47,23 @@ pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg>
 {
     debug!("get_pretend input={}", filename);
     let mut out = vec![];
-    let re = Regex::new("^\\[ebuild[^]]+\\] (.+?)-([0-9][0-9a-z._-]*)").unwrap();
-    let mut curline = 1;
+    let re = Regex::new("^\\[ebuild[^]]+\\] (.+?-[0-9][0-9a-z._-]*)").unwrap();
     let mut buf = BufReader::new(reader);
     let mut line = String::new();
     loop {
         match buf.read_line(&mut line) {
-            // End of file
-            Ok(0) => break,
-            // Got a line, see if one of the funs match it
+            // End of file or some other error
+            Ok(0) | Err(_) => break,
+            // Got a line, see if it's a pkg merge
             Ok(_) => {
-                if let Some(found) = parse_pretend(&line, &re) {
-                    out.push(found)
+                if let Some(c) = re.captures(&line) {
+                    out.push(Pkg::try_new(c.get(1).unwrap().as_str()).unwrap())
                 }
-            },
-            // Could be invalid UTF8, system read error...
-            Err(e) => {
-                warn!("{}:{}: {}", filename, curline, e)
             },
         }
         line.clear();
-        curline += 1;
     }
     out
-}
-
-fn parse_pretend(line: &str, re: &Regex) -> Option<Pkg> {
-    let c = re.captures(line)?;
-    Some(Pkg { ebuild: c.get(1).unwrap().as_str().to_string(),
-               version: c.get(2).unwrap().as_str().to_string() })
 }
 
 #[derive(Deserialize, Debug)]
@@ -67,26 +81,17 @@ pub fn get_resume() -> Result<Vec<Pkg>, Error> {
     let reader = File::open(file).with_context(|| format!("Cannot open {:?}", file))?;
     let db: Mtimedb = from_reader(reader).with_context(|| format!("Cannot parse {:?}", file))?;
     match db.resume {
-        Some(r) => Ok(r.mergelist.iter().filter_map(|v| v.get(2).and_then(parse_atom)).collect()),
+        Some(r) => {
+            Ok(r.mergelist.iter().filter_map(|v| v.get(2).and_then(|s| Pkg::try_new(s))).collect())
+        },
         None => Ok(vec![]),
     }
 }
 
-fn parse_atom(atom: &String) -> Option<Pkg> {
-    let mut pos = 0;
-    loop {
-        pos += atom[pos..].find('-')?;
-        if pos > 0 && atom.as_bytes().get(pos + 1)?.is_ascii_digit() {
-            return Some(Pkg { ebuild: String::from(&atom[..pos]),
-                              version: String::from(&atom[pos + 1..]) });
-        }
-        pos += 1;
-    }
-}
 
 /// Retrieve summary info from the build log
-pub fn get_buildlog(ebuild: &str, version: &str) -> Option<String> {
-    let file = format!("/var/tmp/portage/{}-{}/temp/build.log", ebuild, version);
+pub fn get_buildlog(pkg: &Pkg) -> Option<String> {
+    let file = format!("/var/tmp/portage/{}/temp/build.log", pkg.ebuild_version());
     let reader = File::open(&file).map_err(|e| warn!("Cannot open {:?}: {e}", file)).ok()?;
     let mut last = None;
     for line in rev_lines::RevLines::new(BufReader::new(reader)).ok()? {
@@ -113,9 +118,9 @@ mod tests {
         let pretend = get_pretend(File::open(filename).unwrap(), filename);
         let mut count = 0;
         // Check that all items look valid
-        for Pkg { ebuild, version } in pretend {
-            assert_eq!(ebuild, expect[count].0);
-            assert_eq!(version, expect[count].1);
+        for p in pretend {
+            assert_eq!(p.ebuild(), expect[count].0);
+            assert_eq!(p.version(), expect[count].1);
             count += 1;
         }
     }
@@ -135,5 +140,13 @@ mod tests {
     fn parse_pretend_blocker() {
         let out = vec![("app-admin/syslog-ng", "3.13.2"), ("dev-lang/php", "7.1.13")];
         parse_pretend("test/emerge-p.blocker.out", &out);
+    }
+
+    #[test]
+    fn pkg_new() {
+        assert_eq!(Some(Pkg::new("foo", "1.2")), Pkg::try_new("foo-1.2"));
+        assert_eq!("foo", Pkg::new("foo", "1.2").ebuild());
+        assert_eq!("1.2", Pkg::new("foo", "1.2").version());
+        assert_eq!("foo-1.2", Pkg::new("foo", "1.2").ebuild_version());
     }
 }

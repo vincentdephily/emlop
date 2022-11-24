@@ -313,17 +313,16 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
                         Show { merge: true, ..Show::default() },
                         None,
                         false)?;
-    let mut started: BTreeMap<(String, String), i64> = BTreeMap::new();
+    let mut started: BTreeMap<Pkg, i64> = BTreeMap::new();
     let mut times: HashMap<String, Times> = HashMap::new();
     for p in hist {
         match p {
             Hist::MergeStart { ts, .. } => {
-                started.insert((p.ebuild().to_string(), p.version().to_string()), ts);
+                started.insert(Pkg::new(p.ebuild(), p.version()), ts);
             },
             Hist::MergeStop { ts, .. } => {
-                let k = (p.ebuild().to_string(), p.version().to_string());
-                if let Some(start_ts) = started.remove(&k) {
-                    let timevec = times.entry(k.0).or_insert_with(Times::new);
+                if let Some(start_ts) = started.remove(&Pkg::new(p.ebuild(), p.version())) {
+                    let timevec = times.entry(p.ebuild().to_string()).or_insert_with(Times::new);
                     timevec.insert(ts - start_ts);
                 }
             },
@@ -335,12 +334,9 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let pkgs: Vec<Pkg> = if atty::is(atty::Stream::Stdin) {
         // From resume data + emerge.log after current merge process start time
         let mut r = get_resume().unwrap_or_default();
-        for p in started.iter()
-                        .filter(|&(_, t)| *t > cms)
-                        .map(|(&(ref e, ref v), _)| Pkg { ebuild: e.clone(), version: v.clone() })
-        {
-            if !r.contains(&p) {
-                r.push(p)
+        for p in started.iter().filter(|&(_, t)| *t > cms).map(|(p, _)| p) {
+            if !r.contains(p) {
+                r.push(p.clone())
             }
         }
         r
@@ -354,17 +350,17 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let mut totunknown = 0;
     let mut totpredict = 0;
     let mut totelapsed = 0;
-    for Pkg { ebuild, version } in pkgs {
+    for p in pkgs {
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
-        let elapsed = match started.remove(&(ebuild.clone(), version.clone())) {
+        let elapsed = match started.remove(&p) {
             Some(s) if s > cms => now - s,
             _ => 0,
         };
 
         // Find the predicted time and adjust counters
         totcount += 1;
-        let pred_fmt = match times.get(&ebuild) {
+        let pred_fmt = match times.get(p.ebuild()) {
             Some(tv) => {
                 let pred = tv.pred(lim, avg);
                 totpredict += pred;
@@ -383,12 +379,12 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         // Done
         if show.merge {
             if elapsed > 0 {
-                let stage = get_buildlog(&ebuild, &version).unwrap_or_default();
-                tbl.row([&[&st.pkg, &ebuild, &'-', &version],
+                let stage = get_buildlog(&p).unwrap_or_default();
+                tbl.row([&[&st.pkg, &p.ebuild_version()],
                          &[&st.dur, &pred_fmt],
                          &[&st.clr, &"- ", &st.dur, &st.dur_t.fmt(elapsed), &st.clr, &stage]]);
             } else {
-                tbl.row([&[&st.pkg, &ebuild, &'-', &version], &[&st.dur, &pred_fmt], &[]]);
+                tbl.row([&[&st.pkg, &p.ebuild_version()], &[&st.dur, &pred_fmt], &[]]);
             }
         }
     }
