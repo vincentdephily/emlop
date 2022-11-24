@@ -357,14 +357,10 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     for Pkg { ebuild, version } in pkgs {
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
-        let k = (ebuild, version);
-        let (elapsed, elapsed_fmt) = match started.remove(&k) {
-            Some(s) if s > cms => {
-                (now - s, format!("- {}{}{}", st.dur, st.dur_t.fmt(now - s), st.clr))
-            },
-            _ => (0, "".into()),
+        let elapsed = match started.remove(&(ebuild.clone(), version.clone())) {
+            Some(s) if s > cms => now - s,
+            _ => 0,
         };
-        let (ebuild, version) = k;
 
         // Find the predicted time and adjust counters
         totcount += 1;
@@ -386,9 +382,14 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
 
         // Done
         if show.merge {
-            tbl.row([&[&st.pkg, &ebuild, &'-', &version],
-                     &[&st.dur, &pred_fmt],
-                     &[&st.clr, &elapsed_fmt]]);
+            if elapsed > 0 {
+                let stage = get_buildlog(&ebuild, &version).unwrap_or_default();
+                tbl.row([&[&st.pkg, &ebuild, &'-', &version],
+                         &[&st.dur, &pred_fmt],
+                         &[&st.clr, &"- ", &st.dur, &st.dur_t.fmt(elapsed), &st.clr, &stage]]);
+            } else {
+                tbl.row([&[&st.pkg, &ebuild, &'-', &version], &[&st.dur, &pred_fmt], &[]]);
+            }
         }
     }
     if totcount > 0 {

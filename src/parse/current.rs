@@ -46,6 +46,12 @@ pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg>
     out
 }
 
+fn parse_pretend(line: &str, re: &Regex) -> Option<Pkg> {
+    let c = re.captures(line)?;
+    Some(Pkg { ebuild: c.get(1).unwrap().as_str().to_string(),
+               version: c.get(2).unwrap().as_str().to_string() })
+}
+
 #[derive(Deserialize, Debug)]
 struct Resume {
     mergelist: Vec<Vec<String>>,
@@ -78,10 +84,21 @@ fn parse_atom(atom: &String) -> Option<Pkg> {
     }
 }
 
-fn parse_pretend(line: &str, re: &Regex) -> Option<Pkg> {
-    let c = re.captures(line)?;
-    Some(Pkg { ebuild: c.get(1).unwrap().as_str().to_string(),
-               version: c.get(2).unwrap().as_str().to_string() })
+/// Retrieve summary info from the build log
+pub fn get_buildlog(ebuild: &str, version: &str) -> Option<String> {
+    let file = format!("/var/tmp/portage/{}-{}/temp/build.log", ebuild, version);
+    let reader = File::open(&file).map_err(|e| warn!("Cannot open {:?}: {e}", file)).ok()?;
+    let mut last = None;
+    for line in rev_lines::RevLines::new(BufReader::new(reader)).ok()? {
+        if last.is_none() {
+            last = Some(line.chars().take(30).collect::<String>());
+        }
+        if line.starts_with(">>>") {
+            let tag = line.split_whitespace().skip(1).take(2).collect::<Vec<&str>>().join(" ");
+            return Some(format!("  ({}: {}...)", tag.trim_matches('.'), last?.trim()))
+        }
+    }
+    None
 }
 
 #[cfg(test)]
