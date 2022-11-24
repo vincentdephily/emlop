@@ -91,11 +91,13 @@ pub fn get_buildlog(ebuild: &str, version: &str) -> Option<String> {
     let mut last = None;
     for line in rev_lines::RevLines::new(BufReader::new(reader)).ok()? {
         if last.is_none() {
-            last = Some(line.chars().take(30).collect::<String>());
+            last = Some((line.chars().take(40).collect::<String>(),
+                         if line.len() > 40 { "..." } else { "" }));
         }
         if line.starts_with(">>>") {
             let tag = line.split_whitespace().skip(1).take(2).collect::<Vec<&str>>().join(" ");
-            return Some(format!("  ({}: {}...)", tag.trim_matches('.'), last?.trim()))
+            let (lst, elip) = last?;
+            return Some(format!("  ({}: {}\x1B[0m{})", tag.trim_matches('.'), lst.trim(), elip));
         }
     }
     None
