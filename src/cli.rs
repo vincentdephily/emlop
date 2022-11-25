@@ -232,10 +232,16 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                      .default_value("/var/log/emerge.log")
                                      .display_order(60)
                                      .help("Location of emerge log file.");
+    let tmpdir = Arg::new("tmpdir").value_name("dir")
+                                   .long("tmpdir")
+                                   .takes_value(true)
+                                   .default_value("/var/tmp")
+                                   .display_order(61)
+                                   .help("Location of portage tmpdir.");
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
                                      .multiple_occurrences(true)
-                                     .display_order(61)
+                                     .display_order(62)
                                      .help("Increase verbosity (can be given multiple times).")
                                      .long_help("Increase verbosity (defaults to errors only)\n  \
                                                  -v:   show warnings\n  \
@@ -264,9 +270,9 @@ pub fn build_cli_nocomplete() -> Command<'static> {
         Command::new("predict").about("Predict merge time for current or pretended merges.")
                                .long_about(h)
                                .arg(show_p)
+                               .arg(tmpdir)
                                .arg(&avg)
                                .arg(&limit);
-
     let h = "Show statistics about sucessful (un)merges (overall or per-package) and syncs.
 * <package>: merge count, total merge time, predicted merge time, \
              unmerge count, total unmerge time, predicted unmerge time.

@@ -137,9 +137,9 @@ impl Ansi {
 }
 
 /// Retrieve summary info from the build log
-pub fn get_buildlog(pkg: &Pkg) -> Option<String> {
-    let file = format!("/var/tmp/portage/{}/temp/build.log", pkg.ebuild_version());
-    let reader = File::open(&file).map_err(|e| warn!("Cannot open {:?}: {e}", file)).ok()?;
+pub fn get_buildlog(pkg: &Pkg, portdir: &str) -> Option<String> {
+    let file = format!("{}/portage/{}/temp/build.log", portdir, pkg.ebuild_version());
+    let reader = File::open(&file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
     let mut last = None;
     for line in rev_lines::RevLines::new(BufReader::new(reader)).ok()? {
         if last.is_none() {
