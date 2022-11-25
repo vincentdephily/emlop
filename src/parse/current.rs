@@ -88,6 +88,53 @@ pub fn get_resume() -> Result<Vec<Pkg>, Error> {
     }
 }
 
+/// Simple Ansi escape parser, sufficient to strip text styling.
+///
+/// More exotic escapes (that shouldn't comme up in build.log) will cause the rest of the string to
+/// be interpreted as a sequence, and stripped. There are crates implementing full ansi support, but
+/// they seem overkill for our needs.
+#[derive(PartialEq)]
+enum Ansi {
+    /// Normal text
+    Txt,
+    /// Entered escape sequence
+    Esc,
+    /// Control Sequence Introducer, includes text styleing and cursor control
+    EscCSI,
+    /// Unimplemented escape type, this variant is a dead-end
+    EscUnsupported,
+    /// Finished the escape sequence, but not Txt yet
+    EscEnd,
+}
+impl Ansi {
+    fn step(&mut self, c: char) {
+        use Ansi::*;
+        *self = match self {
+            Txt | EscEnd if c == '\x1B' => Esc,
+            Txt | EscEnd => Txt,
+            Esc if c == '[' => EscCSI,
+            Esc => EscUnsupported,
+            EscCSI if ('@'..='~').contains(&c) => EscEnd,
+            EscCSI => EscCSI,
+            EscUnsupported => EscUnsupported,
+        }
+    }
+    fn strip(s: &str, max: usize) -> String {
+        let mut out = String::with_capacity(max + 3);
+        let mut state = Self::Txt;
+        for c in s.trim().chars() {
+            state.step(c);
+            if state == Self::Txt {
+                out.push(c);
+                if out.len() >= max {
+                    out += "...";
+                    break;
+                }
+            }
+        }
+        out
+    }
+}
 
 /// Retrieve summary info from the build log
 pub fn get_buildlog(pkg: &Pkg) -> Option<String> {
@@ -96,13 +143,11 @@ pub fn get_buildlog(pkg: &Pkg) -> Option<String> {
     let mut last = None;
     for line in rev_lines::RevLines::new(BufReader::new(reader)).ok()? {
         if last.is_none() {
-            last = Some((line.chars().take(40).collect::<String>(),
-                         if line.len() > 40 { "..." } else { "" }));
+            last = Some(Ansi::strip(&line, 50));
         }
         if line.starts_with(">>>") {
             let tag = line.split_whitespace().skip(1).take(2).collect::<Vec<&str>>().join(" ");
-            let (lst, elip) = last?;
-            return Some(format!("  ({}: {}\x1B[0m{})", tag.trim_matches('.'), lst.trim(), elip));
+            return Some(format!(" ({}: {})", tag.trim_matches('.'), last?));
         }
     }
     None
