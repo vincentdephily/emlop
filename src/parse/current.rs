@@ -1,6 +1,5 @@
 //! Handles parsing of current emerge state.
 
-use anyhow::{Context, Error};
 use log::*;
 use regex::Regex;
 use serde::Deserialize;
@@ -42,9 +41,7 @@ impl Pkg {
 }
 
 /// Parse portage pretend output
-pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg>
-    where R: Send + 'static
-{
+pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
     debug!("get_pretend input={}", filename);
     let mut out = vec![];
     let re = Regex::new("^\\[ebuild[^]]+\\] (.+?-[0-9][0-9a-z._-]*)").unwrap();
@@ -66,26 +63,27 @@ pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg>
     out
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct Resume {
     mergelist: Vec<Vec<String>>,
 }
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct Mtimedb {
     resume: Option<Resume>,
 }
 
-/// Parse portage mtimedb
-pub fn get_resume() -> Result<Vec<Pkg>, Error> {
-    let file = "/var/cache/edb/mtimedb";
-    let reader = File::open(file).with_context(|| format!("Cannot open {:?}", file))?;
-    let db: Mtimedb = from_reader(reader).with_context(|| format!("Cannot parse {:?}", file))?;
-    match db.resume {
-        Some(r) => {
-            Ok(r.mergelist.iter().filter_map(|v| v.get(2).and_then(|s| Pkg::try_new(s))).collect())
-        },
-        None => Ok(vec![]),
-    }
+/// Parse resume list from portage mtimedb
+pub fn get_resume() -> Vec<Pkg> {
+    get_resume_priv("/var/cache/edb/mtimedb").unwrap_or_default()
+}
+fn get_resume_priv(file: &str) -> Option<Vec<Pkg>> {
+    let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
+    let db: Mtimedb = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
+    Some(db.resume?
+           .mergelist
+           .iter()
+           .filter_map(|v| v.get(2).and_then(|s| Pkg::try_new(s)))
+           .collect())
 }
 
 /// Simple Ansi escape parser, sufficient to strip text styling.
@@ -172,33 +170,53 @@ mod tests {
     use super::*;
     use std::fs::File;
 
-    fn parse_pretend(filename: &str, expect: &Vec<(&str, &str)>) {
-        // Setup
-        let pretend = get_pretend(File::open(filename).unwrap(), filename);
-        let mut count = 0;
-        // Check that all items look valid
-        for p in pretend {
-            assert_eq!(p.ebuild(), expect[count].0);
-            assert_eq!(p.version(), expect[count].1);
-            count += 1;
+    /// Check that `get_pretend()` has the expected output
+    fn check_pretend(file: &str, expect: &[(&str, &str)]) {
+        let mut n = 0;
+        for p in get_pretend(File::open(file).unwrap(), file) {
+            assert_eq!((p.ebuild(), p.version()), expect[n], "Mismatch for {file}:{n}");
+            n += 1;
         }
     }
 
     #[test]
-    fn parse_pretend_basic() {
-        let out = vec![("sys-devel/gcc", "6.4.0-r1"),
-                       ("sys-libs/readline", "7.0_p3"),
-                       ("app-portage/emlop", "0.1.0_p20180221"),
-                       ("app-shells/bash", "4.4_p12"),
-                       ("dev-db/postgresql", "10.3")];
-        parse_pretend("test/emerge-p.basic.out", &out);
-        parse_pretend("test/emerge-pv.basic.out", &out);
+    fn pretend_basic() {
+        let out = [("sys-devel/gcc", "6.4.0-r1"),
+                   ("sys-libs/readline", "7.0_p3"),
+                   ("app-portage/emlop", "0.1.0_p20180221"),
+                   ("app-shells/bash", "4.4_p12"),
+                   ("dev-db/postgresql", "10.3")];
+        check_pretend("test/emerge-p.basic.out", &out);
+        check_pretend("test/emerge-pv.basic.out", &out);
     }
 
     #[test]
-    fn parse_pretend_blocker() {
-        let out = vec![("app-admin/syslog-ng", "3.13.2"), ("dev-lang/php", "7.1.13")];
-        parse_pretend("test/emerge-p.blocker.out", &out);
+    fn pretend_blocker() {
+        let out = [("app-admin/syslog-ng", "3.13.2"), ("dev-lang/php", "7.1.13")];
+        check_pretend("test/emerge-p.blocker.out", &out);
+    }
+
+    /// Check that `get_resume()` has the expected output
+    fn check_resume(file: &str, expect: Option<&[(&str, &str)]>) {
+        match expect {
+            Some(ex) => {
+                let mut n = 0;
+                for p in get_resume_priv(file).unwrap() {
+                    assert_eq!((p.ebuild(), p.version()), ex[n], "Mismatch for {file}:{n}");
+                    n += 1;
+                }
+            },
+            None => assert_eq!(None, get_resume_priv(file)),
+        }
+    }
+
+    #[test]
+    fn resume() {
+        check_resume("test/mtimedb.ok",
+                     Some(&[("dev-lang/rust", "1.65.0"), ("app-portage/emlop", "0.5.0")]));
+        check_resume("test/mtimedb.empty", Some(&[]));
+        check_resume("test/mtimedb.noresume", None);
+        check_resume("test/mtimedb.badjson", None);
     }
 
     #[test]
