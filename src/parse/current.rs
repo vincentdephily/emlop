@@ -99,7 +99,7 @@ enum Ansi {
     Txt,
     /// Entered escape sequence
     Esc,
-    /// Control Sequence Introducer, includes text styleing and cursor control
+    /// Control Sequence Introducer, includes text styling and cursor control
     EscCSI,
     /// Unimplemented escape type, this variant is a dead-end
     EscUnsupported,
@@ -110,12 +110,23 @@ impl Ansi {
     fn step(&mut self, c: char) {
         use Ansi::*;
         *self = match self {
+            // Sequence start
             Txt | EscEnd if c == '\x1B' => Esc,
+            // Raw unprintable ascii
+            Txt | EscEnd if c < ' ' => EscEnd,
+            // Continuation, or return to normal text
             Txt | EscEnd => Txt,
+            // CSI start
             Esc if c == '[' => EscCSI,
+            // Escaped bel/backspace/tab/lf/ff/cr
+            Esc if "78\x0A\x0C\x0D".contains(c) => EscEnd,
+            // Not a CSI and not a simple char. Just give up: this shouldn't be in a log file.
             Esc => EscUnsupported,
+            // CSI end
             EscCSI if ('@'..='~').contains(&c) => EscEnd,
+            // CSI continues
             EscCSI => EscCSI,
+            // Give up until end of string
             EscUnsupported => EscUnsupported,
         }
     }
@@ -143,11 +154,14 @@ pub fn get_buildlog(pkg: &Pkg, portdir: &str) -> Option<String> {
     let mut last = None;
     for line in rev_lines::RevLines::new(BufReader::new(reader)).ok()? {
         if last.is_none() {
-            last = Some(Ansi::strip(&line, 50));
+            let stripped = Ansi::strip(&line, 50);
+            if !stripped.is_empty() {
+                last = Some(stripped);
+            }
         }
         if line.starts_with(">>>") {
             let tag = line.split_whitespace().skip(1).take(2).collect::<Vec<&str>>().join(" ");
-            return Some(format!(" ({}: {})", tag.trim_matches('.'), last?));
+            return Some(format!(" ({}: {})", tag.trim_matches('.'), last.unwrap_or_default()));
         }
     }
     None
