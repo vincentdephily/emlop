@@ -291,6 +291,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let show: Show = *args.get_one("show").unwrap();
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("average").unwrap();
+    let resume = *args.get_one("resume").unwrap();
     let mut tbl = Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
     let tmpdir = args.get_one::<String>("tmpdir").unwrap();
 
@@ -302,7 +303,11 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
             tbl.row([&[&i], &[&st.dur, &st.dur_t.fmt(now - i.start)], &[]]);
         }
     }
-    if cms == std::i64::MAX && atty::is(atty::Stream::Stdin) {
+    if cms == std::i64::MAX
+       && atty::is(atty::Stream::Stdin)
+       && resume != ResumeKind::Main
+       && resume != ResumeKind::Backup
+    {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
         return Ok(false);
     }
@@ -334,7 +339,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     // Build list of pending merges
     let pkgs: Vec<Pkg> = if atty::is(atty::Stream::Stdin) {
         // From resume data + emerge.log after current merge process start time
-        let mut r = get_resume();
+        let mut r = get_resume(resume);
         for p in started.iter().filter(|&(_, t)| *t > cms).map(|(p, _)| p) {
             if !r.contains(p) {
                 r.push(p.clone())

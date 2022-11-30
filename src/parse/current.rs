@@ -1,5 +1,6 @@
 //! Handles parsing of current emerge state.
 
+use crate::ResumeKind;
 use log::*;
 use regex::Regex;
 use serde::Deserialize;
@@ -70,20 +71,21 @@ struct Resume {
 #[derive(Deserialize)]
 struct Mtimedb {
     resume: Option<Resume>,
+    resume_backup: Option<Resume>,
 }
 
 /// Parse resume list from portage mtimedb
-pub fn get_resume() -> Vec<Pkg> {
-    get_resume_priv("/var/cache/edb/mtimedb").unwrap_or_default()
+pub fn get_resume(kind: ResumeKind) -> Vec<Pkg> {
+    get_resume_priv(kind, "/var/cache/edb/mtimedb").unwrap_or_default()
 }
-fn get_resume_priv(file: &str) -> Option<Vec<Pkg>> {
+fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
+    if kind == ResumeKind::No {
+        return Some(vec![]);
+    }
     let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
     let db: Mtimedb = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
-    Some(db.resume?
-           .mergelist
-           .iter()
-           .filter_map(|v| v.get(2).and_then(|s| Pkg::try_new(s)))
-           .collect())
+    let r = if kind == ResumeKind::Backup { db.resume_backup? } else { db.resume? };
+    Some(r.mergelist.iter().filter_map(|v| v.get(2).and_then(|s| Pkg::try_new(s))).collect())
 }
 
 /// Simple Ansi escape parser, sufficient to strip text styling.
@@ -197,26 +199,31 @@ mod tests {
     }
 
     /// Check that `get_resume()` has the expected output
-    fn check_resume(file: &str, expect: Option<&[(&str, &str)]>) {
+    fn check_resume(kind: ResumeKind, file: &str, expect: Option<&[(&str, &str)]>) {
         match expect {
             Some(ex) => {
                 let mut n = 0;
-                for p in get_resume_priv(file).unwrap() {
+                for p in get_resume_priv(kind, file).unwrap() {
                     assert_eq!((p.ebuild(), p.version()), ex[n], "Mismatch for {file}:{n}");
                     n += 1;
                 }
             },
-            None => assert_eq!(None, get_resume_priv(file)),
+            None => assert_eq!(None, get_resume_priv(kind, file)),
         }
     }
 
     #[test]
     fn resume() {
-        check_resume("test/mtimedb.ok",
+        check_resume(ResumeKind::Main,
+                     "test/mtimedb.ok",
                      Some(&[("dev-lang/rust", "1.65.0"), ("app-portage/emlop", "0.5.0")]));
-        check_resume("test/mtimedb.empty", Some(&[]));
-        check_resume("test/mtimedb.noresume", None);
-        check_resume("test/mtimedb.badjson", None);
+        check_resume(ResumeKind::Backup,
+                     "test/mtimedb.ok",
+                     Some(&[("app-portage/dummybuild", "0.1.600"),
+                            ("app-portage/dummybuild", "0.1.60")]));
+        check_resume(ResumeKind::Main, "test/mtimedb.empty", Some(&[]));
+        check_resume(ResumeKind::Main, "test/mtimedb.noresume", None);
+        check_resume(ResumeKind::Main, "test/mtimedb.badjson", None);
     }
 
     #[test]

@@ -122,6 +122,25 @@ impl Average {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ResumeKind {
+    Auto,
+    Main,
+    Backup,
+    No,
+}
+impl ResumeKind {
+    fn parse(s: &str) -> Result<Self, &'static str> {
+        match s {
+            _ if "auto".starts_with(s) => Ok(Self::Auto),
+            _ if "main".starts_with(s) => Ok(Self::Main),
+            _ if "backup".starts_with(s) => Ok(Self::Backup),
+            _ if "no".starts_with(s) => Ok(Self::No),
+            _ => Err("Valid values are 'auto', 'main', 'backup', 'no' (can be abbreviated)."),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum DurationStyle {
     HMS,

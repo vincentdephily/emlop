@@ -238,10 +238,22 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                    .default_value("/var/tmp")
                                    .display_order(61)
                                    .help("Location of portage tmpdir.");
+    let resume = Arg::new("resume").long("resume")
+                                   .value_name("source")
+                                   .value_parser(crate::ResumeKind::parse)
+                                   .default_value("auto")
+                                   .display_order(62)
+                                   .help("Use auto, main, backup, or no portage resume list")
+                                   .long_help("Use auto, main, backup, or no portage resume list.\n\
+                                               This is ignored if STDIN is a piped `emerge -p` output.\n  \
+                                               auto:   Use main resume list, if currently emerging\n  \
+                                               main:   Force use of main resume list\n  \
+                                               backup: Force use of backup resume list\n  \
+                                               no:     Never use resume list");
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
                                      .multiple_occurrences(true)
-                                     .display_order(62)
+                                     .display_order(63)
                                      .help("Increase verbosity (can be given multiple times).")
                                      .long_help("Increase verbosity (defaults to errors only)\n  \
                                                  -v:   show warnings\n  \
@@ -263,7 +275,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                      .arg(&exact)
                                      .arg(&pkg);
     let h = "Predict merge time for current or pretended merges.\n\
-             * If input is a terminal, predict time for the current merge (if any).\n\
+             * If input is a terminal, predict time for the current merges (if any).\n\
              * If input is a pipe (for example by running `emerge -rOp|emlop p`), \
              predict time for those merges.";
     let cmd_pred =
@@ -271,6 +283,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                .long_about(h)
                                .arg(show_p)
                                .arg(tmpdir)
+                               .arg(resume)
                                .arg(&avg)
                                .arg(&limit);
     let h = "Show statistics about sucessful (un)merges (overall or per-package) and syncs.
