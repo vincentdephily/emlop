@@ -1,4 +1,4 @@
-use clap::{crate_version, Arg, ArgAction::*, Command};
+use clap::{crate_version, value_parser, Arg, ArgAction::*, Command};
 
 /// Generate cli argument parser without the `complete` subcommand.
 pub fn build_cli_nocomplete() -> Command<'static> {
@@ -77,14 +77,15 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let limit = Arg::new("limit").long("limit")
                                  .takes_value(true)
                                  .value_name("num")
-                                 .value_parser(clap::value_parser!(u16).range(1..))
+                                 .value_parser(value_parser!(u16).range(1..))
                                  .default_value("10")
                                  .help_heading("STATS")
                                  .help("Use the last N merge times to predict durations.");
     let avg =
         Arg::new("avg").long("avg")
                        .value_name("fn")
-                       .value_parser(crate::Average::parse)
+                       .value_parser(value_parser!(crate::Average))
+                       .hide_possible_values(true)
                        .default_value("median")
                        .help_heading("STATS")
                        .help("Use mean/median/weighted function to predict durations.")
@@ -131,7 +132,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .value_name("num")
                                  .display_order(4)
                                  .default_missing_value("1")
-                                 .value_parser(clap::value_parser!(usize))
+                                 .value_parser(value_parser!(usize))
                                  .help_heading("FILTER")
                                  .help("Show only the first <num> entries.")
                                  .long_help("Show only the first <num> entries.\n  \
@@ -142,7 +143,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                .value_name("num")
                                .display_order(5)
                                .default_missing_value("1")
-                               .value_parser(clap::value_parser!(usize))
+                               .value_parser(value_parser!(usize))
                                .help_heading("FILTER")
                                .help("Show only the last <num> entries.")
                                .long_help("Show only the last <num> entries.\n  \
@@ -178,16 +179,17 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let duration = Arg::new("duration").value_name("format")
                                        .long("duration")
                                        .global(true)
-                                       .value_parser(crate::DurationStyle::parse)
+                                       .value_parser(value_parser!(crate::DurationStyle))
+                                       .hide_possible_values(true)
                                        .default_value("hms")
                                        .display_order(51)
                                        .help_heading("FORMAT")
                                        .help("Output durations in different formats.")
                                        .long_help("Output durations in different formats.\n  \
                                                    hms:                       10:30\n  \
-                                                   hms_fixed:               0:10:30\n  \
-                                                   s:                           630\n  \
-                                                   human:    10 minutes, 30 seconds");
+                                                   hmsfixed:                0:10:30\n  \
+                                                   secs|s:                      630\n  \
+                                                   human|h:  10 minutes, 30 seconds");
     let utc = Arg::new("utc").long("utc")
                              .global(true)
                              .action(SetTrue)
@@ -240,16 +242,17 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                    .help("Location of portage tmpdir.");
     let resume = Arg::new("resume").long("resume")
                                    .value_name("source")
-                                   .value_parser(crate::ResumeKind::parse)
+                                   .value_parser(value_parser!(crate::ResumeKind))
+                                   .hide_possible_values(true)
                                    .default_value("auto")
                                    .display_order(62)
                                    .help("Use auto, main, backup, or no portage resume list")
                                    .long_help("Use auto, main, backup, or no portage resume list.\n\
                                                This is ignored if STDIN is a piped `emerge -p` output.\n  \
-                                               auto:   Use main resume list, if currently emerging\n  \
-                                               main:   Force use of main resume list\n  \
-                                               backup: Force use of backup resume list\n  \
-                                               no:     Never use resume list");
+                                               auto|a:   Use main resume list, if currently emerging\n  \
+                                               main|m:   Force use of main resume list\n  \
+                                               backup|b: Force use of backup resume list\n  \
+                                               no|n:     Never use resume list");
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
                                      .multiple_occurrences(true)

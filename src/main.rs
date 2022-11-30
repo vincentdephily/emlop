@@ -105,60 +105,36 @@ impl Show {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, clap::ValueEnum)]
 pub enum Average {
     Mean,
     Median,
     Weighted,
 }
-impl Average {
-    fn parse(s: &str) -> Result<Self, &'static str> {
-        match s {
-            "mean" => Ok(Self::Mean),
-            "median" => Ok(Self::Median),
-            "weighted" => Ok(Self::Weighted),
-            _ => Err("Valid values are 'mean', 'median', 'weighted'."),
-        }
-    }
-}
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum ResumeKind {
+    #[clap(alias("a"))]
     Auto,
+    #[clap(alias("m"))]
     Main,
+    #[clap(alias("b"))]
     Backup,
+    #[clap(alias("n"))]
     No,
 }
-impl ResumeKind {
-    fn parse(s: &str) -> Result<Self, &'static str> {
-        match s {
-            _ if "auto".starts_with(s) => Ok(Self::Auto),
-            _ if "main".starts_with(s) => Ok(Self::Main),
-            _ if "backup".starts_with(s) => Ok(Self::Backup),
-            _ if "no".starts_with(s) => Ok(Self::No),
-            _ => Err("Valid values are 'auto', 'main', 'backup', 'no' (can be abbreviated)."),
-        }
-    }
-}
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, clap::ValueEnum)]
 pub enum DurationStyle {
     HMS,
+    #[clap(id("hmsfixed"))]
     HMSFixed,
+    #[clap(alias("s"))]
     Secs,
+    #[clap(alias("h"))]
     Human,
 }
 impl DurationStyle {
-    fn parse(s: &str) -> Result<Self, &'static str> {
-        match s {
-            "hms" => Ok(Self::HMS),
-            "hms_fixed" => Ok(Self::HMSFixed),
-            "s" => Ok(Self::Secs),
-            "human" => Ok(Self::Human),
-            _ => Err("Valid values are 'hms', 'hms_fixed', 's', 'human'."),
-        }
-    }
-
     fn fmt(&self, secs: i64) -> String {
         if secs < 0 {
             return String::from("?");
@@ -225,20 +201,10 @@ impl Styles {
             _ => atty::is(atty::Stream::Stdout),
         };
         let header = args.get_flag("header");
-        let dur_fmt = *args.get_one("duration").unwrap();
+        let dur_t = *args.get_one("duration").unwrap();
         let date_fmt = args.value_of_t("date").unwrap();
-        let utc = args.get_flag("utc");
+        let date_offset = date::get_offset(args.get_flag("utc"));
         let tabs = args.get_flag("tabs");
-        Styles::new(color, header, dur_fmt, date_fmt, utc, tabs)
-    }
-
-    fn new(color: bool,
-           header: bool,
-           duration: DurationStyle,
-           date: DateStyle,
-           utc: bool,
-           tabs: bool)
-           -> Self {
         if color {
             Styles { pkg: "\x1B[1;32m",
                      merge: "\x1B[1;32m",
@@ -247,9 +213,9 @@ impl Styles {
                      cnt: "\x1B[2;33m",
                      clr: "\x1B[0m",
                      header,
-                     dur_t: duration,
-                     date_offset: date::get_offset(utc),
-                     date_fmt: date,
+                     dur_t,
+                     date_offset,
+                     date_fmt,
                      tabs }
         } else {
             Styles { pkg: "",
@@ -259,9 +225,9 @@ impl Styles {
                      cnt: "",
                      clr: "",
                      header,
-                     dur_t: duration,
-                     date_offset: date::get_offset(utc),
-                     date_fmt: date,
+                     dur_t,
+                     date_offset,
+                     date_fmt,
                      tabs }
         }
     }

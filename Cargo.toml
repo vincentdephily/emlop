@@ -19,7 +19,7 @@ exclude = ["/benches/*.log"]
 anyhow = "1.0.32"
 atoi = "2.0.0"
 atty = "0.2.14"
-clap = { version = "3.1.15", default_features = false, features = ["cargo", "color", "suggestions"] }
+clap = { version = "3.1.15", default_features = false, features = ["cargo", "color", "suggestions", "derive"] }
 clap_complete = "3.1.4"
 crossbeam-channel = "0.5.0"
 env_logger = { version = "0.10.0", default-features = false }

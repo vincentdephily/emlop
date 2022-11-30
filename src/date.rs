@@ -25,7 +25,7 @@ pub fn get_offset(utc: bool) -> UtcOffset {
 // See <https://github.com/time-rs/time/issues/429>
 pub struct DateStyle(&'static [time::format_description::FormatItem<'static>]);
 impl FromStr for DateStyle {
-    type Err = String;
+    type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let fmt = match s {
             "ymd" | "d" => format_description!("[year]-[month]-[day]"),
@@ -35,7 +35,7 @@ impl FromStr for DateStyle {
             "rfc2822" | "2822" => format_description!("[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
             "compact" => format_description!("[year][month][day][hour][minute][second]"),
             "unix" => &[],
-            _ => return Err(format!("Invalid date format {s}")),
+            _ => return Err("Valid values are ymd, d, ymdhms, dt, ymdhmso, dto, rfc3339, 3339, rfc2822, 2822, compact, unix"),
         };
         Ok(Self(fmt))
     }
