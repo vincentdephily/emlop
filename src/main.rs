@@ -149,13 +149,13 @@ pub enum DurationStyle {
     Human,
 }
 impl DurationStyle {
-    fn parse(s: &str) -> Result<Self, String> {
+    fn parse(s: &str) -> Result<Self, &'static str> {
         match s {
             "hms" => Ok(Self::HMS),
             "hms_fixed" => Ok(Self::HMSFixed),
             "s" => Ok(Self::Secs),
             "human" => Ok(Self::Human),
-            _ => Err("Valid values are 'hms', 'hms_fixed', 's', 'human'.".into()),
+            _ => Err("Valid values are 'hms', 'hms_fixed', 's', 'human'."),
         }
     }
 

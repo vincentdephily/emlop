@@ -82,16 +82,16 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .help_heading("STATS")
                                  .help("Use the last N merge times to predict durations.");
     let avg =
-        Arg::new("average").long("avg")
-                         .value_name("fn")
-                         .value_parser(crate::Average::parse)
-                         .default_value("median")
-                         .help_heading("STATS")
-                         .help("Use mean/median/weighted function to predict durations.")
-                         .long_help("Use mean/median/weighted function to predict durations.\n  \
-                                     mean:     simple 'sum/count' average\n  \
-                                     median:   central value, mitigates outliers\n  \
-                                     weighted: 'sum/count' with more weight for recent values");
+        Arg::new("avg").long("avg")
+                       .value_name("fn")
+                       .value_parser(crate::Average::parse)
+                       .default_value("median")
+                       .help_heading("STATS")
+                       .help("Use mean/median/weighted function to predict durations.")
+                       .long_help("Use mean/median/weighted function to predict durations.\n  \
+                                       mean:     simple 'sum/count' average\n  \
+                                       median:   central value, mitigates outliers\n  \
+                                       weighted: 'sum/count' with more weight for recent values");
     let group = Arg::new("group").short('g')
                                  .long("groupby")
                                  .value_name("y,m,w,d")
@@ -222,7 +222,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                .help_heading("FORMAT")
                                .help("Separate columns using tabs instead of spaces")
                                .long_help("Separate columns using tabs instead of spaces\n\
-                                         Useful for machine parsing.");
+                                           Useful for machine parsing.");
 
     let logfile = Arg::new("logfile").value_name("file")
                                      .long("logfile")

@@ -141,7 +141,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         args.value_of("package"),
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
-    let avg = *args.get_one("average").unwrap();
+    let avg = *args.get_one("avg").unwrap();
     let mut tbl = Table::new(st).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
@@ -290,7 +290,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let now = epoch_now();
     let show: Show = *args.get_one("show").unwrap();
     let lim = *args.get_one("limit").unwrap();
-    let avg = *args.get_one("average").unwrap();
+    let avg = *args.get_one("avg").unwrap();
     let resume = *args.get_one("resume").unwrap();
     let mut tbl = Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
     let tmpdir = args.get_one::<String>("tmpdir").unwrap();
