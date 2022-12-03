@@ -14,7 +14,7 @@ use time::UtcOffset;
 
 fn main() {
     let args = cli::build_cli().get_matches();
-    let level = match args.occurrences_of("verbose") {
+    let level = match args.get_count("verbose") {
         0 => LevelFilter::Error,
         1 => LevelFilter::Warn,
         2 => LevelFilter::Info,

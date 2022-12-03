@@ -1,5 +1,4 @@
 use crate::{date::*, parse::*, proces::*, table::*, *};
-use anyhow::bail;
 use std::{collections::{BTreeMap, HashMap},
           io::stdin};
 
@@ -13,7 +12,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
-                        args.value_of("package"),
+                        args.get_one::<String>("package").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
     let first = *args.get_one("first").unwrap_or(&usize::MAX);
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
@@ -133,12 +132,12 @@ impl Times {
 pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let show = *args.get_one("show").unwrap();
-    let timespan_opt = value_opt(args, "group", parse_timespan, ());
+    let timespan_opt: Option<&Timespan> = args.get_one("group");
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
-                        args.value_of("package"),
+                        args.get_one::<String>("package").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
@@ -425,10 +424,10 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         Show { merge: true, ..Show::default() },
-                        args.value_of("package"),
+                        args.get_one::<String>("package").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
-    let avg = *args.get_one("average").unwrap();
+    let avg = *args.get_one("avg").unwrap();
     let mut pkg_starts: HashMap<String, i64> = HashMap::new();
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
@@ -491,13 +490,8 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     Ok(found)
 }
 
-pub fn cmd_complete(subargs: &ArgMatches) -> Result<bool, Error> {
-    let shell = match subargs.value_of("shell") {
-        Some("bash") => clap_complete::Shell::Bash,
-        Some("zsh") => clap_complete::Shell::Zsh,
-        Some("fish") => clap_complete::Shell::Fish,
-        o => bail!("Unsupported shell {:?}", o),
-    };
+pub fn cmd_complete(args: &ArgMatches) -> Result<bool, Error> {
+    let shell: clap_complete::Shell = *args.get_one("shell").unwrap();
     let mut cli = cli::build_cli_nocomplete();
     clap_complete::generate(shell, &mut cli, "emlop", &mut std::io::stdout());
     Ok(true)

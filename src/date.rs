@@ -169,21 +169,16 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
 pub enum Timespan {
+    #[clap(id("y"))]
     Year,
+    #[clap(id("m"))]
     Month,
+    #[clap(id("w"))]
     Week,
+    #[clap(id("d"))]
     Day,
-}
-pub fn parse_timespan(s: &str, _arg: ()) -> Result<Timespan, String> {
-    match s {
-        "y" => Ok(Timespan::Year),
-        "m" => Ok(Timespan::Month),
-        "w" => Ok(Timespan::Week),
-        "d" => Ok(Timespan::Day),
-        _ => Err("Valid values are y(ear), m(onth), w(eek), d(ay)".into()),
-    }
 }
 impl Timespan {
     /// Given a unix timestamp, advance to the beginning of the next year/month/week/day.
@@ -196,7 +191,7 @@ impl Timespan {
                 Date::from_calendar_date(year, d.month().next(), 1).unwrap()
             },
             Timespan::Week => {
-                let till_monday = match d.weekday() {
+                let til_monday = match d.weekday() {
                     Weekday::Monday => 7,
                     Weekday::Tuesday => 6,
                     Weekday::Wednesday => 5,
@@ -205,7 +200,7 @@ impl Timespan {
                     Weekday::Saturday => 2,
                     Weekday::Sunday => 1,
                 };
-                d.checked_add(Duration::days(till_monday)).unwrap()
+                d.checked_add(Duration::days(til_monday)).unwrap()
             },
             Timespan::Day => d.checked_add(Duration::DAY).unwrap(),
         };

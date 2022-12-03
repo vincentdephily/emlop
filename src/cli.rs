@@ -96,7 +96,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let group = Arg::new("group").short('g')
                                  .long("groupby")
                                  .value_name("y,m,w,d")
-                                 .possible_values(["y", "m", "w", "d"])
+                                 .value_parser(value_parser!(crate::date::Timespan))
                                  .hide_possible_values(true)
                                  .help_heading("STATS")
                                  .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay.")
@@ -204,8 +204,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let color = Arg::new("color").long("color")
                                  .alias("colour")
                                  .global(true)
-                                 .takes_value(true)
-                                 .possible_values(["auto", "always", "never", "y", "n"])
+                                 .value_parser(["auto", "always", "never", "y", "n"])
                                  .hide_possible_values(true)
                                  .default_value("auto")
                                  .default_missing_value("y")
@@ -255,7 +254,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                                no|n:     Never use resume list");
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
-                                     .multiple_occurrences(true)
+                                     .action(Count)
                                      .display_order(63)
                                      .help("Increase verbosity (can be given multiple times).")
                                      .long_help("Increase verbosity (defaults to errors only)\n  \
@@ -359,7 +358,7 @@ pub fn build_cli() -> Command<'static> {
                   To apply the changes, either restart you shell or `source` the generated file.";
     let shell = Arg::new("shell").help("Target shell")
                                  .required(true)
-                                 .possible_values(["bash", "zsh", "fish"]);
+                                 .value_parser(value_parser!(clap_complete::Shell));
     let cmd = Command::new("complete").about("Generate shell completion script.")
                                       .long_about(labout)
                                       .arg(shell);
