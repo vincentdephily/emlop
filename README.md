@@ -16,18 +16,13 @@ ergonomic, see [COMPARISON](COMPARISON.md).
 Enable the [GURU](https://wiki.gentoo.org/wiki/Project:GURU) or
 [moltonel](https://github.com/vincentdephily/moltonel-ebuilds) overlay (install
 [eselect-repository](https://wiki.gentoo.org/wiki/Eselect/Repository) and run `eselect repository
-enable GURU`), then run `emerge emlop` as ususal.
-
-For availablility in main portage tree, see [gentoo bug 649904](https://bugs.gentoo.org/649904).
+enable GURU`), then run `emerge emlop` as ususal. Ping [gentoo bug
+649904](https://bugs.gentoo.org/649904) for availablility in the main portage tree.
 
 ### Using cargo
 
-Install [Rust](https://www.rust-lang.org/) using `emerge rust` (if you simply want to install Emlop)
-or [rustup](https://www.rust-lang.org/en-US/install.html) (if you want the latest Rust or plan to
-develop in Rust). Emlop releases should always work with portage's oldest rust version.
-
-Cargo installs binaries into `~/.cargo/bin/`, which should be in your `$PATH`. If you wish to
-install them system-wide, edit the system `$PATH` or copy/symlink `~/.cargo/bin/*` somewhere in
+Install Rust using [portage](https://wiki.gentoo.org/wiki/Rust) or
+[rustup](https://www.rust-lang.org/en-US/install.html). Make sure `~/.cargo/bin/`, is in your
 `$PATH`.
 
 #### From crates.io
@@ -41,14 +36,18 @@ install them system-wide, edit the system `$PATH` or copy/symlink `~/.cargo/bin/
     cargo test
     cargo install -f --path .
 
+#### Shell completion
+
+    emlop complete bash > /usr/share/bash-completion/completions/emlop
+    emlop complete zsh > /usr/share/zsh/site-functions/_emlop
+    emlop complete fish > /usr/share/fish/vendor_completions.d/emlop.fish
+    emlop complete elvish > ??
+
 ## Usage
 
 Emlop is split into `log`, `predict` and `stats` subcommands, which can be abbreviated by their
-first letter. This file doesn't show everything, see `emlop --help` and `emlop <sucommand> --help`
-for complete and up to date usage info.
-
-Shell autocompletion is available. If you have installed emlop manually, generate the completion
-script for bash/zsh/fish with the `complete` subcommand.
+first letter. See `emlop --help` and `emlop <sucommand> --help` for complete and up to date usage
+info.
 
 ### Subcommands and arguments
 
@@ -130,11 +129,12 @@ Show syncs of the last 7 days:
 Show currently emerging packages, how long they have been running, and predict how long is left:
 
     $ emlop p
-    Pid 27455: ...n-exec/python3.5/emerge -O chromium       33
-    Pid 27848: ...on-exec/python3.5/emerge -O firefox       29
-    www-client/firefox-58.0.1                            53:37 - 24
-    www-client/chromium-65.0.3325.146                  6:01:02 - 28
-    Estimate for 2 ebuilds (0 unknown, 52 elapsed)     6:53:47 @ 2019-10-09 11:17:42
+    Pid 1897475: ... -j2 dummybuild gcc llvm rust       12
+    app-portage/dummybuild-0.1.600                   50:14 - 5
+    sys-devel/gcc-11.3.0                           1:51:05 - 5
+    sys-devel/llvm-15.0.5                            31:55
+    dev-lang/rust-1.65.0                             49:35
+    Estimate for 4 ebuild (0 unknown, 10 elapsed)  4:02:39 @ 2022-12-07 00:41:02
 
 Predict merge time from an `emerge --pretend` output, taking currently elapsed time into account:
 
@@ -147,7 +147,7 @@ Predict merge time from an `emerge --pretend` output, taking currently elapsed t
 
 Show merge stats for gtk packages, with colum headers:
 
-    $ emlop s gtk -sh
+    $ emlop s gtk -H
     Package                         Merge count  Total time  Predict time  Unmerge count  Total time  Predict time
     dev-cpp/gtkmm                             2        2:38          1:19              1           2             2
     dev-util/gtk-doc                          1          25            25              0           0             ?

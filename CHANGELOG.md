@@ -1,18 +1,47 @@
 # Unreleased
 
-Maintenance release: Cli refinements and parser optimization
+Feature release: Improved `predict` command and accuracy, filter sync events, new output options,
+and more.
 
-* Long args like `--duration` can now be abbreviated
+Main changes:
+
+* `predict` command now reads portage's merge resume list
+  - `emlop p` behaves the same as `emerge -rOp|emlop p` if a merge is currently running
+  - Including geting confused when you have multiple emerge commands running
+  - You can still pipe any `emerge -p` command into `emlop p`
+  - See `--resume` to tweak the behavior
+* `predict` command now displays the current build phase and last log line of ongoing builds
+  - This usually requires root permissions
+* `list/stat` search now also applies to sync repos, eg `emlop l -ss guru`
+* Added `--show` option to `predict`, like in other subcommands
+* Added `--first/-N/--last/-n` options to limit output
+* Added `--tabs` option for more machine-readable output
+* Added `--avg=mean/median/weighted` option to tweak predictions
+  - `mean` is the original behaviour
+  - `median` is the new default, it's more resilient against noisy data
+  - `weighted` gives more importance to recent values
+* Added `--starttime` option to show merge start instead of merge end
 * Moved `--show h` option value to a dedicated `--headers`/`-H` flag
   - Fixes surprising behavior when only `h` was specified
   - More discoverable
-* `predict` subcommand now has a `--show` argument like the other subcommands
+* Added `accuracy` subcommand to evaluate prediction accuracy
+  - Mostly a development tool, but you might find it useful
+
+And also:
+
+* Long args like `--duration` can now be abbreviated
+* `--color` is now an alias of `--color=always`
 * Bash completion no longer wrongly suggests `-V`/`--version` for subcommands
 * Exit code on error changed to `1` for empty results and `2` for plain errors
+* Various performance improvements
+  - Now clearly faster than `qlop` in all cases
 * Improved and reorganized inline help
-* Parser performance improvement
 * Internal stuff
   - Increased MSRV to 1.62
+  - Upgraded `clap` (triggered a lot of this release's improvements)
+  - Various refactorings
+  - Removed unmaintained `ansi_term` and `sysconfig`
+  - Improved benchmark tool a bit
 
 # 0.5.0 2022-04-18
 
