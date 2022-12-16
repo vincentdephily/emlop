@@ -41,7 +41,6 @@ Install Rust using [portage](https://wiki.gentoo.org/wiki/Rust) or
     emlop complete bash > /usr/share/bash-completion/completions/emlop
     emlop complete zsh > /usr/share/zsh/site-functions/_emlop
     emlop complete fish > /usr/share/fish/vendor_completions.d/emlop.fish
-    emlop complete elvish > ??
 
 ## Usage
 
