@@ -288,10 +288,13 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let now = epoch_now();
     let show: Show = *args.get_one("show").unwrap();
+    let first = *args.get_one("first").unwrap_or(&usize::MAX);
+    let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
     let resume = *args.get_one("resume").unwrap();
-    let mut tbl = Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ");
+    let mut tbl =
+        Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ").last(last);
     let tmpdir = args.get_one::<String>("tmpdir").unwrap();
 
     // Gather and print info about current merge process.
@@ -356,6 +359,10 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let mut totpredict = 0;
     let mut totelapsed = 0;
     for p in pkgs {
+        totcount += 1;
+        if totcount > first {
+            break;
+        }
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
         let elapsed = match started.remove(&p) {
@@ -364,7 +371,6 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         };
 
         // Find the predicted time and adjust counters
-        totcount += 1;
         let pred_fmt = match times.get(p.ebuild()) {
             Some(tv) => {
                 let pred = tv.pred(lim, avg);
