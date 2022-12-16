@@ -126,8 +126,8 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
              .short('r')
              .takes_value(true)
              .default_value("10"))
-        .arg(Arg::new("bucket")
-             .help("Size of histogram buckets")
+        .arg(Arg::new("buckets")
+             .help("Number of histogram buckets")
              .short('b')
              .takes_value(true)
              .default_value("5"))
@@ -143,7 +143,7 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
 
     // CLI parsing
     let runs = cli.value_of_t("runs").unwrap();
-    let bucket: u64 = cli.value_of_t("bucket").unwrap();
+    let buckets: u64 = cli.value_of_t("buckets").unwrap();
     let progs: Vec<String> = cli.values_of_t("programs").unwrap();
     let sets: Vec<String> = cli.values_of_t("sets").unwrap();
     let nullout = cli.is_present("nullout");
@@ -223,9 +223,11 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     for (key, vals) in times {
         let ss: SummStats<f64> = vals.iter().cloned().collect();
         let pc: Percentiles<f64> = vals.iter().cloned().collect();
+        let (min, max) = (ss.min().unwrap(), ss.max().unwrap());
+        let step = (max - min + 0.001) / std::cmp::min(buckets, runs) as f64;
         let mut hist: BTreeMap<u64, u64> = BTreeMap::new();
         vals.into_iter()
-            .map(|v| (v / bucket as f64).round() as u64 * bucket)
+            .map(|v| ((((v - min) / step).floor() * step) + min) as u64)
             .for_each(|v| *hist.entry(v).or_insert(0) += 1);
         let hist = hist.iter().map(|(k, v)| format!("{}:{}", k, v)).collect::<Vec<_>>().join(",");
         let cmd = key.split_once("\t").expect("key without a tab").0;
@@ -237,11 +239,11 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
                  "{}{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}",
                  color,
                  key,
-                 ss.max().unwrap(),
+                 max,
                  pc.percentile(&0.95).unwrap().unwrap(),
                  pc.percentile(&0.85).unwrap().unwrap(),
                  pc.percentile(&0.75).unwrap().unwrap(),
-                 ss.min().unwrap(),
+                 min,
                  ss.mean().unwrap(),
                  ss.standard_deviation().unwrap_or(0.0),
                  ss.sum(),
