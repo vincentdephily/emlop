@@ -3,12 +3,14 @@ use clap::{crate_version, value_parser, Arg, ArgAction::*, Command};
 /// Generate cli argument parser without the `complete` subcommand.
 pub fn build_cli_nocomplete() -> Command<'static> {
     ////////////////////////////////////////////////////////////
-    // Arguments
+    // Filter arguments
     ////////////////////////////////////////////////////////////
     let pkg = Arg::new("package").takes_value(true)
                                  .display_order(1)
                                  .help_heading("FILTER")
-                                 .help("    Show only packages matching <package>.");
+                                 // Workaround bad alignment, might be fixed in clap 4
+                                 .help("    Show only packages matching <package>.")
+                                 .long_help("Show only packages matching <package>.");
     let exact = Arg::new("exact").short('e')
                                  .long("exact")
                                  .action(SetTrue)
@@ -74,40 +76,10 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                              t: Totals\n  \
                                              a: All of the above");
 
-    let limit = Arg::new("limit").long("limit")
-                                 .takes_value(true)
-                                 .value_name("num")
-                                 .value_parser(value_parser!(u16).range(1..))
-                                 .default_value("10")
-                                 .help_heading("STATS")
-                                 .help("Use the last N merge times to predict durations.");
-    let avg =
-        Arg::new("avg").long("avg")
-                       .value_name("fn")
-                       .value_parser(value_parser!(crate::Average))
-                       .hide_possible_values(true)
-                       .default_value("median")
-                       .help_heading("STATS")
-                       .help("Use mean/median/weighted function to predict durations.")
-                       .long_help("Use mean/median/weighted function to predict durations.\n  \
-                                       mean:     simple 'sum/count' average\n  \
-                                       median:   central value, mitigates outliers\n  \
-                                       weighted: 'sum/count' with more weight for recent values");
-    let group = Arg::new("group").short('g')
-                                 .long("groupby")
-                                 .value_name("y,m,w,d")
-                                 .value_parser(value_parser!(crate::date::Timespan))
-                                 .hide_possible_values(true)
-                                 .help_heading("STATS")
-                                 .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay.")
-                                 .long_help("Group by (y)ear, (m)onth, (w)eek, or (d)ay.\n\
-                                             The grouping key is displayed in the first column. \
-                                             Weeks start on monday and are formated as \
-                                             'year-weeknumber'.");
-
     let from = Arg::new("from").value_name("date")
                                .short('f')
                                .long("from")
+                               .display_order(4)
                                .global(true)
                                .takes_value(true)
                                .help_heading("FILTER")
@@ -119,6 +91,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let to = Arg::new("to").value_name("date")
                            .short('t')
                            .long("to")
+                           .display_order(5)
                            .global(true)
                            .takes_value(true)
                            .help_heading("FILTER")
@@ -130,7 +103,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let first = Arg::new("first").short('N')
                                  .long("first")
                                  .value_name("num")
-                                 .display_order(4)
+                                 .display_order(6)
                                  .default_missing_value("1")
                                  .value_parser(value_parser!(usize))
                                  .help_heading("FILTER")
@@ -141,7 +114,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let last = Arg::new("last").short('n')
                                .long("last")
                                .value_name("num")
-                               .display_order(5)
+                               .display_order(7)
                                .default_missing_value("1")
                                .value_parser(value_parser!(usize))
                                .help_heading("FILTER")
@@ -150,16 +123,59 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                              (empty)|1: last entry\n  \
                                              5:         last 5 entries\n");
 
+    ////////////////////////////////////////////////////////////
+    // Stats arguments
+    ////////////////////////////////////////////////////////////
+    let group = Arg::new("group").short('g')
+                                 .long("groupby")
+                                 .display_order(1)
+                                 .value_name("y,m,w,d")
+                                 .value_parser(value_parser!(crate::date::Timespan))
+                                 .hide_possible_values(true)
+                                 .help_heading("STATS")
+                                 .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay.")
+                                 .long_help("Group by (y)ear, (m)onth, (w)eek, or (d)ay.\n\
+                                             The grouping key is displayed in the first column. \
+                                             Weeks start on monday and are formated as \
+                                             'year-weeknumber'.");
+    let limit = Arg::new("limit").long("limit")
+                                 .display_order(2)
+                                 .takes_value(true)
+                                 .value_name("num")
+                                 .value_parser(value_parser!(u16).range(1..))
+                                 .default_value("10")
+                                 .help_heading("STATS")
+                                 .help("Use the last <num> merge times to predict durations.");
+    let avg =
+        Arg::new("avg").long("avg")
+                       .value_name("fn")
+                       .display_order(3)
+                       .value_parser(value_parser!(crate::Average))
+                       .hide_possible_values(true)
+                       .default_value("median")
+                       .help_heading("STATS")
+                       .help("Select function used to predict durations.")
+                       .long_help("Select function used to predict durations.\n  \
+                                       arith|a:           simple 'sum/count' average\n  \
+                                       median|m:          middle value, mitigates outliers\n  \
+                                       weighted-arith|wa: 'sum/count' with more weight for recent values\n  \
+                                       weighted-mean|wm:  \"middle\" value shifted toward recent values");
+
+
+    ////////////////////////////////////////////////////////////
+    // Format arguments
+    ////////////////////////////////////////////////////////////
     let header = Arg::new("header").short('H')
                                    .long("header")
                                    .action(SetTrue)
                                    .global(true)
-                                   .display_order(50)
+                                   .display_order(1)
                                    .help_heading("FORMAT")
                                    .help("Show table header");
     let date =
         Arg::new("date").value_name("format")
                         .long("date")
+                        .display_order(2)
                         .global(true)
                         .possible_values(["ymd", "d", "ymdhms", "dt", "ymdhmso", "dto", "rfc3339",
                                           "3339", "rfc2822", "2822", "compact", "unix"])
@@ -178,6 +194,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                     unix:         1643619586");
     let duration = Arg::new("duration").value_name("format")
                                        .long("duration")
+                                       .display_order(3)
                                        .global(true)
                                        .value_parser(value_parser!(crate::DurationStyle))
                                        .hide_possible_values(true)
@@ -193,16 +210,17 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let utc = Arg::new("utc").long("utc")
                              .global(true)
                              .action(SetTrue)
-                             .display_order(53)
+                             .display_order(4)
                              .help_heading("FORMAT")
                              .help("Parse/display dates in UTC instead of local time");
     let starttime = Arg::new("starttime").long("starttime")
                                          .action(SetTrue)
-                                         .display_order(54)
+                                         .display_order(5)
                                          .help_heading("FORMAT")
                                          .help("Display start time instead of end time");
     let color = Arg::new("color").long("color")
                                  .alias("colour")
+                                 .display_order(6)
                                  .global(true)
                                  .value_parser(["auto", "always", "never", "y", "n"])
                                  .hide_possible_values(true)
@@ -219,32 +237,35 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let tabs = Arg::new("tabs").long("tabs")
                                .global(true)
                                .action(SetTrue)
-                               .display_order(56)
+                               .display_order(7)
                                .help_heading("FORMAT")
                                .help("Separate columns using tabs instead of spaces")
                                .long_help("Separate columns using tabs instead of spaces\n\
                                            Useful for machine parsing.");
 
+    ////////////////////////////////////////////////////////////
+    // Misc arguments
+    ////////////////////////////////////////////////////////////
     let logfile = Arg::new("logfile").value_name("file")
                                      .long("logfile")
                                      .short('F')
                                      .global(true)
                                      .takes_value(true)
                                      .default_value("/var/log/emerge.log")
-                                     .display_order(60)
+                                     .display_order(1)
                                      .help("Location of emerge log file.");
     let tmpdir = Arg::new("tmpdir").value_name("dir")
                                    .long("tmpdir")
                                    .takes_value(true)
                                    .default_value("/var/tmp")
-                                   .display_order(61)
+                                   .display_order(2)
                                    .help("Location of portage tmpdir.");
     let resume = Arg::new("resume").long("resume")
                                    .value_name("source")
                                    .value_parser(value_parser!(crate::ResumeKind))
                                    .hide_possible_values(true)
                                    .default_value("auto")
-                                   .display_order(62)
+                                   .display_order(3)
                                    .help("Use auto, main, backup, or no portage resume list")
                                    .long_help("Use auto, main, backup, or no portage resume list.\n\
                                                This is ignored if STDIN is a piped `emerge -p` output.\n  \
@@ -255,7 +276,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
                                      .action(Count)
-                                     .display_order(63)
+                                     .display_order(4)
                                      .help("Increase verbosity (can be given multiple times).")
                                      .long_help("Increase verbosity (defaults to errors only)\n  \
                                                  -v:   show warnings\n  \
