@@ -98,8 +98,8 @@ impl Times {
         }
         let l = self.vals.len().min(lim as usize);
         match avg {
-            // Simple mean
-            Average::Mean => self.vals.iter().take(l).sum::<i64>() / l as i64,
+            // Simple arithmetic mean
+            Average::Arith => self.vals.iter().take(l).sum::<i64>() / l as i64,
             // Middle value (or avg of the middle two)
             Average::Median => {
                 let mut s: Vec<i64> = self.vals.iter().copied().take(l).collect();
@@ -110,9 +110,9 @@ impl Times {
                     s[l / 2]
                 }
             },
-            // Arithmically weighted moving average
+            // Arithmically weighted arithmetic mean
             // Eg for 4 values the weights are 4,3,2,1 (most recent value first)
-            Average::Weighted => {
+            Average::WeightedArith => {
                 let (s, n, w) =
                     self.vals
                         .iter()
@@ -120,6 +120,21 @@ impl Times {
                         .fold((0, l as i64, 0), |(s, n, w), v| (s + v * n, n - 1, w + n));
                 debug_assert!(n == 0);
                 s / w
+            },
+            // Arithmically weighted median
+            // Eg 3,1,2 -> 3,3,3,1,1,2 -> 1,1,2,2,3,3,3 -> 2
+            Average::WeightedMedian => {
+                let mut s = Vec::with_capacity((l + 1) * (l / 2 + 1));
+                for (n, v) in self.vals.iter().copied().take(l).enumerate() {
+                    s.resize(s.len() - n + l, v);
+                }
+                s.sort_unstable();
+                let l = s.len();
+                if l % 2 == 0 {
+                    (s[(l / 2) - 1] + s[l / 2]) / 2
+                } else {
+                    s[l / 2]
+                }
             },
         }
     }
@@ -549,27 +564,24 @@ mod tests {
     #[test]
     fn averages() {
         use super::Times;
-        use crate::Average;
-        for (lim, mean, median, weighted, vals) in
-            [(10, -1, -1, -1, vec![]),
-             (10, 1, 1, 1, vec![1]),
-             (10, 12 / 2, 6, 21 / 3, vec![2, 10]),
-             (10, 12 / 2, 6, 14 / 3, vec![10, 2]),
-             (10, 15 / 3, 4, (1 + 20 + 12) / (1 + 2 + 3), vec![1, 10, 4]),
-             (10, 15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), vec![1, 10, 3, 1]),
-             (4, 15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), vec![999, 1, 10, 3, 1])]
+        use crate::Average::*;
+        for (a, m, wa, wm, lim, vals) in
+            [(-1, -1, -1, -1, 10, vec![]),
+             (1, 1, 1, 1, 10, vec![1]),
+             (12 / 2, 6, 21 / 3, 10, 10, vec![2, 10]),
+             (12 / 2, 6, 14 / 3, 2, 10, vec![10, 2]),
+             (15 / 3, 4, (1 + 20 + 12) / (1 + 2 + 3), 4, 10, vec![1, 10, 4]),
+             (15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), 2, 10, vec![1, 10, 3, 1]),
+             (15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), 2, 4, vec![999, 1, 10, 3, 1])]
         {
             let mut t = Times::new();
             for &v in vals.iter() {
                 t.insert(v);
             }
-            assert_eq!(mean, t.pred(lim, Average::Mean), "mean({lim}, {vals:?}) should = {mean}");
-            assert_eq!(median,
-                       t.pred(lim, Average::Median),
-                       "median({lim}, {vals:?}) should = {median}");
-            assert_eq!(weighted,
-                       t.pred(lim, Average::Weighted),
-                       "weighed({lim}, {vals:?}) should = {weighted}");
+            assert_eq!(a, t.pred(lim, Arith), "arith {lim} {vals:?}");
+            assert_eq!(m, t.pred(lim, Median), "median {lim} {vals:?}");
+            assert_eq!(wa, t.pred(lim, WeightedArith), "weighted arith {lim} {vals:?}");
+            assert_eq!(wm, t.pred(lim, WeightedMedian), "weighted median {lim} {vals:?}");
         }
     }
 

@@ -107,9 +107,14 @@ impl Show {
 
 #[derive(Clone, Copy, clap::ValueEnum)]
 pub enum Average {
-    Mean,
+    #[clap(alias("a"))]
+    Arith,
+    #[clap(alias("m"))]
     Median,
-    Weighted,
+    #[clap(alias("wa"))]
+    WeightedArith,
+    #[clap(alias("wm"))]
+    WeightedMedian,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
