@@ -486,7 +486,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                                          &[&st.merge, &p.ebuild_version()],
                                          &[&st.dur, &st.dur_t.fmt(real)],
                                          &[&st.dur, &st.dur_t.fmt(pred)],
-                                         &[&st.cnt, &format!("{:.1}%", err)]])
+                                         &[&st.cnt, &format!("{err:.1}%")]])
                             }
                             let errs =
                                 pkg_errs.entry(p.ebuild().to_owned()).or_insert_with(Vec::new);
@@ -505,7 +505,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
         tbl.header(st.header, [&[&"Package"], &[&"Error"]]);
         for (p, e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
-            tbl.row([&[&st.pkg, &p], &[&st.cnt, &format!("{:.1}%", avg)]]); //,
+            tbl.row([&[&st.pkg, &p], &[&st.cnt, &format!("{avg:.1}%")]]);
         }
     }
     Ok(found)

@@ -79,7 +79,7 @@ pub fn get_hist(file: String,
                 -> Result<Receiver<Hist>, Error> {
     debug!("get_hist input={} min={:?} max={:?} str={:?} exact={}",
            file, min_ts, max_ts, search_str, search_exact);
-    let reader = File::open(&file).with_context(|| format!("Cannot open {:?}", file))?;
+    let reader = File::open(&file).with_context(|| format!("Cannot open {file:?}"))?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
     let filter = FilterPkg::try_new(search_str, search_exact)?;
@@ -174,15 +174,15 @@ impl FilterPkg {
                 FilterPkg::True
             },
             (Some(search), true) if search.contains('/') => {
-                info!("Package filter: categ/name == {}", search);
+                info!("Package filter: categ/name == {search}");
                 FilterPkg::Eq { e: search.to_string() }
             },
             (Some(search), true) => {
-                info!("Package filter: name == {}", search);
-                FilterPkg::Ends { e: format!("/{}", search) }
+                info!("Package filter: name == {search}");
+                FilterPkg::Ends { e: format!("/{search}") }
             },
             (Some(search), false) => {
-                info!("Package filter: categ/name ~= {}", search);
+                info!("Package filter: categ/name ~= {search}");
                 FilterPkg::Re { r: RegexBuilder::new(search).case_insensitive(true).build()? }
             },
         })

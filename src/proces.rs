@@ -23,11 +23,11 @@ impl std::fmt::Display for Info {
         let capacity = f.precision().unwrap_or(45).saturating_sub(pid.len());
         let cmdlen = self.cmdline.len();
         if capacity >= cmdlen || cmdlen < 4 {
-            write!(f, "{}{}", pid, &self.cmdline)
+            write!(f, "{pid}{}", &self.cmdline)
         } else if capacity > 3 {
-            write!(f, "{}...{}", pid, &self.cmdline[(cmdlen - capacity + 3)..])
+            write!(f, "{pid}...{}", &self.cmdline[(cmdlen - capacity + 3)..])
         } else {
-            write!(f, "{}...", pid)
+            write!(f, "{pid}...")
         }
     }
 }

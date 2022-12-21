@@ -82,7 +82,7 @@ impl<const N: usize> Table<N> {
             let mut len = 0;
             for s in row[i] {
                 let p = self.buf.len();
-                write!(self.buf, "{}", s).expect("write to buf");
+                write!(self.buf, "{s}").expect("write to buf");
                 if self.buf.get(p).map_or_else(|| false, |c| !c.is_ascii_control()) {
                     len += self.buf.len() - p;
                 }

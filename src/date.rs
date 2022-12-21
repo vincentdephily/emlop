@@ -67,16 +67,16 @@ pub fn epoch_now() -> i64 {
 pub fn parse_date(s: &str, offset: UtcOffset) -> Result<i64, String> {
     let s = s.trim();
     i64::from_str(s).or_else(|e| {
-                        debug!("{}: bad timestamp: {}", s, e);
+                        debug!("{s}: bad timestamp: {e}");
                         parse_date_yyyymmdd(s, offset)
                     })
                     .or_else(|e| {
-                        debug!("{}: bad absolute date: {}", s, e);
+                        debug!("{s}: bad absolute date: {e}");
                         parse_date_ago(s)
                     })
                     .map_err(|e| {
-                        debug!("{}: bad relative date: {}", s, e);
-                        format!("Couldn't parse {:#?}, check examples in --help", s)
+                        debug!("{s}: bad relative date: {e}");
+                        format!("Couldn't parse {s:#?}, check examples in --help")
                     })
 }
 

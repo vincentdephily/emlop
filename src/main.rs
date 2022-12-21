@@ -53,7 +53,7 @@ fn main() {
 pub fn value<T, P>(matches: &ArgMatches, name: &str, parse: P) -> T
     where P: FnOnce(&str) -> Result<T, String>
 {
-    let s = matches.value_of(name).unwrap_or_else(|| panic!("Argument {} missing", name));
+    let s = matches.value_of(name).unwrap_or_else(|| panic!("Argument {name} missing"));
     match parse(s) {
         Ok(v) => v,
         Err(e) => Command::new("emlop").error(ErrorKind::InvalidValue,
@@ -149,7 +149,7 @@ impl DurationStyle {
                 format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
             },
             Self::HMS if secs >= 60 => format!("{}:{:02}", secs % 3600 / 60, secs % 60),
-            Self::HMS => format!("{}", secs),
+            Self::HMS => secs.to_string(),
             Self::HMSFixed => {
                 format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
             },
@@ -162,7 +162,7 @@ impl DurationStyle {
                 Self::fmt_append(&mut buf, secs % 60, "second");
                 buf
             },
-            Self::Secs => format!("{}", secs),
+            Self::Secs => secs.to_string(),
         }
     }
 
