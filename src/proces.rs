@@ -57,15 +57,15 @@ fn get_proc_info(filter: Option<&str>,
     File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
     cmdline = cmdline.replace('\0', " ").trim().into();
     // Done
-    Some(Info { cmdline, start: time_ref + (start_time / clocktick) as i64, pid })
+    Some(Info { cmdline, start: time_ref + start_time / clocktick, pid })
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
 pub fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
-    // SAFETY: returns a system constant, only failure mode shoulfd be a zero/negative value
-    let clocktick = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
+    // SAFETY: returns a system constant, only failure mode should be a zero/negative value
+    let clocktick: i64 = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
     assert!(clocktick > 0, "Failed getting system clock ticks");
     let mut uptimestr = String::new();
     File::open("/proc/uptime")?.read_to_string(&mut uptimestr)?;
