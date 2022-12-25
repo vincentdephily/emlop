@@ -1,0 +1,16 @@
+ * Package:    dev-python/PyQt5-5.15.7:0
+ * Repository: gentoo
+ * Maintainer: qt@gentoo.org
+ * Upstream:   phil@riverbankcomputing.com pyqt@riverbankcomputing.com
+ * USE:        abi_x86_64 amd64 bluetooth dbus declarative elibc_glibc gui kernel_linux multimedia network opengl printsupport python_targets_python3_10 python_targets_python3_11 ssl svg userland_GNU widgets
+ * FEATURES:   network-sandbox preserve-libs sandbox userpriv usersandbox
+>>> Unpacking source...
+>>> Unpacking PyQt5-5.15.7.tar.gz to /var/tmp/portage/dev-python/PyQt5-5.15.7/work
+>>> Source unpacked in /var/tmp/portage/dev-python/PyQt5-5.15.7/work
+>>> Preparing source in /var/tmp/portage/dev-python/PyQt5-5.15.7/work/PyQt5-5.15.7 ...
+>>> Source prepared.
+>>> Configuring source in /var/tmp/portage/dev-python/PyQt5-5.15.7/work/PyQt5-5.15.7 ...
+ * python3_10: running configuration
+sip-build --verbose --confirm-license --build-dir=/var/tmp/portage/dev-python/PyQt5-5.15.7/work/PyQt5-5.15.7-python3_10 --scripts-dir=/usr/lib/python-exec/python3.10 --qmake=/usr/lib64/qt5/bin/qmake --no-make --no-designer-plugin --enable=pylupdate --enable=pyrcc --enable=Qt --enable=QtBluetooth --enable=QtCore --enable=QtDBus --enable=QtQml --enable=QtQuick --enable=QtQuickWidgets --enable=QtGui --enable=_QOpenGLFunctions_2_0 --enable=_QOpenGLFunctions_2_1 --enable=_QOpenGLFunctions_4_1_Core --enable=QtMultimedia --enable=QtMultimediaWidgets --enable=QtNetwork --enable=QtOpenGL --enable=QtPrintSupport --enable=QtSvg --enable=QtWidgets --enable=QtXml
+Querying qmake about your Qt installation...
+done

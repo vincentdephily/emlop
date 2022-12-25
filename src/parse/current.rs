@@ -136,7 +136,9 @@ impl Ansi {
         for c in s.trim().chars() {
             state.step(c);
             if state == Self::Txt {
-                out.push(c);
+                if !out.is_empty() || !c.is_whitespace() {
+                    out.push(c);
+                }
                 if out.len() >= max {
                     out += "...";
                     break;
@@ -149,22 +151,26 @@ impl Ansi {
 
 /// Retrieve summary info from the build log
 pub fn get_buildlog(pkg: &Pkg, portdir: &str) -> Option<String> {
-    let file = format!("{}/portage/{}/temp/build.log", portdir, pkg.ebuild_version());
-    let reader = File::open(&file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
-    let mut last = None;
-    for line in rev_lines::RevLines::new(BufReader::new(reader)).ok()? {
-        if last.is_none() {
-            let stripped = Ansi::strip(&line, 50);
-            if !stripped.is_empty() {
-                last = Some(stripped);
+    let name = format!("{}/portage/{}/temp/build.log", portdir, pkg.ebuild_version());
+    debug!("get_buildlog {name}");
+    let file = File::open(&name).map_err(|e| warn!("Cannot open {name:?}: {e}")).ok()?;
+    read_buildlog(file, 50)
+}
+fn read_buildlog(file: File, max: usize) -> Option<String> {
+    let mut last = String::new();
+    for line in rev_lines::RevLines::new(BufReader::new(file)).ok()? {
+        if last.is_empty() {
+            let stripped = Ansi::strip(&line, max);
+            if stripped.chars().any(char::is_alphanumeric) {
+                last = stripped;
             }
         }
         if line.starts_with(">>>") {
             let tag = line.split_whitespace().skip(1).take(2).collect::<Vec<&str>>().join(" ");
-            return Some(format!(" ({}: {})", tag.trim_matches('.'), last.unwrap_or_default()));
+            return Some(format!(" ({}: {})", tag.trim_matches('.'), last));
         }
     }
-    None
+    Some(format!(" ({last})"))
 }
 
 #[cfg(test)]
@@ -232,5 +238,22 @@ mod tests {
         assert_eq!("foo", Pkg::new("foo", "1.2").ebuild());
         assert_eq!("1.2", Pkg::new("foo", "1.2").version());
         assert_eq!("foo-1.2", Pkg::new("foo", "1.2").ebuild_version());
+    }
+
+    #[test]
+    fn buildlog() {
+        for (file, lim, res) in
+            [("build.log.empty", 20, ""),
+             ("build.log.notag", 50, "* Upstream:   phil@riverbankcomputing.com pyqt@riv..."),
+             ("build.log.trim", 20, "Unpacking source: 102 |         HTTP2W..."),
+             ("build.log.short", 20, "Configuring source: done"),
+             ("build.log.color", 100, "Unpacking source: 0:57.55    Compiling syn v1.0.99"),
+             ("build.log.color", 15, "Unpacking source: 0:57.55    Comp...")]
+        {
+            let f = File::open(&format!("test/{file}")).expect(&format!("can't open {file:?}"));
+            let s = read_buildlog(f, lim).expect("failed to read_buildlog");
+            //assert!((s.len() == (lim+6) && s.ends_with("...)")) || s.len() <= (lim+3));
+            assert_eq!(format!(" ({res})"), s);
+        }
     }
 }
