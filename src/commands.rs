@@ -447,13 +447,14 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                         Show { merge: true, ..Show::default() },
                         args.get_one::<String>("package").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
+    let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
     let mut pkg_starts: HashMap<String, i64> = HashMap::new();
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let mut tbl = Table::new(st).align(0, Align::Left).align(1, Align::Left);
+    let mut tbl = Table::new(st).align(0, Align::Left).align(1, Align::Left).last(last);
     if show.merge {
         tbl.header(st.header,
                    [&[&"Date"], &[&"Package"], &[&"Real"], &[&"Predicted"], &[&"Error"]]);

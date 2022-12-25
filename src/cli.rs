@@ -306,7 +306,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                .long_about(h)
                                .arg(show_p)
                                .arg(first)
-                               .arg(last)
+                               .arg(&last)
                                .arg(tmpdir)
                                .arg(resume)
                                .arg(&avg)
@@ -334,6 +334,7 @@ Use this to gauge the effect of the --limit and --avg options.";
                                 .arg(pkg)
                                 .arg(exact)
                                 .arg(show_a)
+                                .arg(last)
                                 .arg(avg)
                                 .arg(limit);
 
