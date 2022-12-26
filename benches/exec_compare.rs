@@ -61,14 +61,14 @@ fn main() {
         ("ln", "qlop",   &["-f","{emerge.log}","-mv","--nocolor"], None),
         ("ln", "emlop",  &["-F","{emerge.log}","l","--color=n"],   None),
         // Simple package merge log
-        ("egcc", "genlop", &["-f","{emerge.log}","-e","gcc"],     None),
-        ("egcc", "qlop",   &["-f","{emerge.log}","gcc"],          None),
-        ("egcc", "emlop",  &["-F","{emerge.log}","l","gcc","-e"], None),
-        // Version+duration package merge+unmerge log (can't show just package unmerges iin genlop)
-        ("tgcc", "genlop", &["-f","{emerge.log}","-te","gcc"],           None),
+        ("egcc", "genlop", &["-f","{emerge.log}","gcc"],          None),
+        ("egcc", "qlop",   &["-f","{emerge.log}","-m","gcc"],     None),
+        ("egcc", "emlop",  &["-F","{emerge.log}","l","-e","gcc"], None),
+        // Version+duration package merge+unmerge log
+        ("tgcc", "genlop", &["-f","{emerge.log}","-tu","gcc"],           None),
         ("tgcc", "qlop",   &["-f","{emerge.log}","-tvmuU","gcc"],        None),
-        ("tgcc", "emlop",  &["-F","{emerge.log}","l","gcc","-e","-smu"], None),
-        // Predict current merge
+        ("tgcc", "emlop",  &["-F","{emerge.log}","l","-smu","-e","gcc"], None),
+        // Predict current merge(s)
         ("c", "genlop", &["-c"], None),
         ("c", "qlop",   &["-r"], None),
         ("c", "emlop",  &["p"],  None),
