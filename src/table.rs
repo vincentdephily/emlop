@@ -19,6 +19,8 @@ pub struct Table<const N: usize> {
     rows: VecDeque<[(usize, usize, usize); N]>,
     /// Max column widths seen so far
     widths: [usize; N],
+    /// Whether a header has been set
+    have_header: bool,
     /// Whether a column is fully empty and should be skipped
     empty: [bool; N],
     /// Line ending (may contain ansi cleanup chars)
@@ -39,6 +41,7 @@ impl<const N: usize> Table<N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
                widths: [0; N],
+               have_header: false,
                empty: [true; N],
                lineend: format!("{}\n", st.clr).into(),
                aligns: [Align::Right; N],
@@ -67,6 +70,8 @@ impl<const N: usize> Table<N> {
             if !self.rows.is_empty() {
                 self.row([&[]; N]);
             }
+            self.last = self.last.saturating_add(1);
+            self.have_header = true;
             self.row(row);
         }
     }
@@ -96,6 +101,9 @@ impl<const N: usize> Table<N> {
         }
         self.rows.push_back(idxrow);
         if self.rows.len() > self.last {
+            if self.have_header {
+                self.rows.swap(0,1);
+            }
             self.rows.pop_front();
         }
     }

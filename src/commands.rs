@@ -375,9 +375,6 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let mut totelapsed = 0;
     for p in pkgs {
         totcount += 1;
-        if totcount > first {
-            break;
-        }
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
         let elapsed = match started.remove(&p) {
@@ -403,7 +400,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         };
 
         // Done
-        if show.merge {
+        if show.merge && totcount <= first {
             if elapsed > 0 {
                 let stage = get_buildlog(&p, tmpdir).unwrap_or_default();
                 tbl.row([&[&st.pkg, &p.ebuild_version()],
