@@ -304,7 +304,11 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let now = epoch_now();
     let show: Show = *args.get_one("show").unwrap();
     let first = *args.get_one("first").unwrap_or(&usize::MAX);
-    let last = *args.get_one("last").unwrap_or(&usize::MAX);
+    let last = match args.get_one("last") {
+        Some(&n) if show.tot => n + 1,
+        Some(&n) => n,
+        None => usize::MAX,
+    };
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
     let resume = *args.get_one("resume").unwrap();
