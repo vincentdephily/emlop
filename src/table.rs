@@ -21,8 +21,7 @@ pub struct Table<const N: usize> {
     widths: [usize; N],
     /// Whether a header has been set
     have_header: bool,
-    /// Whether a column is fully empty and should be skipped
-    empty: [bool; N],
+
     /// Line ending (may contain ansi cleanup chars)
     lineend: Vec<u8>,
     /// Column alignments (defaults to Right)
@@ -42,7 +41,6 @@ impl<const N: usize> Table<N> {
                buf: Vec::with_capacity(1024),
                widths: [0; N],
                have_header: false,
-               empty: [true; N],
                lineend: format!("{}\n", st.clr).into(),
                aligns: [Align::Right; N],
                margins: ["  "; N],
@@ -91,7 +89,7 @@ impl<const N: usize> Table<N> {
     pub fn row(&mut self, row: [&[&dyn Display]; N]) {
         let mut idxrow = [(0, 0, 0); N];
         for i in 0..N {
-            let pos0 = self.buf.len();
+            let start = self.buf.len();
             let mut len = 0;
             for s in row[i] {
                 let p = self.buf.len();
@@ -100,23 +98,18 @@ impl<const N: usize> Table<N> {
                     len += self.buf.len() - p;
                 }
             }
-            let pos2 = self.buf.len();
-            if !self.tabs {
-                self.widths[i] = usize::max(self.widths[i], len);
-            }
-            self.empty[i] &= len == 0;
-            idxrow[i] = (len, pos0, pos2);
+            self.widths[i] = usize::max(self.widths[i], len);
+            idxrow[i] = (len, start, self.buf.len());
         }
         self.rows.push_back(idxrow);
         if self.rows.len() > self.last {
             if self.have_header {
-                self.rows.swap(0,1);
+                self.rows.swap(0, 1);
             }
             self.rows.pop_front();
         }
     }
 }
-
 impl<const N: usize> Drop for Table<N> {
     /// Table is rendered to stdout when it goes out of scope
     fn drop(&mut self) {
@@ -129,7 +122,7 @@ impl<const N: usize> Drop for Table<N> {
             #[allow(clippy::needless_range_loop)]
             for i in 0..N {
                 // Skip fully-empty columns
-                if self.empty[i] {
+                if self.widths[i] == 0 {
                     continue;
                 }
                 let (len, pos0, pos1) = row[i];
@@ -139,7 +132,7 @@ impl<const N: usize> Drop for Table<N> {
                     }
                     out.write_all(&self.buf[pos0..pos1]).unwrap_or(());
                 } else {
-                    // Min space between columns
+                    // Space between columns
                     if !first {
                         out.write_all(self.margins[i].as_bytes()).unwrap_or(());
                     }
