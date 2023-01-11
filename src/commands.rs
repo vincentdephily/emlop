@@ -24,7 +24,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let mut sync_start: Option<i64> = None;
     let mut tbl =
         Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ").last(last);
-    tbl.header(st.header, [&[&"Date"], &[&"Duration"], &[&"Package/Repo"]]);
+    tbl.header(st.header, ["Date", "Duration", "Package/Repo"]);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -233,14 +233,14 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                    pkg_time: &BTreeMap<String, (Times, Times)>)
                    -> Result<(), Error> {
     tbl.header(st.header && show.pkg | show.tot && !pkg_time.is_empty(),
-               [&[&group.1],
-                &[&"Package"],
-                &[&"Merge count"],
-                &[&"Total time"],
-                &[&"Predict time"],
-                &[&"Unmerge count"],
-                &[&"Total time"],
-                &[&"Predict time"]]);
+               [group.1,
+                "Package",
+                "Merge count",
+                "Total time",
+                "Predict time",
+                "Unmerge count",
+                "Total time",
+                "Predict time"]);
     if show.pkg && !pkg_time.is_empty() {
         for (pkg, (merge, unmerge)) in pkg_time {
             tbl.row([&[&group.0],
@@ -275,14 +275,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
     }
     if show.sync && !sync_time.is_empty() {
         tbl.header(st.header,
-                   [&[&group.1],
-                    &[&"Repo"],
-                    &[&"Sync count"],
-                    &[&"Total time"],
-                    &[&"Predict time"],
-                    &[],
-                    &[],
-                    &[]]);
+                   [group.1, "Repo", "Sync count", "Total time", "Predict time", "", "", ""]);
         for (repo, time) in sync_time {
             tbl.row([&[&group.0],
                      &[&"Sync ", &repo],
@@ -463,8 +456,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     let mut found = false;
     let mut tbl = Table::new(st).align(0, Align::Left).align(1, Align::Left).last(last);
     if show.merge {
-        tbl.header(st.header,
-                   [&[&"Date"], &[&"Package"], &[&"Real"], &[&"Predicted"], &[&"Error"]]);
+        tbl.header(st.header, ["Date", "Package", "Real", "Predicted", "Error"]);
     }
     for p in hist {
         match p {
@@ -510,7 +502,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     drop(tbl);
     if show.tot {
         let mut tbl = Table::new(st).align(0, Align::Left);
-        tbl.header(st.header, [&[&"Package"], &[&"Error"]]);
+        tbl.header(st.header, ["Package", "Error"]);
         for (p, e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
             tbl.row([&[&st.pkg, &p], &[&st.cnt, &format!("{avg:.1}%")]]);

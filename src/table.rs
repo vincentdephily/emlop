@@ -65,14 +65,22 @@ impl<const N: usize> Table<N> {
         self
     }
     /// Add a section header
-    pub fn header(&mut self, enabled: bool, row: [&[&dyn Display]; N]) {
+    pub fn header(&mut self, enabled: bool, row: [&str; N]) {
         if enabled {
             if !self.rows.is_empty() {
                 self.row([&[]; N]);
             }
             self.last = self.last.saturating_add(1);
             self.have_header = true;
-            self.row(row);
+
+            let mut idxrow = [(0, 0, 0); N];
+            for i in 0..N {
+                let start = self.buf.len();
+                self.buf.extend(row[i].as_bytes());
+                self.widths[i] = usize::max(self.widths[i], row[i].len());
+                idxrow[i] = (row[i].len(), start, self.buf.len());
+            }
+            self.rows.push_back(idxrow);
         }
     }
     /// Add one row of data
