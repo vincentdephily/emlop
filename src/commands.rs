@@ -1,5 +1,6 @@
 use crate::{date::*, parse::*, proces::*, table::*, *};
 use std::{collections::{BTreeMap, HashMap},
+          fmt::Display,
           io::stdin};
 
 /// Straightforward display of merge events
@@ -417,19 +418,24 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     }
     if totcount > 0 {
         if show.tot {
-            tbl.row([&[&"Estimate for ",
-                       &st.cnt,
-                       &totcount,
-                       &st.clr,
-                       &" ebuild (",
-                       &st.cnt,
-                       &totunknown,
-                       &st.clr,
-                       &" unknown, ",
-                       &st.dur,
-                       &st.dur_t.fmt(totelapsed),
-                       &st.clr,
-                       &" elapsed)"],
+            let mut s: Vec<&dyn std::fmt::Display> =
+                vec![&"Estimate for ",
+                     &st.cnt,
+                     &totcount,
+                     &st.clr,
+                     if totcount > 1 { &" ebuilds" } else { &" ebuild" }];
+            if totunknown > 0 {
+                s.extend::<[&dyn Display; 5]>([&", ", &st.cnt, &totunknown, &st.clr, &" unknown"]);
+            }
+            let tothidden = totcount.saturating_sub(first.min(last - 1));
+            if tothidden > 0 {
+                s.extend::<[&dyn Display; 5]>([&", ", &st.cnt, &tothidden, &st.clr, &" hidden"]);
+            }
+            let e = st.dur_t.fmt(totelapsed);
+            if totelapsed > 0 {
+                s.extend::<[&dyn Display; 5]>([&", ", &st.dur, &e, &st.clr, &" elapsed"]);
+            }
+            tbl.row([&s,
                      &[&st.dur, &st.dur_t.fmt(totpredict), &st.clr],
                      &[&"@ ", &st.dur, &fmt_time(now + totpredict, st)]]);
         }
@@ -747,18 +753,18 @@ mod tests {
                      ("blah blah\n", format!("No pretended merge found\n"), 1),
                      // Check all-unknowns
                      ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
-                      format!("dev-lang/unknown-1.42                         ? \n\
-                               Estimate for 1 ebuild (1 unknown, 0 elapsed)  0 @ {}\n",
+                      format!("dev-lang/unknown-1.42             ? \n\
+                               Estimate for 1 ebuild, 1 unknown  0 @ {}\n",
                               ts(0)),
                       0),
                      // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
                      ("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
                        [ebuild   R   ~] dev-lang/unknown-1.42\n\
                        [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
-                      format!("dev-qt/qtcore-5.9.4-r2                        3:45 \n\
-                               dev-lang/unknown-1.42                            ? \n\
-                               dev-qt/qtgui-5.9.4-r3                         4:24 \n\
-                               Estimate for 3 ebuild (1 unknown, 0 elapsed)  8:09 @ {}\n",
+                      format!("dev-qt/qtcore-5.9.4-r2             3:45 \n\
+                               dev-lang/unknown-1.42                 ? \n\
+                               dev-qt/qtgui-5.9.4-r3              4:24 \n\
+                               Estimate for 3 ebuilds, 1 unknown  8:09 @ {}\n",
                               ts(8 * 60 + 9)),
                       0),];
         for (i, o, e) in t {
@@ -1019,8 +1025,8 @@ mod tests {
         let _cache_cargo_build = emlop("");
         let a = "-F test/emerge.negtime.log p --date unix";
         let i = "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n";
-        let o = format!("kde-plasma/kwin-5.15.5                        4:33 \n\
-                         Estimate for 1 ebuild (0 unknown, 0 elapsed)  4:33 @ {}\n",
+        let o = format!("kde-plasma/kwin-5.15.5  4:33 \n\
+                         Estimate for 1 ebuild   4:33 @ {}\n",
                         ts(4 * 60 + 33));
         emlop(a).write_stdin(i).assert().success().stdout(o);
     }
