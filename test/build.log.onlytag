@@ -1,0 +1,7 @@
+ * Package:    dev-python/PyQt5-5.15.7:0
+ * Repository: gentoo
+ * Maintainer: qt@gentoo.org
+ * Upstream:   phil@riverbankcomputing.com pyqt@riverbankcomputing.com
+ * USE:        abi_x86_64 amd64 bluetooth dbus declarative elibc_glibc gui kernel_linux multimedia network opengl printsupport python_targets_python3_10 python_targets_python3_11 ssl svg userland_GNU widgets
+ * FEATURES:   network-sandbox preserve-libs sandbox userpriv usersandbox
+>>> Unpacking source...

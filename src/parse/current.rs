@@ -152,22 +152,26 @@ impl Ansi {
 /// Retrieve summary info from the build log
 pub fn get_buildlog(pkg: &Pkg, portdir: &str) -> Option<String> {
     let name = format!("{}/portage/{}/temp/build.log", portdir, pkg.ebuild_version());
-    debug!("get_buildlog {name}");
+    info!("Build log: {name}");
     let file = File::open(&name).map_err(|e| warn!("Cannot open {name:?}: {e}")).ok()?;
     read_buildlog(file, 50)
 }
 fn read_buildlog(file: File, max: usize) -> Option<String> {
     let mut last = String::new();
     for line in rev_lines::RevLines::new(BufReader::new(file)).ok()? {
+        if line.starts_with(">>>") {
+            let tag = line.split_ascii_whitespace().skip(1).take(2).collect::<Vec<_>>().join(" ");
+            if last.is_empty() {
+                return Some(format!(" ({})", tag.trim_matches('.')));
+            } else {
+                return Some(format!(" ({}: {})", tag.trim_matches('.'), last));
+            }
+        }
         if last.is_empty() {
             let stripped = Ansi::strip(&line, max);
             if stripped.chars().any(char::is_alphanumeric) {
                 last = stripped;
             }
-        }
-        if line.starts_with(">>>") {
-            let tag = line.split_whitespace().skip(1).take(2).collect::<Vec<&str>>().join(" ");
-            return Some(format!(" ({}: {})", tag.trim_matches('.'), last));
         }
     }
     Some(format!(" ({last})"))
@@ -245,6 +249,7 @@ mod tests {
         for (file, lim, res) in
             [("build.log.empty", 20, ""),
              ("build.log.notag", 50, "* Upstream:   phil@riverbankcomputing.com pyqt@riv..."),
+             ("build.log.onlytag", 30, "Unpacking source"),
              ("build.log.trim", 20, "Unpacking source: 102 |         HTTP2W..."),
              ("build.log.short", 20, "Configuring source: done"),
              ("build.log.color", 100, "Unpacking source: 0:57.55    Compiling syn v1.0.99"),
@@ -252,7 +257,6 @@ mod tests {
         {
             let f = File::open(&format!("test/{file}")).expect(&format!("can't open {file:?}"));
             let s = read_buildlog(f, lim).expect("failed to read_buildlog");
-            //assert!((s.len() == (lim+6) && s.ends_with("...)")) || s.len() <= (lim+3));
             assert_eq!(format!(" ({res})"), s);
         }
     }
