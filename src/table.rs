@@ -66,7 +66,7 @@ impl<const N: usize> Table<N> {
     pub fn header(&mut self, enabled: bool, row: [&str; N]) {
         if enabled {
             if !self.rows.is_empty() {
-                self.row([&[]; N]);
+                self.rows.push_back([(0, 0, 0); N]);
             }
             self.last = self.last.saturating_add(1);
             self.have_header = true;
