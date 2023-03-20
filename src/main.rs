@@ -210,31 +210,22 @@ impl Styles {
         let date_fmt = args.value_of_t("date").unwrap();
         let date_offset = date::get_offset(args.get_flag("utc"));
         let tabs = args.get_flag("tabs");
-        if color {
-            Styles { pkg: "\x1B[1;32m",
-                     merge: "\x1B[1;32m",
-                     unmerge: "\x1B[1;31m",
-                     dur: "\x1B[1;35m",
-                     cnt: "\x1B[2;33m",
-                     clr: "\x1B[0m",
-                     header,
-                     dur_t,
-                     date_offset,
-                     date_fmt,
-                     tabs }
-        } else {
-            Styles { pkg: "",
-                     merge: ">>> ",
-                     unmerge: "<<< ",
-                     dur: "",
-                     cnt: "",
-                     clr: "",
-                     header,
-                     dur_t,
-                     date_offset,
-                     date_fmt,
-                     tabs }
-        }
+        Styles { pkg: if color { "\x1B[1;32m" } else { "" },
+                 merge: if color { "\x1B[1;32m" } else { ">>> " },
+                 unmerge: if color { "\x1B[1;31m" } else { "<<< " },
+                 dur: if color { "\x1B[1;35m" } else { "" },
+                 cnt: if color { "\x1B[2;33m" } else { "" },
+                 clr: if color { "\x1B[0m" } else { "" },
+                 header,
+                 dur_t,
+                 date_offset,
+                 date_fmt,
+                 tabs }
+    }
+    #[cfg(test)]
+    fn from_str(s: &'static str) -> Self {
+        let args = cli::build_cli().get_matches_from(s.split_whitespace());
+        Self::from_args(&args)
     }
 }
 

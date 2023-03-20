@@ -109,12 +109,9 @@ impl<const N: usize> Table<N> {
             self.rows.pop_front();
         }
     }
-}
-impl<const N: usize> Drop for Table<N> {
-    /// Table is rendered to stdout when it goes out of scope
-    fn drop(&mut self) {
+
+    fn flush(&self, mut out: impl std::io::Write) {
         let spaces = [b' '; 128];
-        let mut out = BufWriter::new(stdout().lock());
         for row in &self.rows {
             let mut first = true;
             // Clippy suggests `for (i, <item>) in row.iter().enumerate().take(N)` which IMHO
@@ -155,5 +152,51 @@ impl<const N: usize> Drop for Table<N> {
             }
             out.write_all(&self.lineend).unwrap_or(());
         }
+    }
+}
+
+impl<const N: usize> Drop for Table<N> {
+    /// Table is rendered to stdout when it goes out of scope
+    fn drop(&mut self) {
+        self.flush(BufWriter::new(stdout().lock()))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn check<const N: usize>(mut tbl: Table<N>, expect: &str) {
+        let mut out = Vec::with_capacity(tbl.buf.len());
+        tbl.flush(&mut out);
+        tbl.rows.clear();
+        assert_eq!(expect, String::from_utf8(out).unwrap());
+    }
+
+    #[test]
+    fn last() {
+        let st = Styles::from_str("emlop log --color=n");
+
+        // No limit
+        let mut t = Table::<1>::new(&st);
+        for i in 1..10 {
+            t.row([&[&format!("{i}")]]);
+        }
+        check(t, "1\n2\n3\n4\n5\n6\n7\n8\n9\n");
+
+        // 5 max
+        let mut t = Table::<1>::new(&st).last(5);
+        for i in 1..10 {
+            t.row([&[&format!("{i}")]]);
+        }
+        check(t, "5\n6\n7\n8\n9\n");
+
+        // 5 max ignoring header
+        let mut t = Table::new(&st).last(5);
+        t.header(true, ["h"]);
+        for i in 1..10 {
+            t.row([&[&format!("{i}")]]);
+        }
+        check(t, "h\n5\n6\n7\n8\n9\n");
     }
 }
