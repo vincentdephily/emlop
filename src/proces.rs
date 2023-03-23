@@ -7,8 +7,9 @@
 //! be fast.
 
 use crate::{date::*, *};
+use anyhow::{ensure, Context};
 use std::{fs::{read_dir, DirEntry, File},
-          io::{self, prelude::*}};
+          io::prelude::*};
 
 #[derive(Debug)]
 pub struct Info {
@@ -61,19 +62,27 @@ fn get_proc_info(filter: Option<&str>,
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
-pub fn get_all_info(filter: Option<&str>) -> Result<Vec<Info>, io::Error> {
+pub fn get_all_info(filter: Option<&str>) -> Vec<Info> {
+    get_all_info_result(filter).unwrap_or_else(|e| {
+                                   log_err(e);
+                                   vec![]
+                               })
+}
+fn get_all_info_result(filter: Option<&str>) -> Result<Vec<Info>, Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
     let clocktick: i64 = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
-    assert!(clocktick > 0, "Failed getting system clock ticks");
+    ensure!(clocktick > 0, "Failed getting system clock ticks");
     let mut uptimestr = String::new();
-    File::open("/proc/uptime")?.read_to_string(&mut uptimestr)?;
+    File::open("/proc/uptime").context("Opening /proc/uptime")?
+                              .read_to_string(&mut uptimestr)
+                              .context("Reading /proc/uptime")?;
     let uptime = i64::from_str(uptimestr.split('.').next().unwrap()).unwrap();
     let time_ref = epoch_now() - uptime;
     // Now iterate through /proc/<pid>
     let mut ret: Vec<Info> = Vec::new();
-    for entry in read_dir("/proc/")? {
+    for entry in read_dir("/proc/").context("Listing /proc/")? {
         if let Some(i) = get_proc_info(filter, &entry?, clocktick, time_ref) {
             ret.push(i)
         }
@@ -102,7 +111,6 @@ mod tests {
         // First get the system's process start times using our implementation
         let mut info: BTreeMap<i32,(String,Option<i64>,Option<i64>)> = //pid => (cmd, rust_time, ps_time)
             get_all_info(None)
-            .unwrap()
             .iter()
             .fold(BTreeMap::new(), |mut a,i| {a.insert(i.pid, (i.cmdline.clone(),Some(i.start),None)); a});
         // Then get them using the ps implementation (merging them into the same data structure)

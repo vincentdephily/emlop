@@ -39,6 +39,7 @@ And also:
 * Internal stuff
   - Increased MSRV to 1.62
   - Upgraded `clap` (triggered a lot of this release's improvements)
+  - Recover from process listing errors
   - Various refactorings
   - Removed unmaintained `ansi_term` and `sysconfig`
   - Improved benchmark tool a bit

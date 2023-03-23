@@ -312,7 +312,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
-    for i in get_all_info(Some("emerge"))? {
+    for i in get_all_info(Some("emerge")) {
         cms = std::cmp::min(cms, i.start);
         if show.emerge {
             tbl.row([&[&i], &[&st.dur, &st.dur_t.fmt(now - i.start)], &[]]);

@@ -35,12 +35,16 @@ fn main() {
         Ok(true) => ::std::process::exit(0),
         Ok(false) => ::std::process::exit(1),
         Err(e) => {
-            match e.source() {
-                Some(s) => error!("{}: {}", e, s),
-                None => error!("{}", e),
-            }
+            log_err(e);
             ::std::process::exit(2)
         },
+    }
+}
+
+pub fn log_err(e: Error) {
+    match e.source() {
+        Some(s) => error!("{}: {}", e, s),
+        None => error!("{}", e),
     }
 }
 
