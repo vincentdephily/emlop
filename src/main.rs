@@ -50,10 +50,10 @@ pub fn log_err(e: Error) {
 
 /// Parse and return argument from an ArgMatches, exit if parsing fails.
 ///
-/// This is the same as [value_opt(m,n,p)->Option<T>] except that we expect `name` to have a
+/// This is the same as [`value_opt(m,n,p)->Option<T>`] except that we expect `name` to have a
 /// value. Note the nice exit for user error vs panic for emlop bug.
 ///
-/// [value_opt(m,n,p)->Option<T>]: fn.value_opt.html
+/// [`value_opt(m,n,p)->Option<T>`]: fn.value_opt.html
 pub fn value<T, P>(matches: &ArgMatches, name: &str, parse: P) -> T
     where P: FnOnce(&str) -> Result<T, String>
 {
@@ -187,8 +187,8 @@ impl DurationStyle {
 
 /// Holds styling preferences.
 ///
-/// Colors use prefix/suffix() instead of paint() because paint() doesn't handle '{:>9}' alignments
-/// properly.
+/// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
+/// alignments properly.
 pub struct Styles {
     pkg: &'static str,
     merge: &'static str,

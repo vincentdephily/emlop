@@ -13,7 +13,7 @@ pub struct Table<const N: usize> {
     /// Buffer where unaligned entries are written
     ///
     /// We can only render alignments when we saw all the rows.
-    /// Having a single buffer noticable speed things up by reducing allocations.
+    /// Having a single buffer noticably speed things up by reducing allocations.
     buf: Vec<u8>,
     /// Visible length, and start/stop index into buffer
     rows: VecDeque<[(usize, usize, usize); N]>,
