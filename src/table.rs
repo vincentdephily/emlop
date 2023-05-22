@@ -1,7 +1,24 @@
-use crate::Styles;
+use crate::{AnsiStr, Styles};
 use std::{collections::VecDeque,
-          fmt::Display,
           io::{stdout, BufWriter, Write as _}};
+
+pub trait Disp {
+    /// Write to buf and returns the number of visible chars written
+    fn out(&self, buf: &mut Vec<u8>) -> usize;
+}
+impl<T: std::fmt::Display> Disp for T {
+    fn out(&self, buf: &mut Vec<u8>) -> usize {
+        let start = buf.len();
+        write!(buf, "{self}").expect("write to buf");
+        buf.len() - start
+    }
+}
+impl Disp for AnsiStr {
+    fn out(&self, buf: &mut Vec<u8>) -> usize {
+        buf.extend_from_slice(self.0.as_bytes());
+        0
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum Align {
@@ -41,7 +58,7 @@ impl<const N: usize> Table<N> {
                buf: Vec::with_capacity(1024),
                widths: [0; N],
                have_header: false,
-               lineend: format!("{}\n", st.clr).into(),
+               lineend: format!("{}\n", st.clr.0).into(),
                aligns: [Align::Right; N],
                margins: ["  "; N],
                last: usize::MAX,
@@ -85,19 +102,11 @@ impl<const N: usize> Table<N> {
     ///
     /// The number of cells is set by const generic.
     /// Each cell is an array of displayables.
-    /// Entries that start with an ascii control char are assumed to be zero-length.
-    pub fn row(&mut self, row: [&[&dyn Display]; N]) {
+    pub fn row(&mut self, row: [&[&dyn Disp]; N]) {
         let mut idxrow = [(0, 0, 0); N];
         for i in 0..N {
             let start = self.buf.len();
-            let mut len = 0;
-            for s in row[i] {
-                let p = self.buf.len();
-                write!(self.buf, "{s}").expect("write to buf");
-                if self.buf.get(p).map_or_else(|| false, |c| !c.is_ascii_control()) {
-                    len += self.buf.len() - p;
-                }
-            }
+            let len = row[i].iter().map(|c| c.out(&mut self.buf)).sum();
             self.widths[i] = usize::max(self.widths[i], len);
             idxrow[i] = (len, start, self.buf.len());
         }
@@ -165,6 +174,7 @@ impl<const N: usize> Drop for Table<N> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::parse::Ansi;
 
     fn check<const N: usize>(mut tbl: Table<N>, expect: &str) {
         let mut out = Vec::with_capacity(tbl.buf.len());
@@ -198,5 +208,35 @@ mod test {
             t.row([&[&format!("{i}")]]);
         }
         check(t, "h\n5\n6\n7\n8\n9\n");
+    }
+
+    #[test]
+    fn align() {
+        let st = Styles::from_str("emlop log --color=n");
+
+        let mut t = Table::<2>::new(&st).align(0, Align::Left);
+        t.row([&[&"short"], &[&1]]);
+        t.row([&[&"looooooooooooong"], &[&1]]);
+        t.row([&[&"high"], &[&9999]]);
+        let res = "short                1\n\
+                   looooooooooooong     1\n\
+                   high              9999\n";
+        assert!(res.split_terminator('\n').all(|l| l.len() == 22));
+        check(t, res);
+    }
+
+    #[test]
+    fn color() {
+        let st = Styles::from_str("emlop log --color=y");
+
+        let mut t = Table::<2>::new(&st).align(0, Align::Left);
+        t.row([&[&"123"], &[&1]]);
+        t.row([&[&st.cnt, &1, &st.dur, &2, &st.pkg, &3, &st.clr], &[&1]]);
+        let res = "123  1\x1B[0m\n\
+                   \x1B[2;33m1\x1B[1;35m2\x1B[1;32m3\x1B[0m  1\x1B[0m\n";
+        let (l1, l2) = res.split_once('\n').expect("two lines");
+        assert_eq!(Ansi::strip(l1, 100), "123  1");
+        assert_eq!(Ansi::strip(l1, 100), Ansi::strip(l2, 100));
+        check(t, res);
     }
 }

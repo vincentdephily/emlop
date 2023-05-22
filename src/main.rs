@@ -185,17 +185,20 @@ impl DurationStyle {
     }
 }
 
+/// Newtype for &str containing only non-displayable ansi control chars
+pub struct AnsiStr(&'static str);
+
 /// Holds styling preferences.
 ///
 /// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
 /// alignments properly.
 pub struct Styles {
-    pkg: &'static str,
-    merge: &'static str,
-    unmerge: &'static str,
-    dur: &'static str,
-    cnt: &'static str,
-    clr: &'static str,
+    pkg: AnsiStr,
+    merge: AnsiStr,
+    unmerge: AnsiStr,
+    dur: AnsiStr,
+    cnt: AnsiStr,
+    clr: AnsiStr,
     header: bool,
     dur_t: DurationStyle,
     date_offset: UtcOffset,
@@ -214,12 +217,12 @@ impl Styles {
         let date_fmt = args.value_of_t("date").unwrap();
         let date_offset = date::get_offset(args.get_flag("utc"));
         let tabs = args.get_flag("tabs");
-        Styles { pkg: if color { "\x1B[1;32m" } else { "" },
-                 merge: if color { "\x1B[1;32m" } else { ">>> " },
-                 unmerge: if color { "\x1B[1;31m" } else { "<<< " },
-                 dur: if color { "\x1B[1;35m" } else { "" },
-                 cnt: if color { "\x1B[2;33m" } else { "" },
-                 clr: if color { "\x1B[0m" } else { "" },
+        Styles { pkg: AnsiStr(if color { "\x1B[1;32m" } else { "" }),
+                 merge: AnsiStr(if color { "\x1B[1;32m" } else { ">>> " }),
+                 unmerge: AnsiStr(if color { "\x1B[1;31m" } else { "<<< " }),
+                 dur: AnsiStr(if color { "\x1B[1;35m" } else { "" }),
+                 cnt: AnsiStr(if color { "\x1B[2;33m" } else { "" }),
+                 clr: AnsiStr(if color { "\x1B[0m" } else { "" }),
                  header,
                  dur_t,
                  date_offset,

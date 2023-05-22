@@ -1,6 +1,5 @@
 use crate::{date::*, parse::*, proces::*, table::*, *};
 use std::{collections::{BTreeMap, HashMap},
-          fmt::Display,
           io::stdin};
 
 /// Straightforward display of merge events
@@ -244,7 +243,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
     if show.pkg && !pkg_time.is_empty() {
         for (pkg, (merge, unmerge)) in pkg_time {
             tbl.row([&[&group.0],
-                     &[&st.pkg, &pkg],
+                     &[&st.pkg, pkg],
                      &[&st.cnt, &merge.count],
                      &[&st.dur, &st.dur_t.fmt(merge.tot)],
                      &[&st.dur, &st.dur_t.fmt(merge.pred(lim, avg))],
@@ -278,7 +277,7 @@ fn cmd_stats_group(tbl: &mut Table<8>,
                    [group.1, "Repo", "Sync count", "Total time", "Predict time", "", "", ""]);
         for (repo, time) in sync_time {
             tbl.row([&[&group.0],
-                     &[&"Sync ", &repo],
+                     &[&"Sync ", repo],
                      &[&st.cnt, &time.count],
                      &[&st.dur, &st.dur_t.fmt(time.tot)],
                      &[&st.dur, &st.dur_t.fmt(time.pred(lim, avg))],
@@ -411,22 +410,21 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     }
     if totcount > 0 {
         if show.tot {
-            let mut s: Vec<&dyn std::fmt::Display> =
-                vec![&"Estimate for ",
-                     &st.cnt,
-                     &totcount,
-                     &st.clr,
-                     if totcount > 1 { &" ebuilds" } else { &" ebuild" }];
+            let mut s: Vec<&dyn Disp> = vec![&"Estimate for ",
+                                             &st.cnt,
+                                             &totcount,
+                                             &st.clr,
+                                             if totcount > 1 { &" ebuilds" } else { &" ebuild" }];
             if totunknown > 0 {
-                s.extend::<[&dyn Display; 5]>([&", ", &st.cnt, &totunknown, &st.clr, &" unknown"]);
+                s.extend::<[&dyn Disp; 5]>([&", ", &st.cnt, &totunknown, &st.clr, &" unknown"]);
             }
             let tothidden = totcount.saturating_sub(first.min(last - 1));
             if tothidden > 0 {
-                s.extend::<[&dyn Display; 5]>([&", ", &st.cnt, &tothidden, &st.clr, &" hidden"]);
+                s.extend::<[&dyn Disp; 5]>([&", ", &st.cnt, &tothidden, &st.clr, &" hidden"]);
             }
             let e = st.dur_t.fmt(totelapsed);
             if totelapsed > 0 {
-                s.extend::<[&dyn Display; 5]>([&", ", &st.dur, &e, &st.clr, &" elapsed"]);
+                s.extend::<[&dyn Disp; 5]>([&", ", &st.dur, &e, &st.clr, &" elapsed"]);
             }
             tbl.row([&s,
                      &[&st.dur, &st.dur_t.fmt(totpredict), &st.clr],
