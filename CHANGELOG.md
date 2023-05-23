@@ -37,7 +37,7 @@ And also:
   - Now clearly faster than `qlop` in all cases
 * Improved and reorganized inline help
 * Internal stuff
-  - Increased MSRV to 1.62
+  - Increased MSRV to 1.65
   - Upgraded `clap` (triggered a lot of this release's improvements)
   - Recover from process listing errors
   - Various refactorings

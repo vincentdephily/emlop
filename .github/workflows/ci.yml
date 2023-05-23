@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         timezone: [UTC, Europe/Dublin, Canada/Newfoundland, Pacific/Kiritimati]
-        toolchain: [1.62.0, stable]
+        toolchain: [1.65.0, stable]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
