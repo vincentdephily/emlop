@@ -5,7 +5,7 @@ mod parse;
 mod proces;
 mod table;
 
-use crate::{commands::*, date::*};
+use crate::{commands::*, date::*, parse::AnsiStr};
 use anyhow::Error;
 use clap::{ArgMatches, Command, ErrorKind};
 use log::*;
@@ -185,9 +185,6 @@ impl DurationStyle {
     }
 }
 
-/// Newtype for &str containing only non-displayable ansi control chars
-pub struct AnsiStr(&'static str);
-
 /// Holds styling preferences.
 ///
 /// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
@@ -217,12 +214,12 @@ impl Styles {
         let date_fmt = args.value_of_t("date").unwrap();
         let date_offset = date::get_offset(args.get_flag("utc"));
         let tabs = args.get_flag("tabs");
-        Styles { pkg: AnsiStr(if color { "\x1B[1;32m" } else { "" }),
-                 merge: AnsiStr(if color { "\x1B[1;32m" } else { ">>> " }),
-                 unmerge: AnsiStr(if color { "\x1B[1;31m" } else { "<<< " }),
-                 dur: AnsiStr(if color { "\x1B[1;35m" } else { "" }),
-                 cnt: AnsiStr(if color { "\x1B[2;33m" } else { "" }),
-                 clr: AnsiStr(if color { "\x1B[0m" } else { "" }),
+        Styles { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
+                 merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
+                 unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
+                 dur: AnsiStr::from(if color { "\x1B[1;35m" } else { "" }),
+                 cnt: AnsiStr::from(if color { "\x1B[2;33m" } else { "" }),
+                 clr: AnsiStr::from(if color { "\x1B[0m" } else { "" }),
                  header,
                  dur_t,
                  date_offset,

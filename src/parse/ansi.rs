@@ -3,7 +3,7 @@
 /// More exotic escapes (that shouldn't comme up in build.log) will cause the rest of the string to
 /// be interpreted as a sequence, and stripped. There are crates implementing full ansi support, but
 /// they seem overkill for our needs.
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum Ansi {
     /// Normal text
     Txt,
@@ -56,5 +56,28 @@ impl Ansi {
             }
         }
         out
+    }
+    pub fn len(s: &[u8]) -> usize {
+        let mut len = 0;
+        let mut state = Self::Txt;
+        for c in s {
+            state.step(*c as char);
+            if state == Self::Txt {
+                len += 1;
+            }
+        }
+        len
+    }
+}
+
+/// Wrapper for `&str` containing non-displayable ansi control chars
+pub struct AnsiStr {
+    pub val: &'static str,
+    /// Visible len excluding control chars
+    pub len: usize
+}
+impl From<&'static str> for AnsiStr {
+    fn from(val: &'static str) -> Self {
+        Self{val, len: Ansi::len(val.as_bytes())}
     }
 }

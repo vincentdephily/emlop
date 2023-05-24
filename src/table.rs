@@ -1,4 +1,4 @@
-use crate::{AnsiStr, Styles};
+use crate::{parse::AnsiStr, Styles};
 use std::{collections::VecDeque,
           io::{stdout, BufWriter, Write as _}};
 
@@ -15,8 +15,8 @@ impl<T: std::fmt::Display> Disp for T {
 }
 impl Disp for AnsiStr {
     fn out(&self, buf: &mut Vec<u8>) -> usize {
-        buf.extend_from_slice(self.0.as_bytes());
-        0
+        buf.extend_from_slice(self.val.as_bytes());
+        self.len
     }
 }
 
@@ -58,7 +58,7 @@ impl<const N: usize> Table<N> {
                buf: Vec::with_capacity(1024),
                widths: [0; N],
                have_header: false,
-               lineend: format!("{}\n", st.clr.0).into(),
+               lineend: format!("{}\n", st.clr.val).into(),
                aligns: [Align::Right; N],
                margins: ["  "; N],
                last: usize::MAX,
@@ -213,7 +213,6 @@ mod test {
     #[test]
     fn align() {
         let st = Styles::from_str("emlop log --color=n");
-
         let mut t = Table::<2>::new(&st).align(0, Align::Left);
         t.row([&[&"short"], &[&1]]);
         t.row([&[&"looooooooooooong"], &[&1]]);
@@ -228,15 +227,25 @@ mod test {
     #[test]
     fn color() {
         let st = Styles::from_str("emlop log --color=y");
-
         let mut t = Table::<2>::new(&st).align(0, Align::Left);
         t.row([&[&"123"], &[&1]]);
-        t.row([&[&st.cnt, &1, &st.dur, &2, &st.pkg, &3, &st.clr], &[&1]]);
+        t.row([&[&st.merge, &1, &st.dur, &2, &st.cnt, &3, &st.clr], &[&1]]);
         let res = "123  1\x1B[0m\n\
-                   \x1B[2;33m1\x1B[1;35m2\x1B[1;32m3\x1B[0m  1\x1B[0m\n";
+                   \x1B[1;32m1\x1B[1;35m2\x1B[2;33m3\x1B[0m  1\x1B[0m\n";
         let (l1, l2) = res.split_once('\n').expect("two lines");
         assert_eq!(Ansi::strip(l1, 100), "123  1");
         assert_eq!(Ansi::strip(l1, 100), Ansi::strip(l2, 100));
+        check(t, res);
+    }
+
+    #[test]
+    fn nocolor() {
+        let st = Styles::from_str("emlop log --color=n");
+        let mut t = Table::<2>::new(&st).align(0, Align::Left);
+        t.row([&[&"123"], &[&1]]);
+        t.row([&[&st.merge, &1, &st.dur, &2, &st.cnt, &3, &st.clr], &[&1]]);
+        let res = "123      1\n\
+                   >>> 123  1\n";
         check(t, res);
     }
 }
