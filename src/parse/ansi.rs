@@ -74,10 +74,10 @@ impl Ansi {
 pub struct AnsiStr {
     pub val: &'static str,
     /// Visible len excluding control chars
-    pub len: usize
+    pub len: usize,
 }
 impl From<&'static str> for AnsiStr {
     fn from(val: &'static str) -> Self {
-        Self{val, len: Ansi::len(val.as_bytes())}
+        Self { val, len: Ansi::len(val.as_bytes()) }
     }
 }
