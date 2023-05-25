@@ -8,15 +8,16 @@ on:
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
+      - '**/audit.yml'
+      - '**/audit.toml'
   pull_request:
 
 jobs:
   audit:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      - uses: actions-rs/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
+      - uses: actions-rust-lang/audit@v1
 
