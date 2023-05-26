@@ -21,9 +21,8 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
-    let mut tbl =
-        Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ").last(last);
-    tbl.header(st.header, ["Date", "Duration", "Package/Repo"]);
+    let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
+    tbl.header(["Date", "Duration", "Package/Repo"]);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -156,7 +155,26 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
-    let mut tbl = Table::new(st).align(0, Align::Left).align(1, Align::Left).margin(1, " ");
+    let tsname = timespan_opt.map_or("", |timespan| timespan.name());
+    let mut tbls = Table::new(st).align_left(0).align_left(1).margin(1, " ");
+    tbls.header([tsname, "Repo", "Sync count", "Total time", "Predict time"]);
+    let mut tblp = Table::new(st).align_left(0).align_left(1).margin(1, " ");
+    tblp.header([tsname,
+                 "Package",
+                 "Merge count",
+                 "Total time",
+                 "Predict time",
+                 "Unmerge count",
+                 "Total time",
+                 "Predict time"]);
+    let mut tblt = Table::new(st).align_left(0).margin(1, " ");
+    tblt.header([tsname,
+                 "Merge count",
+                 "Total time",
+                 "Predict time",
+                 "Unmerge count",
+                 "Total time",
+                 "Predict time"]);
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
@@ -172,7 +190,8 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                 curts = t;
             } else if t > nextts {
                 let group = timespan.at(curts, st.date_offset);
-                cmd_stats_group(&mut tbl, st, lim, avg, show, group, &sync_time, &pkg_time)?;
+                cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, st, lim, avg, show, group,
+                                &sync_time, &pkg_time);
                 sync_time.clear();
                 pkg_time.clear();
                 nextts = timespan.next(t, st.date_offset);
@@ -214,44 +233,59 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
             },
         }
     }
-    let group =
-        timespan_opt.map_or((String::new(), ""), |timespan| timespan.at(curts, st.date_offset));
-    cmd_stats_group(&mut tbl, st, lim, avg, show, group, &sync_time, &pkg_time)?;
+    let group = timespan_opt.map(|timespan| timespan.at(curts, st.date_offset)).unwrap_or_default();
+    cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, st, lim, avg, show, group, &sync_time,
+                    &pkg_time);
+    // Controlled drop to ensure table order and insert blank lines
+    let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
+    drop(tbls);
+    if es && ep {
+        println!("");
+    }
+    drop(tblp);
+    if (es || ep) && et {
+        println!("");
+    }
+    drop(tblt);
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
 }
 
 // Reducing the arg count here doesn't seem worth it, for either readability or performance
 #[allow(clippy::too_many_arguments)]
-fn cmd_stats_group(tbl: &mut Table<8>,
+fn cmd_stats_group(tbls: &mut Table<5>,
+                   tblp: &mut Table<8>,
+                   tblt: &mut Table<7>,
                    st: &Styles,
                    lim: u16,
                    avg: Average,
                    show: Show,
-                   group: (String, &str),
+                   group: String,
                    sync_time: &BTreeMap<String, Times>,
-                   pkg_time: &BTreeMap<String, (Times, Times)>)
-                   -> Result<(), Error> {
-    tbl.header(st.header && show.pkg | show.tot && !pkg_time.is_empty(),
-               [group.1,
-                "Package",
-                "Merge count",
-                "Total time",
-                "Predict time",
-                "Unmerge count",
-                "Total time",
-                "Predict time"]);
-    if show.pkg && !pkg_time.is_empty() {
-        for (pkg, (merge, unmerge)) in pkg_time {
-            tbl.row([&[&group.0],
-                     &[&st.pkg, pkg],
-                     &[&st.cnt, &merge.count],
-                     &[&st.dur, &st.dur_t.fmt(merge.tot)],
-                     &[&st.dur, &st.dur_t.fmt(merge.pred(lim, avg))],
-                     &[&st.cnt, &unmerge.count],
-                     &[&st.dur, &st.dur_t.fmt(unmerge.tot)],
-                     &[&st.dur, &st.dur_t.fmt(unmerge.pred(lim, avg))]]);
+                   pkg_time: &BTreeMap<String, (Times, Times)>) {
+    // Syncs
+    if show.sync && !sync_time.is_empty() {
+        for (repo, time) in sync_time {
+            tbls.row([&[&group],
+                      &[repo],
+                      &[&st.cnt, &time.count],
+                      &[&st.dur, &st.dur_t.fmt(time.tot)],
+                      &[&st.dur, &st.dur_t.fmt(time.pred(lim, avg))]]);
         }
     }
+    // Packages
+    if show.pkg && !pkg_time.is_empty() {
+        for (pkg, (merge, unmerge)) in pkg_time {
+            tblp.row([&[&group],
+                      &[&st.pkg, pkg],
+                      &[&st.cnt, &merge.count],
+                      &[&st.dur, &st.dur_t.fmt(merge.tot)],
+                      &[&st.dur, &st.dur_t.fmt(merge.pred(lim, avg))],
+                      &[&st.cnt, &unmerge.count],
+                      &[&st.dur, &st.dur_t.fmt(unmerge.tot)],
+                      &[&st.dur, &st.dur_t.fmt(unmerge.pred(lim, avg))]]);
+        }
+    }
+    // Totals
     if show.tot && !pkg_time.is_empty() {
         let mut merge_time = 0;
         let mut merge_count = 0;
@@ -263,30 +297,15 @@ fn cmd_stats_group(tbl: &mut Table<8>,
             unmerge_time += unmerge.tot;
             unmerge_count += unmerge.count;
         }
-        tbl.row([&[&group.0],
-                 &[&"Total"],
-                 &[&st.cnt, &merge_count],
-                 &[&st.dur, &st.dur_t.fmt(merge_time)],
-                 &[&st.dur, &st.dur_t.fmt(merge_time.checked_div(merge_count).unwrap_or(-1))],
-                 &[&st.cnt, &unmerge_count],
-                 &[&st.dur, &st.dur_t.fmt(unmerge_time)],
-                 &[&st.dur, &st.dur_t.fmt(unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
+        tblt.row([&[&group],
+                  &[&st.cnt, &merge_count],
+                  &[&st.dur, &st.dur_t.fmt(merge_time)],
+                  &[&st.dur, &st.dur_t.fmt(merge_time.checked_div(merge_count).unwrap_or(-1))],
+                  &[&st.cnt, &unmerge_count],
+                  &[&st.dur, &st.dur_t.fmt(unmerge_time)],
+                  &[&st.dur,
+                    &st.dur_t.fmt(unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
     }
-    if show.sync && !sync_time.is_empty() {
-        tbl.header(st.header,
-                   [group.1, "Repo", "Sync count", "Total time", "Predict time", "", "", ""]);
-        for (repo, time) in sync_time {
-            tbl.row([&[&group.0],
-                     &[&"Sync ", repo],
-                     &[&st.cnt, &time.count],
-                     &[&st.dur, &st.dur_t.fmt(time.tot)],
-                     &[&st.dur, &st.dur_t.fmt(time.pred(lim, avg))],
-                     &[],
-                     &[],
-                     &[]]);
-        }
-    }
-    Ok(())
 }
 
 /// Predict future merge time
@@ -305,8 +324,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
     let resume = *args.get_one("resume").unwrap();
-    let mut tbl =
-        Table::new(st).align(0, Align::Left).align(2, Align::Left).margin(2, " ").last(last);
+    let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
     let tmpdir = args.get_one::<String>("tmpdir").unwrap();
 
     // Gather and print info about current merge process.
@@ -452,10 +470,8 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let mut tbl = Table::new(st).align(0, Align::Left).align(1, Align::Left).last(last);
-    if show.merge {
-        tbl.header(st.header, ["Date", "Package", "Real", "Predicted", "Error"]);
-    }
+    let mut tbl = Table::new(st).align_left(0).align_left(1).last(last);
+    tbl.header(["Date", "Package", "Real", "Predicted", "Error"]);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -499,8 +515,8 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     }
     drop(tbl);
     if show.tot {
-        let mut tbl = Table::new(st).align(0, Align::Left);
-        tbl.header(st.header, ["Package", "Error"]);
+        let mut tbl = Table::new(st).align_left(0);
+        tbl.header(["Package", "Error"]);
         for (p, e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
             tbl.row([&[&st.pkg, &p], &[&st.cnt, &format!("{avg:.1}%")]]);
@@ -778,27 +794,28 @@ mod tests {
               x11-apps/xlsclients           1        14       14  1   1  1\n",
              0),
             ("-F test/emerge.sync.log s -ss",
-             "Sync gentoo          22  1:43:13     10\n\
-              Sync gentoo-portage   5  4:32:42  31:53\n\
-              Sync moltonel         8       26      1\n\
-              Sync steam-overlay    5       10      1\n",
+             "gentoo          22  1:43:13     10\n\
+              gentoo-portage   5  4:32:42  31:53\n\
+              moltonel         8       26      1\n\
+              steam-overlay    5       10      1\n",
              0),
             ("-F test/emerge.sync.log s -ss gentoo",
-             "Sync gentoo          22  1:43:13     10\n\
-              Sync gentoo-portage   5  4:32:42  31:53\n",
+             "gentoo          22  1:43:13     10\n\
+              gentoo-portage   5  4:32:42  31:53\n",
              0),
             ("-F test/emerge.10000.log s client -sst",
-             "Total  11  24:00:24  2:10:56  10  27  2\n",
+             "11  24:00:24  2:10:56  10  27  2\n",
              0),
             ("-F test/emerge.10000.log s client -sa",
-             "kde-frameworks/kxmlrpcclient   2        47       23   2   4  2\n\
-              mail-client/thunderbird        2   1:23:44    41:52   2   6  3\n\
-              www-client/chromium            3  21:41:24  7:42:07   3  12  3\n\
-              www-client/falkon              1      6:02     6:02   0   0  ?\n\
-              www-client/firefox             1     47:29    47:29   1   3  3\n\
-              www-client/links               1        44       44   1   1  1\n\
-              x11-apps/xlsclients            1        14       14   1   1  1\n\
-              Total                         11  24:00:24  2:10:56  10  27  2\n",
+             "kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
+              mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
+              www-client/chromium           3  21:41:24  7:42:07  3  12  3\n\
+              www-client/falkon             1      6:02     6:02  0   0  ?\n\
+              www-client/firefox            1     47:29    47:29  1   3  3\n\
+              www-client/links              1        44       44  1   1  1\n\
+              x11-apps/xlsclients           1        14       14  1   1  1\n\
+              \n\
+              11  24:00:24  2:10:56  10  27  2\n",
              0),
             ("-F test/emerge.10000.log s gentoo-sources --avg arith",
              "sys-kernel/gentoo-sources  10  15:04  1:30  11  3:20  16\n",
@@ -856,95 +873,95 @@ mod tests {
               2018-03-05 sys-kernel/gentoo-sources  0    0    ?  1  23  23\n\
               2018-03-12 sys-kernel/gentoo-sources  1  120  120  1  13  13\n"),
             ("-F test/emerge.10000.log s --duration s -st -gy",
-             "2018 Total  831  216426  260  832  2311  2\n"),
+             "2018 831  216426  260  832  2311  2\n"),
             ("-F test/emerge.10000.log s --duration s -st -gm",
-             "2018-02 Total  533  158312  297  529  1497  2\n\
-              2018-03 Total  298   58114  195  303   814  2\n"),
+             "2018-02 533  158312  297  529  1497  2\n\
+              2018-03 298   58114  195  303   814  2\n"),
             ("-F test/emerge.10000.log s --duration s -st -gw",
-             "2018-05 Total   63  33577  532   60  132  2\n\
-              2018-06 Total   74  10070  136   68  225  3\n\
-              2018-07 Total  281  58604  208  258  709  2\n\
-              2018-08 Total   65  51276  788   69  197  2\n\
-              2018-09 Total   71  14737  207   95  316  3\n\
-              2018-10 Total  182  43782  240  187  519  2\n\
-              2018-11 Total   95   4380   46   95  213  2\n"),
+             "2018-05  63  33577  532   60  132  2\n\
+              2018-06  74  10070  136   68  225  3\n\
+              2018-07 281  58604  208  258  709  2\n\
+              2018-08  65  51276  788   69  197  2\n\
+              2018-09  71  14737  207   95  316  3\n\
+              2018-10 182  43782  240  187  519  2\n\
+              2018-11  95   4380   46   95  213  2\n"),
             ("-F test/emerge.10000.log s --duration s -st -gd",
-             "2018-02-03 Total   32   2741     85   32   70  2\n\
-              2018-02-04 Total   31  30836    994   28   62  2\n\
-              2018-02-05 Total    4    158     39    3    5  1\n\
-              2018-02-06 Total   44   4288     97   44  174  3\n\
-              2018-02-07 Total   15    857     57   13   28  2\n\
-              2018-02-08 Total    5    983    196    4    8  2\n\
-              2018-02-09 Total    6   3784    630    4   10  2\n\
-              2018-02-12 Total  208  29239    140  206  587  2\n\
-              2018-02-13 Total    1     19     19    0    0  ?\n\
-              2018-02-14 Total   44   4795    108   44   92  2\n\
-              2018-02-15 Total    3    137     45    3    6  2\n\
-              2018-02-16 Total   21  23914   1138    3   14  4\n\
-              2018-02-18 Total    4    500    125    2   10  5\n\
-              2018-02-19 Total    2  28977  14488    2    6  3\n\
-              2018-02-20 Total    2    488    244    1    2  2\n\
-              2018-02-21 Total   37   5522    149   36   93  2\n\
-              2018-02-22 Total   16  15396    962   23   82  3\n\
-              2018-02-23 Total    6    854    142    5   11  2\n\
-              2018-02-24 Total    2     39     19    2    3  1\n\
-              2018-02-26 Total   10   2730    273    9   18  2\n\
-              2018-02-27 Total   35   1403     40   49  175  3\n\
-              2018-02-28 Total    5    652    130   16   41  2\n\
-              2018-03-01 Total   13   9355    719   13   40  3\n\
-              2018-03-02 Total    5    510    102    5   37  7\n\
-              2018-03-03 Total    3     87     29    3    5  1\n\
-              2018-03-05 Total    9    168     18   21   84  4\n\
-              2018-03-06 Total    3  27746   9248    1    3  3\n\
-              2018-03-07 Total   46   2969     64   43   90  2\n\
-              2018-03-08 Total   74   5441     73   73  202  2\n\
-              2018-03-09 Total   50   7458    149   49  140  2\n\
-              2018-03-12 Total   95   4380     46   95  213  2\n"),
+             "2018-02-03  32   2741     85   32   70  2\n\
+              2018-02-04  31  30836    994   28   62  2\n\
+              2018-02-05   4    158     39    3    5  1\n\
+              2018-02-06  44   4288     97   44  174  3\n\
+              2018-02-07  15    857     57   13   28  2\n\
+              2018-02-08   5    983    196    4    8  2\n\
+              2018-02-09   6   3784    630    4   10  2\n\
+              2018-02-12 208  29239    140  206  587  2\n\
+              2018-02-13   1     19     19    0    0  ?\n\
+              2018-02-14  44   4795    108   44   92  2\n\
+              2018-02-15   3    137     45    3    6  2\n\
+              2018-02-16  21  23914   1138    3   14  4\n\
+              2018-02-18   4    500    125    2   10  5\n\
+              2018-02-19   2  28977  14488    2    6  3\n\
+              2018-02-20   2    488    244    1    2  2\n\
+              2018-02-21  37   5522    149   36   93  2\n\
+              2018-02-22  16  15396    962   23   82  3\n\
+              2018-02-23   6    854    142    5   11  2\n\
+              2018-02-24   2     39     19    2    3  1\n\
+              2018-02-26  10   2730    273    9   18  2\n\
+              2018-02-27  35   1403     40   49  175  3\n\
+              2018-02-28   5    652    130   16   41  2\n\
+              2018-03-01  13   9355    719   13   40  3\n\
+              2018-03-02   5    510    102    5   37  7\n\
+              2018-03-03   3     87     29    3    5  1\n\
+              2018-03-05   9    168     18   21   84  4\n\
+              2018-03-06   3  27746   9248    1    3  3\n\
+              2018-03-07  46   2969     64   43   90  2\n\
+              2018-03-08  74   5441     73   73  202  2\n\
+              2018-03-09  50   7458    149   49  140  2\n\
+              2018-03-12  95   4380     46   95  213  2\n"),
             ("-F test/emerge.10000.log s --duration s -ss -gy",
-             "2018 Sync gentoo  150  4747  28\n"),
+             "2018 gentoo  150  4747  28\n"),
             ("-F test/emerge.10000.log s --duration s -ss -gm",
-             "2018-02 Sync gentoo  90  2411  15\n\
-              2018-03 Sync gentoo  60  2336  28\n"),
+             "2018-02 gentoo  90  2411  15\n\
+              2018-03 gentoo  60  2336  28\n"),
             ("-F test/emerge.10000.log s --duration s -ss -gw",
-             "2018-05 Sync gentoo   3   160  56\n\
-              2018-06 Sync gentoo  31   951  27\n\
-              2018-07 Sync gentoo  17   388  19\n\
-              2018-08 Sync gentoo  20   500  23\n\
-              2018-09 Sync gentoo  39  1899  49\n\
-              2018-10 Sync gentoo  36   728  21\n\
-              2018-11 Sync gentoo   4   121  32\n"),
+             "2018-05 gentoo   3   160  56\n\
+              2018-06 gentoo  31   951  27\n\
+              2018-07 gentoo  17   388  19\n\
+              2018-08 gentoo  20   500  23\n\
+              2018-09 gentoo  39  1899  49\n\
+              2018-10 gentoo  36   728  21\n\
+              2018-11 gentoo   4   121  32\n"),
             ("-F test/emerge.10000.log s --duration s -ss -gd",
-             "2018-02-03 Sync gentoo   1   68   68\n\
-              2018-02-04 Sync gentoo   2   92   46\n\
-              2018-02-05 Sync gentoo   7  186   32\n\
-              2018-02-06 Sync gentoo   7  237   31\n\
-              2018-02-07 Sync gentoo   7  221   32\n\
-              2018-02-08 Sync gentoo   7  215   21\n\
-              2018-02-09 Sync gentoo   3   92   29\n\
-              2018-02-12 Sync gentoo   4   87   22\n\
-              2018-02-13 Sync gentoo   2   45   22\n\
-              2018-02-14 Sync gentoo   3   85   23\n\
-              2018-02-15 Sync gentoo   4   76   18\n\
-              2018-02-16 Sync gentoo   3   67   20\n\
-              2018-02-18 Sync gentoo   1   28   28\n\
-              2018-02-19 Sync gentoo   2   61   30\n\
-              2018-02-20 Sync gentoo   5  119   22\n\
-              2018-02-21 Sync gentoo   4   89   21\n\
-              2018-02-22 Sync gentoo   2   51   25\n\
-              2018-02-23 Sync gentoo   6  157   24\n\
-              2018-02-24 Sync gentoo   1   23   23\n\
-              2018-02-26 Sync gentoo   4   69   17\n\
-              2018-02-27 Sync gentoo   8  208   20\n\
-              2018-02-28 Sync gentoo   7  135   16\n\
-              2018-03-01 Sync gentoo   8  568   30\n\
-              2018-03-02 Sync gentoo  10  547   49\n\
-              2018-03-03 Sync gentoo   2  372  186\n\
-              2018-03-05 Sync gentoo   9   46    1\n\
-              2018-03-06 Sync gentoo   8  183   22\n\
-              2018-03-07 Sync gentoo   4  120   34\n\
-              2018-03-08 Sync gentoo   8  157   20\n\
-              2018-03-09 Sync gentoo   7  222   31\n\
-              2018-03-12 Sync gentoo   4  121   32\n"),
+             "2018-02-03 gentoo   1   68   68\n\
+              2018-02-04 gentoo   2   92   46\n\
+              2018-02-05 gentoo   7  186   32\n\
+              2018-02-06 gentoo   7  237   31\n\
+              2018-02-07 gentoo   7  221   32\n\
+              2018-02-08 gentoo   7  215   21\n\
+              2018-02-09 gentoo   3   92   29\n\
+              2018-02-12 gentoo   4   87   22\n\
+              2018-02-13 gentoo   2   45   22\n\
+              2018-02-14 gentoo   3   85   23\n\
+              2018-02-15 gentoo   4   76   18\n\
+              2018-02-16 gentoo   3   67   20\n\
+              2018-02-18 gentoo   1   28   28\n\
+              2018-02-19 gentoo   2   61   30\n\
+              2018-02-20 gentoo   5  119   22\n\
+              2018-02-21 gentoo   4   89   21\n\
+              2018-02-22 gentoo   2   51   25\n\
+              2018-02-23 gentoo   6  157   24\n\
+              2018-02-24 gentoo   1   23   23\n\
+              2018-02-26 gentoo   4   69   17\n\
+              2018-02-27 gentoo   8  208   20\n\
+              2018-02-28 gentoo   7  135   16\n\
+              2018-03-01 gentoo   8  568   30\n\
+              2018-03-02 gentoo  10  547   49\n\
+              2018-03-03 gentoo   2  372  186\n\
+              2018-03-05 gentoo   9   46    1\n\
+              2018-03-06 gentoo   8  183   22\n\
+              2018-03-07 gentoo   4  120   34\n\
+              2018-03-08 gentoo   8  157   20\n\
+              2018-03-09 gentoo   7  222   31\n\
+              2018-03-12 gentoo   4  121   32\n"),
         ];
         let mut tots: HashMap<&str, (u64, u64, u64, u64)> = HashMap::new();
         let to_u64 = |v: &Vec<&str>, i: usize| v.get(i).unwrap().parse::<u64>().unwrap();
@@ -957,9 +974,9 @@ mod tests {
                 let tot = tots.entry(a.split_whitespace().last().unwrap()).or_insert((0, 0, 0, 0));
                 match cols.len() {
                     // Sync
-                    6 => {
-                        (*tot).0 += to_u64(&cols, 3);
-                        (*tot).1 += to_u64(&cols, 4);
+                    5 => {
+                        (*tot).0 += to_u64(&cols, 2);
+                        (*tot).1 += to_u64(&cols, 3);
                     },
                     // merge
                     8 => {
@@ -967,6 +984,13 @@ mod tests {
                         (*tot).1 += to_u64(&cols, 3);
                         (*tot).2 += to_u64(&cols, 5);
                         (*tot).3 += to_u64(&cols, 6);
+                    },
+                    // Total
+                    7 => {
+                        (*tot).0 += to_u64(&cols, 1);
+                        (*tot).1 += to_u64(&cols, 2);
+                        (*tot).2 += to_u64(&cols, 4);
+                        (*tot).3 += to_u64(&cols, 5);
                     },
                     _ => panic!("Unexpected col count {l}"),
                 }
@@ -995,11 +1019,13 @@ mod tests {
                            2019-06-08 21:33:36  3:10 >>> kde-plasma/kwin-5.15.5\n")),
                  // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
                  ("-F test/emerge.negtime.log s -sa",
-                  format!("kde-apps/libktnef  1     26    26  0  0  ?\n\
-                           kde-plasma/kwin    3   9:06  4:33  2  3  1\n\
-                           net-misc/chrony    1     34    34  0  0  ?\n\
-                           Total              5  10:06  2:01  2  3  1\n\
-                           Sync gentoo        2   1:06  1:06         \n")),]
+                  format!("gentoo  2  1:06  1:06\n\
+                           \n\
+                           kde-apps/libktnef  1    26    26  0  0  ?\n\
+                           kde-plasma/kwin    3  9:06  4:33  2  3  1\n\
+                           net-misc/chrony    1    34    34  0  0  ?\n\
+                           \n\
+                           5  10:06  2:01  2  3  1\n")),]
         {
             emlop(a).assert().success().stdout(o);
         }

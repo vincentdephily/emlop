@@ -13,6 +13,10 @@ Main changes:
 * `predict` command now displays the current build phase and last log line of ongoing builds
   - This usually requires root permissions
 * `list/stat` search now also applies to sync repos, eg `emlop l -ss guru`
+* Improved `stats` layout
+  - Group by section (syncs/packages/total) before grouping by date
+  - Each section has its specific headers and colum count
+  - Display at most 3 sections (tables), separated by a newline
 * Added `--show` option to `predict`, like in other subcommands
 * Added `--first/-N/--last/-n` options to limit output
 * Added `--tabs` option for more machine-readable output

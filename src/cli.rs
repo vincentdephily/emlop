@@ -310,14 +310,12 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                .arg(resume)
                                .arg(&avg)
                                .arg(&limit);
-    let h = "Show statistics about sucessful (un)merges (overall or per-package) and syncs\n\
-             * <package>: merge count, total merge time, predicted merge time,\n             \
-             unmerge count, total unmerge time, predicted unmerge time\n\
-             * Total:     merge count, total merge time, average merge time,\n             \
-             unmerge count, total unmerge time, average unmerge time.
-* Sync:      sync count,  total sync time,  predicted sync time.";
+    let h = "Show statistics about syncs, per-package (un)merges, and total (un)merges\n\
+             * Sync:      count,       total time, predicted time\n\
+             * <package>: merge count, total time, predicted time, unmerge count, total time, predicted time\n\
+             * Total:     merge count, total time, average time,   unmerge count, total time, average time";
     let cmd_stats =
-        Command::new("stats").about("Show statistics about sucessful merges, unmerges and syncs")
+        Command::new("stats").about("Show statistics about syncs, per-package (un)merges, and total (un)merges")
                              .long_about(h)
                              .arg(show_s)
                              .arg(group)

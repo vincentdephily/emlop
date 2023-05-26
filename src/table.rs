@@ -36,6 +36,8 @@ pub struct Table<const N: usize> {
     rows: VecDeque<[(usize, usize, usize); N]>,
     /// Max column widths seen so far
     widths: [usize; N],
+    /// Whether a header has been requested
+    with_header: bool,
     /// Whether a header has been set
     have_header: bool,
 
@@ -57,6 +59,7 @@ impl<const N: usize> Table<N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
                widths: [0; N],
+               with_header: st.header,
                have_header: false,
                lineend: format!("{}\n", st.clr.val).into(),
                aligns: [Align::Right; N],
@@ -64,9 +67,9 @@ impl<const N: usize> Table<N> {
                last: usize::MAX,
                tabs: st.tabs }
     }
-    /// Specify column alignments
-    pub fn align(mut self, col: usize, align: Align) -> Self {
-        self.aligns[col] = align;
+    /// Specify column alignment
+    pub fn align_left(mut self, col: usize) -> Self {
+        self.aligns[col] = Align::Left;
         self
     }
     /// Specify column left margin (1st printted column never has a left margin)
@@ -80,11 +83,8 @@ impl<const N: usize> Table<N> {
         self
     }
     /// Add a section header
-    pub fn header(&mut self, enabled: bool, row: [&str; N]) {
-        if enabled {
-            if !self.rows.is_empty() {
-                self.rows.push_back([(0, 0, 0); N]);
-            }
+    pub fn header(&mut self, row: [&str; N]) {
+        if self.with_header {
             self.last = self.last.saturating_add(1);
             self.have_header = true;
 
@@ -96,6 +96,14 @@ impl<const N: usize> Table<N> {
                 idxrow[i] = (row[i].len(), start, self.buf.len());
             }
             self.rows.push_back(idxrow);
+        }
+    }
+    /// Is there actual data to flush ?
+    pub fn is_empty(&self) -> bool {
+        if self.have_header {
+            self.rows.len() == 1
+        } else {
+            self.rows.is_empty()
         }
     }
     /// Add one row of data
@@ -120,6 +128,9 @@ impl<const N: usize> Table<N> {
     }
 
     fn flush(&self, mut out: impl std::io::Write) {
+        if self.is_empty() {
+            return;
+        }
         let spaces = [b' '; 128];
         for row in &self.rows {
             let mut first = true;
@@ -185,7 +196,7 @@ mod test {
 
     #[test]
     fn last() {
-        let st = Styles::from_str("emlop log --color=n");
+        let st = Styles::from_str("emlop log --color=n -H");
 
         // No limit
         let mut t = Table::<1>::new(&st);
@@ -203,7 +214,7 @@ mod test {
 
         // 5 max ignoring header
         let mut t = Table::new(&st).last(5);
-        t.header(true, ["h"]);
+        t.header(["h"]);
         for i in 1..10 {
             t.row([&[&format!("{i}")]]);
         }
@@ -213,7 +224,7 @@ mod test {
     #[test]
     fn align() {
         let st = Styles::from_str("emlop log --color=n");
-        let mut t = Table::<2>::new(&st).align(0, Align::Left);
+        let mut t = Table::<2>::new(&st).align_left(0);
         t.row([&[&"short"], &[&1]]);
         t.row([&[&"looooooooooooong"], &[&1]]);
         t.row([&[&"high"], &[&9999]]);
@@ -227,7 +238,7 @@ mod test {
     #[test]
     fn color() {
         let st = Styles::from_str("emlop log --color=y");
-        let mut t = Table::<2>::new(&st).align(0, Align::Left);
+        let mut t = Table::<2>::new(&st).align_left(0);
         t.row([&[&"123"], &[&1]]);
         t.row([&[&st.merge, &1, &st.dur, &2, &st.cnt, &3, &st.clr], &[&1]]);
         let res = "123  1\x1B[0m\n\
@@ -241,7 +252,7 @@ mod test {
     #[test]
     fn nocolor() {
         let st = Styles::from_str("emlop log --color=n");
-        let mut t = Table::<2>::new(&st).align(0, Align::Left);
+        let mut t = Table::<2>::new(&st).align_left(0);
         t.row([&[&"123"], &[&1]]);
         t.row([&[&st.merge, &1, &st.dur, &2, &st.cnt, &3, &st.clr], &[&1]]);
         let res = "123      1\n\
