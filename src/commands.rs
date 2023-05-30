@@ -12,7 +12,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
-                        args.get_one::<String>("package").map(|s| s.as_str()),
+                        args.get_one::<String>("search").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
     let first = *args.get_one("first").unwrap_or(&usize::MAX);
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
@@ -151,7 +151,7 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         show,
-                        args.get_one::<String>("package").map(|s| s.as_str()),
+                        args.get_one::<String>("search").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
@@ -461,7 +461,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                         value_opt(args, "from", parse_date, st.date_offset),
                         value_opt(args, "to", parse_date, st.date_offset),
                         Show { merge: true, ..Show::default() },
-                        args.get_one::<String>("package").map(|s| s.as_str()),
+                        args.get_one::<String>("search").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let lim = *args.get_one("limit").unwrap();

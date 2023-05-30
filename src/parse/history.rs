@@ -82,7 +82,7 @@ pub fn get_hist(file: String,
     let reader = File::open(&file).with_context(|| format!("Cannot open {file:?}"))?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
-    let filter = FilterPkg::try_new(search_str, search_exact)?;
+    let filter = FilterStr::try_new(search_str, search_exact)?;
     thread::spawn(move || {
         let show_merge = show.merge || show.pkg || show.tot;
         let show_unmerge = show.unmerge || show.pkg || show.tot;
@@ -159,51 +159,59 @@ fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
     Ok((min.unwrap_or(std::i64::MIN), max.unwrap_or(std::i64::MAX)))
 }
 
-/// Matches package depending on options.
-enum FilterPkg {
+/// Matches package/repo depending on options.
+enum FilterStr {
     True,
     Eq { e: String },
-    Ends { e: String },
+    EqSlash { e: String },
     Re { r: Regex },
 }
-impl FilterPkg {
+impl FilterStr {
     fn try_new(package: Option<&str>, exact: bool) -> Result<Self, Error> {
         Ok(match (&package, exact) {
             (None, _) => {
                 info!("Package filter: None");
-                FilterPkg::True
+                FilterStr::True
             },
             (Some(search), true) if search.contains('/') => {
                 info!("Package filter: categ/name == {search}");
-                FilterPkg::Eq { e: search.to_string() }
+                FilterStr::Eq { e: search.to_string() }
             },
             (Some(search), true) => {
                 info!("Package filter: name == {search}");
-                FilterPkg::Ends { e: format!("/{search}") }
+                FilterStr::EqSlash { e: format!("/{search}") }
             },
             (Some(search), false) => {
                 info!("Package filter: categ/name ~= {search}");
-                FilterPkg::Re { r: RegexBuilder::new(search).case_insensitive(true).build()? }
+                FilterStr::Re { r: RegexBuilder::new(search).case_insensitive(true).build()? }
             },
         })
     }
-    fn is_match(&self, s: &str) -> bool {
+    fn match_pkg(&self, s: &str) -> bool {
         match &self {
-            FilterPkg::True => true,
-            FilterPkg::Eq { e } => e == s,
-            FilterPkg::Ends { e } => s.ends_with(e),
-            FilterPkg::Re { r } => r.is_match(s),
+            FilterStr::True => true,
+            FilterStr::Eq { e } => e == s,
+            FilterStr::EqSlash { e } => s.ends_with(e),
+            FilterStr::Re { r } => r.is_match(s),
+        }
+    }
+    fn match_str(&self, s: &str) -> bool {
+        match &self {
+            FilterStr::True => true,
+            FilterStr::Eq { e } => e == s,
+            FilterStr::EqSlash { e } => &e[1..] == s,
+            FilterStr::Re { r } => r.is_match(s),
         }
     }
 }
 
 /// Find position of "version" in "categ/name-version" and filter on pkg name
-fn find_version(atom: &str, filter: &FilterPkg) -> Option<usize> {
+fn find_version(atom: &str, filter: &FilterStr) -> Option<usize> {
     let mut pos = 0;
     loop {
         pos += atom[pos..].find('-')?;
         if pos > 0 && atom.as_bytes().get(pos + 1)?.is_ascii_digit() {
-            return filter.is_match(&atom[..pos]).then_some(pos + 1);
+            return filter.match_pkg(&atom[..pos]).then_some(pos + 1);
         }
         pos += 1;
     }
@@ -225,7 +233,7 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     }
 }
 
-fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
+fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> emer") {
         return None;
     }
@@ -235,7 +243,7 @@ fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> 
     Some(Hist::MergeStart { ts, key: t6.to_owned(), pos })
 }
 
-fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
+fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b"::: comp") {
         return None;
     }
@@ -245,7 +253,7 @@ fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> O
     Some(Hist::MergeStop { ts, key: t7.to_owned(), pos })
 }
 
-fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
+fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b"=== Unmerging...") {
         return None;
     }
@@ -256,7 +264,7 @@ fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -
     Some(Hist::UnmergeStart { ts, key: ebuild_version.to_owned(), pos })
 }
 
-fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
+fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> unmerge success") {
         return None;
     }
@@ -281,7 +289,7 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
         None
     }
 }
-fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Option<Hist> {
+fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     // Old portage logs 'completed with <url>', new portage logs 'completed for <name>'
     if !enabled || !line.starts_with(b"=== Sync completed") {
         return None;
@@ -294,7 +302,7 @@ fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterPkg) -> Op
             String::from("unknown")
         },
     };
-    if !filter.is_match(&repo) {
+    if !filter.match_str(&repo) {
         return None;
     }
     Some(Hist::SyncStop { ts, repo })
@@ -312,7 +320,7 @@ mod tests {
                 parse_sync: bool,
                 filter_mints: Option<i64>,
                 filter_maxts: Option<i64>,
-                filter_pkg: Option<&str>,
+                filter_src: Option<&str>,
                 exact: bool,
                 expect_counts: Vec<(&str, usize)>) {
         // Setup
@@ -332,7 +340,7 @@ mod tests {
                                    unmerge: parse_unmerge,
                                    sync: parse_sync,
                                    ..Show::default() },
-                            filter_pkg,
+                            filter_src,
                             exact).unwrap();
         let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();
@@ -360,7 +368,7 @@ mod tests {
             let v = counts.get(t).unwrap_or(&0);
             assert_eq!(v, c,
                        "Got {} {}, expected {:?} with pkg={:?} exact={} min={:?} max={:?}",
-                       v, t, c, filter_pkg, exact, filter_mints, filter_maxts);
+                       v, t, c, filter_src, exact, filter_mints, filter_maxts);
         }
     }
 
@@ -430,21 +438,29 @@ mod tests {
 
     #[test]
     /// Filtering by package
-    fn parse_hist_filter_pkg() {
+    fn parse_hist_filter_src() {
         #[rustfmt::skip]
-        let t = vec![(Some("kactivities"),                false, 4, 4, 4, 4), // regexp matches 4
-                     (Some("kactivities"),                true,  2, 2, 2, 2), // string matches 2
-                     (Some("kde-frameworks/kactivities"), true,  2, 2, 2, 2), // string matches 2
-                     (Some("frameworks/kactivities"),     true,  0, 0, 0, 0), // string matches nothing
-                     (Some("ks/kw"),                      false, 9, 8, 8, 8), // regexp matches 16 (+1 failed)
-                     (Some("file"),                       false, 7, 7, 6, 6), // case-insensitive
-                     (Some("FILE"),                       false, 7, 7, 6, 6), // case-insensitive
-                     (Some("file-next"),                  true,  0, 0, 0, 0), // case-sensitive
-                     (Some("File-Next"),                  true,  1, 1, 0, 0), // case-sensitive
+        let t = vec![(Some("kactivities"),                false, 4, 4, 4, 4, 0), // regexp matches 4
+                     (Some("kactivities"),                true,  2, 2, 2, 2, 0), // string matches 2
+                     (Some("kde-frameworks/kactivities"), true,  2, 2, 2, 2, 0), // string matches 2
+                     (Some("frameworks/kactivities"),     true,  0, 0, 0, 0, 0), // string matches nothing
+                     (Some("ks/kw"),                      false, 9, 8, 8, 8, 0), // regexp matches 16 (+1 failed)
+                     (Some("file"),                       false, 7, 7, 6, 6, 0), // case-insensitive
+                     (Some("FILE"),                       false, 7, 7, 6, 6, 0), // case-insensitive
+                     (Some("file-next"),                  true,  0, 0, 0, 0, 0), // case-sensitive
+                     (Some("File-Next"),                  true,  1, 1, 0, 0, 0), // case-sensitive
+                     (Some("gentoo"),                     true,  0, 0, 0, 0, 150), // repo sync only
+                     (Some("gentoo"),                     false, 11, 11, 12, 12, 150), // repo and ebuilds
         ];
-        for (f, e, m1, m2, u1, u2) in t {
-            let c = vec![("MStart", m1), ("MStop", m2), ("UStart", u1), ("UStop", u2)];
-            chk_hist("10000", true, true, false, None, None, f, e, c);
+        for (f, e, m1, m2, u1, u2, s2) in t {
+            let c = vec![("MStart", m1),
+                         ("MStop", m2),
+                         ("UStart", u1),
+                         ("UStop", u2),
+                         // SStart is always the same because Sync filtering is only done for SStop
+                         ("SStart", 326),
+                         ("SStop", s2)];
+            chk_hist("10000", true, true, true, None, None, f, e, c);
         }
     }
 
@@ -478,7 +494,7 @@ mod tests {
 
     #[test]
     fn split_atom() {
-        let f = FilterPkg::try_new(None, false).unwrap();
+        let f = FilterStr::try_new(None, false).unwrap();
         let g = |s| find_version(s, &f).map(|n| (&s[..n - 1], &s[n..]));
         assert_eq!(None, g(""));
         assert_eq!(None, g("a"));

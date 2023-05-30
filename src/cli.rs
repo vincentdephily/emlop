@@ -5,23 +5,29 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     ////////////////////////////////////////////////////////////
     // Filter arguments
     ////////////////////////////////////////////////////////////
-    let pkg = Arg::new("package").takes_value(true)
+    let pkg = Arg::new("search").takes_value(true)
                                  .display_order(1)
                                  .help_heading("FILTER")
                                  // Workaround bad alignment, might be fixed in clap 4
-                                 .help("    Show only packages matching <package>")
-                                 .long_help("Show only packages matching <package>");
+                                 .help("    Show only packages/repos matching <search>")
+                                 .long_help("Show only packages/repos matching <search>\n\
+                                             Matches using a regex unless `--exact` is specified\n\
+                                             See https://docs.rs/regex/*/regex/#syntax\n  \
+                                             rust:        Matches `dev-lang/rust`, `dev-util/rustup`, `dev-python/trustme`, etc\n  \
+                                             /[pc]ython$: Matches `dev-lang/python` and `dev-python/cython`\n  \
+                                             pyqt:        Matches `dev-python/PyQt5` (case-insensitive)\n  \
+                                             guru:        Matches `guru` (repo sync)");
     let exact = Arg::new("exact").short('e')
                                  .long("exact")
                                  .action(SetTrue)
                                  .display_order(2)
                                  .help_heading("FILTER")
-                                 .help("Match package with a string instead of a regex")
-                                 .long_help("Match package with a string instead of a regex\n  \
-                                             foo:        Case-insensitive regex match on category/name\n              \
-                                             See https://docs.rs/regex/*/regex/#syntax\n  \
-                                             -e foo:     Case-sentitive exact match on whole name\n  \
-                                             -e bar/foo: Case-sentitive exact match on whole cagegory/name");
+                                 .help("Match <search> using plain string")
+                                 .long_help("Match <search> using plain string\n  \
+                                             rust:         Matches both `dev-lang/rust` and `virtual/rust`\n  \
+                                             virtual/rust: Matches only `virtual/rust`\n  \
+                                             RuSt:         Matches nothing (case-sensitive)\n  \
+                                             ru:           Matches nothing (whole name only)");
 
     let show_l = Arg::new("show").short('s')
                                  .long("show")
