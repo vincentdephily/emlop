@@ -240,11 +240,11 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
     drop(tbls);
     if es && ep {
-        println!("");
+        println!();
     }
     drop(tblp);
     if (es || ep) && et {
-        println!("");
+        println!();
     }
     drop(tblt);
     Ok(!pkg_time.is_empty() || !sync_time.is_empty())
