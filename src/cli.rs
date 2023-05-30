@@ -288,7 +288,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
     let h = "Show log of sucessful merges, unmerges and syncs\n\
              * (Un)merges: date, duration, package name-version\n\
              * Syncs:      date, duration, repository";
-    let cmd_log = Command::new("log").about("Show log of sucessful merges, unmerges and syncs")
+    let cmd_log = Command::new("log").about(h.split_once('\n').unwrap().0)
                                      .long_about(h)
                                      .arg(starttime)
                                      .arg(&first)
@@ -300,40 +300,37 @@ pub fn build_cli_nocomplete() -> Command<'static> {
              * If input is a terminal, predict times for the current merges (if any)\n\
              * If input is a pipe (for example by running `emerge -rOp|emlop p`), \
              predict times for those merges.";
-    let cmd_pred =
-        Command::new("predict").about("Predict merge times for current or pretended merges")
-                               .long_about(h)
-                               .arg(show_p)
-                               .arg(first)
-                               .arg(&last)
-                               .arg(tmpdir)
-                               .arg(resume)
-                               .arg(&avg)
-                               .arg(&limit);
+    let cmd_pred = Command::new("predict").about(h.split_once('\n').unwrap().0)
+                                          .long_about(h)
+                                          .arg(show_p)
+                                          .arg(first)
+                                          .arg(&last)
+                                          .arg(tmpdir)
+                                          .arg(resume)
+                                          .arg(&avg)
+                                          .arg(&limit);
     let h = "Show statistics about syncs, per-package (un)merges, and total (un)merges\n\
              * Sync:      count,       total time, predicted time\n\
              * <package>: merge count, total time, predicted time, unmerge count, total time, predicted time\n\
              * Total:     merge count, total time, average time,   unmerge count, total time, average time";
-    let cmd_stats =
-        Command::new("stats").about("Show statistics about syncs, per-package (un)merges, and total (un)merges")
-                             .long_about(h)
-                             .arg(show_s)
-                             .arg(group)
-                             .arg(&exact)
-                             .arg(&pkg)
-                             .arg(&avg)
-                             .arg(&limit);
+    let cmd_stats = Command::new("stats").about(h.split_once('\n').unwrap().0)
+                                         .long_about(h)
+                                         .arg(show_s)
+                                         .arg(group)
+                                         .arg(&exact)
+                                         .arg(&pkg)
+                                         .arg(&avg)
+                                         .arg(&limit);
     let h = "Compare actual merge time against predicted merge time\n\
              Use this to gauge the effect of the --limit and --avg options";
-    let cmd_accuracy =
-        Command::new("accuracy").about("Compare actual merge time against predicted merge time")
-                                .long_about(h)
-                                .arg(pkg)
-                                .arg(exact)
-                                .arg(show_a)
-                                .arg(last)
-                                .arg(avg)
-                                .arg(limit);
+    let cmd_accuracy = Command::new("accuracy").about(h.split_once('\n').unwrap().0)
+                                               .long_about(h)
+                                               .arg(pkg)
+                                               .arg(exact)
+                                               .arg(show_a)
+                                               .arg(last)
+                                               .arg(avg)
+                                               .arg(limit);
 
     ////////////////////////////////////////////////////////////
     // Main command
