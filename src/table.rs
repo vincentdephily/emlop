@@ -26,7 +26,7 @@ pub enum Align {
     Right,
 }
 
-pub struct Table<const N: usize> {
+pub struct Table<'a, const N: usize> {
     /// Buffer where unaligned entries are written
     ///
     /// We can only render alignments when we saw all the rows.
@@ -36,36 +36,30 @@ pub struct Table<const N: usize> {
     rows: VecDeque<[(usize, usize, usize); N]>,
     /// Max column widths seen so far
     widths: [usize; N],
-    /// Whether a header has been requested
-    with_header: bool,
     /// Whether a header has been set
     have_header: bool,
 
-    /// Line ending (may contain ansi cleanup chars)
-    lineend: Vec<u8>,
+    /// Main style
+    styles: &'a Styles,
     /// Column alignments (defaults to Right)
     aligns: [Align; N],
     /// Margin between columns, printed left of the column, defaults to `"  "`
     margins: [&'static str; N],
     /// Only print last N rows
     last: usize,
-    /// Align using tabs
-    tabs: bool,
 }
 
-impl<const N: usize> Table<N> {
+impl<'a, const N: usize> Table<'a, N> {
     /// Initialize new table
-    pub fn new(st: &Styles) -> Table<N> {
+    pub fn new(st: &'a Styles) -> Table<N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
                widths: [0; N],
-               with_header: st.header,
+               styles: st,
                have_header: false,
-               lineend: format!("{}\n", st.clr.val).into(),
                aligns: [Align::Right; N],
                margins: ["  "; N],
-               last: usize::MAX,
-               tabs: st.tabs }
+               last: usize::MAX }
     }
     /// Specify column alignment
     pub fn align_left(mut self, col: usize) -> Self {
@@ -84,7 +78,7 @@ impl<const N: usize> Table<N> {
     }
     /// Add a section header
     pub fn header(&mut self, row: [&str; N]) {
-        if self.with_header {
+        if self.styles.header {
             self.last = self.last.saturating_add(1);
             self.have_header = true;
 
@@ -143,7 +137,7 @@ impl<const N: usize> Table<N> {
                     continue;
                 }
                 let (len, pos0, pos1) = row[i];
-                if self.tabs {
+                if self.styles.tabs {
                     if !first {
                         out.write_all(b"\t").unwrap_or(());
                     }
@@ -170,12 +164,12 @@ impl<const N: usize> Table<N> {
                 }
                 first = false;
             }
-            out.write_all(&self.lineend).unwrap_or(());
+            out.write_all(&self.styles.lineend).unwrap_or(());
         }
     }
 }
 
-impl<const N: usize> Drop for Table<N> {
+impl<const N: usize> Drop for Table<'_, N> {
     /// Table is rendered to stdout when it goes out of scope
     fn drop(&mut self) {
         self.flush(BufWriter::new(stdout().lock()))
