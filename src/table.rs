@@ -4,17 +4,17 @@ use std::{collections::VecDeque,
 
 pub trait Disp {
     /// Write to buf and returns the number of visible chars written
-    fn out(&self, buf: &mut Vec<u8>) -> usize;
+    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize;
 }
 impl<T: std::fmt::Display> Disp for T {
-    fn out(&self, buf: &mut Vec<u8>) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, _st: &Styles) -> usize {
         let start = buf.len();
         write!(buf, "{self}").expect("write to buf");
         buf.len() - start
     }
 }
 impl Disp for AnsiStr {
-    fn out(&self, buf: &mut Vec<u8>) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, _st: &Styles) -> usize {
         buf.extend_from_slice(self.val.as_bytes());
         self.len
     }
@@ -108,7 +108,7 @@ impl<'a, const N: usize> Table<'a, N> {
         let mut idxrow = [(0, 0, 0); N];
         for i in 0..N {
             let start = self.buf.len();
-            let len = row[i].iter().map(|c| c.out(&mut self.buf)).sum();
+            let len = row[i].iter().map(|c| c.out(&mut self.buf, &self.styles)).sum();
             self.widths[i] = usize::max(self.widths[i], len);
             idxrow[i] = (len, start, self.buf.len());
         }

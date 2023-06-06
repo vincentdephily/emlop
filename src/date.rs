@@ -1,8 +1,9 @@
-use crate::Styles;
+use crate::{table::Disp, Styles};
 use anyhow::{bail, Error};
 use log::{debug, warn};
 use regex::Regex;
 use std::{convert::TryFrom,
+          io::Write as _,
           str::FromStr,
           time::{SystemTime, UNIX_EPOCH}};
 use time::{macros::format_description, parsing::Parsed, Date, Duration, Month, OffsetDateTime,
@@ -47,15 +48,20 @@ pub fn fmt_utctime(ts: i64) -> String {
     OffsetDateTime::from_unix_timestamp(ts).unwrap().format(&fmt).unwrap()
 }
 
+pub struct FmtDate(pub i64);
 /// Format dates according to user preferencess
-pub fn fmt_time(ts: i64, style: &Styles) -> String {
-    if style.date_fmt.0.is_empty() {
-        ts.to_string()
-    } else {
-        OffsetDateTime::from_unix_timestamp(ts).unwrap()
-                                               .to_offset(style.date_offset)
-                                               .format(&style.date_fmt.0)
-                                               .unwrap()
+impl Disp for FmtDate {
+    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize {
+        let start = buf.len();
+        if st.date_fmt.0.is_empty() {
+            write!(buf, "{}", self.0).expect("write to buf");
+        } else {
+            OffsetDateTime::from_unix_timestamp(self.0).expect("unix from i64")
+                                                       .to_offset(st.date_offset)
+                                                       .format_into(buf, &st.date_fmt.0)
+                                                       .expect("write to buf");
+        }
+        buf.len() - start
     }
 }
 

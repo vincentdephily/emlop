@@ -32,7 +32,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
             Hist::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = merges.remove(key).unwrap_or(ts + 1);
-                tbl.row([&[&fmt_time(if stt { started } else { ts }, st)],
+                tbl.row([&[&FmtDate(if stt { started } else { ts })],
                          &[&st.dur, &st.dur_t.fmt(ts - started)],
                          &[&st.merge, &p.ebuild_version()]]);
             },
@@ -43,7 +43,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
             Hist::UnmergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
-                tbl.row([&[&fmt_time(if stt { started } else { ts }, st)],
+                tbl.row([&[&FmtDate(if stt { started } else { ts })],
                          &[&st.dur, &st.dur_t.fmt(ts - started)],
                          &[&st.unmerge, &p.ebuild_version()]]);
             },
@@ -54,7 +54,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
             Hist::SyncStop { ts, repo } => {
                 if let Some(started) = sync_start.take() {
                     found += 1;
-                    tbl.row([&[&fmt_time(if stt { started } else { ts }, st)],
+                    tbl.row([&[&FmtDate(if stt { started } else { ts })],
                              &[&st.dur, &st.dur_t.fmt(ts - started)],
                              &[&st.clr, &"Sync ", &repo]]);
                 } else {
@@ -446,7 +446,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
             }
             tbl.row([&s,
                      &[&st.dur, &st.dur_t.fmt(totpredict), &st.clr],
-                     &[&"@ ", &st.dur, &fmt_time(now + totpredict, st)]]);
+                     &[&"@ ", &st.dur, &FmtDate(now + totpredict)]]);
         }
     } else {
         tbl.row([&[&"No pretended merge found"], &[], &[]]);
@@ -486,7 +486,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                     match times.pred(lim, avg) {
                         -1 => {
                             if show.merge {
-                                tbl.row([&[&fmt_time(ts, st)],
+                                tbl.row([&[&FmtDate(ts)],
                                          &[&st.merge, &p.ebuild_version()],
                                          &[&st.dur, &st.dur_t.fmt(real)],
                                          &[],
@@ -496,7 +496,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                         pred => {
                             let err = (pred - real).abs() as f64 * 100.0 / real as f64;
                             if show.merge {
-                                tbl.row([&[&fmt_time(ts, st)],
+                                tbl.row([&[&FmtDate(ts)],
                                          &[&st.merge, &p.ebuild_version()],
                                          &[&st.dur, &st.dur_t.fmt(real)],
                                          &[&st.dur, &st.dur_t.fmt(pred)],
