@@ -23,7 +23,7 @@ Main changes:
 * Added `--avg=mean/median/weighted` option to tweak predictions
   - `mean` is the original behaviour
   - `median` is the new default, it's more resilient against noisy data
-  - `weighted` gives more importance to recent values
+  - `weighted-{arith,median}` gives more importance to recent values
 * Added `--starttime` option to show merge start instead of merge end
 * Moved `--show h` option value to a dedicated `--headers`/`-H` flag
   - Fixes surprising behavior when only `h` was specified

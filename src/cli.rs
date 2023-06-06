@@ -161,10 +161,10 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                        .help_heading("STATS")
                        .help("Select function used to predict durations")
                        .long_help("Select function used to predict durations\n  \
-                                   arith|a:           simple 'sum/count' average\n  \
-                                   median|m:          middle value, mitigates outliers\n  \
-                                   weighted-arith|wa: 'sum/count' with more weight for recent values\n  \
-                                   weighted-mean|wm:  \"middle\" value shifted toward recent values");
+                                   arith|a:            simple 'sum/count' average\n  \
+                                   median|m:           middle value, mitigates outliers\n  \
+                                   weighted-arith|wa:  'sum/count' with more weight for recent values\n  \
+                                   weighted-median|wm: \"middle\" value shifted toward recent values");
 
 
     ////////////////////////////////////////////////////////////
