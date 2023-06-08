@@ -46,7 +46,7 @@ impl Pkg {
 pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
     debug!("get_pretend input={}", filename);
     let mut out = vec![];
-    let re = Regex::new("^\\[ebuild[^]]+\\] (.+?-[0-9][0-9a-z._-]*)").unwrap();
+    let re = Regex::new("^\\[ebuild[^]]*\\] +([^ :\\n]+)").unwrap();
     let mut buf = BufReader::new(reader);
     let mut line = String::new();
     loop {
