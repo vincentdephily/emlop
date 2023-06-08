@@ -108,7 +108,7 @@ impl<'a, const N: usize> Table<'a, N> {
         let mut idxrow = [(0, 0, 0); N];
         for i in 0..N {
             let start = self.buf.len();
-            let len = row[i].iter().map(|c| c.out(&mut self.buf, &self.styles)).sum();
+            let len = row[i].iter().map(|c| c.out(&mut self.buf, self.styles)).sum();
             self.widths[i] = usize::max(self.widths[i], len);
             idxrow[i] = (len, start, self.buf.len());
         }
@@ -164,7 +164,7 @@ impl<'a, const N: usize> Table<'a, N> {
                 }
                 first = false;
             }
-            out.write_all(&self.styles.lineend).unwrap_or(());
+            out.write_all(self.styles.lineend).unwrap_or(());
         }
     }
 }

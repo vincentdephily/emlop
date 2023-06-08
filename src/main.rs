@@ -145,10 +145,8 @@ pub enum DurationStyle {
 }
 impl DurationStyle {
     fn fmt(&self, secs: i64) -> String {
-        if secs < 0 {
-            return String::from("?");
-        }
         match &self {
+            _ if secs < 0 => String::from("?"),
             Self::HMS if secs >= 3600 => {
                 format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
             },
