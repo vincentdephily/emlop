@@ -84,6 +84,12 @@ pub fn value_opt<T, P, A>(matches: &ArgMatches, name: &str, parse: P, arg: A) ->
     }
 }
 
+/// Alias to `write!(...).expect("write to buf")` just to save on typing/indent.
+macro_rules! wtb {
+    ($b:ident, $s:expr) => {write!($b, $s).expect("write to buf")};
+    ($b:ident, $s:expr, $($arg:expr),+) => {write!($b, $s, $($arg),+).expect("write to buf")}
+}
+
 #[derive(Clone, Copy, Default)]
 pub struct Show {
     pub pkg: bool,
@@ -143,43 +149,37 @@ pub enum DurationStyle {
     #[clap(alias("h"))]
     Human,
 }
-impl DurationStyle {
-    fn fmt(&self, secs: i64) -> String {
-        match &self {
-            _ if secs < 0 => String::from("?"),
-            Self::HMS if secs >= 3600 => {
-                format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
-            },
-            Self::HMS if secs >= 60 => format!("{}:{:02}", secs % 3600 / 60, secs % 60),
-            Self::HMS => secs.to_string(),
-            Self::HMSFixed => {
-                format!("{}:{:02}:{:02}", secs / 3600, secs % 3600 / 60, secs % 60)
-            },
-            Self::Human if secs == 0 => String::from("0 second"),
-            Self::Human => {
-                let mut buf = String::with_capacity(16);
-                Self::fmt_append(&mut buf, secs / 86400, "day");
-                Self::fmt_append(&mut buf, secs % 86400 / 3600, "hour");
-                Self::fmt_append(&mut buf, secs % 3600 / 60, "minute");
-                Self::fmt_append(&mut buf, secs % 60, "second");
-                buf
-            },
-            Self::Secs => secs.to_string(),
-        }
-    }
 
-    fn fmt_append(buf: &mut String, num: i64, what: &'static str) {
-        use std::fmt::Write;
-
-        if num == 0 {
-            return;
+pub struct FmtDur(pub i64);
+impl crate::table::Disp for FmtDur {
+    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize {
+        use std::io::Write;
+        use DurationStyle::*;
+        let sec = self.0;
+        let dur = st.dur.val;
+        let start = buf.len();
+        match st.dur_t {
+            _ if sec < 0 => wtb!(buf, "{dur}?"),
+            HMS if sec >= 3600 => {
+                wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60)
+            },
+            HMS if sec >= 60 => wtb!(buf, "{dur}{}:{:02}", sec % 3600 / 60, sec % 60),
+            HMS | Secs => wtb!(buf, "{dur}{sec}"),
+            HMSFixed => wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60),
+            Human if sec == 0 => wtb!(buf, "{dur}0 second"),
+            Human => {
+                let a = [(sec / 86400, "day"),
+                         (sec % 86400 / 3600, "hour"),
+                         (sec % 3600 / 60, "minute"),
+                         (sec % 60, "second")];
+                let mut prefix = dur;
+                for (num, what) in a.into_iter().filter(|(n, _)| *n > 0) {
+                    wtb!(buf, "{prefix}{num} {what}{}", if num > 1 { "s" } else { "" });
+                    prefix = ", ";
+                }
+            },
         }
-        let prefix = if buf.is_empty() { "" } else { ", " };
-        if num == 1 {
-            write!(buf, "{prefix}{num} {what}").expect("write to string");
-        } else {
-            write!(buf, "{prefix}{num} {what}s").expect("write to string");
-        }
+        buf.len() - start - st.dur.val.len()
     }
 }
 
@@ -227,8 +227,8 @@ impl Styles {
                  tabs }
     }
     #[cfg(test)]
-    fn from_str(s: &'static str) -> Self {
-        let args = cli::build_cli().get_matches_from(s.split_whitespace());
+    fn from_str(s: impl AsRef<str>) -> Self {
+        let args = cli::build_cli().get_matches_from(s.as_ref().split_whitespace());
         Self::from_args(&args)
     }
 }
@@ -236,11 +236,11 @@ impl Styles {
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::{table::Disp, *};
 
     #[test]
     fn duration() {
-        for (hms, hms_fixed, secs, human, i) in
+        for (hms, fixed, secs, human, i) in
             [("0", "0:00:00", "0", "0 second", 0),
              ("1", "0:00:01", "1", "1 second", 1),
              ("59", "0:00:59", "59", "59 seconds", 59),
@@ -254,10 +254,11 @@ mod tests {
              ("?", "?", "?", "?", -1),
              ("?", "?", "?", "?", -123456)]
         {
-            assert_eq!(hms, DurationStyle::HMS.fmt(i));
-            assert_eq!(hms_fixed, DurationStyle::HMSFixed.fmt(i));
-            assert_eq!(human, DurationStyle::Human.fmt(i));
-            assert_eq!(secs, DurationStyle::Secs.fmt(i));
+            for (st, exp) in [("hms", hms), ("hmsfixed", fixed), ("secs", secs), ("human", human)] {
+                let mut buf = vec![];
+                FmtDur(i).out(&mut buf, &Styles::from_str(format!("emlop l --color=n --dur {st}")));
+                assert_eq!(exp, &String::from_utf8(buf).unwrap());
+            }
         }
     }
 }

@@ -33,7 +33,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 found += 1;
                 let started = merges.remove(key).unwrap_or(ts + 1);
                 tbl.row([&[&FmtDate(if stt { started } else { ts })],
-                         &[&st.dur, &st.dur_t.fmt(ts - started)],
+                         &[&FmtDur(ts - started)],
                          &[&st.merge, &p.ebuild_version()]]);
             },
             Hist::UnmergeStart { ts, key, .. } => {
@@ -44,7 +44,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 found += 1;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 tbl.row([&[&FmtDate(if stt { started } else { ts })],
-                         &[&st.dur, &st.dur_t.fmt(ts - started)],
+                         &[&FmtDur(ts - started)],
                          &[&st.unmerge, &p.ebuild_version()]]);
             },
             Hist::SyncStart { ts } => {
@@ -55,7 +55,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 if let Some(started) = sync_start.take() {
                     found += 1;
                     tbl.row([&[&FmtDate(if stt { started } else { ts })],
-                             &[&st.dur, &st.dur_t.fmt(ts - started)],
+                             &[&FmtDur(ts - started)],
                              &[&st.clr, &"Sync ", &repo]]);
                 } else {
                     warn!("Sync stop without a start at {ts}")
@@ -268,8 +268,8 @@ fn cmd_stats_group(tbls: &mut Table<5>,
             tbls.row([&[&group],
                       &[repo],
                       &[&st.cnt, &time.count],
-                      &[&st.dur, &st.dur_t.fmt(time.tot)],
-                      &[&st.dur, &st.dur_t.fmt(time.pred(lim, avg))]]);
+                      &[&FmtDur(time.tot)],
+                      &[&FmtDur(time.pred(lim, avg))]]);
         }
     }
     // Packages
@@ -278,11 +278,11 @@ fn cmd_stats_group(tbls: &mut Table<5>,
             tblp.row([&[&group],
                       &[&st.pkg, pkg],
                       &[&st.cnt, &merge.count],
-                      &[&st.dur, &st.dur_t.fmt(merge.tot)],
-                      &[&st.dur, &st.dur_t.fmt(merge.pred(lim, avg))],
+                      &[&FmtDur(merge.tot)],
+                      &[&FmtDur(merge.pred(lim, avg))],
                       &[&st.cnt, &unmerge.count],
-                      &[&st.dur, &st.dur_t.fmt(unmerge.tot)],
-                      &[&st.dur, &st.dur_t.fmt(unmerge.pred(lim, avg))]]);
+                      &[&FmtDur(unmerge.tot)],
+                      &[&FmtDur(unmerge.pred(lim, avg))]]);
         }
     }
     // Totals
@@ -299,12 +299,11 @@ fn cmd_stats_group(tbls: &mut Table<5>,
         }
         tblt.row([&[&group],
                   &[&st.cnt, &merge_count],
-                  &[&st.dur, &st.dur_t.fmt(merge_time)],
-                  &[&st.dur, &st.dur_t.fmt(merge_time.checked_div(merge_count).unwrap_or(-1))],
+                  &[&FmtDur(merge_time)],
+                  &[&FmtDur(merge_time.checked_div(merge_count).unwrap_or(-1))],
                   &[&st.cnt, &unmerge_count],
-                  &[&st.dur, &st.dur_t.fmt(unmerge_time)],
-                  &[&st.dur,
-                    &st.dur_t.fmt(unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
+                  &[&FmtDur(unmerge_time)],
+                  &[&FmtDur(unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
     }
 }
 
@@ -332,7 +331,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     for i in get_all_info(Some("emerge")) {
         cms = std::cmp::min(cms, i.start);
         if show.emerge {
-            tbl.row([&[&i], &[&st.dur, &st.dur_t.fmt(now - i.start)], &[]]);
+            tbl.row([&[&i], &[&FmtDur(now - i.start)], &[]]);
         }
     }
     if cms == std::i64::MAX
@@ -398,7 +397,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         };
 
         // Find the predicted time and adjust counters
-        let pred_fmt = match times.get(p.ebuild()) {
+        let pred = match times.get(p.ebuild()) {
             Some(tv) => {
                 let pred = tv.pred(lim, avg);
                 totpredict += pred;
@@ -406,11 +405,11 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
                     totelapsed += elapsed;
                     totpredict -= std::cmp::min(pred, elapsed);
                 }
-                st.dur_t.fmt(pred)
+                pred
             },
             None => {
                 totunknown += 1;
-                "?".into()
+                -1
             },
         };
 
@@ -419,10 +418,10 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
             if elapsed > 0 {
                 let stage = get_buildlog(&p, tmpdir).unwrap_or_default();
                 tbl.row([&[&st.pkg, &p.ebuild_version()],
-                         &[&st.dur, &pred_fmt],
-                         &[&st.clr, &"- ", &st.dur, &st.dur_t.fmt(elapsed), &st.clr, &stage]]);
+                         &[&FmtDur(pred)],
+                         &[&st.clr, &"- ", &FmtDur(elapsed), &st.clr, &stage]]);
             } else {
-                tbl.row([&[&st.pkg, &p.ebuild_version()], &[&st.dur, &pred_fmt], &[]]);
+                tbl.row([&[&st.pkg, &p.ebuild_version()], &[&FmtDur(pred)], &[]]);
             }
         }
     }
@@ -440,12 +439,12 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
             if tothidden > 0 {
                 s.extend::<[&dyn Disp; 5]>([&", ", &st.cnt, &tothidden, &st.clr, &" hidden"]);
             }
-            let e = st.dur_t.fmt(totelapsed);
+            let e = FmtDur(totelapsed);
             if totelapsed > 0 {
-                s.extend::<[&dyn Disp; 5]>([&", ", &st.dur, &e, &st.clr, &" elapsed"]);
+                s.extend::<[&dyn Disp; 4]>([&", ", &e, &st.clr, &" elapsed"]);
             }
             tbl.row([&s,
-                     &[&st.dur, &st.dur_t.fmt(totpredict), &st.clr],
+                     &[&FmtDur(totpredict), &st.clr],
                      &[&"@ ", &st.dur, &FmtDate(now + totpredict)]]);
         }
     } else {
@@ -488,7 +487,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                             if show.merge {
                                 tbl.row([&[&FmtDate(ts)],
                                          &[&st.merge, &p.ebuild_version()],
-                                         &[&st.dur, &st.dur_t.fmt(real)],
+                                         &[&FmtDur(real)],
                                          &[],
                                          &[]])
                             }
@@ -498,8 +497,8 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                             if show.merge {
                                 tbl.row([&[&FmtDate(ts)],
                                          &[&st.merge, &p.ebuild_version()],
-                                         &[&st.dur, &st.dur_t.fmt(real)],
-                                         &[&st.dur, &st.dur_t.fmt(pred)],
+                                         &[&FmtDur(real)],
+                                         &[&FmtDur(pred)],
                                          &[&st.cnt, &format!("{err:.1}%")]])
                             }
                             let errs =
