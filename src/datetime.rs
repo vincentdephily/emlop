@@ -1,4 +1,4 @@
-use crate::{table::Disp, Styles};
+use crate::{table::Disp, wtb, DurationStyle, Styles};
 use anyhow::{bail, Error};
 use log::{debug, warn};
 use regex::Regex;
@@ -235,6 +235,39 @@ impl Timespan {
     }
 }
 
+/// Wrapper around a duration (seconds) to implement `table::Disp`
+pub struct FmtDur(pub i64);
+impl crate::table::Disp for FmtDur {
+    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize {
+        use std::io::Write;
+        use DurationStyle::*;
+        let sec = self.0;
+        let dur = st.dur.val;
+        let start = buf.len();
+        match st.dur_t {
+            _ if sec < 0 => wtb!(buf, "{dur}?"),
+            HMS if sec >= 3600 => {
+                wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60)
+            },
+            HMS if sec >= 60 => wtb!(buf, "{dur}{}:{:02}", sec % 3600 / 60, sec % 60),
+            HMS | Secs => wtb!(buf, "{dur}{sec}"),
+            HMSFixed => wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60),
+            Human if sec == 0 => wtb!(buf, "{dur}0 second"),
+            Human => {
+                let a = [(sec / 86400, "day"),
+                         (sec % 86400 / 3600, "hour"),
+                         (sec % 3600 / 60, "minute"),
+                         (sec % 60, "second")];
+                let mut prefix = dur;
+                for (num, what) in a.into_iter().filter(|(n, _)| *n > 0) {
+                    wtb!(buf, "{prefix}{num} {what}{}", if num > 1 { "s" } else { "" });
+                    prefix = ", ";
+                }
+            },
+        }
+        buf.len() - start - st.dur.val.len()
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -320,6 +353,30 @@ mod test {
                 assert_eq!(ts(month), Timespan::Month.next(ts(base), offset), "{base} M {month}");
                 assert_eq!(ts(week), Timespan::Week.next(ts(base), offset), "{base} W {week}");
                 assert_eq!(ts(day), Timespan::Day.next(ts(base), offset), "{base} D {day}");
+            }
+        }
+    }
+
+    #[test]
+    fn duration() {
+        for (hms, fixed, secs, human, i) in
+            [("0", "0:00:00", "0", "0 second", 0),
+             ("1", "0:00:01", "1", "1 second", 1),
+             ("59", "0:00:59", "59", "59 seconds", 59),
+             ("1:00", "0:01:00", "60", "1 minute", 60),
+             ("1:01", "0:01:01", "61", "1 minute, 1 second", 61),
+             ("59:59", "0:59:59", "3599", "59 minutes, 59 seconds", 3599),
+             ("1:00:00", "1:00:00", "3600", "1 hour", 3600),
+             ("48:00:01", "48:00:01", "172801", "2 days, 1 second", 172801),
+             ("99:59:59", "99:59:59", "359999", "4 days, 3 hours, 59 minutes, 59 seconds", 359999),
+             ("100:00:00", "100:00:00", "360000", "4 days, 4 hours", 360000),
+             ("?", "?", "?", "?", -1),
+             ("?", "?", "?", "?", -123456)]
+        {
+            for (st, exp) in [("hms", hms), ("hmsfixed", fixed), ("secs", secs), ("human", human)] {
+                let mut buf = vec![];
+                FmtDur(i).out(&mut buf, &Styles::from_str(format!("emlop l --color=n --dur {st}")));
+                assert_eq!(exp, &String::from_utf8(buf).unwrap());
             }
         }
     }

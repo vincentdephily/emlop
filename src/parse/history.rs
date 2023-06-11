@@ -2,7 +2,7 @@
 //!
 //! Use `new_hist()` to start parsing and retrieve `Hist` enums.
 
-use crate::{date::fmt_utctime, Show};
+use crate::{datetime::fmt_utctime, Show};
 use anyhow::{bail, Context, Error};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use log::*;

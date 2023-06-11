@@ -135,7 +135,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .long("groupby")
                                  .display_order(1)
                                  .value_name("y,m,w,d")
-                                 .value_parser(value_parser!(crate::date::Timespan))
+                                 .value_parser(value_parser!(crate::datetime::Timespan))
                                  .hide_possible_values(true)
                                  .help_heading("STATS")
                                  .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay")

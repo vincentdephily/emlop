@@ -1,4 +1,4 @@
-use crate::{parse::AnsiStr, Styles};
+use crate::Styles;
 use std::{collections::VecDeque,
           io::{stdout, BufWriter, Write as _}};
 
@@ -11,12 +11,6 @@ impl<T: std::fmt::Display> Disp for T {
         let start = buf.len();
         write!(buf, "{self}").expect("write to buf");
         buf.len() - start
-    }
-}
-impl Disp for AnsiStr {
-    fn out(&self, buf: &mut Vec<u8>, _st: &Styles) -> usize {
-        buf.extend_from_slice(self.val.as_bytes());
-        self.len
     }
 }
 
