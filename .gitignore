@@ -1,3 +1,4 @@
 /target/
 docs/*.cast
+benches/bench*.csv
 **/*.rs.bk
