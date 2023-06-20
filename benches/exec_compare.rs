@@ -134,6 +134,10 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         .arg(Arg::new("nullout")
              .short('n')
              .help("Send test program outputs to /dev/null"))
+        .arg(Arg::new("out")
+             .short('o')
+             .takes_value(true)
+             .help("Write results to file instead of stderr"))
         .arg(Arg::new("logfile")
              .help("Emerge log file")
              .short('f')
@@ -215,11 +219,7 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     }
 
     // Output the results
-    let mut tw = TabWriter::new(stderr());
-    let mut prev = String::new();
-    let mut color = "";
-    writeln!(tw, "\n\x1B[36mtest\tcmd\tmax\t95%\t85%\t75%\tmin\tmean\tstddev\ttot\tbucketed values")
-        .unwrap();
+    let mut out = Out::try_new(cli.value_of("out")).unwrap();
     for (key, vals) in times {
         let ss: SummStats<f64> = vals.iter().cloned().collect();
         let pc: Percentiles<f64> = vals.iter().cloned().collect();
@@ -230,24 +230,61 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
             .map(|v| ((((v - min) / step).floor() * step) + min) as u64)
             .for_each(|v| *hist.entry(v).or_insert(0) += 1);
         let hist = hist.iter().map(|(k, v)| format!("{}:{}", k, v)).collect::<Vec<_>>().join(",");
-        let cmd = key.split_once("\t").expect("key without a tab").0;
-        if prev != cmd {
-            color = if color == "\x1B[00m" { "\x1B[90m" } else { "\x1B[00m" };
-            prev = cmd.into();
-        }
-        writeln!(tw,
-                 "{}{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}",
-                 color,
-                 key,
-                 max,
-                 pc.percentile(&0.95).unwrap().unwrap(),
-                 pc.percentile(&0.85).unwrap().unwrap(),
-                 pc.percentile(&0.75).unwrap().unwrap(),
-                 min,
-                 ss.mean().unwrap(),
-                 ss.standard_deviation().unwrap_or(0.0),
-                 ss.sum(),
-                 hist).unwrap();
+        out.row(format!("{}\t{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\n",
+                        &key,
+                        max,
+                        pc.percentile(&0.95).unwrap().unwrap(),
+                        pc.percentile(&0.85).unwrap().unwrap(),
+                        pc.percentile(&0.75).unwrap().unwrap(),
+                        min,
+                        ss.mean().unwrap(),
+                        ss.standard_deviation().unwrap_or(0.0),
+                        ss.sum(),
+                        hist));
     }
-    tw.flush().unwrap();
+}
+
+enum Out {
+    Term(TabWriter<std::io::Stderr>, String, &'static [u8]),
+    File(File),
+}
+impl Out {
+    fn try_new(file: Option<&str>) -> Result<Self, std::io::Error> {
+        match file {
+            None => {
+                let mut tw = TabWriter::new(stderr()).alignment(tabwriter::Alignment::Right);
+                writeln!(tw, "\n\x1B[32mtest\tcmd\tmax\t95%\t85%\t75%\tmin\tmean\tstddev\ttot\tbucketed values")?;
+                Ok(Self::Term(tw, String::new(), b""))
+            },
+            Some(f) => {
+                let f =
+                    std::fs::OpenOptions::new().write(true).create(true).truncate(true).open(f)?;
+                Ok(Self::File(f))
+            },
+        }
+    }
+    fn row(&mut self, line: String) {
+        match self {
+            Self::Term(tw, prev, color) => {
+                let cmd = line.split_once("\t").expect("key without a tab").0;
+                if prev != cmd {
+                    *prev = cmd.into();
+                    *color = if *color == b"\x1B[00m" { b"\x1B[96m" } else { b"\x1B[00m" };
+                }
+                tw.write(color);
+                tw.write(line.as_bytes());
+            },
+            Self::File(f) => {
+                f.write_all(line.as_bytes());
+            },
+        }
+    }
+}
+impl Drop for Out {
+    fn drop(&mut self) {
+        match self {
+            Self::Term(tw, _, _) => tw.flush().unwrap(),
+            Self::File(f) => (),
+        }
+    }
 }
