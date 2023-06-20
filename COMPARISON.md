@@ -2,7 +2,7 @@
 
 Original motivation for Emlop was a faster/more accurate version of `genlop -p`, and learning
 Rust. It has since gained features and maturity to compete on all fronts. This file compares
-`genlop-0.30.10`, `qlop-0.94.4`, and `emlop-0.6.0`. Please report any outdated/incorrect info using
+`genlop-0.30.10`, `qlop-0.96`, and `emlop-0.6.0`. Please report any outdated/incorrect info using
 [the issue tracker](https://github.com/vincentdephily/emlop/issues).
 
 Known emegre log parsers:
@@ -12,6 +12,7 @@ Known emegre log parsers:
 * [Splat](http://www.l8nite.net/projects/splat/) (Perl) look like Genlop's predecessor, dead upstream.
 * [Pqlop](https://bitbucket.org/LK4D4/pqlop) (Python) was an ambitious rewrite, dead upstream.
 * [Golop](https://github.com/klausman/golop) (Go) is a recent rewrite apparently abandoned quickly.
+* [Emwa](https://github.com/foxtrot-wx/emwa) (C) is a recent addition, time will tell.
 
 Perl, Python, C, Go, Rust... at least Gentoo doesn't suffer from a language monoculture ;)
 
@@ -30,15 +31,16 @@ did make some outputs more compact.
 Default qlop duration output depends on length: `45s` -> `3′45″` -> `1:23:45`. Machine output
 applies to dates and durations at the same time.
 
-|                           | genlop | qlop          | emlop   |
-| :------------------------ | :----: | :-----------: | :-----: |
-| Output density            | sparse | compact       | compact |
-| Aligned output            | some   | some          | all     |
-| Optional headers          | no     | no            | yes     |
-| Force color output        | no     | yes           | yes     |
-| Date output formats       | -      | rfc3339,ts    | many    |
-| Timezone options          | utc    | -             | utc     |
-| Duration output formats   | text   | hms,secs,text | many    |
+|                              | genlop | qlop          | emlop   |
+| :------------------------    | :----: | :-----------: | :-----: |
+| Output density               | sparse | compact       | compact |
+| Optional headers             | no     | no            | yes     |
+| Aligned output               | some   | some          | all     |
+| Optional plain tab alignment | no     | no            | yes     |
+| Force color output           | no     | yes           | yes     |
+| Date output formats          | -      | rfc3339,ts    | many    |
+| Timezone options             | utc    | -             | utc     |
+| Duration output formats      | text   | hms,secs,text | many    |
 
 ## Merge log
 
@@ -46,9 +48,9 @@ applies to dates and durations at the same time.
 | :---------------------------------------------------- | :----:   | :----: | :------: |
 | Display merges/unmerges                               | yes      | yes    | yes      |
 | Distinguish autoclean/manual unmerges                 | no       | yes    | no       |
-| Display syncs (single entry or per repository         | single   | single | per-repo |
+| Distinguish syncs per repository                      | no       | no     | yes      |
 | Display unmerge/sync duration                         | no       | yes    | yes      |
-| Display interrupted merges                            | no       | no     | no       |
+| Display interrupted/failed merges                     | no       | no     | no       |
 | Display currently installed package's USE/CFLAGS/date | yes      | no     | no       |
 | Display merge begin time or end time by default       | end only | begin  | end      |
 
@@ -92,6 +94,7 @@ which can be abbreviated (for example "1 week, 3 days" -> "1w3d").
 | Limit log to last operation                            | no          | yes   | no          |
 | Filter by package categ/name                           | yes         | yes   | yes         |
 | Filter by sync repo                                    | no          | no    | yes         |
+| Read filter list from file                             | no          | yes   | no          |
 | Search modes                                           | plain/regex | plain | plain/regex |
 | Default search mode                                    | plain       | plain | regex       |
 
@@ -116,20 +119,21 @@ All tools give pessimistic prediction when packages are merged in parallel, beca
 sequential merging. Even if they detected an ongoing parallel merge, it's not clear how they would
 estimate the resulting speedup factor.
 
-|                                                    | genlop        | qlop          | emlop                                |
-| :------------------------------------------------- | :----:        | :--:          | :---:                                |
-| Show ongoing merge ETA                             | current build | current build | whole list                           |
-| Show `emerge -p` merges ETA                        | yes           | no            | yes                                  |
-| Show current merge stage                           | no            | no            | yes                                  |
-| Global/current ETA format                          | total time    | total time    | total and individual times, end date |
-| Estimation accuracy                                | ok            | better        | best                                 |
-| Query gentoo.linuxhowtos.org for unknown packages  | yes           | no            | no                                   |
+|                                                    | genlop        | qlop          | emlop                |
+| :------------------------------------------------- | :----:        | :--:          | :---:                |
+| Show ongoing merge ETA                             | current build | current build | whole list           |
+| Show `emerge -p` merges ETA                        | yes           | no            | yes                  |
+| Show individual merge ETAs                         | no            | no            | yes                  |
+| Show current merge stage                           | no            | no            | yes                  |
+| Global ETA format                                  | total time    | total time    | total time, end date |
+| Estimation accuracy                                | ok            | better        | best                 |
+| Query gentoo.linuxhowtos.org for unknown packages  | yes           | no            | no                   |
 
 ## Speed
 
-Here are timings for some common commands (in milliseconds, 95th centile of 50 runs, output to
-Alacritty terminal) measured using `benches/exec_compare.rs`, on a Ryzen 7 4700U with an SSD and the
-`benches/emerge.log` file with ~10K merges.
+Here are timings for some common commands (in milliseconds, 95th centile of 50 runs, see
+`benches/stdcomp.sh`) on a Ryzen 7 4700U with an SSD and the `benches/emerge.log` file with ~10K
+merges.
 
 The commands were selected to be comparable, but Some differences do influence timings. Emlop always
 show merge time and package version in "log" mode, and looks up portage resume data in "predict"
@@ -139,14 +143,14 @@ faster than by case-(in)sensitive regexp ({gen,em}lop only).
 
 |                                                               | genlop | qlop | emlop |
 | :-------------------------------------------------------------| -----: | ---: | ----: |
-| `genlop -l; qlop -m; emlop l`                                 |    442 |   91 |    69 |
-| `genlop -lut; qlop -muUvt; emlop l -smu`                      |    664 |  155 |   134 |
-| `genlop gcc; qlop -m gcc; emlop l -e gcc`                     |    361 |   34 |    19 |
-| `genlop -tu gcc; qlop -muUvt gcc; emlop l -smu -e gcc`        |    688 |   45 |    26 |
-| `emerge dummybuild&;genlop -c;qlop -r;emlop p`                |    442 |   52 |    44 |
-| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`    |    434 |  n/a |    45 |
-| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`     |   3192 |  n/a |    46 |
-| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`    |  20456 |  n/a |    45 |
+| `genlop -l; qlop -m; emlop l`                                 |    437 |   94 |    60 |
+| `genlop -lut; qlop -muUvt; emlop l -smu`                      |    653 |  148 |   108 |
+| `genlop gcc; qlop -m gcc; emlop l -e gcc`                     |    362 |   36 |    18 |
+| `genlop -tu gcc; qlop -muUvt gcc; emlop l -smu -e gcc`        |    659 |   47 |    25 |
+| `emerge dummybuild&;genlop -c;qlop -r;emlop p`                |    480 |   67 |    57 |
+| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`    |    388 |  n/a |    44 |
+| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`     |   3098 |  n/a |    45 |
+| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`    |  19513 |  n/a |    45 |
 
 Emlop is faster than qlop, which is already comfortably fast (the wall time is often dominated by
 the terminal emulator). Genlop is noticably slow for basic tasks, and can be prohibitively slow for
@@ -154,10 +158,10 @@ the terminal emulator). Genlop is noticably slow for basic tasks, and can be pro
 
 ## misc
 
-|                                                  | genlop       | qlop   | emlop                |
-| :----------------------------------------------- | :----------: | :----: | :------------------: |
-| Shell completion                                 | bash         | none   | bash/zsh/fish/evlish |
-| An ebuild in the gentoo portage tree             | yes          | yes    | no                   |
-| Unittests                                        | no           | yes    | yes                  |
-| Documentation and help                           | ok           | good   | good                 |
-| Development activity                             | unmaintained | active | active               |
+|                                                  | genlop       | qlop   | emlop             |
+| :----------------------------------------------- | :----------: | :----: | :---------------: |
+| Shell completion                                 | bash         | none   | bash/zsh/fish/... |
+| An ebuild in the gentoo portage tree             | yes          | yes    | yes               |
+| Unittests                                        | no           | yes    | yes               |
+| Documentation and help                           | ok           | good   | good              |
+| Development activity                             | unmaintained | active | active            |

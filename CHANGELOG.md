@@ -1,9 +1,9 @@
-# Unreleased
+# 0.6.0 2023-06-20
 
 Feature release: Improved `predict` command and accuracy, filter sync events, new output options,
 and more.
 
-Main changes:
+## Main changes
 
 * `predict` command now reads portage's merge resume list
   - `emlop p` behaves the same as `emerge -rOp|emlop p` if a merge is currently running
@@ -31,7 +31,7 @@ Main changes:
 * Added `accuracy` subcommand to evaluate prediction accuracy
   - Mostly a development tool, but you might find it useful
 
-And also:
+## And also
 
 * Long args like `--duration` can now be abbreviated
 * `--color` is now an alias of `--color=always`
@@ -40,13 +40,15 @@ And also:
 * Various performance improvements
   - Now clearly faster than `qlop` in all cases
 * Improved and reorganized inline help
+* Use asciinema recordings in readme
 * Internal stuff
   - Increased MSRV to 1.65
+  - Updated github CI actions
   - Upgraded `clap` (triggered a lot of this release's improvements)
   - Recover from process listing errors
   - Various refactorings
   - Removed unmaintained `ansi_term` and `sysconfig`
-  - Improved benchmark tool a bit
+  - New/improved benchmark tools
 
 # 0.5.0 2022-04-18
 

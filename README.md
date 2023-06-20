@@ -89,11 +89,11 @@ Stats-specific arguments:
 
 ### Using portage
 
-Enable the [GURU](https://wiki.gentoo.org/wiki/Project:GURU) or
-[moltonel](https://github.com/vincentdephily/moltonel-ebuilds) overlay (install
-[eselect-repository](https://wiki.gentoo.org/wiki/Eselect/Repository) and run `eselect repository
-enable GURU`), then run `emerge emlop` as ususal. Work is underway for availablility in the main
-portage tree.
+    emerge emlop
+
+The ebuild is also maintained in the [moltonel](https://github.com/vincentdephily/moltonel-ebuilds)
+overlay, which you can enable using
+[eselect-repository](https://wiki.gentoo.org/wiki/Eselect/Repository).
 
 ### Using cargo
 
