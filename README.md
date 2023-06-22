@@ -35,7 +35,7 @@ All commands share these arguments, affecting parsing and output:
 
 ### List merges, unmerges, and rsyncs  with `log`
 
-![Log demo](docs/log.gif)
+![Log demo](docs/log.webp)
 
 Log-specific options:
 
@@ -48,7 +48,7 @@ Log-specific options:
 
 ### Estimate how long a merge with take with `predict`
 
-![Predict demo](docs/predict.gif)
+![Predict demo](docs/predict.webp)
 
 Predict-specific arguments:
 
@@ -67,7 +67,7 @@ Predict-specific arguments:
 
 ### Show aggregated statistics with `stats`
 
-![Stats demo](docs/stats.gif)
+![Stats demo](docs/stats.webp)
 
 Stats-specific arguments:
 
