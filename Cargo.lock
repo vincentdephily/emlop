@@ -185,8 +185,6 @@ dependencies = [
  "clap_complete",
  "crossbeam-channel",
  "env_logger",
- "escargot",
- "lazy_static",
  "libc",
  "log",
  "regex",
@@ -203,18 +201,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85cdab6a89accf66733ad5a1693a4dcced6aeff64602b634530dd73c1f3ee9f0"
 dependencies = [
  "log",
-]
-
-[[package]]
-name = "escargot"
-version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5584ba17d7ab26a8a7284f13e5bd196294dd2f2d79773cff29b9e9edef601a6"
-dependencies = [
- "log",
- "once_cell",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -262,12 +248,6 @@ name = "itoa"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "453ad9f582a441959e5f0d088b02ce04cfe8d51a8eaf077f12ac6d3e94164ca6"
-
-[[package]]
-name = "lazy_static"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
