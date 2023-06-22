@@ -126,7 +126,7 @@ mod tests {
     /// Check that `get_pretend()` has the expected output
     fn check_pretend(file: &str, expect: &[(&str, &str)]) {
         let mut n = 0;
-        for p in get_pretend(File::open(file).unwrap(), file) {
+        for p in get_pretend(File::open(&format!("tests/{file}")).unwrap(), file) {
             assert_eq!((p.ebuild(), p.version()), expect[n], "Mismatch for {file}:{n}");
             n += 1;
         }
@@ -139,18 +139,19 @@ mod tests {
                    ("app-portage/emlop", "0.1.0_p20180221"),
                    ("app-shells/bash", "4.4_p12"),
                    ("dev-db/postgresql", "10.3")];
-        check_pretend("test/emerge-p.basic.out", &out);
-        check_pretend("test/emerge-pv.basic.out", &out);
+        check_pretend("emerge-p.basic.out", &out);
+        check_pretend("emerge-pv.basic.out", &out);
     }
 
     #[test]
     fn pretend_blocker() {
         let out = [("app-admin/syslog-ng", "3.13.2"), ("dev-lang/php", "7.1.13")];
-        check_pretend("test/emerge-p.blocker.out", &out);
+        check_pretend("emerge-p.blocker.out", &out);
     }
 
     /// Check that `get_resume()` has the expected output
     fn check_resume(kind: ResumeKind, file: &str, expect: Option<&[(&str, &str)]>) {
+        let file = &format!("tests/{file}");
         match expect {
             Some(ex) => {
                 let mut n = 0;
@@ -166,15 +167,15 @@ mod tests {
     #[test]
     fn resume() {
         check_resume(ResumeKind::Main,
-                     "test/mtimedb.ok",
+                     "mtimedb.ok",
                      Some(&[("dev-lang/rust", "1.65.0"), ("app-portage/emlop", "0.5.0")]));
         check_resume(ResumeKind::Backup,
-                     "test/mtimedb.ok",
+                     "mtimedb.ok",
                      Some(&[("app-portage/dummybuild", "0.1.600"),
                             ("app-portage/dummybuild", "0.1.60")]));
-        check_resume(ResumeKind::Main, "test/mtimedb.empty", Some(&[]));
-        check_resume(ResumeKind::Main, "test/mtimedb.noresume", None);
-        check_resume(ResumeKind::Main, "test/mtimedb.badjson", None);
+        check_resume(ResumeKind::Main, "mtimedb.empty", Some(&[]));
+        check_resume(ResumeKind::Main, "mtimedb.noresume", None);
+        check_resume(ResumeKind::Main, "mtimedb.badjson", None);
     }
 
     #[test]
@@ -196,7 +197,7 @@ mod tests {
              ("build.log.color", 100, "Unpacking source: 0:57.55    Compiling syn v1.0.99"),
              ("build.log.color", 15, "Unpacking source: 0:57.55    Comp...")]
         {
-            let f = File::open(&format!("test/{file}")).expect(&format!("can't open {file:?}"));
+            let f = File::open(&format!("tests/{file}")).expect(&format!("can't open {file:?}"));
             let s = read_buildlog(f, lim).expect("failed to read_buildlog");
             assert_eq!(format!(" ({res})"), s);
         }

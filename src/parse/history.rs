@@ -333,7 +333,7 @@ mod tests {
             "shortline" => (1327867709, 1327871057),
             o => unimplemented!("Unknown test log file {:?}", o),
         };
-        let hist = get_hist(format!("test/emerge.{}.log", file),
+        let hist = get_hist(format!("tests/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
                             Show { merge: parse_merge,
