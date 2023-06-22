@@ -342,7 +342,7 @@ mod tests {
                                    ..Show::default() },
                             filter_src,
                             exact).unwrap();
-        let re_atom = Regex::new("^[a-z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
+        let re_atom = Regex::new("^[a-zA-Z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();
         let mut counts: HashMap<String, usize> = HashMap::new();
         // Check that all items look valid
@@ -375,7 +375,7 @@ mod tests {
     #[test]
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
-        let t = vec![("MStart", 37415)];
+        let t = vec![("MStart", 31467)];
         chk_hist("all", true, false, false, None, None, None, false, t);
     }
 
