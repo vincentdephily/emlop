@@ -43,6 +43,10 @@ unless the contributor explicitly demands otherwise.
 * Update/commit CHANGELOG.md, Cargo.toml, Cargo.lock.
 * `git tag <version> -a` (copy the changelog entry into the tag).
 * `git push --tags`.
+* Create release from tag in github
 * Create new ebuild in [moltonel-ebuilds](https://github.com/vincentdephily/moltonel-ebuilds).
+  - Use `cargo package` to get a crate to test
+  - Check against main repo ebuild
+  - Check tests and useflag variations
 * Publish to [crates.io](https://crates.io/).
 * Send a [bump request](https://bugs.gentoo.org/).

@@ -6,7 +6,7 @@ merge time prediction.
 
 It draws inspiration from [genlop](https://github.com/gentoo-perl/genlop) and
 [qlop](https://github.com/gentoo/portage-utils) but aims to be faster, more accurate, and more
-ergonomic, see [COMPARISON](COMPARISON.md).
+ergonomic, see [comparison](docs/COMPARISON.md).
 
 ## Usage
 
@@ -35,7 +35,7 @@ All commands share these arguments, affecting parsing and output:
 
 ### List merges, unmerges, and rsyncs  with `log`
 
-![Log demo](docs/log.webp)
+![Log demo](log.webp)
 
 Log-specific options:
 
@@ -48,7 +48,7 @@ Log-specific options:
 
 ### Estimate how long a merge with take with `predict`
 
-![Predict demo](docs/predict.webp)
+![Predict demo](predict.webp)
 
 Predict-specific arguments:
 
@@ -67,7 +67,7 @@ Predict-specific arguments:
 
 ### Show aggregated statistics with `stats`
 
-![Stats demo](docs/stats.webp)
+![Stats demo](stats.webp)
 
 Stats-specific arguments:
 
@@ -120,4 +120,4 @@ Install Rust and using [portage](https://wiki.gentoo.org/wiki/Rust) or
 
 ## Contributing
 
-Thanks in advance. See [CONTRIBUTING](CONTRIBUTING.md) for pointers. Emlop is licensed as GPLv3.
+Thanks in advance. See [contributing](docs/CONTRIBUTING.md) for pointers. Emlop is licensed as GPLv3.
