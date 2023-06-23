@@ -95,17 +95,17 @@ pub fn get_buildlog(pkg: &Pkg, portdir: &str) -> Option<String> {
     let name = format!("{}/portage/{}/temp/build.log", portdir, pkg.ebuild_version());
     info!("Build log: {name}");
     let file = File::open(&name).map_err(|e| warn!("Cannot open {name:?}: {e}")).ok()?;
-    read_buildlog(file, 50)
+    Some(read_buildlog(file, 50))
 }
-fn read_buildlog(file: File, max: usize) -> Option<String> {
+fn read_buildlog(file: File, max: usize) -> String {
     let mut last = String::new();
-    for line in rev_lines::RevLines::new(BufReader::new(file)).ok()? {
+    for line in rev_lines::RevLines::new(BufReader::new(file)).map_while(Result::ok) {
         if line.starts_with(">>>") {
             let tag = line.split_ascii_whitespace().skip(1).take(2).collect::<Vec<_>>().join(" ");
             if last.is_empty() {
-                return Some(format!(" ({})", tag.trim_matches('.')));
+                return format!(" ({})", tag.trim_matches('.'));
             } else {
-                return Some(format!(" ({}: {})", tag.trim_matches('.'), last));
+                return format!(" ({}: {})", tag.trim_matches('.'), last);
             }
         }
         if last.is_empty() {
@@ -115,7 +115,7 @@ fn read_buildlog(file: File, max: usize) -> Option<String> {
             }
         }
     }
-    Some(format!(" ({last})"))
+    format!(" ({last})")
 }
 
 #[cfg(test)]
@@ -198,8 +198,7 @@ mod tests {
              ("build.log.color", 15, "Unpacking source: 0:57.55    Comp...")]
         {
             let f = File::open(&format!("tests/{file}")).expect(&format!("can't open {file:?}"));
-            let s = read_buildlog(f, lim).expect("failed to read_buildlog");
-            assert_eq!(format!(" ({res})"), s);
+            assert_eq!(format!(" ({res})"), read_buildlog(f, lim));
         }
     }
 }
