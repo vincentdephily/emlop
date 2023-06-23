@@ -1,3 +1,13 @@
+# 0.6.1 2023-06-23
+
+Maintenance release.
+
+* Refactored tests to avoid deadlock when testing via portage
+  - As a bonus, tests finish much faster
+* Reduced packaged crate size by compressing image and removing unwanted files
+* Routine deps update
+
+
 # 0.6.0 2023-06-20
 
 Feature release: Improved `predict` command and accuracy, filter sync events, new output options,
