@@ -13,7 +13,7 @@ authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Alexis <flexibeast@gmail.com>"]
 edition = "2021"
 rust-version = "1.65.0"
-exclude = ["/benches/*.log"]
+exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
 [dependencies]
 anyhow = "1.0.32"
@@ -41,5 +41,3 @@ codegen-units = 1
 incremental = false
 lto = true
 panic = "abort"
-
-
