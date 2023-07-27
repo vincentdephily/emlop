@@ -2,7 +2,7 @@
 
 Original motivation for Emlop was a faster/more accurate version of `genlop -p`, and learning
 Rust. It has since gained features and maturity to compete on all fronts. This file compares
-`genlop-0.30.10`, `qlop-0.96`, and `emlop-0.6.0`. Please report any outdated/incorrect info using
+`genlop-0.30.11`, `qlop-0.96`, and `emlop-0.6.1`. Please report any outdated/incorrect info using
 [the issue tracker](https://github.com/vincentdephily/emlop/issues).
 
 Known emegre log parsers:
@@ -100,11 +100,11 @@ which can be abbreviated (for example "1 week, 3 days" -> "1w3d").
 
 ## Merge time prediction
 
-Genlop uses the overall mean. Qlop uses the mean of the last 20 builds. Emlop uses the median of the
-last 15 builds, with options for other window sizes and other averages (median/mean/weighted). Using
-a window mitigates against evolving build times, using a median mitigates against exceptional build
-times. The Emlop defaults have been measured to give significantly better accuracy over a full
-emerge log.
+Genlop uses the mean of the last 10 builds, ignoring the worst/best times. Qlop uses the mean of the
+last 20 builds. Emlop uses the median of the last 15 builds, with options for other window sizes and
+other averages (median/mean/weighted). Using a window mitigates against evolving build times, using
+a median mitigates against exceptional build times. The Emlop defaults have been measured to give
+significantly better accuracy over a full emerge log.
 
 Qlop can only predict the current merge. Genlop and Emlop can also predict pretended merges (the
 output of `emerge -p foo`). Emlop by default predicts the current full merge list (similar to what
@@ -126,7 +126,7 @@ estimate the resulting speedup factor.
 | Show individual merge ETAs                         | no            | no            | yes                  |
 | Show current merge stage                           | no            | no            | yes                  |
 | Global ETA format                                  | total time    | total time    | total time, end date |
-| Estimation accuracy                                | ok            | better        | best                 |
+| Estimation accuracy                                | ok            | better        | best, configurable   |
 | Query gentoo.linuxhowtos.org for unknown packages  | yes           | no            | no                   |
 
 ## Speed
