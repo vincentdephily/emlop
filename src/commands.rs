@@ -9,8 +9,8 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let show = *args.get_one("show").unwrap();
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
-                        value_opt(args, "from", parse_date, st.date_offset),
-                        value_opt(args, "to", parse_date, st.date_offset),
+                        get_parse(args, "from", parse_date, st.date_offset)?,
+                        get_parse(args, "to", parse_date, st.date_offset)?,
                         show,
                         args.get_one::<String>("search").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
@@ -58,7 +58,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                              &[&FmtDur(ts - started)],
                              &[&st.clr, &"Sync ", &repo]]);
                 } else {
-                    warn!("Sync stop without a start at {ts}")
+                    warn!("Sync stop without a start at {ts}");
                 }
             },
         }
@@ -148,8 +148,8 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     let show = *args.get_one("show").unwrap();
     let timespan_opt: Option<&Timespan> = args.get_one("group");
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
-                        value_opt(args, "from", parse_date, st.date_offset),
-                        value_opt(args, "to", parse_date, st.date_offset),
+                        get_parse(args, "from", parse_date, st.date_offset)?,
+                        get_parse(args, "to", parse_date, st.date_offset)?,
                         show,
                         args.get_one::<String>("search").map(|s| s.as_str()),
                         args.get_flag("exact"))?;
@@ -345,8 +345,8 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
 
     // Parse emerge log.
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
-                        value_opt(args, "from", parse_date, st.date_offset),
-                        value_opt(args, "to", parse_date, st.date_offset),
+                        get_parse(args, "from", parse_date, st.date_offset)?,
+                        get_parse(args, "to", parse_date, st.date_offset)?,
                         Show { merge: true, ..Show::default() },
                         None,
                         false)?;
@@ -457,8 +457,8 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
     let st = &Styles::from_args(args);
     let show: Show = *args.get_one("show").unwrap();
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
-                        value_opt(args, "from", parse_date, st.date_offset),
-                        value_opt(args, "to", parse_date, st.date_offset),
+                        get_parse(args, "from", parse_date, st.date_offset)?,
+                        get_parse(args, "to", parse_date, st.date_offset)?,
                         Show { merge: true, ..Show::default() },
                         args.get_one::<String>("search").map(|s| s.as_str()),
                         args.get_flag("exact"))?;

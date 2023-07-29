@@ -7,7 +7,7 @@ mod table;
 
 use crate::{commands::*, datetime::*, parse::AnsiStr};
 use anyhow::Error;
-use clap::{ArgMatches, Command, ErrorKind};
+use clap::{ArgMatches, Error as ClapErr, ErrorKind};
 use log::*;
 use std::str::FromStr;
 
@@ -21,7 +21,7 @@ fn main() {
         _ => LevelFilter::Trace,
     };
     env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
-    debug!("{:?}", args);
+    trace!("{:?}", args);
     let res = match args.subcommand() {
         Some(("log", sub_args)) => cmd_list(sub_args),
         Some(("stats", sub_args)) => cmd_stats(sub_args),
@@ -33,9 +33,12 @@ fn main() {
     match res {
         Ok(true) => std::process::exit(0),
         Ok(false) => std::process::exit(1),
-        Err(e) => {
-            log_err(e);
-            std::process::exit(2)
+        Err(e) => match e.downcast::<ClapErr>() {
+            Ok(ce) => ce.format(&mut cli::build_cli()).exit(),
+            Err(e) => {
+                log_err(e);
+                std::process::exit(2)
+            },
         },
     }
 }
@@ -47,39 +50,24 @@ pub fn log_err(e: Error) {
     }
 }
 
-/// Parse and return argument from an ArgMatches, exit if parsing fails.
+/// Parse and return optional argument from an ArgMatches
 ///
-/// This is the same as [`value_opt(m,n,p)->Option<T>`] except that we expect `name` to have a
-/// value. Note the nice exit for user error vs panic for emlop bug.
-///
-/// [`value_opt(m,n,p)->Option<T>`]: fn.value_opt.html
-pub fn value<T, P>(matches: &ArgMatches, name: &str, parse: P) -> T
-    where P: FnOnce(&str) -> Result<T, String>
+/// This is similar to clap's `get_one()` with `value_parser` except it allows late parsing with an
+/// argument.
+pub fn get_parse<T, P, A>(args: &ArgMatches,
+                          name: &str,
+                          parse: P,
+                          arg: A)
+                          -> Result<Option<T>, ClapErr>
+    where P: FnOnce(&str, A) -> Result<T, &'static str>
 {
-    let s = matches.value_of(name).unwrap_or_else(|| panic!("Argument {name} missing"));
-    match parse(s) {
-        Ok(v) => v,
-        Err(e) => Command::new("emlop").error(ErrorKind::InvalidValue,
-                                              format!("Invalid argument '--{name} {s}': {e}"))
-                                       .exit(),
-    }
-}
-
-/// Parse and return optional argument from an ArgMatches, exit if parsing fails.
-///
-/// This is similar to clap's `value_t!` except it takes a parsing function instead of a target
-/// type, returns an unwraped value, and exits upon parsing error. It'd be more idiomatic to
-/// implement FromStr trait on a custom struct, but this is simpler to write and use, and we're not
-/// writing a library.
-pub fn value_opt<T, P, A>(matches: &ArgMatches, name: &str, parse: P, arg: A) -> Option<T>
-    where P: FnOnce(&str, A) -> Result<T, String>
-{
-    let s = matches.value_of(name)?;
-    match parse(s, arg) {
-        Ok(v) => Some(v),
-        Err(e) => Command::new("emlop").error(ErrorKind::InvalidValue,
-                                              format!("Invalid argument '--{name} {s}': {e}"))
-                                       .exit(),
+    match args.get_one::<String>(name) {
+        None => Ok(None),
+        Some(s) => match parse(s, arg) {
+            Ok(v) => Ok(Some(v)),
+            Err(e) => Err(ClapErr::raw(ErrorKind::InvalidValue,
+                                       format!("\"{s}\" isn't a valid for '--{name}': {e}"))),
+        },
     }
 }
 

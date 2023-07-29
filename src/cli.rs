@@ -182,8 +182,8 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                         .long("date")
                         .display_order(2)
                         .global(true)
-                        .possible_values(["ymd", "d", "ymdhms", "dt", "ymdhmso", "dto", "rfc3339",
-                                          "3339", "rfc2822", "2822", "compact", "unix"])
+                        .value_parser(["ymd", "d", "ymdhms", "dt", "ymdhmso", "dto", "rfc3339",
+                                       "3339", "rfc2822", "2822", "compact", "unix"])
                         .hide_possible_values(true)
                         .default_value("ymdhms")
                         .display_order(52)

@@ -70,7 +70,7 @@ pub fn epoch_now() -> i64 {
 }
 
 /// Parse datetime in various formats, returning unix timestamp
-pub fn parse_date(s: &str, offset: UtcOffset) -> Result<i64, String> {
+pub fn parse_date(s: &str, offset: UtcOffset) -> Result<i64, &'static str> {
     let s = s.trim();
     i64::from_str(s).or_else(|e| {
                         debug!("{s}: bad timestamp: {e}");
@@ -82,7 +82,7 @@ pub fn parse_date(s: &str, offset: UtcOffset) -> Result<i64, String> {
                     })
                     .map_err(|e| {
                         debug!("{s}: bad relative date: {e}");
-                        format!("Couldn't parse {s:#?}, check examples in --help")
+                        "Enable debug log level for details"
                     })
 }
 
