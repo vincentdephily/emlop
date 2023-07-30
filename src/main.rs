@@ -135,6 +135,15 @@ pub enum DurationStyle {
     Human,
 }
 
+#[derive(Clone, Copy, clap::ValueEnum)]
+pub enum ColorStyle {
+    #[clap(alias("y"))]
+    Always,
+    #[clap(alias("n"))]
+    Never,
+    Auto,
+}
+
 /// Holds styling preferences.
 ///
 /// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
@@ -155,9 +164,9 @@ pub struct Styles {
 }
 impl Styles {
     fn from_args(args: &ArgMatches) -> Self {
-        let color = match args.value_of("color") {
-            Some("always") | Some("y") => true,
-            Some("never") | Some("n") => false,
+        let color = match args.get_one("color") {
+            Some(ColorStyle::Always) => true,
+            Some(ColorStyle::Never) => false,
             _ => atty::is(atty::Stream::Stdout),
         };
         let header = args.get_flag("header");
