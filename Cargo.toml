@@ -19,8 +19,8 @@ exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 anyhow = "1.0.32"
 atoi = "2.0.0"
 atty = "0.2.14"
-clap = { version = "4.3.19", default_features = false, features = ["std", "help", "usage", "cargo", "color", "suggestions", "derive"] }
-clap_complete = "4.3.2"
+clap = { version = "~4.3.19", features = ["cargo", "derive", "unstable-styles"] }
+clap_complete = "~4.3.2"
 crossbeam-channel = "0.5.0"
 env_logger = { version = "0.10.0", default-features = false }
 libc = { version = "0.2.126", default-features = false }

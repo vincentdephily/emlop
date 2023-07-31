@@ -1,4 +1,4 @@
-use clap::{crate_version, value_parser, Arg, ArgAction::*, Command};
+use clap::{builder::styling, crate_version, value_parser, Arg, ArgAction::*, Command};
 
 /// Generate cli argument parser without the `complete` subcommand.
 pub fn build_cli_nocomplete() -> Command {
@@ -346,11 +346,19 @@ pub fn build_cli_nocomplete() -> Command {
                       Subcommands have their own -h / --help\n\
                       Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of \
                       other errors";
+    let styles =
+        styling::Styles::styled().header(styling::AnsiColor::Blue.on_default()
+                                         | styling::Effects::BOLD)
+                                 .usage(styling::AnsiColor::Blue.on_default()
+                                        | styling::Effects::BOLD)
+                                 .literal(styling::AnsiColor::Green.on_default())
+                                 .placeholder(styling::AnsiColor::Cyan.on_default());
     Command::new("emlop").version(crate_version!())
                          .disable_help_subcommand(true)
                          .infer_subcommands(true)
                          .infer_long_args(true)
                          .arg_required_else_help(true)
+                         .styles(styles)
                          .subcommand_required(true)
                          .about(about)
                          .after_help(after_help)
