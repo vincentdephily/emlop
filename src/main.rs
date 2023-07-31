@@ -171,7 +171,7 @@ impl Styles {
         };
         let header = args.get_flag("header");
         let dur_t = *args.get_one("duration").unwrap();
-        let date_fmt = args.value_of_t("date").unwrap();
+        let date_fmt = *args.get_one("date").unwrap();
         let date_offset = get_offset(args.get_flag("utc"));
         let tabs = args.get_flag("tabs");
         Styles { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),

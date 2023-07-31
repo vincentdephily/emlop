@@ -24,6 +24,7 @@ pub fn get_offset(utc: bool) -> UtcOffset {
 
 // It'd be nice to support user-defined formats, but lifetimes make this a bit akward.
 // See <https://github.com/time-rs/time/issues/429>
+#[derive(Clone, Copy)]
 pub struct DateStyle(&'static [time::format_description::FormatItem<'static>]);
 impl FromStr for DateStyle {
     type Err = &'static str;
