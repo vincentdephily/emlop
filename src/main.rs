@@ -8,6 +8,7 @@ mod table;
 use crate::{commands::*, datetime::*, parse::AnsiStr};
 use anyhow::Error;
 use clap::{error::ErrorKind, ArgMatches, Error as ClapErr};
+use is_terminal::IsTerminal; // Can be dropped when MSRV >= 1.70
 use log::*;
 use std::str::FromStr;
 
@@ -167,7 +168,7 @@ impl Styles {
         let color = match args.get_one("color") {
             Some(ColorStyle::Always) => true,
             Some(ColorStyle::Never) => false,
-            _ => atty::is(atty::Stream::Stdout),
+            _ => std::io::stdout().is_terminal(),
         };
         let header = args.get_flag("header");
         let dur_t = *args.get_one("duration").unwrap();
