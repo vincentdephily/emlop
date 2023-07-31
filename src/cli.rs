@@ -1,27 +1,27 @@
 use clap::{crate_version, value_parser, Arg, ArgAction::*, Command};
 
 /// Generate cli argument parser without the `complete` subcommand.
-pub fn build_cli_nocomplete() -> Command<'static> {
+pub fn build_cli_nocomplete() -> Command {
     ////////////////////////////////////////////////////////////
     // Filter arguments
     ////////////////////////////////////////////////////////////
-    let pkg = Arg::new("search").takes_value(true)
-                                 .display_order(1)
-                                 .help_heading("FILTER")
-                                 // Workaround bad alignment, might be fixed in clap 4
-                                 .help("    Show only packages/repos matching <search>")
-                                 .long_help("Show only packages/repos matching <search>\n\
-                                             Matches using a regex unless `--exact` is specified\n\
-                                             See https://docs.rs/regex/*/regex/#syntax\n  \
-                                             rust:        Matches `dev-lang/rust`, `dev-util/rustup`, `dev-python/trustme`, etc\n  \
-                                             /[pc]ython$: Matches `dev-lang/python` and `dev-python/cython`\n  \
-                                             pyqt:        Matches `dev-python/PyQt5` (case-insensitive)\n  \
-                                             guru:        Matches `guru` (repo sync)");
+    let pkg = Arg::new("search").num_args(1)
+                                .display_order(1)
+                                .help_heading("Filter")
+                                // Workaround bad alignment, might be fixed in clap 4
+                                .help("    Show only packages/repos matching <search>")
+                                .long_help("Show only packages/repos matching <search>\n\
+                                            Matches using a regex unless `--exact` is specified\n\
+                                            See https://docs.rs/regex/*/regex/#syntax\n  \
+                                            rust:        Matches `dev-lang/rust`, `dev-util/rustup`, `dev-python/trustme`, etc\n  \
+                                            /[pc]ython$: Matches `dev-lang/python` and `dev-python/cython`\n  \
+                                            pyqt:        Matches `dev-python/PyQt5` (case-insensitive)\n  \
+                                            guru:        Matches `guru` (repo sync)");
     let exact = Arg::new("exact").short('e')
                                  .long("exact")
                                  .action(SetTrue)
                                  .display_order(2)
-                                 .help_heading("FILTER")
+                                 .help_heading("Filter")
                                  .help("Match <search> using plain string")
                                  .long_help("Match <search> using plain string\n  \
                                              rust:         Matches both `dev-lang/rust` and `virtual/rust`\n  \
@@ -35,7 +35,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .value_parser(|s: &str| crate::Show::parse(s, "musa"))
                                  .default_value("m")
                                  .display_order(3)
-                                 .help_heading("FILTER")
+                                 .help_heading("Filter")
                                  .help("Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll")
                                  .long_help("Show (any combination of)\n  \
                                              m: Package merges\n  \
@@ -48,7 +48,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .value_parser(|s: &str| crate::Show::parse(s, "ptsa"))
                                  .default_value("p")
                                  .display_order(3)
-                                 .help_heading("FILTER")
+                                 .help_heading("Filter")
                                  .help("Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll")
                                  .long_help("Show (any combination of)\n  \
                                              p: Individual package merges/unmerges\n  \
@@ -61,7 +61,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .value_parser(|s: &str| crate::Show::parse(s, "emta"))
                                  .default_value("emt")
                                  .display_order(3)
-                                 .help_heading("FILTER")
+                                 .help_heading("Filter")
                                  .help("Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll")
                                  .long_help("Show (any combination of)\n  \
                                              e: Current emerge processes\n  \
@@ -74,7 +74,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .value_parser(|s: &str| crate::Show::parse(s, "mta"))
                                  .default_value("mt")
                                  .display_order(3)
-                                 .help_heading("FILTER")
+                                 .help_heading("Filter")
                                  .help("Show (m)erges, (t)otals, and/or (a)ll")
                                  .long_help("Show (any combination of)\n  \
                                              m: Package merges\n  \
@@ -86,8 +86,8 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                .long("from")
                                .display_order(4)
                                .global(true)
-                               .takes_value(true)
-                               .help_heading("FILTER")
+                               .num_args(1)
+                               .help_heading("Filter")
                                .help("Only parse log entries after <date>")
                                .long_help("Only parse log entries after <date>\n  \
                                            2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
@@ -98,8 +98,8 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                            .long("to")
                            .display_order(5)
                            .global(true)
-                           .takes_value(true)
-                           .help_heading("FILTER")
+                           .num_args(1)
+                           .help_heading("Filter")
                            .help("Only parse log entries before <date>")
                            .long_help("Only parse log entries before <date>\n  \
                                        2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
@@ -111,7 +111,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .display_order(6)
                                  .default_missing_value("1")
                                  .value_parser(value_parser!(usize))
-                                 .help_heading("FILTER")
+                                 .help_heading("Filter")
                                  .help("Show only the first <num> entries")
                                  .long_help("Show only the first <num> entries\n  \
                                              (empty)|1: first entry\n  \
@@ -122,7 +122,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                .display_order(7)
                                .default_missing_value("1")
                                .value_parser(value_parser!(usize))
-                               .help_heading("FILTER")
+                               .help_heading("Filter")
                                .help("Show only the last <num> entries")
                                .long_help("Show only the last <num> entries\n  \
                                              (empty)|1: last entry\n  \
@@ -137,7 +137,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .value_name("y,m,w,d")
                                  .value_parser(value_parser!(crate::datetime::Timespan))
                                  .hide_possible_values(true)
-                                 .help_heading("STATS")
+                                 .help_heading("Stats")
                                  .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay")
                                  .long_help("Group by (y)ear, (m)onth, (w)eek, or (d)ay\n\
                                              The grouping key is displayed in the first column. \
@@ -145,11 +145,11 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                              'year-weeknumber'.");
     let limit = Arg::new("limit").long("limit")
                                  .display_order(2)
-                                 .takes_value(true)
+                                 .num_args(1)
                                  .value_name("num")
                                  .value_parser(value_parser!(u16).range(1..))
                                  .default_value("10")
-                                 .help_heading("STATS")
+                                 .help_heading("Stats")
                                  .help("Use the last <num> merge times to predict durations");
     let avg =
         Arg::new("avg").long("avg")
@@ -158,7 +158,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                        .value_parser(value_parser!(crate::Average))
                        .hide_possible_values(true)
                        .default_value("median")
-                       .help_heading("STATS")
+                       .help_heading("Stats")
                        .help("Select function used to predict durations")
                        .long_help("Select function used to predict durations\n  \
                                    arith|a:            simple 'sum/count' average\n  \
@@ -175,7 +175,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                    .action(SetTrue)
                                    .global(true)
                                    .display_order(1)
-                                   .help_heading("FORMAT")
+                                   .help_heading("Format")
                                    .help("Show table header");
     let date =
         Arg::new("date").value_name("format")
@@ -186,7 +186,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                         .hide_possible_values(true)
                         .default_value("ymdhms")
                         .display_order(52)
-                        .help_heading("FORMAT")
+                        .help_heading("Format")
                         .help("Output dates in different formats")
                         .long_help("Output dates in different formats\n  \
                                     ymd|d:        2022-01-31\n  \
@@ -204,7 +204,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                        .hide_possible_values(true)
                                        .default_value("hms")
                                        .display_order(51)
-                                       .help_heading("FORMAT")
+                                       .help_heading("Format")
                                        .help("Output durations in different formats")
                                        .long_help("Output durations in different formats\n  \
                                                    hms:      10:30\n  \
@@ -215,12 +215,12 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                              .global(true)
                              .action(SetTrue)
                              .display_order(4)
-                             .help_heading("FORMAT")
+                             .help_heading("Format")
                              .help("Parse/display dates in UTC instead of local time");
     let starttime = Arg::new("starttime").long("starttime")
                                          .action(SetTrue)
                                          .display_order(5)
-                                         .help_heading("FORMAT")
+                                         .help_heading("Format")
                                          .help("Display start time instead of end time");
     let color = Arg::new("color").long("color")
                                  .alias("colour")
@@ -231,7 +231,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                  .default_missing_value("y")
                                  .value_name("when")
                                  .display_order(55)
-                                 .help_heading("FORMAT")
+                                 .help_heading("Format")
                                  .help("Enable color (auto/always/never/y/n)")
                                  .long_help("Enable color (auto/always/never/y/n)\n  \
                                              auto:             colored if on tty\n  \
@@ -241,7 +241,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                .global(true)
                                .action(SetTrue)
                                .display_order(7)
-                               .help_heading("FORMAT")
+                               .help_heading("Format")
                                .help("Separate columns using tabs instead of spaces")
                                .long_help("Separate columns using tabs instead of spaces\n\
                                            Useful for machine parsing.");
@@ -253,13 +253,13 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                                      .long("logfile")
                                      .short('F')
                                      .global(true)
-                                     .takes_value(true)
+                                     .num_args(1)
                                      .default_value("/var/log/emerge.log")
                                      .display_order(1)
                                      .help("Location of emerge log file");
     let tmpdir = Arg::new("tmpdir").value_name("dir")
                                    .long("tmpdir")
-                                   .takes_value(true)
+                                   .num_args(1)
                                    .default_value("/var/tmp")
                                    .display_order(2)
                                    .help("Location of portage tmpdir");
@@ -364,9 +364,6 @@ pub fn build_cli_nocomplete() -> Command<'static> {
                          .arg(tabs)
                          .arg(logfile)
                          .arg(verbose)
-                         .mut_arg("help", |a| {
-                             a.display_order(63).help("Show short (-h) or detailed (--help) help")
-                         })
                          .subcommand(cmd_log)
                          .subcommand(cmd_pred)
                          .subcommand(cmd_stats)
@@ -374,7 +371,7 @@ pub fn build_cli_nocomplete() -> Command<'static> {
 }
 
 /// Generate cli argument parser.
-pub fn build_cli() -> Command<'static> {
+pub fn build_cli() -> Command {
     let labout = "Write shell completion script to stdout\n\n\
                   You should redirect the output to a file that will be sourced by your shell\n\
                   For example: `emlop complete bash > ~/.bash_completion.d/emlop`\n\

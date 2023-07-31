@@ -7,7 +7,7 @@ mod table;
 
 use crate::{commands::*, datetime::*, parse::AnsiStr};
 use anyhow::Error;
-use clap::{ArgMatches, Error as ClapErr, ErrorKind};
+use clap::{ArgMatches, Error as ClapErr, error::ErrorKind};
 use log::*;
 use std::str::FromStr;
 
