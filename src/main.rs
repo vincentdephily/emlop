@@ -136,6 +136,7 @@ pub enum DurationStyle {
     Human,
 }
 
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
 #[derive(Clone, Copy, clap::ValueEnum)]
 pub enum ColorStyle {
     #[clap(alias("y"))]

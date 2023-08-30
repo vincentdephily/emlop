@@ -109,6 +109,7 @@ pub fn build_cli_nocomplete() -> Command {
                                  .long("first")
                                  .value_name("num")
                                  .display_order(6)
+                                 .num_args(..=1)
                                  .default_missing_value("1")
                                  .value_parser(value_parser!(usize))
                                  .help_heading("Filter")
@@ -120,6 +121,7 @@ pub fn build_cli_nocomplete() -> Command {
                                .long("last")
                                .value_name("num")
                                .display_order(7)
+                               .num_args(..=1)
                                .default_missing_value("1")
                                .value_parser(value_parser!(usize))
                                .help_heading("Filter")
@@ -228,7 +230,9 @@ pub fn build_cli_nocomplete() -> Command {
                                  .global(true)
                                  .value_parser(value_parser!(crate::ColorStyle))
                                  .hide_possible_values(true)
+                                 .num_args(..=1)
                                  .default_missing_value("y")
+                                 .default_value("auto")
                                  .value_name("when")
                                  .display_order(55)
                                  .help_heading("Format")
@@ -391,4 +395,37 @@ pub fn build_cli() -> Command {
                                       .long_about(labout)
                                       .arg(shell);
     build_cli_nocomplete().subcommand(cmd)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::*;
+
+    fn matches(args: &str) -> clap::ArgMatches {
+        build_cli().get_matches_from(format!("emlop {args}").split_whitespace())
+                   .subcommand()
+                   .expect(&format!("Failed parsing {args:?}"))
+                   .1
+                   .clone()
+    }
+
+    #[test]
+    fn args() {
+        assert_eq!(matches("l").get_one::<Option<&usize>>("first"), None);
+        assert_eq!(matches("l --first").get_one("first"), Some(&1usize));
+        assert_eq!(matches("l --first 2").get_one("first"), Some(&2usize));
+        assert_eq!(matches("l -N 2").get_one("first"), Some(&2usize));
+        assert_eq!(matches("l -N4").get_one("first"), Some(&4usize));
+
+        assert_eq!(matches("l --last").get_one("last"), Some(&1usize));
+        assert_eq!(matches("l --last 2").get_one("last"), Some(&2usize));
+        assert_eq!(matches("l -n 2").get_one("last"), Some(&2usize));
+
+        assert_eq!(matches("l").get_one("color"), Some(&ColorStyle::Auto));
+        assert_eq!(matches("l --color").get_one("color"), Some(&ColorStyle::Always));
+        assert_eq!(matches("l --color=y").get_one("color"), Some(&ColorStyle::Always));
+        assert_eq!(matches("l --color n").get_one("color"), Some(&ColorStyle::Never));
+        assert_eq!(matches("l --color never").get_one("color"), Some(&ColorStyle::Never));
+    }
 }
