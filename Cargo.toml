@@ -18,8 +18,12 @@ exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 [dependencies]
 anyhow = "1.0.32"
 atoi = "2.0.0"
-clap = { version = "~4.3.19", features = ["cargo", "derive", "unstable-styles"] }
+# clap 4.4.0 has MSRV 1.70
+clap = { version = "<4.4.0", features = ["cargo", "derive", "unstable-styles"] }
 clap_complete = "~4.3.2"
+# clap_lex 0.5.1 has MSRV 1.70
+# Only used transitively, remove from Cargo.toml when our MSRV gets bumped
+clap_lex = "<0.5.1"
 crossbeam-channel = "0.5.0"
 env_logger = { version = "0.10.0", default-features = false }
 is-terminal = "0.4.9"
