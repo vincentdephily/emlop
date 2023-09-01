@@ -335,7 +335,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         }
     }
     if cms == std::i64::MAX
-       && atty::is(atty::Stream::Stdin)
+       && std::io::stdin().is_terminal()
        && resume != ResumeKind::Main
        && resume != ResumeKind::Backup
     {
@@ -368,7 +368,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     }
 
     // Build list of pending merges
-    let pkgs: Vec<Pkg> = if atty::is(atty::Stream::Stdin) {
+    let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
         // From resume data + emerge.log after current merge process start time
         let mut r = get_resume(resume);
         for p in started.iter().filter(|&(_, t)| *t > cms).map(|(p, _)| p) {
