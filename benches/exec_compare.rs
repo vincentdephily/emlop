@@ -9,15 +9,16 @@
 //! files:
 //!  - path: Cargo.toml
 //!    content: |
-//!     package = { name = "exec_compare", version = "0.1.0", edition = "2018"}
+//!     package = { name = "exec_compare", version = "0.1.0", edition = "2021"}
 //!     [dependencies]
-//!     clap = "3.1.18"
+//!     clap = {version = "<4.4.0", features = ["string"]}
 //!     stats-cli = "3.0.1"
+//!     # tabwriter 1.3.0 has MSRV 1.67
 //!     tabwriter = "1.2.1"
 //!     rand = "0.8.5"
 //! scriptisto-end
 
-use clap::{Arg, Command as ClapCmd};
+use clap::{value_parser, Arg, ArgAction::*, Command as ClapCmd};
 use inc_stats::*;
 use rand::prelude::SliceRandom;
 use std::{collections::BTreeMap,
@@ -91,67 +92,73 @@ fn main() {
     let mut allprogs: Vec<&str> = defs.iter().map(|&(_, p, _, _)| p).collect();
     allprogs.sort();
     allprogs.dedup();
-    let mut allsets: Vec<&str> = defs.iter().map(|&(s, _, _, _)| s).collect();
+    let mut allsets: Vec<String> = defs.iter().map(|&(s, _, _, _)| s.into()).collect();
     allsets.sort();
     allsets.dedup();
     let allsets_str = allsets.join(",");
     let cli = ClapCmd::new("emlop-bench")
         .about("Quick script to benchmark *lop implementations.")
         .after_help("All benchmarks are biased. Some tips to be less wrong:\n\
- * Make your system is as idle as possible, shutdown unneeded apps (browser, im, cron...).\n\
- * Don't compare numbers collected at different times or on different machines.\n\
- * Look at all indicators, not just the mean.\n\
- * The terminal emulator's speed makes a big difference. Reduce the scroll buffer size and check performance-related settings.\n\
- * Use -n option (redirect to /dev/null) to ignore terminal overhead.\n\
- * Pipe to cat to disable colors (see also color-specific sets).")
+                     * Make your system is as idle as possible, shutdown unneeded apps \
+                     (browser, im, cron...).\n\
+                     * Don't compare numbers collected at different times or on different \
+                     machines.\n\
+                     * Look at all indicators, not just the mean.\n\
+                     * The terminal emulator's speed makes a big difference. \
+                     Reduce the scroll buffer size and check performance-related settings.\n\
+                     * Use -n option (redirect to /dev/null) to ignore terminal overhead.\n\
+                     * Pipe to cat to disable colors (see also color-specific sets).")
         .arg(Arg::new("programs")
-             .help("Programs to test, formated as 'NAME[:PATH][,...]': coma-separated list, name can \
-be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/emlop,q'")
+             .help("Programs to test, formated as 'NAME[:PATH][,...]'")
+             .long_help("Programs to test, formated as 'NAME[:PATH][,...]'\n  \
+                         coma-separated list, name can be abbreviated, alternative path can \
+                         be provided.\n  eg 'emlop,e:target/release/emlop,q'")
              .short('p')
-             .takes_value(true)
-             .multiple_values(true)
+             .num_args(1..)
              .use_value_delimiter(true)
              .default_value("emlop"))
         .arg(Arg::new("sets")
              .help("Test sets")
              .short('s')
-             .takes_value(true)
-             .multiple_values(true)
+             .num_args(1..)
              .use_value_delimiter(true)
-             .possible_values(&allsets)
+             .value_parser(allsets)
              .hide_possible_values(true)
-             .default_value(&allsets_str))
+             .default_value(allsets_str))
         .arg(Arg::new("runs")
              .help("Number of iterations")
              .short('r')
-             .takes_value(true)
+             .num_args(1)
+             .value_parser(value_parser!(i32))
              .default_value("10"))
         .arg(Arg::new("buckets")
              .help("Number of histogram buckets")
              .short('b')
-             .takes_value(true)
+             .num_args(1)
+             .value_parser(value_parser!(i32))
              .default_value("5"))
         .arg(Arg::new("nullout")
              .short('n')
+             .action(SetTrue)
              .help("Send test program outputs to /dev/null"))
         .arg(Arg::new("out")
              .short('o')
-             .takes_value(true)
+             .num_args(1)
              .help("Write results to file instead of stderr"))
         .arg(Arg::new("logfile")
              .help("Emerge log file")
              .short('f')
-             .takes_value(true)
+             .num_args(1)
              .default_value("./benches/emerge.log"))
         .get_matches();
 
     // CLI parsing
-    let runs = cli.value_of_t("runs").unwrap();
-    let buckets: u64 = cli.value_of_t("buckets").unwrap();
-    let progs: Vec<String> = cli.values_of_t("programs").unwrap();
-    let sets: Vec<String> = cli.values_of_t("sets").unwrap();
-    let nullout = cli.is_present("nullout");
-    let logfile: String = cli.value_of_t("logfile").unwrap();
+    let runs = *cli.get_one("runs").unwrap();
+    let buckets = *cli.get_one("buckets").unwrap();
+    let progs: Vec<&String> = cli.get_many("programs").unwrap().collect();
+    let sets: Vec<&String> = cli.get_many("sets").unwrap().collect();
+    let nullout = cli.get_flag("nullout");
+    let logfile: &String = cli.get_one("logfile").unwrap();
 
     // Construct the test list.
     let mut tests = Vec::<(String, &str, Vec<&str>, Option<&str>)>::new();
@@ -171,7 +178,7 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
         // Add matching tests to test vector
         let mut found = Vec::new();
         for &(set, prg, args, si) in &defs {
-            if &prg == pname && sets.contains(&set.to_string()) {
+            if &prg == pname && sets.contains(&&set.to_string()) {
                 found.push(set);
                 let args: Vec<&str> =
                     args.iter().map(|&s| if s == "{emerge.log}" { &logfile } else { s }).collect();
@@ -207,7 +214,8 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
             false => eprintln!(">>>>>> {} {}", n, &name),
         }
         n -= 1;
-        let si = stdin.map_or(Stdio::inherit(), |f| File::open(f).unwrap().into());
+        let si =
+            stdin.map_or(Stdio::inherit(), |f| File::open(f).expect(&format!("open {f}")).into());
         let so = if nullout { Stdio::null() } else { Stdio::inherit() };
         let err = &format!("Couldn't run {} {:?}", bin, args);
         let mut cmd = Command::new(bin);
@@ -219,7 +227,7 @@ be abbreviated, alternative path can be provided, eg 'emlop,e:target/release/eml
     }
 
     // Output the results
-    let mut out = Out::try_new(cli.value_of("out")).unwrap();
+    let mut out = Out::try_new(cli.get_one("out")).unwrap();
     for (key, vals) in times {
         let ss: SummStats<f64> = vals.iter().cloned().collect();
         let pc: Percentiles<f64> = vals.iter().cloned().collect();
@@ -249,7 +257,7 @@ enum Out {
     File(File),
 }
 impl Out {
-    fn try_new(file: Option<&str>) -> Result<Self, std::io::Error> {
+    fn try_new(file: Option<&String>) -> Result<Self, std::io::Error> {
         match file {
             None => {
                 let mut tw = TabWriter::new(stderr()).alignment(tabwriter::Alignment::Right);
@@ -271,11 +279,11 @@ impl Out {
                     *prev = cmd.into();
                     *color = if *color == b"\x1B[00m" { b"\x1B[96m" } else { b"\x1B[00m" };
                 }
-                tw.write(color);
-                tw.write(line.as_bytes());
+                let _ = tw.write(color);
+                let _ = tw.write(line.as_bytes());
             },
             Self::File(f) => {
-                f.write_all(line.as_bytes());
+                let _ = f.write_all(line.as_bytes());
             },
         }
     }
@@ -284,7 +292,7 @@ impl Drop for Out {
     fn drop(&mut self) {
         match self {
             Self::Term(tw, _, _) => tw.flush().unwrap(),
-            Self::File(f) => (),
+            Self::File(_) => (),
         }
     }
 }
