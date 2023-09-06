@@ -74,15 +74,15 @@ pub fn get_hist(file: String,
                 min_ts: Option<i64>,
                 max_ts: Option<i64>,
                 show: Show,
-                search_str: Option<&str>,
+                search_terms: Vec<String>,
                 search_exact: bool)
                 -> Result<Receiver<Hist>, Error> {
     debug!("get_hist input={} min={:?} max={:?} str={:?} exact={}",
-           file, min_ts, max_ts, search_str, search_exact);
+           file, min_ts, max_ts, search_terms, search_exact);
     let reader = File::open(&file).with_context(|| format!("Cannot open {file:?}"))?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
-    let filter = FilterStr::try_new(search_str, search_exact)?;
+    let filter = FilterStr::try_new(search_terms, search_exact)?;
     thread::spawn(move || {
         let show_merge = show.merge || show.pkg || show.tot;
         let show_unmerge = show.unmerge || show.pkg || show.tot;
@@ -144,11 +144,11 @@ pub fn get_hist(file: String,
 /// Return min/max timestamp depending on options.
 fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
     match (min, max) {
-        (None, None) => info!("Date filter: None"),
-        (Some(a), None) => info!("Date filter: after {}", fmt_utctime(a)),
-        (None, Some(b)) => info!("Date filter: before {}", fmt_utctime(b)),
+        (None, None) => debug!("Date filter: None"),
+        (Some(a), None) => debug!("Date filter: after {}", fmt_utctime(a)),
+        (None, Some(b)) => debug!("Date filter: before {}", fmt_utctime(b)),
         (Some(a), Some(b)) if a < b => {
-            info!("Date filter: between {} and {}", fmt_utctime(a), fmt_utctime(b))
+            debug!("Date filter: between {} and {}", fmt_utctime(a), fmt_utctime(b))
         },
         (Some(a), Some(b)) => {
             bail!("Invalid date filter: {} <= {}, did you swap --to and --from ?",
@@ -162,45 +162,40 @@ fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
 /// Matches package/repo depending on options.
 enum FilterStr {
     True,
-    Eq { e: String },
-    EqSlash { e: String },
-    Re { r: Regex },
+    Eq { l1: Vec<String>, l2: Vec<String> },
+    Re { l: Vec<Regex> },
 }
 impl FilterStr {
-    fn try_new(package: Option<&str>, exact: bool) -> Result<Self, Error> {
-        Ok(match (&package, exact) {
-            (None, _) => {
-                info!("Package filter: None");
-                FilterStr::True
-            },
-            (Some(search), true) if search.contains('/') => {
-                info!("Package filter: categ/name == {search}");
-                FilterStr::Eq { e: search.to_string() }
-            },
-            (Some(search), true) => {
-                info!("Package filter: name == {search}");
-                FilterStr::EqSlash { e: format!("/{search}") }
-            },
-            (Some(search), false) => {
-                info!("Package filter: categ/name ~= {search}");
-                FilterStr::Re { r: RegexBuilder::new(search).case_insensitive(true).build()? }
-            },
+    fn try_new(terms: Vec<String>, exact: bool) -> Result<Self, regex::Error> {
+        Ok(if terms.is_empty() {
+            debug!("Package filter: None");
+            Self::True
+        } else if exact {
+            debug!("Package filter: categ/name = {terms:?}");
+            let (l1, l2) = terms.iter().map(|s| s.clone()).partition(|s| s.contains('/'));
+            Self::Eq { l1, l2 }
+        } else {
+            debug!("Package filter: categ/name ~= {terms:?}");
+            Self::Re { l: terms.iter()
+                               .map(|s| RegexBuilder::new(s).case_insensitive(true).build())
+                               .collect::<Result<_, _>>()? }
         })
     }
     fn match_pkg(&self, s: &str) -> bool {
         match &self {
-            FilterStr::True => true,
-            FilterStr::Eq { e } => e == s,
-            FilterStr::EqSlash { e } => s.ends_with(e),
-            FilterStr::Re { r } => r.is_match(s),
+            Self::True => true,
+            Self::Eq { l1, l2 } => {
+                let s2 = &s[s.find('/').unwrap_or(0) + 1..];
+                l1.iter().any(|e| e == s) || l2.iter().any(|e| e == s2)
+            },
+            Self::Re { l } => l.iter().any(|r| r.is_match(s)),
         }
     }
     fn match_str(&self, s: &str) -> bool {
         match &self {
-            FilterStr::True => true,
-            FilterStr::Eq { e } => e == s,
-            FilterStr::EqSlash { e } => &e[1..] == s,
-            FilterStr::Re { r } => r.is_match(s),
+            Self::True => true,
+            Self::Eq { l1, l2 } => l1.iter().any(|e| e == s) || l2.iter().any(|e| e == s),
+            Self::Re { l } => l.iter().any(|r| r.is_match(s)),
         }
     }
 }
@@ -320,7 +315,7 @@ mod tests {
                 parse_sync: bool,
                 filter_mints: Option<i64>,
                 filter_maxts: Option<i64>,
-                filter_src: Option<&str>,
+                filter_terms: Vec<String>,
                 exact: bool,
                 expect_counts: Vec<(&str, usize)>) {
         // Setup
@@ -340,7 +335,7 @@ mod tests {
                                    unmerge: parse_unmerge,
                                    sync: parse_sync,
                                    ..Show::default() },
-                            filter_src,
+                            filter_terms.clone(),
                             exact).unwrap();
         let re_atom = Regex::new("^[a-zA-Z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();
@@ -368,7 +363,7 @@ mod tests {
             let v = counts.get(t).unwrap_or(&0);
             assert_eq!(v, c,
                        "Got {} {}, expected {:?} with pkg={:?} exact={} min={:?} max={:?}",
-                       v, t, c, filter_src, exact, filter_mints, filter_maxts);
+                       v, t, c, filter_terms, exact, filter_mints, filter_maxts);
         }
     }
 
@@ -376,14 +371,14 @@ mod tests {
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
         let t = vec![("MStart", 31467)];
-        chk_hist("all", true, false, false, None, None, None, false, t);
+        chk_hist("all", true, false, false, None, None, vec![], false, t);
     }
 
     #[test]
     /// Emerge log with various invalid data
     fn parse_hist_nullbytes() {
         let t = vec![("MStart", 14), ("MStop", 14)];
-        chk_hist("nullbytes", true, false, false, None, None, None, false, t);
+        chk_hist("nullbytes", true, false, false, None, None, vec![], false, t);
     }
 
     #[test]
@@ -394,7 +389,7 @@ mod tests {
                      ("media-libs/jpeg", 1), //letter in timestamp
                      ("dev-libs/libical", 2),
                      ("media-libs/libpng", 2)];
-        chk_hist("badtimestamp", true, false, false, None, None, None, false, t);
+        chk_hist("badtimestamp", true, false, false, None, None, vec![], false, t);
     }
 
     #[test]
@@ -405,7 +400,7 @@ mod tests {
                      ("media-libs/jpeg", 2),
                      ("dev-libs/libical", 2),
                      ("media-libs/libpng", 1)]; //missing version
-        chk_hist("badversion", true, false, false, None, None, None, false, t);
+        chk_hist("badversion", true, false, false, None, None, vec![], false, t);
     }
 
     #[test]
@@ -416,7 +411,7 @@ mod tests {
                      ("media-libs/jpeg", 2),
                      ("dev-libs/libical", 1), //missing end of line and spaces in iter
                      ("media-libs/libpng", 2)];
-        chk_hist("shortline", true, false, false, None, None, None, false, t);
+        chk_hist("shortline", true, false, false, None, None, vec![], false, t);
     }
 
     #[test]
@@ -432,25 +427,28 @@ mod tests {
                          ("UStop", if u { 832 } else { 0 }),
                          ("SStart", if s { 326 } else { 0 }),
                          ("SStop", if s { 150 } else { 0 })];
-            chk_hist("10000", m, u, s, None, None, None, false, t);
+            chk_hist("10000", m, u, s, None, None, vec![], false, t);
         }
     }
 
     #[test]
-    /// Filtering by package
-    fn parse_hist_filter_src() {
+    /// Filtering by search term
+    fn parse_hist_filter_term() {
         #[rustfmt::skip]
-        let t = vec![(Some("kactivities"),                false, 4, 4, 4, 4, 0), // regexp matches 4
-                     (Some("kactivities"),                true,  2, 2, 2, 2, 0), // string matches 2
-                     (Some("kde-frameworks/kactivities"), true,  2, 2, 2, 2, 0), // string matches 2
-                     (Some("frameworks/kactivities"),     true,  0, 0, 0, 0, 0), // string matches nothing
-                     (Some("ks/kw"),                      false, 9, 8, 8, 8, 0), // regexp matches 16 (+1 failed)
-                     (Some("file"),                       false, 7, 7, 6, 6, 0), // case-insensitive
-                     (Some("FILE"),                       false, 7, 7, 6, 6, 0), // case-insensitive
-                     (Some("file-next"),                  true,  0, 0, 0, 0, 0), // case-sensitive
-                     (Some("File-Next"),                  true,  1, 1, 0, 0, 0), // case-sensitive
-                     (Some("gentoo"),                     true,  0, 0, 0, 0, 150), // repo sync only
-                     (Some("gentoo"),                     false, 11, 11, 12, 12, 150), // repo and ebuilds
+        let t = vec![("",                           false, 889, 832, 832, 832, 150), // Everything
+                     ("kactivities",                false, 4, 4, 4, 4, 0), // regexp matches 4
+                     ("kactivities",                true,  2, 2, 2, 2, 0), // string matches 2
+                     ("kde-frameworks/kactivities", true,  2, 2, 2, 2, 0), // string matches 2
+                     ("frameworks/kactivities",     true,  0, 0, 0, 0, 0), // string matches nothing
+                     ("ks/kw",                      false, 9, 8, 8, 8, 0), // regexp matches 16 (+1 failed)
+                     ("file",                       false, 7, 7, 6, 6, 0), // case-insensitive
+                     ("FILE",                       false, 7, 7, 6, 6, 0), // case-insensitive
+                     ("file-next",                  true,  0, 0, 0, 0, 0), // case-sensitive
+                     ("File-Next",                  true,  1, 1, 0, 0, 0), // case-sensitive
+                     ("gentoo",                     true,  0, 0, 0, 0, 150), // repo sync only
+                     ("gentoo",                     false, 11, 11, 12, 12, 150), // repo and ebuilds
+                     ("ark oxygen",                 false, 15, 15, 15, 15, 0), // multiple regex terms
+                     ("ark oxygen",                 true,  8, 8, 8, 8, 0), // multiple string terms
         ];
         for (f, e, m1, m2, u1, u2, s2) in t {
             let c = vec![("MStart", m1),
@@ -460,7 +458,8 @@ mod tests {
                          // SStart is always the same because Sync filtering is only done for SStop
                          ("SStart", 326),
                          ("SStop", s2)];
-            chk_hist("10000", true, true, true, None, None, f, e, c);
+            let terms = f.split_whitespace().map(str::to_string).collect();
+            chk_hist("10000", true, true, true, None, None, terms, e, c);
         }
     }
 
@@ -488,13 +487,13 @@ mod tests {
                          ("UStop", u2),
                          ("SStart", s1),
                          ("SStop", s2)];
-            chk_hist("10000", true, true, true, min, max, None, true, c);
+            chk_hist("10000", true, true, true, min, max, vec![], true, c);
         }
     }
 
     #[test]
     fn split_atom() {
-        let f = FilterStr::try_new(None, false).unwrap();
+        let f = FilterStr::try_new(vec![], false).unwrap();
         let g = |s| find_version(s, &f).map(|n| (&s[..n - 1], &s[n..]));
         assert_eq!(None, g(""));
         assert_eq!(None, g("a"));

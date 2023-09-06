@@ -65,6 +65,9 @@ fn main() {
         ("egcc", "genlop", &["-f","{emerge.log}","gcc"],          None),
         ("egcc", "qlop",   &["-f","{emerge.log}","-m","gcc"],     None),
         ("egcc", "emlop",  &["-F","{emerge.log}","l","-e","gcc"], None),
+        ("rgcc", "emlop",  &["-F","{emerge.log}","l","gcc"], None),
+        ("emany", "emlop",  &["-F","{emerge.log}","l","-e","llvm","emacs", "gcc"], None),
+        ("rmany", "emlop",  &["-F","{emerge.log}","l","llvm","emacs", "gcc"], None),
         // Version+duration package merge+unmerge log
         ("tgcc", "genlop", &["-f","{emerge.log}","-tu","gcc"],           None),
         ("tgcc", "qlop",   &["-f","{emerge.log}","-tvmuU","gcc"],        None),

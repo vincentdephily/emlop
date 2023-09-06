@@ -1,3 +1,10 @@
+# Unreleased
+
+* Support searching by multiple terms
+  - eg `emlop s -e gcc clang llvm rust`
+* Upgraded clap dependency
+  - Inline help styling/content changed a bit
+
 # 0.6.1 2023-06-23
 
 Maintenance release.

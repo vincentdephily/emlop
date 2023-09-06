@@ -5,7 +5,7 @@ pub fn build_cli_nocomplete() -> Command {
     ////////////////////////////////////////////////////////////
     // Filter arguments
     ////////////////////////////////////////////////////////////
-    let pkg = Arg::new("search").num_args(1)
+    let pkg = Arg::new("search").num_args(..)
                                 .display_order(1)
                                 .help_heading("Filter")
                                 // Workaround bad alignment, might be fixed in clap 4
