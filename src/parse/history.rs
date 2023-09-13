@@ -6,7 +6,7 @@ use crate::{datetime::fmt_utctime, Show};
 use anyhow::{bail, Context, Error};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use log::*;
-use regex::{Regex, RegexBuilder};
+use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use std::{fs::File,
           io::{BufRead, BufReader},
           str::from_utf8,
@@ -162,43 +162,45 @@ fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
 /// Matches package/repo depending on options.
 enum FilterStr {
     True,
-    Eq { l1: Vec<String>, l2: Vec<String> },
-    Re { l: Vec<Regex> },
+    Eq { a: Vec<String>, b: Vec<String>, c: Vec<String> },
+    Re1 { r: Regex },
+    Re { r: RegexSet },
 }
 impl FilterStr {
     fn try_new(terms: Vec<String>, exact: bool) -> Result<Self, regex::Error> {
-        Ok(if terms.is_empty() {
-            debug!("Package filter: None");
-            Self::True
-        } else if exact {
-            debug!("Package filter: categ/name = {terms:?}");
-            let (l1, l2) = terms.iter().map(|s| s.clone()).partition(|s| s.contains('/'));
-            Self::Eq { l1, l2 }
-        } else {
-            debug!("Package filter: categ/name ~= {terms:?}");
-            Self::Re { l: terms.iter()
-                               .map(|s| RegexBuilder::new(s).case_insensitive(true).build())
-                               .collect::<Result<_, _>>()? }
+        debug!("Term filter: {terms:?} {exact}");
+        Ok(match (terms.len(), exact) {
+            (0, _) => Self::True,
+            (_, true) => {
+                let (b, c) = terms.iter().map(|s| s.clone()).partition(|s| s.contains('/'));
+                Self::Eq { a: terms, b, c: c.into_iter().map(|s| format!("/{s}")).collect() }
+            },
+            (1, false) => {
+                Self::Re1 { r: RegexBuilder::new(&terms[0]).case_insensitive(true).build()? }
+            },
+            (_, false) => {
+                Self::Re { r: RegexSetBuilder::new(&terms).case_insensitive(true).build()? }
+            },
         })
     }
     fn match_pkg(&self, s: &str) -> bool {
         match &self {
             Self::True => true,
-            Self::Eq { l1, l2 } => {
-                let s2 = &s[s.find('/').unwrap_or(0) + 1..];
-                l1.iter().any(|e| e == s) || l2.iter().any(|e| e == s2)
-            },
-            Self::Re { l } => l.iter().any(|r| r.is_match(s)),
+            Self::Eq { b, c, .. } => b.iter().any(|e| e == s) || c.iter().any(|e| s.ends_with(e)),
+            Self::Re1 { r } => r.is_match(s),
+            Self::Re { r } => r.is_match(s),
         }
     }
     fn match_str(&self, s: &str) -> bool {
         match &self {
             Self::True => true,
-            Self::Eq { l1, l2 } => l1.iter().any(|e| e == s) || l2.iter().any(|e| e == s),
-            Self::Re { l } => l.iter().any(|r| r.is_match(s)),
+            Self::Eq { a, .. } => a.iter().any(|e| e == s),
+            Self::Re1 { r } => r.is_match(s),
+            Self::Re { r } => r.is_match(s),
         }
     }
 }
+
 
 /// Find position of "version" in "categ/name-version" and filter on pkg name
 fn find_version(atom: &str, filter: &FilterStr) -> Option<usize> {
