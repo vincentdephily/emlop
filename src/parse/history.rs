@@ -492,6 +492,23 @@ mod tests {
     }
 
     #[test]
+    /// Filtering by search term
+    fn filter_terms() {
+        let t = vec![("a", true, "a", false, true),
+                     ("a", true, "b/a", true, false),
+                     ("a", true, "aa", false, false),
+                     ("a", true, "b/aa", false, false),
+                     ("a.", true, "ab", false, false),
+                     ("a.", false, "ab", true, true),];
+        for (terms, e, s, mpkg, mstr) in t {
+            let t: Vec<String> = terms.split_whitespace().map(str::to_string).collect();
+            let f = FilterStr::try_new(t.clone(), e).unwrap();
+            assert_eq!(f.match_pkg(s), mpkg, "filter({t:?}, {e}).match_pkg({s:?})");
+            assert_eq!(f.match_str(s), mstr, "filter({t:?}, {e}).match_str({s:?})");
+        }
+    }
+
+    #[test]
     fn split_atom() {
         let f = FilterStr::try_new(vec![], false).unwrap();
         let g = |s| find_version(s, &f).map(|n| (&s[..n - 1], &s[n..]));
@@ -520,4 +537,47 @@ mod tests {
         assert_eq!(Some(("a-b", "2foo-4-")), g("a-b-2foo-4-"));
         assert_eq!(Some(("Noël", "2-bêta")), g("Noël-2-bêta"));
     }
+}
+
+#[cfg(feature = "unstable")]
+#[cfg(test)]
+mod bench {
+    use super::*;
+    extern crate test;
+
+    fn pkgs() -> Vec<String> {
+        let f = |p| match p {
+            Hist::MergeStart { key, .. } => key,
+            Hist::SyncStop { repo, .. } => repo,
+            _ => String::from("other"),
+        };
+        let show = Show { merge: true, sync: true, ..Show::default() };
+        let file = String::from("benches/emerge.log");
+        let pkgs: Vec<_> =
+            get_hist(file, None, None, show, vec![], true).unwrap().iter().map(f).collect();
+        assert_eq!(pkgs.len(), 21963);
+        pkgs
+    }
+
+    macro_rules! bench_filterstr {
+        ($n:ident, $t:expr, $e:expr) => {
+            #[bench]
+            /// Bench creating a filter and applying it on many strings
+            fn $n(b: &mut test::Bencher) {
+                let p = pkgs();
+                let t: Vec<String> = $t.split_whitespace().map(str::to_string).collect();
+                b.iter(move || {
+                     let f = FilterStr::try_new(t.clone(), $e).unwrap();
+                     p.iter().fold(true, |a, p| a ^ f.match_pkg(&p))
+                 });
+            }
+        };
+    }
+
+    bench_filterstr!(filterstr_none, "", true);
+    bench_filterstr!(filterstr_one_str, "gcc", true);
+    bench_filterstr!(filterstr_one_full, "virtual/rust", true);
+    bench_filterstr!(filterstr_many_str, "gcc llvm clang rust emacs", true);
+    bench_filterstr!(filterstr_one_reg, "gcc", false);
+    bench_filterstr!(filterstr_many_reg, "gcc llvm clang rust emacs", false);
 }

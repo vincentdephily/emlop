@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "unstable", feature(test))]
+
 mod cli;
 mod commands;
 mod datetime;

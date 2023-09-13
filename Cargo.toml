@@ -40,6 +40,16 @@ time = {version = "<0.3.24", features = ["parsing", "formatting", "local-offset"
 # assert_cmd 2.0.12 has MSRV 1.66
 assert_cmd = "<2.0.12"
 
+[[bench]]
+# This is meant to be started directly, using scriptisto not cargo
+name = "exec_compare"
+bench = false
+
+[features]
+# Experimental features, may require nightly compiler.
+# Currently only benchmarking.
+unstable = []
+
 [profile.release]
 debug = false
 debug-assertions = false
