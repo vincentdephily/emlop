@@ -172,7 +172,7 @@ impl FilterStr {
         Ok(match (terms.len(), exact) {
             (0, _) => Self::True,
             (_, true) => {
-                let (b, c) = terms.iter().map(|s| s.clone()).partition(|s| s.contains('/'));
+                let (b, c) = terms.iter().cloned().partition(|s| s.contains('/'));
                 Self::Eq { a: terms, b, c: c.into_iter().map(|s| format!("/{s}")).collect() }
             },
             (1, false) => {
