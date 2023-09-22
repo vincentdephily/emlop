@@ -501,8 +501,7 @@ pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
                                          &[&FmtDur(pred)],
                                          &[&st.cnt, &format!("{err:.1}%")]])
                             }
-                            let errs =
-                                pkg_errs.entry(p.ebuild().to_owned()).or_insert_with(Vec::new);
+                            let errs = pkg_errs.entry(p.ebuild().to_owned()).or_default();
                             errs.push(err);
                         },
                     }
