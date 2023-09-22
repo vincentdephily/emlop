@@ -2,6 +2,7 @@
 
 * Support searching by multiple terms
   - eg `emlop s -e gcc clang llvm rust`
+* Support multiple `--tmpdir`s
 * Upgraded clap dependency
   - Inline help styling/content changed a bit
 

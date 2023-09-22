@@ -11,6 +11,7 @@ pub fn build_cli_nocomplete() -> Command {
                                 // Workaround bad alignment, might be fixed in clap 4
                                 .help("    Show only packages/repos matching <search>")
                                 .long_help("Show only packages/repos matching <search>\n\
+                                            Multiple terms can be provided\n\
                                             Matches using a regex unless `--exact` is specified\n\
                                             See https://docs.rs/regex/*/regex/#syntax\n  \
                                             rust:        Matches `dev-lang/rust`, `dev-util/rustup`, `dev-python/trustme`, etc\n  \
@@ -264,9 +265,12 @@ pub fn build_cli_nocomplete() -> Command {
     let tmpdir = Arg::new("tmpdir").value_name("dir")
                                    .long("tmpdir")
                                    .num_args(1)
+                                   .action(Append)
                                    .default_value("/var/tmp")
                                    .display_order(2)
-                                   .help("Location of portage tmpdir");
+                                   .help("Location of portage tmpdir")
+                                   .long_help("Location of portage tmpdir\n\
+                                               Multiple folders can be provided");
     let resume = Arg::new("resume").long("resume")
                                    .value_name("source")
                                    .value_parser(value_parser!(crate::ResumeKind))
@@ -410,22 +414,38 @@ mod test {
                    .clone()
     }
 
+    macro_rules! one {
+        ($t: ty, $k: expr, $a: expr) => {
+            matches($a).get_one::<$t>($k)
+        };
+    }
+    macro_rules! many {
+        ($t: ty, $k: expr, $a: expr) => {
+            matches($a).get_many::<$t>($k).map(|v| v.map(AsRef::as_ref).collect::<Vec<_>>())
+        };
+    }
+
     #[test]
     fn args() {
-        assert_eq!(matches("l").get_one::<Option<&usize>>("first"), None);
-        assert_eq!(matches("l --first").get_one("first"), Some(&1usize));
-        assert_eq!(matches("l --first 2").get_one("first"), Some(&2usize));
-        assert_eq!(matches("l -N 2").get_one("first"), Some(&2usize));
-        assert_eq!(matches("l -N4").get_one("first"), Some(&4usize));
+        assert_eq!(one!(usize, "first", "l"), None);
+        assert_eq!(one!(usize, "first", "l --first"), Some(&1usize));
+        assert_eq!(one!(usize, "first", "l --first"), Some(&1usize));
+        assert_eq!(one!(usize, "first", "l --first 2"), Some(&2usize));
+        assert_eq!(one!(usize, "first", "l -N 2"), Some(&2usize));
+        assert_eq!(one!(usize, "first", "l -N4"), Some(&4usize));
 
-        assert_eq!(matches("l --last").get_one("last"), Some(&1usize));
-        assert_eq!(matches("l --last 2").get_one("last"), Some(&2usize));
-        assert_eq!(matches("l -n 2").get_one("last"), Some(&2usize));
+        assert_eq!(one!(usize, "last", "l --last"), Some(&1usize));
+        assert_eq!(one!(usize, "last", "l --last 2"), Some(&2usize));
+        assert_eq!(one!(usize, "last", "l -n 2"), Some(&2usize));
 
-        assert_eq!(matches("l").get_one("color"), Some(&ColorStyle::Auto));
-        assert_eq!(matches("l --color").get_one("color"), Some(&ColorStyle::Always));
-        assert_eq!(matches("l --color=y").get_one("color"), Some(&ColorStyle::Always));
-        assert_eq!(matches("l --color n").get_one("color"), Some(&ColorStyle::Never));
-        assert_eq!(matches("l --color never").get_one("color"), Some(&ColorStyle::Never));
+        assert_eq!(one!(ColorStyle, "color", "l"), Some(&ColorStyle::Auto));
+        assert_eq!(one!(ColorStyle, "color", "l --color"), Some(&ColorStyle::Always));
+        assert_eq!(one!(ColorStyle, "color", "l --color=y"), Some(&ColorStyle::Always));
+        assert_eq!(one!(ColorStyle, "color", "l --color n"), Some(&ColorStyle::Never));
+        assert_eq!(one!(ColorStyle, "color", "l --color never"), Some(&ColorStyle::Never));
+
+        assert_eq!(many!(String, "tmpdir", "p"), Some(vec!["/var/tmp"]));
+        assert_eq!(many!(String, "tmpdir", "p --tmpdir a"), Some(vec!["a"]));
+        assert_eq!(many!(String, "tmpdir", "p --tmpdir a --tmpdir b"), Some(vec!["a", "b"]));
     }
 }

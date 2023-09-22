@@ -324,7 +324,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let avg = *args.get_one("avg").unwrap();
     let resume = *args.get_one("resume").unwrap();
     let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
-    let tmpdir = args.get_one::<String>("tmpdir").unwrap();
+    let tmpdirs = args.get_many::<String>("tmpdir").unwrap().cloned().collect();
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
@@ -416,7 +416,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         // Done
         if show.merge && totcount <= first {
             if elapsed > 0 {
-                let stage = get_buildlog(&p, tmpdir).unwrap_or_default();
+                let stage = get_buildlog(&p, &tmpdirs).unwrap_or_default();
                 tbl.row([&[&st.pkg, &p.ebuild_version()],
                          &[&FmtDur(pred)],
                          &[&st.clr, &"- ", &FmtDur(elapsed), &st.clr, &stage]]);

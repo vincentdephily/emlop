@@ -91,11 +91,15 @@ fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
 
 
 /// Retrieve summary info from the build log
-pub fn get_buildlog(pkg: &Pkg, portdir: &str) -> Option<String> {
-    let name = format!("{}/portage/{}/temp/build.log", portdir, pkg.ebuild_version());
-    info!("Build log: {name}");
-    let file = File::open(&name).map_err(|e| warn!("Cannot open {name:?}: {e}")).ok()?;
-    Some(read_buildlog(file, 50))
+pub fn get_buildlog(pkg: &Pkg, portdirs: &Vec<String>) -> Option<String> {
+    for portdir in portdirs {
+        let name = format!("{}/portage/{}/temp/build.log", portdir, pkg.ebuild_version());
+        if let Ok(file) = File::open(&name).map_err(|e| warn!("Cannot open {name:?}: {e}")) {
+            info!("Build log: {name}");
+            return Some(read_buildlog(file, 50));
+        }
+    }
+    None
 }
 fn read_buildlog(file: File, max: usize) -> String {
     let mut last = String::new();
