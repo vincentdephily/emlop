@@ -1,6 +1,7 @@
 use crate::{datetime::*, parse::*, proces::*, table::*, *};
 use std::{collections::{BTreeMap, HashMap},
-          io::stdin};
+          io::stdin,
+          path::PathBuf};
 
 /// Straightforward display of merge events
 ///
@@ -324,11 +325,11 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let avg = *args.get_one("avg").unwrap();
     let resume = *args.get_one("resume").unwrap();
     let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
-    let tmpdirs = args.get_many::<String>("tmpdir").unwrap().cloned().collect();
+    let mut tmpdirs: Vec<PathBuf> = args.get_many("tmpdir").unwrap().cloned().collect();
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;
-    for i in get_all_info(Some("emerge")) {
+    for i in get_all_info(Some("emerge"), &mut tmpdirs) {
         cms = std::cmp::min(cms, i.start);
         if show.emerge {
             tbl.row([&[&i], &[&FmtDur(now - i.start)], &[]]);

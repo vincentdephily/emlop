@@ -1,4 +1,5 @@
 use clap::{builder::styling, crate_version, value_parser, Arg, ArgAction::*, Command};
+use std::path::PathBuf;
 
 /// Generate cli argument parser without the `complete` subcommand.
 pub fn build_cli_nocomplete() -> Command {
@@ -267,10 +268,12 @@ pub fn build_cli_nocomplete() -> Command {
                                    .num_args(1)
                                    .action(Append)
                                    .default_value("/var/tmp")
+                                   .value_parser(value_parser!(PathBuf))
                                    .display_order(2)
                                    .help("Location of portage tmpdir")
                                    .long_help("Location of portage tmpdir\n\
-                                               Multiple folders can be provided");
+                                               Multiple folders can be provided\n\
+                                               Emlop also looks for tmpdir using current emerge processes");
     let resume = Arg::new("resume").long("resume")
                                    .value_name("source")
                                    .value_parser(value_parser!(crate::ResumeKind))
@@ -421,7 +424,7 @@ mod test {
     }
     macro_rules! many {
         ($t: ty, $k: expr, $a: expr) => {
-            matches($a).get_many::<$t>($k).map(|v| v.map(AsRef::as_ref).collect::<Vec<_>>())
+            matches($a).get_many::<$t>($k).map(|r| r.cloned().collect::<Vec<$t>>())
         };
     }
 
@@ -444,8 +447,9 @@ mod test {
         assert_eq!(one!(ColorStyle, "color", "l --color n"), Some(&ColorStyle::Never));
         assert_eq!(one!(ColorStyle, "color", "l --color never"), Some(&ColorStyle::Never));
 
-        assert_eq!(many!(String, "tmpdir", "p"), Some(vec!["/var/tmp"]));
-        assert_eq!(many!(String, "tmpdir", "p --tmpdir a"), Some(vec!["a"]));
-        assert_eq!(many!(String, "tmpdir", "p --tmpdir a --tmpdir b"), Some(vec!["a", "b"]));
+        let pathvec = |s: &str| Some(s.split_whitespace().map(PathBuf::from).collect());
+        assert_eq!(many!(PathBuf, "tmpdir", "p"), pathvec("/var/tmp"));
+        assert_eq!(many!(PathBuf, "tmpdir", "p --tmpdir a"), pathvec("a"));
+        assert_eq!(many!(PathBuf, "tmpdir", "p --tmpdir a --tmpdir b"), pathvec("a b"));
     }
 }

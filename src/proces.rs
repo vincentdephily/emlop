@@ -9,7 +9,8 @@
 use crate::{datetime::*, *};
 use anyhow::{ensure, Context};
 use std::{fs::{read_dir, DirEntry, File},
-          io::prelude::*};
+          io::prelude::*,
+          path::PathBuf};
 
 #[derive(Debug)]
 pub struct Info {
@@ -37,7 +38,8 @@ impl std::fmt::Display for Info {
 fn get_proc_info(filter: Option<&str>,
                  entry: &DirEntry,
                  clocktick: i64,
-                 time_ref: i64)
+                 time_ref: i64,
+                 tmpdirs: &mut Vec<PathBuf>)
                  -> Option<Info> {
     // Parse pid.
     // At this stage we expect `entry` to not always correspond to a process.
@@ -57,18 +59,44 @@ fn get_proc_info(filter: Option<&str>,
     let mut cmdline = String::new();
     File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
     cmdline = cmdline.replace('\0', " ").trim().into();
+    // Find portage tmpdir
+    extend_tmpdirs(entry.path(), tmpdirs);
     // Done
     Some(Info { cmdline, start: time_ref + start_time / clocktick, pid })
 }
 
-/// Get command name, arguments, start time, and pid for all processes.
-pub fn get_all_info(filter: Option<&str>) -> Vec<Info> {
-    get_all_info_result(filter).unwrap_or_else(|e| {
-                                   log_err(e);
-                                   vec![]
-                               })
+/// Find tmpdir by looking for "build.log" in the process fds, and add it to the provided vector.
+fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
+    if let Ok(entries) = read_dir(proc.join("fd")) {
+        let procstr = proc.to_string_lossy();
+        for d in entries.filter_map(|e| {
+                            let p = e.ok()?.path().canonicalize().ok()?;
+                            if p.file_name() != Some(std::ffi::OsStr::new("build.log")) {
+                                return None;
+                            }
+                            let d = p.parent()?.parent()?.parent()?.parent()?.parent()?;
+                            debug!("Tmpdir {} found in {}", d.to_string_lossy(), procstr);
+                            Some(d.to_path_buf())
+                        })
+        {
+            if !tmpdirs.contains(&d) {
+                // Insert at the front because it's a better candidate than cli/default tmpdir
+                tmpdirs.insert(0, d)
+            }
+        }
+    }
 }
-fn get_all_info_result(filter: Option<&str>) -> Result<Vec<Info>, Error> {
+
+/// Get command name, arguments, start time, and pid for all processes.
+pub fn get_all_info(filter: Option<&str>, tmpdirs: &mut Vec<PathBuf>) -> Vec<Info> {
+    get_all_info_result(filter, tmpdirs).unwrap_or_else(|e| {
+                                            log_err(e);
+                                            vec![]
+                                        })
+}
+fn get_all_info_result(filter: Option<&str>,
+                       tmpdirs: &mut Vec<PathBuf>)
+                       -> Result<Vec<Info>, Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
@@ -83,7 +111,7 @@ fn get_all_info_result(filter: Option<&str>) -> Result<Vec<Info>, Error> {
     // Now iterate through /proc/<pid>
     let mut ret: Vec<Info> = Vec::new();
     for entry in read_dir("/proc/").context("Listing /proc/")? {
-        if let Some(i) = get_proc_info(filter, &entry?, clocktick, time_ref) {
+        if let Some(i) = get_proc_info(filter, &entry?, clocktick, time_ref, tmpdirs) {
             ret.push(i)
         }
     }
@@ -109,8 +137,9 @@ mod tests {
     #[test] #[rustfmt::skip]
     fn start_time() {
         // First get the system's process start times using our implementation
+        let mut tmpdirs = vec![];
         let mut info: BTreeMap<i32,(String,Option<i64>,Option<i64>)> = //pid => (cmd, rust_time, ps_time)
-            get_all_info(None)
+            get_all_info(None, &mut tmpdirs)
             .iter()
             .fold(BTreeMap::new(), |mut a,i| {a.insert(i.pid, (i.cmdline.clone(),Some(i.start),None)); a});
         // Then get them using the ps implementation (merging them into the same data structure)

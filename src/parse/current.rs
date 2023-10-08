@@ -7,7 +7,8 @@ use regex::Regex;
 use serde::Deserialize;
 use serde_json::from_reader;
 use std::{fs::File,
-          io::{BufRead, BufReader, Read}};
+          io::{BufRead, BufReader, Read},
+          path::PathBuf};
 
 /// Package name and version
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -91,11 +92,11 @@ fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
 
 
 /// Retrieve summary info from the build log
-pub fn get_buildlog(pkg: &Pkg, portdirs: &Vec<String>) -> Option<String> {
+pub fn get_buildlog(pkg: &Pkg, portdirs: &Vec<PathBuf>) -> Option<String> {
     for portdir in portdirs {
-        let name = format!("{}/portage/{}/temp/build.log", portdir, pkg.ebuild_version());
+        let name = portdir.join("portage").join(pkg.ebuild_version()).join("temp/build.log");
         if let Ok(file) = File::open(&name).map_err(|e| warn!("Cannot open {name:?}: {e}")) {
-            info!("Build log: {name}");
+            info!("Build log: {}", name.display());
             return Some(read_buildlog(file, 50));
         }
     }

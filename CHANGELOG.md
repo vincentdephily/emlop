@@ -2,7 +2,9 @@
 
 * Support searching by multiple terms
   - eg `emlop s -e gcc clang llvm rust`
-* Support multiple `--tmpdir`s
+* Improve predict's `tmpdir`:
+  - Autodetect `tmpdir` using currently running emerge processes
+  - Support multiple `--tmpdir` arguments
 * Upgraded clap dependency
   - Inline help styling/content changed a bit
 
