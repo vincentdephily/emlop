@@ -5,6 +5,7 @@
 * Improve predict's `tmpdir`:
   - Autodetect `tmpdir` using currently running emerge processes
   - Support multiple `--tmpdir` arguments
+* Passing `--resume` without argument is now the same as `--resume main`
 * Upgraded clap dependency
   - Inline help styling/content changed a bit
 
