@@ -323,7 +323,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     };
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
-    let resume = *args.get_one("resume").unwrap();
+    let resume = args.get_one("resume").copied();
     let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
     let mut tmpdirs: Vec<PathBuf> = args.get_many("tmpdir").unwrap().cloned().collect();
 
@@ -337,8 +337,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     }
     if cms == std::i64::MAX
        && std::io::stdin().is_terminal()
-       && resume != ResumeKind::Main
-       && resume != ResumeKind::Backup
+       && (resume == Some(ResumeKind::No) || resume == None)
     {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
         return Ok(false);
@@ -371,7 +370,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     // Build list of pending merges
     let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
         // From resume data + emerge.log after current merge process start time
-        let mut r = get_resume(resume);
+        let mut r = get_resume(resume.unwrap_or(ResumeKind::Main));
         for p in started.iter().filter(|&(_, t)| *t > cms).map(|(p, _)| p) {
             if !r.contains(p) {
                 r.push(p.clone())

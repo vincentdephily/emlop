@@ -118,7 +118,7 @@ pub enum Average {
 #[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum ResumeKind {
     #[clap(alias("a"))]
-    Auto,
+    Any,
     #[clap(alias("m"))]
     Main,
     #[clap(alias("b"))]

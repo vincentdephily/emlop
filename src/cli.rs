@@ -274,19 +274,19 @@ pub fn build_cli_nocomplete() -> Command {
                                    .long_help("Location of portage tmpdir\n\
                                                Multiple folders can be provided\n\
                                                Emlop also looks for tmpdir using current emerge processes");
-    let h = "Use auto, main, backup, or no portage resume list\n\
+    let h = "Use main, backup, any, or no portage resume list\n\
              This is ignored if STDIN is a piped `emerge -p` output\n  \
-             auto|a:         Use main resume list, if currently emerging\n  \
-             main|m|(empty): Force use of main resume list\n  \
-             backup|b:       Force use of backup resume list\n  \
-             no|n:           Never use resume list";
+             (default):     Use main resume list, if currently emerging\n  \
+             any|a|(empty): Use main or backup resume list\n  \
+             main|m:        Use main resume list\n  \
+             backup|b:      Use backup resume list\n  \
+             no|n:          Never use resume list";
     let resume = Arg::new("resume").long("resume")
                                    .value_name("source")
                                    .value_parser(value_parser!(crate::ResumeKind))
                                    .hide_possible_values(true)
-                                   .default_value("auto")
                                    .num_args(..=1)
-                                   .default_missing_value("main")
+                                   .default_missing_value("any")
                                    .display_order(3)
                                    .help(h.split_once('\n').unwrap().0)
                                    .long_help(h);

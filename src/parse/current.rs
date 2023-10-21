@@ -86,7 +86,12 @@ fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
     }
     let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
     let db: Mtimedb = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
-    let r = if kind == ResumeKind::Backup { db.resume_backup? } else { db.resume? };
+    let r = match kind {
+        ResumeKind::Any => db.resume.or(db.resume_backup)?,
+        ResumeKind::Main => db.resume?,
+        ResumeKind::Backup => db.resume_backup?,
+        ResumeKind::No => unreachable!(),
+    };
     Some(r.mergelist.iter().filter_map(|v| v.get(2).and_then(|s| Pkg::try_new(s))).collect())
 }
 
@@ -171,16 +176,16 @@ mod tests {
 
     #[test]
     fn resume() {
-        check_resume(ResumeKind::Main,
-                     "mtimedb.ok",
-                     Some(&[("dev-lang/rust", "1.65.0"), ("app-portage/emlop", "0.5.0")]));
-        check_resume(ResumeKind::Backup,
-                     "mtimedb.ok",
-                     Some(&[("app-portage/dummybuild", "0.1.600"),
-                            ("app-portage/dummybuild", "0.1.60")]));
-        check_resume(ResumeKind::Main, "mtimedb.empty", Some(&[]));
-        check_resume(ResumeKind::Main, "mtimedb.noresume", None);
-        check_resume(ResumeKind::Main, "mtimedb.badjson", None);
+        let main = &[("dev-lang/rust", "1.65.0"), ("app-portage/emlop", "0.5.0")];
+        let bkp = &[("app-portage/dummybuild", "0.1.600"), ("app-portage/dummybuild", "0.1.60")];
+        check_resume(ResumeKind::Main, "mtimedb.ok", Some(main));
+        check_resume(ResumeKind::Backup, "mtimedb.ok", Some(bkp));
+        check_resume(ResumeKind::No, "mtimedb.ok", Some(&[]));
+        check_resume(ResumeKind::Any, "mtimedb.ok", Some(main));
+        check_resume(ResumeKind::Any, "mtimedb.backuponly", Some(bkp));
+        check_resume(ResumeKind::Any, "mtimedb.empty", Some(&[]));
+        check_resume(ResumeKind::Any, "mtimedb.noresume", None);
+        check_resume(ResumeKind::Any, "mtimedb.badjson", None);
     }
 
     #[test]
