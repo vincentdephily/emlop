@@ -148,6 +148,14 @@ pub enum ColorStyle {
     Auto,
 }
 
+#[derive(Clone, Copy, clap::ValueEnum, PartialEq, Eq)]
+pub enum OutStyle {
+    #[clap(alias("c"))]
+    Cols,
+    #[clap(alias("t"))]
+    Tab,
+}
+
 /// Holds styling preferences.
 ///
 /// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
@@ -164,20 +172,25 @@ pub struct Styles {
     dur_t: DurationStyle,
     date_offset: time::UtcOffset,
     date_fmt: DateStyle,
-    tabs: bool,
+    out: OutStyle,
 }
 impl Styles {
     fn from_args(args: &ArgMatches) -> Self {
+        let isterm = std::io::stdout().is_terminal();
         let color = match args.get_one("color") {
             Some(ColorStyle::Always) => true,
             Some(ColorStyle::Never) => false,
-            _ => std::io::stdout().is_terminal(),
+            _ => isterm,
+        };
+        let out = match args.get_one("output") {
+            Some(o) => *o,
+            None if isterm => OutStyle::Cols,
+            None => OutStyle::Tab,
         };
         let header = args.get_flag("header");
         let dur_t = *args.get_one("duration").unwrap();
         let date_fmt = *args.get_one("date").unwrap();
         let date_offset = get_offset(args.get_flag("utc"));
-        let tabs = args.get_flag("tabs");
         Styles { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
                  merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
                  unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
@@ -189,7 +202,7 @@ impl Styles {
                  dur_t,
                  date_offset,
                  date_fmt,
-                 tabs }
+                 out }
     }
     #[cfg(test)]
     fn from_str(s: impl AsRef<str>) -> Self {

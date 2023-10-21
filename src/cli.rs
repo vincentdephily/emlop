@@ -243,14 +243,19 @@ pub fn build_cli_nocomplete() -> Command {
                                              auto:             colored if on tty\n  \
                                              (empty)|always|y: colored\n  \
                                              never|n:          not colored");
-    let tabs = Arg::new("tabs").long("tabs")
-                               .global(true)
-                               .action(SetTrue)
-                               .display_order(7)
-                               .help_heading("Format")
-                               .help("Separate columns using tabs instead of spaces")
-                               .long_help("Separate columns using tabs instead of spaces\n\
-                                           Useful for machine parsing.");
+    let output = Arg::new("output").long("output")
+                                   .short('o')
+                                   .value_name("format")
+                                   .global(true)
+                                   .value_parser(value_parser!(crate::OutStyle))
+                                   .hide_possible_values(true)
+                                   .display_order(7)
+                                   .help_heading("Format")
+                                   .help("Ouput format (cols/c/tab/t)")
+                                   .long_help("Ouput format (cols/c/tab/t)\n  \
+                                               (default): cols on tty, tab otherwise\n  \
+                                               cols|c:    space-aligned columns\n  \
+                                               tab|t:     tab-separated values");
 
     ////////////////////////////////////////////////////////////
     // Misc arguments
@@ -383,7 +388,7 @@ pub fn build_cli_nocomplete() -> Command {
                          .arg(date)
                          .arg(utc)
                          .arg(color)
-                         .arg(tabs)
+                         .arg(output)
                          .arg(logfile)
                          .arg(verbose)
                          .subcommand(cmd_log)

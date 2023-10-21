@@ -35,7 +35,7 @@ fn emlop_out(args: &str) -> String {
 #[test]
 fn log() {
     let t = [// Basic test
-             ("%F10000.log l client",
+             ("%F10000.log l client -oc",
               "2018-02-04 04:55:19    35:46 >>> mail-client/thunderbird-52.6.0\n\
                2018-02-04 05:42:48    47:29 >>> www-client/firefox-58.0.1\n\
                2018-02-09 11:04:59    47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
@@ -48,15 +48,15 @@ fn log() {
                2018-03-12 10:35:22       14 >>> x11-apps/xlsclients-1.1.4\n\
                2018-03-12 11:03:53       16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
              // Check output when duration isn't known
-             ("%F10000.log l -s m mlt -e --from 2018-02-18T12:37:00",
+             ("%F10000.log l -s m mlt -e --from 2018-02-18T12:37:00 -oc",
               "2018-02-18 12:37:09   ? >>> media-libs/mlt-6.4.1-r6\n\
                2018-02-27 15:10:05  43 >>> media-libs/mlt-6.4.1-r6\n\
                2018-02-27 16:48:40  39 >>> media-libs/mlt-6.4.1-r6\n"),
              // Check output of sync events
-             ("%F10000.log l -ss --from 2018-03-07T10:42:00 --to 2018-03-07T14:00:00",
+             ("%F10000.log l -ss --from 2018-03-07T10:42:00 --to 2018-03-07T14:00:00 -oc",
               "2018-03-07 11:37:05  38 Sync gentoo\n\
                2018-03-07 13:56:09  40 Sync gentoo\n"),
-             ("%Fsync.log l -ss",
+             ("%Fsync.log l -ss -oc",
               "2007-04-06 04:43:38    26:02 Sync gentoo-portage\n\
                2007-04-09 21:30:01    19:20 Sync gentoo-portage\n\
                2007-04-16 21:52:59    59:53 Sync gentoo-portage\n\
@@ -98,7 +98,7 @@ fn log() {
                2020-06-18 16:21:55        1 Sync steam-overlay\n\
                2020-06-18 16:21:56        1 Sync moltonel\n"),
              // Check output of all events
-             ("%F10000.log l --show a --from 2018-03-07T10:42:00 --to 2018-03-07T14:00:00",
+             ("%F10000.log l --show a --from 2018-03-07T10:42:00 --to 2018-03-07T14:00:00 -oc",
               "2018-03-07 10:43:10    14 >>> sys-apps/the_silver_searcher-2.0.0\n\
                2018-03-07 11:37:05    38 Sync gentoo\n\
                2018-03-07 12:49:09     2 <<< sys-apps/util-linux-2.30.2\n\
@@ -166,7 +166,7 @@ fn timezone() {
     //  2021-03-29 11:57:14 +01:00    12 >>> sys-apps/install-xattr-0.8\n\
     //  2021-03-29 11:57:45 +01:00    31 >>> sys-devel/m4-1.4.18-r2\n"),
     for (t, o) in t {
-        emlop("%Fdst.log l --date dto").env("TZ", t).assert().stdout(o);
+        emlop("%Fdst.log l --date dto -oc").env("TZ", t).assert().stdout(o);
     }
 }
 
@@ -202,13 +202,13 @@ fn predict_emerge_p() {
                       ts(8 * 60 + 9)),
               0)];
     for (i, o, e) in t {
-        emlop("%F10000.log p --date unix").write_stdin(i).assert().code(e).stdout(o);
+        emlop("%F10000.log p --date unix -oc").write_stdin(i).assert().code(e).stdout(o);
     }
 }
 
 #[test]
 fn stats() {
-    let t = [("%F10000.log s client",
+    let t = [("%F10000.log s client -oc",
               "kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
                mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
                www-client/chromium           3  21:41:24  7:42:07  3  12  3\n\
@@ -217,18 +217,18 @@ fn stats() {
                www-client/links              1        44       44  1   1  1\n\
                x11-apps/xlsclients           1        14       14  1   1  1\n",
               0),
-             ("%Fsync.log s -ss",
+             ("%Fsync.log s -ss -oc",
               "gentoo          22  1:43:13     10\n\
                gentoo-portage   5  4:32:42  31:53\n\
                moltonel         8       26      1\n\
                steam-overlay    5       10      1\n",
               0),
-             ("%Fsync.log s -ss gentoo",
+             ("%Fsync.log s -ss gentoo -oc",
               "gentoo          22  1:43:13     10\n\
                gentoo-portage   5  4:32:42  31:53\n",
               0),
-             ("%F10000.log s client -sst", "11  24:00:24  2:10:56  10  27  2\n", 0),
-             ("%F10000.log s client -sa",
+             ("%F10000.log s client -sst -oc", "11  24:00:24  2:10:56  10  27  2\n", 0),
+             ("%F10000.log s client -sa -oc",
               "kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
                mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
                www-client/chromium           3  21:41:24  7:42:07  3  12  3\n\
@@ -239,19 +239,19 @@ fn stats() {
                \n\
                11  24:00:24  2:10:56  10  27  2\n",
               0),
-             ("%F10000.log s gentoo-sources --avg arith",
+             ("%F10000.log s gentoo-sources --avg arith -oc",
               "sys-kernel/gentoo-sources  10  15:04  1:30  11  3:20  16\n",
               0),
-             ("%F10000.log s gentoo-sources --avg median",
+             ("%F10000.log s gentoo-sources --avg median -oc",
               "sys-kernel/gentoo-sources  10  15:04  1:21  11  3:20  13\n",
               0),
-             ("%F10000.log s gentoo-sources --avg weighted-arith",
+             ("%F10000.log s gentoo-sources --avg weighted-arith -oc",
               "sys-kernel/gentoo-sources  10  15:04  1:31  11  3:20  17\n",
               0),
-             ("%F10000.log s gentoo-sources --avg weighted-median",
+             ("%F10000.log s gentoo-sources --avg weighted-median -oc",
               "sys-kernel/gentoo-sources  10  15:04  1:22  11  3:20  15\n",
               0),
-             ("%F10000.log s --from 2018-02-03T23:11:47 --to 2018-02-04 notfound -sa", "", 1)];
+             ("%F10000.log s --from 2018-02-03T23:11:47 --to 2018-02-04 notfound -sa -oc", "", 1)];
     for (a, o, e) in t {
         emlop(a).assert().code(e).stdout(o);
     }
@@ -262,12 +262,12 @@ fn stats() {
 /// same, and avg*count==tot).
 #[test]
 fn stats_grouped() {
-    let t = [("%F10000.log s --duration s -sp gentoo-sources -gy",
+    let t = [("%F10000.log s --duration s -sp gentoo-sources -oc -gy",
               "2018 sys-kernel/gentoo-sources  10  904  81  11  200  13\n"),
-             ("%F10000.log s --duration s -sp gentoo-sources -gm",
+             ("%F10000.log s --duration s -sp gentoo-sources -oc -gm",
               "2018-02 sys-kernel/gentoo-sources  8  702   80  8  149  13\n\
                2018-03 sys-kernel/gentoo-sources  2  202  101  3   51  15\n"),
-             ("%F10000.log s --duration s -sp gentoo-sources -gw",
+             ("%F10000.log s --duration s -sp gentoo-sources -oc -gw",
               "2018-05 sys-kernel/gentoo-sources  1   81   81  0   0   ?\n\
                2018-06 sys-kernel/gentoo-sources  2  192   96  3  66  14\n\
                2018-07 sys-kernel/gentoo-sources  2  198   99  0   0   ?\n\
@@ -275,7 +275,7 @@ fn stats_grouped() {
                2018-09 sys-kernel/gentoo-sources  3  236   79  3  61  22\n\
                2018-10 sys-kernel/gentoo-sources  0    0    ?  1  23  23\n\
                2018-11 sys-kernel/gentoo-sources  1  120  120  1  13  13\n"),
-             ("%F10000.log s --duration s -sp gentoo-sources -gd",
+             ("%F10000.log s --duration s -sp gentoo-sources -oc -gd",
               "2018-02-04 sys-kernel/gentoo-sources  1   81   81  0   0   ?\n\
                2018-02-05 sys-kernel/gentoo-sources  1   95   95  0   0   ?\n\
                2018-02-06 sys-kernel/gentoo-sources  0    0    ?  3  66  14\n\
@@ -290,11 +290,11 @@ fn stats_grouped() {
                2018-03-01 sys-kernel/gentoo-sources  1   82   82  1  15  15\n\
                2018-03-05 sys-kernel/gentoo-sources  0    0    ?  1  23  23\n\
                2018-03-12 sys-kernel/gentoo-sources  1  120  120  1  13  13\n"),
-             ("%F10000.log s --duration s -st -gy", "2018 831  216426  260  832  2311  2\n"),
-             ("%F10000.log s --duration s -st -gm",
+             ("%F10000.log s --duration s -st -oc -gy", "2018 831  216426  260  832  2311  2\n"),
+             ("%F10000.log s --duration s -st -oc -gm",
               "2018-02 533  158312  297  529  1497  2\n\
                2018-03 298   58114  195  303   814  2\n"),
-             ("%F10000.log s --duration s -st -gw",
+             ("%F10000.log s --duration s -st -oc -gw",
               "2018-05  63  33577  532   60  132  2\n\
                2018-06  74  10070  136   68  225  3\n\
                2018-07 281  58604  208  258  709  2\n\
@@ -302,7 +302,7 @@ fn stats_grouped() {
                2018-09  71  14737  207   95  316  3\n\
                2018-10 182  43782  240  187  519  2\n\
                2018-11  95   4380   46   95  213  2\n"),
-             ("%F10000.log s --duration s -st -gd",
+             ("%F10000.log s --duration s -st -oc -gd",
               "2018-02-03  32   2741     85   32   70  2\n\
                2018-02-04  31  30836    994   28   62  2\n\
                2018-02-05   4    158     39    3    5  1\n\
@@ -334,11 +334,11 @@ fn stats_grouped() {
                2018-03-08  74   5441     73   73  202  2\n\
                2018-03-09  50   7458    149   49  140  2\n\
                2018-03-12  95   4380     46   95  213  2\n"),
-             ("%F10000.log s --duration s -ss -gy", "2018 gentoo  150  4747  28\n"),
-             ("%F10000.log s --duration s -ss -gm",
+             ("%F10000.log s --duration s -ss -oc -gy", "2018 gentoo  150  4747  28\n"),
+             ("%F10000.log s --duration s -ss -oc -gm",
               "2018-02 gentoo  90  2411  15\n\
                2018-03 gentoo  60  2336  28\n"),
-             ("%F10000.log s --duration s -ss -gw",
+             ("%F10000.log s --duration s -ss -oc -gw",
               "2018-05 gentoo   3   160  56\n\
                2018-06 gentoo  31   951  27\n\
                2018-07 gentoo  17   388  19\n\
@@ -346,7 +346,7 @@ fn stats_grouped() {
                2018-09 gentoo  39  1899  49\n\
                2018-10 gentoo  36   728  21\n\
                2018-11 gentoo   4   121  32\n"),
-             ("%F10000.log s --duration s -ss -gd",
+             ("%F10000.log s --duration s -ss -oc -gd",
               "2018-02-03 gentoo   1   68   68\n\
                2018-02-04 gentoo   2   92   46\n\
                2018-02-05 gentoo   7  186   32\n\
@@ -422,7 +422,7 @@ fn stats_grouped() {
 #[test]
 fn negative_merge_time() {
     let t = [// For `log` we show an unknown time.
-             ("%Fnegtime.log l -sms",
+             ("%Fnegtime.log l -sms -oc",
               format!("2019-06-05 08:32:10  1:06 Sync gentoo\n\
                        2019-06-05 11:26:54  5:56 >>> kde-plasma/kwin-5.15.5\n\
                        2019-06-06 02:11:48    26 >>> kde-apps/libktnef-19.04.1\n\
@@ -431,7 +431,7 @@ fn negative_merge_time() {
                        2019-06-05 10:21:02     ? >>> kde-plasma/kwin-5.15.5\n\
                        2019-06-08 21:33:36  3:10 >>> kde-plasma/kwin-5.15.5\n")),
              // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
-             ("%Fnegtime.log s -sa",
+             ("%Fnegtime.log s -sa -oc",
               format!("gentoo  2  1:06  1:06\n\
                        \n\
                        kde-apps/libktnef  1    26    26  0  0  ?\n\
@@ -451,7 +451,7 @@ fn negative_merge_time() {
 #[ignore]
 #[test]
 fn negative_merge_time_pred() {
-    let a = "%Fnegtime.log p --date unix";
+    let a = "%Fnegtime.log p --date unix -oc";
     let i = "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n";
     let o = format!("kde-plasma/kwin-5.15.5  4:33 \n\
                      Estimate for 1 ebuild   4:33 @ {}\n",

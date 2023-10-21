@@ -1,4 +1,4 @@
-use crate::Styles;
+use crate::{OutStyle, Styles};
 use std::{collections::VecDeque,
           io::{stdout, BufWriter, Write as _}};
 
@@ -131,7 +131,7 @@ impl<'a, const N: usize> Table<'a, N> {
                     continue;
                 }
                 let (len, pos0, pos1) = row[i];
-                if self.styles.tabs {
+                if self.styles.out == OutStyle::Tab {
                     if !first {
                         out.write_all(b"\t").unwrap_or(());
                     }
@@ -210,8 +210,8 @@ mod test {
     }
 
     #[test]
-    fn align() {
-        let st = Styles::from_str("emlop log --color=n");
+    fn align_cols() {
+        let st = Styles::from_str("emlop log --color=n --output=c");
         let mut t = Table::<2>::new(&st).align_left(0);
         t.row([&[&"short"], &[&1]]);
         t.row([&[&"looooooooooooong"], &[&1]]);
@@ -220,6 +220,19 @@ mod test {
                    looooooooooooong     1\n\
                    high              9999\n";
         assert!(res.split_terminator('\n').all(|l| l.len() == 22));
+        check(t, res);
+    }
+
+    #[test]
+    fn align_tab() {
+        let st = Styles::from_str("emlop log --color=n --output=t");
+        let mut t = Table::<2>::new(&st).align_left(0);
+        t.row([&[&"short"], &[&1]]);
+        t.row([&[&"looooooooooooong"], &[&1]]);
+        t.row([&[&"high"], &[&9999]]);
+        let res = "short\t1\n\
+                   looooooooooooong\t1\n\
+                   high\t9999\n";
         check(t, res);
     }
 
