@@ -234,13 +234,12 @@ pub fn build_cli_nocomplete() -> Command {
                                  .hide_possible_values(true)
                                  .num_args(..=1)
                                  .default_missing_value("y")
-                                 .default_value("auto")
                                  .value_name("when")
                                  .display_order(55)
                                  .help_heading("Format")
-                                 .help("Enable color (auto/always/never/y/n)")
-                                 .long_help("Enable color (auto/always/never/y/n)\n  \
-                                             auto:             colored if on tty\n  \
+                                 .help("Enable color (always/never/y/n)")
+                                 .long_help("Enable color (always/never/y/n)\n  \
+                                             (default):        colored if on tty\n  \
                                              (empty)|always|y: colored\n  \
                                              never|n:          not colored");
     let output = Arg::new("output").long("output")
@@ -449,7 +448,7 @@ mod test {
         assert_eq!(one!(usize, "last", "l --last 2"), Some(&2usize));
         assert_eq!(one!(usize, "last", "l -n 2"), Some(&2usize));
 
-        assert_eq!(one!(ColorStyle, "color", "l"), Some(&ColorStyle::Auto));
+        assert_eq!(one!(ColorStyle, "color", "l"), None);
         assert_eq!(one!(ColorStyle, "color", "l --color"), Some(&ColorStyle::Always));
         assert_eq!(one!(ColorStyle, "color", "l --color=y"), Some(&ColorStyle::Always));
         assert_eq!(one!(ColorStyle, "color", "l --color n"), Some(&ColorStyle::Never));

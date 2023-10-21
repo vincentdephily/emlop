@@ -145,7 +145,6 @@ pub enum ColorStyle {
     Always,
     #[clap(alias("n"))]
     Never,
-    Auto,
 }
 
 #[derive(Clone, Copy, clap::ValueEnum, PartialEq, Eq)]
@@ -180,7 +179,7 @@ impl Styles {
         let color = match args.get_one("color") {
             Some(ColorStyle::Always) => true,
             Some(ColorStyle::Never) => false,
-            _ => isterm,
+            None => isterm,
         };
         let out = match args.get_one("output") {
             Some(o) => *o,
