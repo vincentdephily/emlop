@@ -16,6 +16,9 @@ rust-version = "1.65.0"
 exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
 [dependencies]
+# anstyle-parse = 0.2.2 has MSRV 1.70
+# Only used transitively, remove from Cargo.toml when our MSRV gets bumped
+anstyle-parse = "<0.2.2"
 anyhow = "1.0.32"
 atoi = "2.0.0"
 # clap 4.4.0 has MSRV 1.70
@@ -39,6 +42,9 @@ time = {version = "<0.3.24", features = ["parsing", "formatting", "local-offset"
 [dev-dependencies]
 # assert_cmd 2.0.12 has MSRV 1.66
 assert_cmd = "<2.0.12"
+# predicates 3.0.4 MSRV 1.69
+# Only used transitively, remove from Cargo.toml when our MSRV gets bumped
+predicates = "<3.0.4"
 
 [[bench]]
 # This is meant to be started directly, using scriptisto not cargo
