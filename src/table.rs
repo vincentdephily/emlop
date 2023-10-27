@@ -238,7 +238,7 @@ mod test {
 
     #[test]
     fn color() {
-        let st = Styles::from_str("emlop log --color=y");
+        let st = Styles::from_str("emlop log --color=y --output=c");
         let mut t = Table::<2>::new(&st).align_left(0);
         t.row([&[&"123"], &[&1]]);
         t.row([&[&st.merge, &1, &st.dur, &2, &st.cnt, &3, &st.clr], &[&1]]);
@@ -252,7 +252,7 @@ mod test {
 
     #[test]
     fn nocolor() {
-        let st = Styles::from_str("emlop log --color=n");
+        let st = Styles::from_str("emlop log --color=n --output=c");
         let mut t = Table::<2>::new(&st).align_left(0);
         t.row([&[&"123"], &[&1]]);
         t.row([&[&st.merge, &1, &st.dur, &2, &st.cnt, &3, &st.clr], &[&1]]);
