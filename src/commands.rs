@@ -337,7 +337,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     }
     if cms == std::i64::MAX
        && std::io::stdin().is_terminal()
-       && (resume == Some(ResumeKind::No) || resume == None)
+       && (resume == Some(ResumeKind::No) || resume.is_none())
     {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
         return Ok(false);
