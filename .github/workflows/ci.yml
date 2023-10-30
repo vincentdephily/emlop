@@ -10,8 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        timezone: [UTC, Europe/Dublin, Canada/Newfoundland, Pacific/Kiritimati]
         toolchain: [1.65.0, stable]
+        include:
+          - timezone: UTC
+          - timezone: Europe/Dublin
+            toolchain: stable
+          - timezone: Canada/Newfoundland
+            toolchain: stable
+          - timezone: Pacific/Kiritimati
+            toolchain: stable
     steps:
       - name: Checkout
         uses: actions/checkout@v3
