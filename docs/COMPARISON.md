@@ -113,7 +113,8 @@ piping `emerge -rOp` would do).
 Genlop has multiple estimation bugs where data get mixed up (different categories, parallel merges,
 etc). `Genlop -p` doesn't take current elapsed emerge time into account. When run as a normal user,
 qlop warns about missing /proc permissions, finds bogus current merges, and doesn't give the same
-ETA for the ones it finds.
+ETA for the ones it finds. The linuxhowtos db is unmaintained and unlikely to contain info for your
+CPU and ebuilds.
 
 All tools give pessimistic prediction when packages are merged in parallel, because they assume
 sequential merging. Even if they detected an ongoing parallel merge, it's not clear how they would

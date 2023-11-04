@@ -5,7 +5,13 @@
 * Improve predict's `tmpdir`:
   - Autodetect `tmpdir` using currently running emerge processes
   - Support multiple `--tmpdir` arguments
-* Passing `--resume` without argument is now the same as `--resume main`
+* Improve output selection:
+  - `--tabs` has been renamed `--output=tab/cols` (or `-ot` for short)
+  - Default output is now `cols` on tty and `tab` otherwise, to simplify `emlop ...|cut -f...` workflow
+* Improve resume list selection:
+  - Added `--resume=any` variant to resume either main or backup list
+  - Passing `--resume` without argument is now the same as `--resume any`
+* Remove `--resume=auto` and `--color=auto` variants (just don't pass the option)
 * Upgraded clap dependency
   - Inline help styling/content changed a bit
 

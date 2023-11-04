@@ -10,41 +10,46 @@ ergonomic, see [comparison](docs/COMPARISON.md).
 
 ## Usage
 
-Emlop is split into commands. Command names and arguments can be abbreviated, and shell completion is available. See `emlop --help` and `emlop <sucommand> --help`
-for complete and up to date usage info.
+Emlop is split into commands. Command names and arguments can be abbreviated, and shell completion
+is available. See `emlop --help` and `emlop <sucommand> --help` for complete and up to date usage
+info.
 
 ### Common options
 
 All commands share these arguments, affecting parsing and output:
 
-    OPTIONS:
-      -F, --logfile <file>    Location of emerge log file. [default: /var/log/emerge.log]
-      -v                      Increase verbosity (can be given multiple times).
-      -h, --help              Show short (-h) or detailed (--help) help.
-    FILTER:
-      -f, --from <date>       Only parse log entries after <date>.
-      -t, --to <date>         Only parse log entries before <date>.
-    FORMAT:
-      -H, --header               Show table header
-          --utc                  Parse/display dates in UTC instead of local time
-          --tabs                 Separate columns using tabs instead of spaces
-          --duration <format>    Output durations in different formats. [default: hms]
-          --date <format>        Output dates in different formats. [default: ymdhms]
-          --color <when>         Enable color (auto/always/never/y/n). [default: auto]
+    Options:
+      -F, --logfile <file>  Location of emerge log file [default: /var/log/emerge.log]
+      -v...                 Increase verbosity (can be given multiple times)
+      -h, --help            Print help (see more with '--help')
+      -V, --version         Print version
+    Filter:
+      -f, --from <date>  Only parse log entries after <date>
+      -t, --to <date>    Only parse log entries before <date>
+    Format:
+      -H, --header             Show table header
+          --utc                Parse/display dates in UTC instead of local time
+      -o, --output <format>    Ouput format (cols/c/tab/t)
+          --duration <format>  Output durations in different formats [default: hms]
+          --date <format>      Output dates in different formats [default: ymdhms]
+          --color [<when>]     Enable color (always/never/y/n)
 
 
-### List merges, unmerges, and rsyncs  with `log`
+### List merges, unmerges, and syncs  with `log`
 
 ![Log demo](log.webp)
 
 Log-specific options:
 
-    FILTER:
-      <package>               Show only packages matching <package>.
-      -e, --exact             Match package with a string instead of a regex.
-      -s, --show <m,u,s,a>    Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll. [default: m]
-      -N, --first <num>       Show only the first <num> entries.
-      -n, --last <num>        Show only the last <num> entries.
+    Filter:
+      [search]...           Show only packages/repos matching <search>
+      -e, --exact           Match <search> using plain string
+      -s, --show <m,u,s,a>  Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll [default: m]
+      -N, --first [<num>]   Show only the first <num> entries
+      -n, --last [<num>]    Show only the last <num> entries
+
+Note that `emaint sync` currently [doesn't write to emerge.log](https://bugs.gentoo.org/553788), so
+`emlop l --show s` will appear empty if you use `emaint`. Use `emerge --sync` or `eix-sync` instead.
 
 ### Estimate how long a merge with take with `predict`
 
@@ -52,18 +57,16 @@ Log-specific options:
 
 Predict-specific arguments:
 
-    OPTIONS:
-        --tmpdir <dir>       Location of portage tmpdir. [default: /var/tmp]
-        --resume <source>    Use auto, main, backup, or no portage resume list [default: auto]
-    FILTER:
-      -s, --show <e,m,t,a>    Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll. [default:
-                            emt]
-      -N, --first <num>       Show only the first <num> entries.
-      -n, --last <num>        Show only the last <num> entries.
-    STATS:
-        --limit <num>    Use the last <num> merge times to predict durations. [default: 10]
-        --avg <fn>       Select function used to predict durations. [default: median]
-
+    Options:
+          --tmpdir <dir>       Location of portage tmpdir [default: /var/tmp]
+          --resume [<source>]  Use main, backup, any, or no portage resume list
+    Filter:
+      -s, --show <e,m,t,a>  Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll [default: emt]
+      -N, --first [<num>]   Show only the first <num> entries
+      -n, --last [<num>]    Show only the last <num> entries
+    Stats:
+          --limit <num>  Use the last <num> merge times to predict durations [default: 10]
+          --avg <fn>     Select function used to predict durations [default: median]
 
 ### Show aggregated statistics with `stats`
 
@@ -71,14 +74,14 @@ Predict-specific arguments:
 
 Stats-specific arguments:
 
-    FILTER:
-      <package>               Show only packages matching <package>.
-      -e, --exact             Match package with a string instead of a regex.
-      -s, --show <p,t,s,a>    Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll. [default: p]
-    STATS:
-      -g, --groupby <y,m,w,d>    Group by (y)ear, (m)onth, (w)eek, or (d)ay.
-          --limit <num>          Use the last <num> merge times to predict durations. [default: 10]
-          --avg <fn>             Select function used to predict durations. [default: median]
+    Filter:
+      [search]...           Show only packages/repos matching <search>
+      -e, --exact           Match <search> using plain string
+      -s, --show <p,t,s,a>  Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll [default: p]
+    Stats:
+      -g, --groupby <y,m,w,d>  Group by (y)ear, (m)onth, (w)eek, or (d)ay
+          --limit <num>        Use the last <num> merge times to predict durations [default: 10]
+          --avg <fn>           Select function used to predict durations [default: median]
 
 ### Other commands
 
