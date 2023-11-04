@@ -150,7 +150,7 @@ pub enum ColorStyle {
 #[derive(Clone, Copy, clap::ValueEnum, PartialEq, Eq)]
 pub enum OutStyle {
     #[clap(alias("c"))]
-    Cols,
+    Columns,
     #[clap(alias("t"))]
     Tab,
 }
@@ -183,7 +183,7 @@ impl Styles {
         };
         let out = match args.get_one("output") {
             Some(o) => *o,
-            None if isterm => OutStyle::Cols,
+            None if isterm => OutStyle::Columns,
             None => OutStyle::Tab,
         };
         let header = args.get_flag("header");

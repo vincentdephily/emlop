@@ -250,10 +250,10 @@ pub fn build_cli_nocomplete() -> Command {
                                    .hide_possible_values(true)
                                    .display_order(7)
                                    .help_heading("Format")
-                                   .help("Ouput format (cols/c/tab/t)")
-                                   .long_help("Ouput format (cols/c/tab/t)\n  \
-                                               (default): cols on tty, tab otherwise\n  \
-                                               cols|c:    space-aligned columns\n  \
+                                   .help("Ouput format (columns/c/tab/t)")
+                                   .long_help("Ouput format (columns/c/tab/t)\n  \
+                                               (default): columns on tty, tab otherwise\n  \
+                                               columns|c: space-aligned columns\n  \
                                                tab|t:     tab-separated values");
 
     ////////////////////////////////////////////////////////////
