@@ -3,18 +3,19 @@
 Original motivation for Emlop was a faster/more accurate version of `genlop -p`, and learning
 Rust. It has since gained features and maturity to compete on all fronts. This file compares
 `genlop-0.30.11`, `qlop-0.96`, and `emlop-0.6.1`. Please report any outdated/incorrect info using
-[the issue tracker](https://github.com/vincentdephily/emlop/issues).
+the [issue tracker](https://github.com/vincentdephily/emlop/issues).
 
 Known emegre log parsers:
 * [Emlop](https://github.com/vincentdephily/emlop) (Rust) is the one you're reading about.
 * [Genlop](https://github.com/gentoo-perl/genlop) (Perl) is the most well known.
 * [Qlop](https://github.com/gentoo/portage-utils) (C) is pretty fast and part of a larger toolkit.
-* [Splat](http://www.l8nite.net/projects/splat/) (Perl) look like Genlop's predecessor, dead upstream.
+* [Splat](http://www.l8nite.net/projects/splat/) (Perl) looks like Genlop's predecessor, dead upstream.
 * [Pqlop](https://bitbucket.org/LK4D4/pqlop) (Python) was an ambitious rewrite, dead upstream.
+* [Glop](https://github.com/kongo2002/glop) (Haskell) was a simple rewrite, dead upstream.
 * [Golop](https://github.com/klausman/golop) (Go) is a recent rewrite apparently abandoned quickly.
 * [Emwa](https://github.com/foxtrot-wx/emwa) (C) is a recent addition, time will tell.
 
-Perl, Python, C, Go, Rust... at least Gentoo doesn't suffer from a language monoculture ;)
+Rust, Perl, C, Python, Haskell, Go... at least Gentoo doesn't suffer from a language monoculture ;)
 
 ## Interface
 
