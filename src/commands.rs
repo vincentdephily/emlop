@@ -172,10 +172,10 @@ pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
     tblt.header([tsname,
                  "Merge count",
                  "Total time",
-                 "Predict time",
+                 "Average time",
                  "Unmerge count",
                  "Total time",
-                 "Predict time"]);
+                 "Average time"]);
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
