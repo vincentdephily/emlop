@@ -187,9 +187,9 @@ fn predict_emerge_p() {
              ("blah blah\n", format!("No pretended merge found\n"), 1),
              // Check all-unknowns
              ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
-              format!("dev-lang/unknown-1.42             ? \n\
-                       Estimate for 1 ebuild, 1 unknown  0 @ {}\n",
-                      ts(0)),
+              format!("dev-lang/unknown-1.42              ? \n\
+                       Estimate for 1 ebuild, 1 unknown  10 @ {}\n",
+                      ts(10)),
               0),
              // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
              ("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
@@ -198,8 +198,8 @@ fn predict_emerge_p() {
               format!("dev-qt/qtcore-5.9.4-r2             3:45 \n\
                        dev-lang/unknown-1.42                 ? \n\
                        dev-qt/qtgui-5.9.4-r3              4:24 \n\
-                       Estimate for 3 ebuilds, 1 unknown  8:09 @ {}\n",
-                      ts(8 * 60 + 9)),
+                       Estimate for 3 ebuilds, 1 unknown  8:19 @ {}\n",
+                      ts(8 * 60 + 9 + 10)),
               0)];
     for (i, o, e) in t {
         emlop("%F10000.log p --date unix -oc").write_stdin(i).assert().code(e).stdout(o);

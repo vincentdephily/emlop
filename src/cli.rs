@@ -170,6 +170,14 @@ pub fn build_cli_nocomplete() -> Command {
                                    weighted-arith|wa:  'sum/count' with more weight for recent values\n  \
                                    weighted-median|wm: \"middle\" value shifted toward recent values");
 
+    let unknown = Arg::new("unknown").long("unknown")
+                                     .display_order(4)
+                                     .num_args(1)
+                                     .value_name("secs")
+                                     .value_parser(value_parser!(i64).range(0..))
+                                     .default_value("10")
+                                     .help_heading("Stats")
+                                     .help("Assume unkown packages take <secs> seconds to merge");
 
     ////////////////////////////////////////////////////////////
     // Format arguments
@@ -329,6 +337,7 @@ pub fn build_cli_nocomplete() -> Command {
                                           .arg(&last)
                                           .arg(tmpdir)
                                           .arg(resume)
+                                          .arg(unknown)
                                           .arg(&avg)
                                           .arg(&limit);
     let h = "Show statistics about syncs, per-package (un)merges, and total (un)merges\n\

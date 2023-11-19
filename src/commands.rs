@@ -324,6 +324,7 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     let lim = *args.get_one("limit").unwrap();
     let avg = *args.get_one("avg").unwrap();
     let resume = args.get_one("resume").copied();
+    let unknown_pred = *args.get_one("unknown").unwrap();
     let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
     let mut tmpdirs: Vec<PathBuf> = args.get_many("tmpdir").unwrap().cloned().collect();
 
@@ -397,31 +398,28 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
         };
 
         // Find the predicted time and adjust counters
-        let pred = match times.get(p.ebuild()) {
+        let (fmtpred, pred) = match times.get(p.ebuild()) {
             Some(tv) => {
                 let pred = tv.pred(lim, avg);
-                totpredict += pred;
-                if elapsed > 0 {
-                    totelapsed += elapsed;
-                    totpredict -= std::cmp::min(pred, elapsed);
-                }
-                pred
+                (pred, pred)
             },
             None => {
                 totunknown += 1;
-                -1
+                (-1, unknown_pred)
             },
         };
+        totpredict += std::cmp::max(0, pred - elapsed);
+        totelapsed += elapsed;
 
         // Done
         if show.merge && totcount <= first {
             if elapsed > 0 {
                 let stage = get_buildlog(&p, &tmpdirs).unwrap_or_default();
                 tbl.row([&[&st.pkg, &p.ebuild_version()],
-                         &[&FmtDur(pred)],
+                         &[&FmtDur(fmtpred)],
                          &[&st.clr, &"- ", &FmtDur(elapsed), &st.clr, &stage]]);
             } else {
-                tbl.row([&[&st.pkg, &p.ebuild_version()], &[&FmtDur(pred)], &[]]);
+                tbl.row([&[&st.pkg, &p.ebuild_version()], &[&FmtDur(fmtpred)], &[]]);
             }
         }
     }

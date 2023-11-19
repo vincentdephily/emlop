@@ -2,9 +2,11 @@
 
 * Support searching by multiple terms
   - eg `emlop s -e gcc clang llvm rust`
-* Improve predict's `tmpdir`:
+* Improve predict:
   - Autodetect `tmpdir` using currently running emerge processes
   - Support multiple `--tmpdir` arguments
+  - Display elapsed time also while compiling an unknown package
+  - Assume unknown packages take 10s (overridable with `--unknown`) to compile instead of 0
 * Improve output selection:
   - `--tabs` has been renamed `--output=tab/cols` (or `-ot` for short)
   - Default output is now `cols` on tty and `tab` otherwise, to simplify `emlop ...|cut -f...` workflow
@@ -12,7 +14,7 @@
   - Added `--resume=any` variant to resume either main or backup list
   - Passing `--resume` without argument is now the same as `--resume any`
 * Remove `--resume=auto` and `--color=auto` variants (just don't pass the option)
-* Upgraded clap dependency
+* Upgraded argument parser dependency
   - Inline help styling/content changed a bit
 
 # 0.6.1 2023-06-23
