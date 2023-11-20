@@ -40,7 +40,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-      - run: cargo upgrade -Zminimal-versions
+      - run: cargo update -Zminimal-versions
       - run: cargo test -- --include-ignored
 
   rustfmt:
