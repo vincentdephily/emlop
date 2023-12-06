@@ -16,6 +16,7 @@
 * Remove `--resume=auto` and `--color=auto` variants (just don't pass the option)
 * Upgraded argument parser dependency
   - Inline help styling/content changed a bit
+* Raised MSRV to 1.70
 
 # 0.6.1 2023-06-23
 
