@@ -31,7 +31,7 @@ arm/freebsd/funtoo/paludis/etc would be appreciated.
 
 ## Release checklist
 
-* Update deps: `cargo outdated`, edit Cargo.toml, `cargo update`.
+* Update deps: `cargo outdated`, edit Cargo.toml, `cargo +nightly update -Zmsrv-policy`.
 * Check `git status` and either `commit+push` or `stash`.
 * Check github CI status.
 * Update/commit CHANGELOG.md, Cargo.toml, Cargo.lock.

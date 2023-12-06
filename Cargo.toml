@@ -16,17 +16,10 @@ rust-version = "1.65.0"
 exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
 [dependencies]
-# anstyle-parse = 0.2.2 has MSRV 1.70
-# Only used transitively, remove from Cargo.toml when our MSRV gets bumped
-anstyle-parse = "<0.2.2"
 anyhow = "1.0.32"
 atoi = "2.0.0"
-# clap 4.4.0 has MSRV 1.70
-clap = { version = "~4.3.15, <4.4.0", features = ["cargo", "derive", "unstable-styles"] }
+clap = { version = "~4.3.15", features = ["cargo", "derive", "unstable-styles"] }
 clap_complete = "~4.3.2"
-# clap_lex 0.5.1 has MSRV 1.70
-# Only used transitively, remove from Cargo.toml when our MSRV gets bumped
-clap_lex = "<0.5.1"
 crossbeam-channel = "0.5.0"
 env_logger = { version = "0.10.0", default-features = false }
 is-terminal = "0.4.9"
@@ -36,15 +29,10 @@ regex = { version = "1.10.0", default_features = false, features = ["std", "perf
 rev_lines = "0.3.0"
 serde = { version = "1.0.184", features = ["derive"] }
 serde_json = "1.0.89"
-# time 0.3.24 has MSRV 1.67
-time = {version = "~0.3.18, <0.3.24", features = ["parsing", "formatting", "local-offset", "macros"]}
+time = {version = "~0.3.18", features = ["parsing", "formatting", "local-offset", "macros"]}
 
 [dev-dependencies]
-# assert_cmd 2.0.12 has MSRV 1.66
-assert_cmd = "~2.0.0, <2.0.12"
-# predicates 3.0.4 MSRV 1.69
-# Only used transitively, remove from Cargo.toml when our MSRV gets bumped
-predicates = "<3.0.4"
+assert_cmd = "~2.0.0"
 
 [[bench]]
 # This is meant to be started directly, using scriptisto not cargo
