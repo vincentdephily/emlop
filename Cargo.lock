@@ -233,7 +233,6 @@ dependencies = [
  "clap_complete",
  "crossbeam-channel",
  "env_logger",
- "is-terminal",
  "libc",
  "log",
  "regex",

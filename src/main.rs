@@ -10,9 +10,8 @@ mod table;
 use crate::{commands::*, datetime::*, parse::AnsiStr};
 use anyhow::Error;
 use clap::{error::ErrorKind, ArgMatches, Error as ClapErr};
-use is_terminal::IsTerminal; // Can be dropped when MSRV >= 1.70
 use log::*;
-use std::str::FromStr;
+use std::{io::IsTerminal, str::FromStr};
 
 fn main() {
     let args = cli::build_cli().get_matches();
