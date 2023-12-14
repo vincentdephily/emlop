@@ -8,12 +8,13 @@
   - Display elapsed time also while compiling an unknown package
   - Assume unknown packages take 10s (overridable with `--unknown`) to compile instead of 0
 * Improve output selection:
-  - `--tabs` has been renamed `--output=tab/cols` (or `-ot` for short)
-  - Default output is now `cols` on tty and `tab` otherwise, to simplify `emlop ...|cut -f...` workflow
+  - `--tabs` has been renamed `--output=tab/columns` (or `-ot` for short)
+  - Default output is now `columns` on tty and `tab` otherwise, to simplify `emlop ...|cut -f...` workflow
 * Improve resume list selection:
   - Added `--resume=any` variant to resume either main or backup list
   - Passing `--resume` without argument is now the same as `--resume any`
 * Remove `--resume=auto` and `--color=auto` variants (just don't pass the option)
+* Support reading gzip compressed `emerge.log.gz` file
 * Upgraded argument parser dependency
   - Inline help styling/content changed a bit
 * Raised MSRV to 1.70

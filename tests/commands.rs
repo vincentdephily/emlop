@@ -112,6 +112,13 @@ fn log() {
 }
 
 #[test]
+fn compressed() {
+    // The important part here is that we're reading the gzip file
+    let o = "831\t60:07:06\t4:20\t832\t38:31\t2\n";
+    emlop("%Flog.gz s -st -ot").assert().stdout(o);
+}
+
+#[test]
 fn starttime() {
     let o1 = emlop_out("%F10000.log l --dat=unix --dur=s");
     let o2 = emlop_out("%F10000.log l --dat=unix --dur=s --starttime");

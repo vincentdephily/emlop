@@ -3,8 +3,9 @@
 //! Use `new_hist()` to start parsing and retrieve `Hist` enums.
 
 use crate::{datetime::fmt_utctime, Show};
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, ensure, Context, Error};
 use crossbeam_channel::{bounded, Receiver, Sender};
+use flate2::read::GzDecoder;
 use log::*;
 use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use std::{fs::File,
@@ -69,6 +70,18 @@ impl Hist {
 }
 
 
+/// Open maybe-compressed file, returning a BufReader
+fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Send>>, Error> {
+    let reader = File::open(name).with_context(|| format!("Cannot open {name:?}"))?;
+    if name.ends_with(".gz") {
+        let gz = GzDecoder::new(reader);
+        ensure!(gz.header().is_some(), "Cannot open {name:?}: invalid gzip header");
+        Ok(BufReader::new(Box::new(gz)))
+    } else {
+        Ok(BufReader::new(Box::new(reader)))
+    }
+}
+
 /// Parse emerge log into a channel of `Parsed` enums.
 pub fn get_hist(file: String,
                 min_ts: Option<i64>,
@@ -79,16 +92,15 @@ pub fn get_hist(file: String,
                 -> Result<Receiver<Hist>, Error> {
     debug!("get_hist input={} min={:?} max={:?} str={:?} exact={}",
            file, min_ts, max_ts, search_terms, search_exact);
-    let reader = File::open(&file).with_context(|| format!("Cannot open {file:?}"))?;
-    let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
+    let mut buf = open_any_buffered(&file)?;
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
     let filter = FilterStr::try_new(search_terms, search_exact)?;
+    let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
     thread::spawn(move || {
         let show_merge = show.merge || show.pkg || show.tot;
         let show_unmerge = show.unmerge || show.pkg || show.tot;
         let mut prev_t = 0;
         let mut curline = 1;
-        let mut buf = BufReader::new(reader);
         let mut line = Vec::with_capacity(255);
         loop {
             match buf.read_until(b'\n', &mut line) {

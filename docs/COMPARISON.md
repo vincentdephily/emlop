@@ -5,7 +5,7 @@ Rust. It has since gained features and maturity to compete on all fronts. This f
 `genlop-0.30.11`, `qlop-0.96`, and `emlop-0.6.1`. Please report any outdated/incorrect info using
 the [issue tracker](https://github.com/vincentdephily/emlop/issues).
 
-Known emegre log parsers:
+Known emerge log parsers:
 * [Emlop](https://github.com/vincentdephily/emlop) (Rust) is the one you're reading about.
 * [Genlop](https://github.com/gentoo-perl/genlop) (Perl) is the most well known.
 * [Qlop](https://github.com/gentoo/portage-utils) (C) is pretty fast and part of a larger toolkit.
@@ -163,7 +163,7 @@ the terminal emulator). Genlop is noticably slow for basic tasks, and can be pro
 |                                                  | genlop       | qlop   | emlop             |
 | :----------------------------------------------- | :----------: | :----: | :---------------: |
 | Shell completion                                 | bash         | none   | bash/zsh/fish/... |
-| An ebuild in the gentoo portage tree             | yes          | yes    | yes               |
+| Support compressed emerge.log                    | yes          | no     | yes               |
 | Unittests                                        | no           | yes    | yes               |
 | Documentation and help                           | ok           | good   | good              |
 | Development activity                             | unmaintained | active | active            |
