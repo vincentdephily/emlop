@@ -2,12 +2,13 @@
 
 mod cli;
 mod commands;
+mod config;
 mod datetime;
 mod parse;
 mod proces;
 mod table;
 
-use crate::{commands::*, datetime::*, parse::AnsiStr};
+use crate::{commands::*, config::*, datetime::*, parse::AnsiStr};
 use anyhow::Error;
 use clap::{error::ErrorKind, ArgMatches, Error as ClapErr};
 use log::*;
@@ -24,13 +25,14 @@ fn main() {
     };
     env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
     trace!("{:?}", args);
-    let res = match args.subcommand() {
-        Some(("log", sub_args)) => cmd_list(sub_args),
-        Some(("stats", sub_args)) => cmd_stats(sub_args),
-        Some(("predict", sub_args)) => cmd_predict(sub_args),
-        Some(("accuracy", sub_args)) => cmd_accuracy(sub_args),
-        Some(("complete", sub_args)) => cmd_complete(sub_args),
-        _ => unreachable!("clap should have exited already"),
+
+    let res = match Config::try_new(&args) {
+        Ok(Config::Log(subargs, conf, subconf)) => cmd_log(&subargs, conf, subconf),
+        Ok(Config::Stats(subargs, conf)) => cmd_stats(&subargs, conf),
+        Ok(Config::Predict(subargs, conf)) => cmd_predict(&subargs, conf),
+        Ok(Config::Accuracy(subargs, conf)) => cmd_accuracy(&subargs, conf),
+        Ok(Config::Complete(subargs)) => cmd_complete(&subargs),
+        Err(e) => Err(e),
     };
     match res {
         Ok(true) => std::process::exit(0),
@@ -191,7 +193,7 @@ pub struct Styles {
     out: OutStyle,
 }
 impl Styles {
-    fn from_args(args: &ArgMatches) -> Self {
+    fn from_args(args: &ArgMatches, conf: ConfigAll) -> Self {
         let isterm = std::io::stdout().is_terminal();
         let color = match args.get_one("color") {
             Some(ColorStyle::Always) => true,
@@ -205,7 +207,7 @@ impl Styles {
         };
         let header = args.get_flag("header");
         let dur_t = *args.get_one("duration").unwrap();
-        let date_fmt = *args.get_one("date").unwrap();
+        let date_fmt = conf.date;
         let date_offset = get_offset(args.get_flag("utc"));
         Styles { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
                  merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
@@ -223,6 +225,6 @@ impl Styles {
     #[cfg(test)]
     fn from_str(s: impl AsRef<str>) -> Self {
         let args = cli::build_cli().get_matches_from(s.as_ref().split_whitespace());
-        Self::from_args(&args)
+        Self::from_args(&args, ConfigAll::try_new(&args, &Toml::default()).unwrap())
     }
 }

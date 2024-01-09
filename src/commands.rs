@@ -6,8 +6,8 @@ use std::{collections::{BTreeMap, HashMap},
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
-    let st = &Styles::from_args(args);
+pub fn cmd_log(args: &ArgMatches, gconf: ConfigAll, sconf: ConfigLog) -> Result<bool, Error> {
+    let st = &Styles::from_args(args, gconf);
     let show = *args.get_one("show").unwrap();
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
                         get_parse(args, "from", parse_date, st.date_offset)?,
@@ -15,7 +15,6 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                         show,
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;
-    let first = *args.get_one("first").unwrap_or(&usize::MAX);
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let stt = args.get_flag("starttime");
     let mut merges: HashMap<String, i64> = HashMap::new();
@@ -63,7 +62,7 @@ pub fn cmd_list(args: &ArgMatches) -> Result<bool, Error> {
                 }
             },
         }
-        if found >= first {
+        if found >= sconf.first {
             break;
         }
     }
@@ -144,8 +143,8 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(args: &ArgMatches) -> Result<bool, Error> {
-    let st = &Styles::from_args(args);
+pub fn cmd_stats(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
+    let st = &Styles::from_args(args, conf);
     let show = *args.get_one("show").unwrap();
     let timespan_opt: Option<&Timespan> = args.get_one("group");
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
@@ -311,8 +310,8 @@ fn cmd_stats_group(tbls: &mut Table<5>,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
-    let st = &Styles::from_args(args);
+pub fn cmd_predict(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
+    let st = &Styles::from_args(args, conf);
     let now = epoch_now();
     let show: Show = *args.get_one("show").unwrap();
     let first = *args.get_one("first").unwrap_or(&usize::MAX);
@@ -451,8 +450,8 @@ pub fn cmd_predict(args: &ArgMatches) -> Result<bool, Error> {
     Ok(totcount > 0)
 }
 
-pub fn cmd_accuracy(args: &ArgMatches) -> Result<bool, Error> {
-    let st = &Styles::from_args(args);
+pub fn cmd_accuracy(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
+    let st = &Styles::from_args(args, conf);
     let show: Show = *args.get_one("show").unwrap();
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
                         get_parse(args, "from", parse_date, st.date_offset)?,

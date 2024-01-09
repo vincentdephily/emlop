@@ -194,20 +194,17 @@ pub fn build_cli_nocomplete() -> Command {
                         .long("date")
                         .display_order(2)
                         .global(true)
-                        .value_parser(value_parser!(crate::datetime::DateStyle))
-                        .hide_possible_values(true)
-                        .default_value("ymdhms")
                         .display_order(52)
                         .help_heading("Format")
                         .help("Output dates in different formats")
                         .long_help("Output dates in different formats\n  \
-                                    ymd|d:        2022-01-31\n  \
-                                    ymdhms|dt:    2022-01-31 08:59:46\n  \
-                                    ymdhmso|dto:  2022-01-31 08:59:46 +00:00\n  \
-                                    rfc3339|3339: 2022-01-31T08:59:46+00:00\n  \
-                                    rfc2822|2822: Mon, 31 Jan 2022 08:59:46 +00:00\n  \
-                                    compact:      20220131085946\n  \
-                                    unix:         1643619586");
+                                    ymd|d:               2022-01-31\n  \
+                                    (default)|ymdhms|dt: 2022-01-31 08:59:46\n  \
+                                    ymdhmso|dto:         2022-01-31 08:59:46 +00:00\n  \
+                                    rfc3339|3339:        2022-01-31T08:59:46+00:00\n  \
+                                    rfc2822|2822:        Mon, 31 Jan 2022 08:59:46 +00:00\n  \
+                                    compact:             20220131085946\n  \
+                                    unix:                1643619586");
     let duration = Arg::new("duration").value_name("format")
                                        .long("duration")
                                        .display_order(3)
@@ -311,6 +308,17 @@ pub fn build_cli_nocomplete() -> Command {
                                                  -v:   show warnings\n  \
                                                  -vv:  show info\n  \
                                                  -vvv: show debug");
+    let h = "Location of emlop config file\n\
+             Default is $HOME/.config/emlop.toml (or $EMLOP_CONFIG if set)\n\
+             Set to an empty string to disable\n\
+             Config in in TOML format, see example file in /usr/share/doc/emlop-x.y.z/";
+    let config = Arg::new("config").value_name("file")
+                                   .long("config")
+                                   .global(true)
+                                   .num_args(1)
+                                   .display_order(5)
+                                   .help(h.split_once('\n').unwrap().0)
+                                   .long_help(h);
 
     ////////////////////////////////////////////////////////////
     // Subcommands
@@ -370,9 +378,8 @@ pub fn build_cli_nocomplete() -> Command {
                  https://github.com/vincentdephily/emlop";
     let after_help =
         "Subcommands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
-                      Subcommands have their own -h / --help\n\
-                      Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of \
-                      other errors";
+         Subcommands have their own -h / --help\n\
+         Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of other errors";
     let styles =
         styling::Styles::styled().header(styling::AnsiColor::Blue.on_default()
                                          | styling::Effects::BOLD)
@@ -398,6 +405,7 @@ pub fn build_cli_nocomplete() -> Command {
                          .arg(color)
                          .arg(output)
                          .arg(logfile)
+                         .arg(config)
                          .arg(verbose)
                          .subcommand(cmd_log)
                          .subcommand(cmd_pred)

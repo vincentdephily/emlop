@@ -20,6 +20,7 @@ fn ts(secs: i64) -> i64 {
 fn emlop(args: &str) -> Command {
     let mut e = Command::new(env!("CARGO_BIN_EXE_emlop"));
     e.env("TZ", "UTC");
+    e.env("EMLOP_CONFIG", "");
     e.args(args.replace("%F", "-F tests/emerge.").split_whitespace());
     e
 }
