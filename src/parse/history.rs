@@ -90,8 +90,8 @@ pub fn get_hist(file: String,
                 search_terms: Vec<String>,
                 search_exact: bool)
                 -> Result<Receiver<Hist>, Error> {
-    debug!("get_hist input={} min={:?} max={:?} str={:?} exact={}",
-           file, min_ts, max_ts, search_terms, search_exact);
+    debug!("File: {file}");
+    debug!("Show: {show}");
     let mut buf = open_any_buffered(&file)?;
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
     let filter = FilterStr::try_new(search_terms, search_exact)?;
@@ -156,11 +156,11 @@ pub fn get_hist(file: String,
 /// Return min/max timestamp depending on options.
 fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
     match (min, max) {
-        (None, None) => debug!("Date filter: None"),
-        (Some(a), None) => debug!("Date filter: after {}", fmt_utctime(a)),
-        (None, Some(b)) => debug!("Date filter: before {}", fmt_utctime(b)),
+        (None, None) => debug!("Date: None"),
+        (Some(a), None) => debug!("Date: after {}", fmt_utctime(a)),
+        (None, Some(b)) => debug!("Date: before {}", fmt_utctime(b)),
         (Some(a), Some(b)) if a < b => {
-            debug!("Date filter: between {} and {}", fmt_utctime(a), fmt_utctime(b))
+            debug!("Date: between {} and {}", fmt_utctime(a), fmt_utctime(b))
         },
         (Some(a), Some(b)) => {
             bail!("Invalid date filter: {} <= {}, did you swap --to and --from ?",
@@ -180,7 +180,7 @@ enum FilterStr {
 }
 impl FilterStr {
     fn try_new(terms: Vec<String>, exact: bool) -> Result<Self, regex::Error> {
-        debug!("Term filter: {terms:?} {exact}");
+        debug!("Search: {terms:?} {exact}");
         Ok(match (terms.len(), exact) {
             (0, _) => Self::True,
             (_, true) => {

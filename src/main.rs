@@ -101,6 +101,24 @@ impl Show {
         }
     }
 }
+impl std::fmt::Display for Show {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut sep = "";
+        for (b, s) in [(self.pkg, "pkg"),
+                       (self.tot, "total"),
+                       (self.sync, "sync"),
+                       (self.merge, "merge"),
+                       (self.unmerge, "unmerge"),
+                       (self.emerge, "emerge")]
+        {
+            if b {
+                write!(f, "{sep}{s}")?;
+                sep = ",";
+            }
+        }
+        Ok(())
+    }
+}
 
 #[derive(Clone, Copy, clap::ValueEnum)]
 pub enum Average {
