@@ -227,7 +227,9 @@ pub fn build_cli_nocomplete() -> Command {
                              .help_heading("Format")
                              .help("Parse/display dates in UTC instead of local time");
     let starttime = Arg::new("starttime").long("starttime")
-                                         .action(SetTrue)
+                                         .num_args(..=1)
+                                         .default_missing_value("y")
+                                         .value_name("bool")
                                          .display_order(5)
                                          .help_heading("Format")
                                          .help("Display start time instead of end time");

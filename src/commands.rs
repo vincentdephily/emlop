@@ -16,7 +16,7 @@ pub fn cmd_log(args: &ArgMatches, gconf: ConfigAll, sconf: ConfigLog) -> Result<
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
-    let stt = args.get_flag("starttime");
+    let stt = sconf.starttime;
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;

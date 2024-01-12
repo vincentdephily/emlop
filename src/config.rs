@@ -1,12 +1,17 @@
 use crate::DateStyle;
 use anyhow::{Context, Error};
-use clap::{error::{ContextKind, ContextValue, Error as ClapError},
+use clap::{error::{ContextKind, ContextValue, Error as ClapError, ErrorKind},
            ArgMatches};
 use serde::Deserialize;
 use std::{env::var, fs::File, io::Read};
 
+#[derive(Deserialize, Debug, Default, Clone, Copy)]
+pub struct TomlLog {
+    starttime: Option<bool>,
+}
 #[derive(Deserialize, Debug, Default)]
 pub struct Toml {
+    log: Option<TomlLog>,
     date: Option<String>,
 }
 impl Toml {
@@ -28,24 +33,48 @@ impl Toml {
     }
 }
 
-fn err_src(mut err: ClapError, src: String) -> ClapError {
-    err.insert(ContextKind::InvalidArg, ContextValue::String(src));
+pub fn err(val: String, src: &'static str, possible: &'static str) -> ClapError {
+    let mut err = clap::Error::new(ErrorKind::InvalidValue);
+    err.insert(ContextKind::InvalidValue, ContextValue::String(val));
+    let p = possible.split_ascii_whitespace().map(|s| s.to_string()).collect();
+    err.insert(ContextKind::ValidValue, ContextValue::Strings(p));
+    err.insert(ContextKind::InvalidArg, ContextValue::String(src.to_string()));
     err
 }
-fn select<T>(arg: Option<&String>,
-             argsrc: &'static str,
-             toml: &Option<String>,
-             tomlsrc: &'static str,
-             def: &'static str)
-             -> Result<T, ClapError>
-    where T: for<'a> TryFrom<&'a str, Error = ClapError>
+
+pub trait ArgParse<T> {
+    fn parse(val: &T, src: &'static str) -> Result<Self, ClapError>
+        where Self: Sized;
+}
+impl ArgParse<bool> for bool {
+    fn parse(b: &bool, _src: &'static str) -> Result<Self, ClapError> {
+        Ok(*b)
+    }
+}
+impl ArgParse<String> for bool {
+    fn parse(s: &String, src: &'static str) -> Result<Self, ClapError> {
+        match s.as_str() {
+            "y" | "yes" => Ok(true),
+            "n" | "no" => Ok(false),
+            _ => Err(err(s.to_owned(), src, "y(es) n(o)")),
+        }
+    }
+}
+
+// TODO nicer way to specify src
+fn sel<A, B, T>(arg: Option<&A>,
+                argsrc: &'static str,
+                toml: &Option<B>,
+                tomlsrc: &'static str)
+                -> Result<T, ClapError>
+    where T: ArgParse<A> + ArgParse<B> + Default
 {
     if let Some(a) = arg {
-        T::try_from(a.as_str()).map_err(|e| err_src(e, format!("{argsrc} (argument)")))
+        T::parse(a, argsrc)
     } else if let Some(a) = toml {
-        T::try_from(a.as_str()).map_err(|e| err_src(e, format!("{tomlsrc} (config)")))
+        T::parse(a, tomlsrc)
     } else {
-        Ok(T::try_from(def).expect("default value"))
+        Ok(T::default())
     }
 }
 
@@ -60,6 +89,7 @@ pub struct ConfigAll {
     pub date: DateStyle,
 }
 pub struct ConfigLog {
+    pub starttime: bool,
     pub first: usize,
 }
 
@@ -81,12 +111,16 @@ impl<'a> Config<'a> {
 
 impl ConfigAll {
     pub fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { date: select(args.get_one("date"), "--date", &toml.date, "date", "ymdhms")? })
+        Ok(Self { date: sel(args.get_one("date"), "--date", &toml.date, "date")? })
     }
 }
 
 impl ConfigLog {
-    pub fn try_new(args: &ArgMatches, _toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { first: *args.get_one("first").unwrap_or(&usize::MAX) })
+    pub fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
+        Ok(Self { starttime: sel(args.get_one::<String>("starttime"),
+                                 "--starttime",
+                                 &toml.log.and_then(|l| l.starttime),
+                                 "[log] starttime")?,
+                  first: *args.get_one("first").unwrap_or(&usize::MAX) })
     }
 }

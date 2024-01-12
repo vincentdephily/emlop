@@ -1,6 +1,7 @@
-use crate::{table::Disp, wtb, DurationStyle, Styles};
+use crate::{config::{err, ArgParse},
+            table::Disp,
+            wtb, DurationStyle, Styles};
 use anyhow::{bail, Error};
-use clap::error::{ContextKind, ContextValue, ErrorKind};
 use log::{debug, warn};
 use regex::Regex;
 use std::{convert::TryFrom,
@@ -27,10 +28,14 @@ pub fn get_offset(utc: bool) -> UtcOffset {
 // See <https://github.com/time-rs/time/issues/429>
 #[derive(Clone, Copy)]
 pub struct DateStyle(&'static [time::format_description::FormatItem<'static>]);
-impl TryFrom<&str> for DateStyle {
-    type Error = clap::error::Error;
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        let fmt = match s {
+impl Default for DateStyle {
+    fn default() -> Self {
+        Self(format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"))
+    }
+}
+impl ArgParse<String> for DateStyle {
+    fn parse(s: &String, src: &'static str) -> Result<Self, clap::error::Error> {
+        let fmt = match s.as_str() {
             "ymd" | "d" => format_description!("[year]-[month]-[day]"),
             "ymdhms" | "dt" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
             "ymdhmso" | "dto" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
@@ -38,12 +43,7 @@ impl TryFrom<&str> for DateStyle {
             "rfc2822" | "2822" => format_description!("[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
             "compact" => format_description!("[year][month][day][hour][minute][second]"),
             "unix" => &[],
-            _ =>{
-                let mut err = clap::Error::new(ErrorKind::InvalidValue);
-                err.insert(ContextKind::InvalidValue, ContextValue::String(s.to_owned()));
-                err.insert(ContextKind::ValidValue, ContextValue::Strings("ymd d ymdhms dt ymdhmso dto rfc3339 3339 rfc2822 2822 compact unix".split_ascii_whitespace().map(|s|s.to_string()).collect()));
-                return Err(err)
-            }
+            _ => return Err(err(s.to_owned(), src, "ymd d ymdhms dt ymdhmso dto rfc3339 3339 rfc2822 2822 compact unix"))
         };
         Ok(Self(fmt))
     }
