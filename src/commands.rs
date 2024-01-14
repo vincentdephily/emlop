@@ -143,7 +143,7 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
+pub fn cmd_stats(args: &ArgMatches, conf: ConfigAll, sconf: ConfigStats) -> Result<bool, Error> {
     let st = &Styles::from_args(args, conf);
     let show = *args.get_one("show").unwrap();
     let timespan_opt: Option<&Timespan> = args.get_one("group");
@@ -154,7 +154,6 @@ pub fn cmd_stats(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
-    let avg = *args.get_one("avg").unwrap();
     let tsname = timespan_opt.map_or("", |timespan| timespan.name());
     let mut tbls = Table::new(st).align_left(0).align_left(1).margin(1, " ");
     tbls.header([tsname, "Repo", "Sync count", "Total time", "Predict time"]);
@@ -190,7 +189,7 @@ pub fn cmd_stats(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
                 curts = t;
             } else if t > nextts {
                 let group = timespan.at(curts, st.date_offset);
-                cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, st, lim, avg, show, group,
+                cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, st, lim, sconf.avg, show, group,
                                 &sync_time, &pkg_time);
                 sync_time.clear();
                 pkg_time.clear();
@@ -234,7 +233,7 @@ pub fn cmd_stats(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
         }
     }
     let group = timespan_opt.map(|timespan| timespan.at(curts, st.date_offset)).unwrap_or_default();
-    cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, st, lim, avg, show, group, &sync_time,
+    cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, st, lim, sconf.avg, show, group, &sync_time,
                     &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
     let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
@@ -310,7 +309,7 @@ fn cmd_stats_group(tbls: &mut Table<5>,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
+pub fn cmd_predict(args: &ArgMatches, conf: ConfigAll, sconf: ConfigPred) -> Result<bool, Error> {
     let st = &Styles::from_args(args, conf);
     let now = epoch_now();
     let show: Show = *args.get_one("show").unwrap();
@@ -321,7 +320,6 @@ pub fn cmd_predict(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
         None => usize::MAX,
     };
     let lim = *args.get_one("limit").unwrap();
-    let avg = *args.get_one("avg").unwrap();
     let resume = args.get_one("resume").copied();
     let unknown_pred = *args.get_one("unknown").unwrap();
     let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
@@ -399,7 +397,7 @@ pub fn cmd_predict(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
         // Find the predicted time and adjust counters
         let (fmtpred, pred) = match times.get(p.ebuild()) {
             Some(tv) => {
-                let pred = tv.pred(lim, avg);
+                let pred = tv.pred(lim, sconf.avg);
                 (pred, pred)
             },
             None => {
@@ -450,7 +448,10 @@ pub fn cmd_predict(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
     Ok(totcount > 0)
 }
 
-pub fn cmd_accuracy(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
+pub fn cmd_accuracy(args: &ArgMatches,
+                    conf: ConfigAll,
+                    sconf: ConfigAccuracy)
+                    -> Result<bool, Error> {
     let st = &Styles::from_args(args, conf);
     let show: Show = *args.get_one("show").unwrap();
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
@@ -461,7 +462,6 @@ pub fn cmd_accuracy(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
                         args.get_flag("exact"))?;
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let lim = *args.get_one("limit").unwrap();
-    let avg = *args.get_one("avg").unwrap();
     let mut pkg_starts: HashMap<String, i64> = HashMap::new();
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
@@ -479,7 +479,7 @@ pub fn cmd_accuracy(args: &ArgMatches, conf: ConfigAll) -> Result<bool, Error> {
                 if let Some(start) = pkg_starts.remove(key) {
                     let times = pkg_times.entry(p.ebuild().to_owned()).or_insert_with(Times::new);
                     let real = ts - start;
-                    match times.pred(lim, avg) {
+                    match times.pred(lim, sconf.avg) {
                         -1 => {
                             if show.merge {
                                 tbl.row([&[&FmtDate(ts)],

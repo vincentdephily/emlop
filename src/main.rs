@@ -27,11 +27,11 @@ fn main() {
     trace!("{:?}", args);
 
     let res = match Config::try_new(&args) {
-        Ok(Config::Log(subargs, conf, subconf)) => cmd_log(&subargs, conf, subconf),
-        Ok(Config::Stats(subargs, conf)) => cmd_stats(&subargs, conf),
-        Ok(Config::Predict(subargs, conf)) => cmd_predict(&subargs, conf),
-        Ok(Config::Accuracy(subargs, conf)) => cmd_accuracy(&subargs, conf),
-        Ok(Config::Complete(subargs)) => cmd_complete(&subargs),
+        Ok(Config::Log(subargs, conf, subconf)) => cmd_log(subargs, conf, subconf),
+        Ok(Config::Stats(subargs, conf, subconf)) => cmd_stats(subargs, conf, subconf),
+        Ok(Config::Predict(subargs, conf, subconf)) => cmd_predict(subargs, conf, subconf),
+        Ok(Config::Accuracy(subargs, conf, subconf)) => cmd_accuracy(subargs, conf, subconf),
+        Ok(Config::Complete(subargs)) => cmd_complete(subargs),
         Err(e) => Err(e),
     };
     match res {
@@ -122,17 +122,6 @@ impl std::fmt::Display for Show {
     }
 }
 
-#[derive(Clone, Copy, clap::ValueEnum)]
-pub enum Average {
-    #[clap(alias("a"))]
-    Arith,
-    #[clap(alias("m"))]
-    Median,
-    #[clap(alias("wa"))]
-    WeightedArith,
-    #[clap(alias("wm"))]
-    WeightedMedian,
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum ResumeKind {

@@ -159,14 +159,12 @@ pub fn build_cli_nocomplete() -> Command {
         Arg::new("avg").long("avg")
                        .value_name("fn")
                        .display_order(3)
-                       .value_parser(value_parser!(crate::Average))
                        .hide_possible_values(true)
-                       .default_value("median")
                        .help_heading("Stats")
                        .help("Select function used to predict durations")
                        .long_help("Select function used to predict durations\n  \
                                    arith|a:            simple 'sum/count' average\n  \
-                                   median|m:           middle value, mitigates outliers\n  \
+                                   (defaut)|median|m:  middle value, mitigates outliers\n  \
                                    weighted-arith|wa:  'sum/count' with more weight for recent values\n  \
                                    weighted-median|wm: \"middle\" value shifted toward recent values");
 

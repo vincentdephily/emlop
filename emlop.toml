@@ -1,3 +1,4 @@
+########################################
 # This is an example emlop config file.
 #
 # To use it, copy to $HOME/.config/emlop.toml (or to whatever you set $EMLOP_CONFIG to) and
@@ -6,9 +7,15 @@
 # All config items have a corresponding command-line arg, see `emlop <subcommand> --help` for
 # detailed format and behavior. Not all command-line args have a config item, this file lists all
 # the supported items.
-
 ########################################
-# date = "rfc2822"
 
+
+# date = "rfc2822"
 [log]
 #starttime = true
+[predict]
+#average = "arith"
+[stats]
+#average = "arith"
+[accuracy]
+#average = "arith"
