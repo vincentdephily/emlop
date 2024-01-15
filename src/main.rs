@@ -14,14 +14,13 @@ use clap::{error::ErrorKind, ArgMatches, Error as ClapErr};
 use log::*;
 use std::{io::IsTerminal, str::FromStr};
 
-
 fn main() {
-    let res = match Conf::try_new() {
-        Ok(Conf::Log(args, gconf, sconf)) => cmd_log(&args, gconf, sconf),
-        Ok(Conf::Stats(args, gconf, sconf)) => cmd_stats(&args, gconf, sconf),
-        Ok(Conf::Predict(args, gconf, sconf)) => cmd_predict(&args, gconf, sconf),
-        Ok(Conf::Accuracy(args, gconf, sconf)) => cmd_accuracy(&args, gconf, sconf),
-        Ok(Conf::Complete(args)) => cmd_complete(&args),
+    let res = match Configs::load() {
+        Ok(Configs::Log(args, conf, sconf)) => cmd_log(&args, &conf, sconf),
+        Ok(Configs::Stats(args, conf, sconf)) => cmd_stats(&args, &conf, sconf),
+        Ok(Configs::Predict(args, conf, sconf)) => cmd_predict(&args, &conf, sconf),
+        Ok(Configs::Accuracy(args, conf, sconf)) => cmd_accuracy(&args, &conf, sconf),
+        Ok(Configs::Complete(args)) => cmd_complete(&args),
         Err(e) => Err(e),
     };
     match res {
@@ -151,59 +150,4 @@ pub enum OutStyle {
     Columns,
     #[clap(alias("t"))]
     Tab,
-}
-
-/// Holds styling preferences.
-///
-/// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
-/// alignments properly.
-pub struct Styles {
-    pkg: AnsiStr,
-    merge: AnsiStr,
-    unmerge: AnsiStr,
-    dur: AnsiStr,
-    cnt: AnsiStr,
-    clr: AnsiStr,
-    lineend: &'static [u8],
-    header: bool,
-    dur_t: DurationStyle,
-    date_offset: time::UtcOffset,
-    date_fmt: DateStyle,
-    out: OutStyle,
-}
-impl Styles {
-    fn from_args(args: &ArgMatches, conf: &ConfAll) -> Self {
-        let isterm = std::io::stdout().is_terminal();
-        let color = match args.get_one("color") {
-            Some(ColorStyle::Always) => true,
-            Some(ColorStyle::Never) => false,
-            None => isterm,
-        };
-        let out = match args.get_one("output") {
-            Some(o) => *o,
-            None if isterm => OutStyle::Columns,
-            None => OutStyle::Tab,
-        };
-        let header = args.get_flag("header");
-        let dur_t = *args.get_one("duration").unwrap();
-        let date_fmt = conf.date;
-        let date_offset = get_offset(args.get_flag("utc"));
-        Styles { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
-                 merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
-                 unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
-                 dur: AnsiStr::from(if color { "\x1B[1;35m" } else { "" }),
-                 cnt: AnsiStr::from(if color { "\x1B[2;33m" } else { "" }),
-                 clr: AnsiStr::from(if color { "\x1B[0m" } else { "" }),
-                 lineend: if color { b"\x1B[0m\n" } else { b"\n" },
-                 header,
-                 dur_t,
-                 date_offset,
-                 date_fmt,
-                 out }
-    }
-    #[cfg(test)]
-    fn from_str(s: impl AsRef<str>) -> Self {
-        let args = cli::build_cli().get_matches_from(s.as_ref().split_whitespace());
-        Self::from_args(&args, &ConfAll::try_new(&args, &Toml::default()).unwrap())
-    }
 }

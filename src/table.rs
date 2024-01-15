@@ -1,13 +1,13 @@
-use crate::{OutStyle, Styles};
+use crate::{Conf, OutStyle};
 use std::{collections::VecDeque,
           io::{stdout, BufWriter, Write as _}};
 
 pub trait Disp {
     /// Write to buf and returns the number of visible chars written
-    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize;
+    fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize;
 }
 impl<T: std::fmt::Display> Disp for T {
-    fn out(&self, buf: &mut Vec<u8>, _st: &Styles) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, _conf: &Conf) -> usize {
         let start = buf.len();
         write!(buf, "{self}").expect("write to buf");
         buf.len() - start
@@ -33,8 +33,8 @@ pub struct Table<'a, const N: usize> {
     /// Whether a header has been set
     have_header: bool,
 
-    /// Main style
-    styles: &'a Styles,
+    /// Main config
+    conf: &'a Conf,
     /// Column alignments (defaults to Right)
     aligns: [Align; N],
     /// Margin between columns, printed left of the column, defaults to `"  "`
@@ -45,11 +45,11 @@ pub struct Table<'a, const N: usize> {
 
 impl<'a, const N: usize> Table<'a, N> {
     /// Initialize new table
-    pub fn new(st: &'a Styles) -> Table<N> {
+    pub fn new(conf: &'a Conf) -> Table<N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
                widths: [0; N],
-               styles: st,
+               conf: conf,
                have_header: false,
                aligns: [Align::Right; N],
                margins: ["  "; N],
@@ -72,7 +72,7 @@ impl<'a, const N: usize> Table<'a, N> {
     }
     /// Add a section header
     pub fn header(&mut self, row: [&str; N]) {
-        if self.styles.header {
+        if self.conf.header {
             self.last = self.last.saturating_add(1);
             self.have_header = true;
 
@@ -102,7 +102,7 @@ impl<'a, const N: usize> Table<'a, N> {
         let mut idxrow = [(0, 0, 0); N];
         for i in 0..N {
             let start = self.buf.len();
-            let len = row[i].iter().map(|c| c.out(&mut self.buf, self.styles)).sum();
+            let len = row[i].iter().map(|c| c.out(&mut self.buf, self.conf)).sum();
             self.widths[i] = usize::max(self.widths[i], len);
             idxrow[i] = (len, start, self.buf.len());
         }
@@ -131,7 +131,7 @@ impl<'a, const N: usize> Table<'a, N> {
                     continue;
                 }
                 let (len, pos0, pos1) = row[i];
-                if self.styles.out == OutStyle::Tab {
+                if self.conf.out == OutStyle::Tab {
                     if !first {
                         out.write_all(b"\t").unwrap_or(());
                     }
@@ -158,7 +158,7 @@ impl<'a, const N: usize> Table<'a, N> {
                 }
                 first = false;
             }
-            out.write_all(self.styles.lineend).unwrap_or(());
+            out.write_all(self.conf.lineend).unwrap_or(());
         }
     }
 }
@@ -184,24 +184,24 @@ mod test {
 
     #[test]
     fn last() {
-        let st = Styles::from_str("emlop log --color=n -H");
+        let conf = Conf::from_str("emlop log --color=n -H");
 
         // No limit
-        let mut t = Table::<1>::new(&st);
+        let mut t = Table::<1>::new(&conf);
         for i in 1..10 {
             t.row([&[&format!("{i}")]]);
         }
         check(t, "1\n2\n3\n4\n5\n6\n7\n8\n9\n");
 
         // 5 max
-        let mut t = Table::<1>::new(&st).last(5);
+        let mut t = Table::<1>::new(&conf).last(5);
         for i in 1..10 {
             t.row([&[&format!("{i}")]]);
         }
         check(t, "5\n6\n7\n8\n9\n");
 
         // 5 max ignoring header
-        let mut t = Table::new(&st).last(5);
+        let mut t = Table::new(&conf).last(5);
         t.header(["h"]);
         for i in 1..10 {
             t.row([&[&format!("{i}")]]);
@@ -211,8 +211,8 @@ mod test {
 
     #[test]
     fn align_cols() {
-        let st = Styles::from_str("emlop log --color=n --output=c");
-        let mut t = Table::<2>::new(&st).align_left(0);
+        let conf = Conf::from_str("emlop log --color=n --output=c");
+        let mut t = Table::<2>::new(&conf).align_left(0);
         t.row([&[&"short"], &[&1]]);
         t.row([&[&"looooooooooooong"], &[&1]]);
         t.row([&[&"high"], &[&9999]]);
@@ -225,8 +225,8 @@ mod test {
 
     #[test]
     fn align_tab() {
-        let st = Styles::from_str("emlop log --color=n --output=t");
-        let mut t = Table::<2>::new(&st).align_left(0);
+        let conf = Conf::from_str("emlop log --color=n --output=t");
+        let mut t = Table::<2>::new(&conf).align_left(0);
         t.row([&[&"short"], &[&1]]);
         t.row([&[&"looooooooooooong"], &[&1]]);
         t.row([&[&"high"], &[&9999]]);
@@ -238,10 +238,10 @@ mod test {
 
     #[test]
     fn color() {
-        let st = Styles::from_str("emlop log --color=y --output=c");
-        let mut t = Table::<2>::new(&st).align_left(0);
+        let conf = Conf::from_str("emlop log --color=y --output=c");
+        let mut t = Table::<2>::new(&conf).align_left(0);
         t.row([&[&"123"], &[&1]]);
-        t.row([&[&st.merge, &1, &st.dur, &2, &st.cnt, &3, &st.clr], &[&1]]);
+        t.row([&[&conf.merge, &1, &conf.dur, &2, &conf.cnt, &3, &conf.clr], &[&1]]);
         let res = "123  1\x1B[0m\n\
                    \x1B[1;32m1\x1B[1;35m2\x1B[2;33m3\x1B[0m  1\x1B[0m\n";
         let (l1, l2) = res.split_once('\n').expect("two lines");
@@ -252,10 +252,10 @@ mod test {
 
     #[test]
     fn nocolor() {
-        let st = Styles::from_str("emlop log --color=n --output=c");
-        let mut t = Table::<2>::new(&st).align_left(0);
+        let conf = Conf::from_str("emlop log --color=n --output=c");
+        let mut t = Table::<2>::new(&conf).align_left(0);
         t.row([&[&"123"], &[&1]]);
-        t.row([&[&st.merge, &1, &st.dur, &2, &st.cnt, &3, &st.clr], &[&1]]);
+        t.row([&[&conf.merge, &1, &conf.dur, &2, &conf.cnt, &3, &conf.clr], &[&1]]);
         let res = "123      1\n\
                    >>> 123  1\n";
         check(t, res);

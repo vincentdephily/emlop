@@ -5,19 +5,19 @@ use clap::{error::{ContextKind, ContextValue, Error as ClapError, ErrorKind},
 use serde::Deserialize;
 use std::{env::var, fs::File, io::Read};
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug)]
 struct TomlLog {
     starttime: Option<bool>,
 }
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug)]
 struct TomlPred {
     average: Option<String>,
 }
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug)]
 struct TomlStats {
     average: Option<String>,
 }
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug)]
 struct TomlAccuracy {
     average: Option<String>,
 }
@@ -97,15 +97,30 @@ impl ArgParse<String> for Average {
     }
 }
 
-pub enum Conf {
-    Log(ArgMatches, ConfAll, ConfLog),
-    Stats(ArgMatches, ConfAll, ConfStats),
-    Predict(ArgMatches, ConfAll, ConfPred),
-    Accuracy(ArgMatches, ConfAll, ConfAccuracy),
+pub enum Configs {
+    Log(ArgMatches, Conf, ConfLog),
+    Stats(ArgMatches, Conf, ConfStats),
+    Predict(ArgMatches, Conf, ConfPred),
+    Accuracy(ArgMatches, Conf, ConfAccuracy),
     Complete(ArgMatches),
 }
-pub struct ConfAll {
-    pub date: DateStyle,
+/// Global config
+///
+/// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
+/// alignments properly.
+pub struct Conf {
+    pub pkg: AnsiStr,
+    pub merge: AnsiStr,
+    pub unmerge: AnsiStr,
+    pub dur: AnsiStr,
+    pub cnt: AnsiStr,
+    pub clr: AnsiStr,
+    pub lineend: &'static [u8],
+    pub header: bool,
+    pub dur_t: DurationStyle,
+    pub date_offset: time::UtcOffset,
+    pub date_fmt: DateStyle,
+    pub out: OutStyle,
 }
 pub struct ConfLog {
     pub starttime: bool,
@@ -120,8 +135,9 @@ pub struct ConfStats {
 pub struct ConfAccuracy {
     pub avg: Average,
 }
-impl Conf {
-    pub fn try_new() -> Result<Self, Error> {
+
+impl Configs {
+    pub fn load() -> Result<Configs, Error> {
         let args = cli::build_cli().get_matches();
         let level = match args.get_count("verbose") {
             0 => LevelFilter::Error,
@@ -134,7 +150,7 @@ impl Conf {
         trace!("{:?}", args);
         let toml = Toml::load(args.get_one::<String>("config"), var("EMLOP_CONFIG").ok())?;
         log::trace!("{:?}", toml);
-        let conf = ConfAll::try_new(&args, &toml)?;
+        let conf = Conf::try_new(&args, &toml)?;
         Ok(match args.subcommand() {
             Some(("log", sub)) => Self::Log(sub.clone(), conf, ConfLog::try_new(sub, &toml)?),
             Some(("stats", sub)) => Self::Stats(sub.clone(), conf, ConfStats::try_new(sub, &toml)?),
@@ -167,9 +183,40 @@ fn sel<T, R>(args: &ArgMatches,
     }
 }
 
-impl ConfAll {
+impl Conf {
     pub fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { date: sel(args, "date", toml.date.as_ref(), "date")? })
+        let isterm = std::io::stdout().is_terminal();
+        let color = match args.get_one("color") {
+            Some(ColorStyle::Always) => true,
+            Some(ColorStyle::Never) => false,
+            None => isterm,
+        };
+        let out = match args.get_one("output") {
+            Some(o) => *o,
+            None if isterm => OutStyle::Columns,
+            None => OutStyle::Tab,
+        };
+        let header = args.get_flag("header");
+        let dur_t = *args.get_one("duration").unwrap();
+        let date_fmt = sel(args, "date", toml.date.as_ref(), "date")?;
+        let date_offset = get_offset(args.get_flag("utc"));
+        Ok(Self { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
+                  merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
+                  unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
+                  dur: AnsiStr::from(if color { "\x1B[1;35m" } else { "" }),
+                  cnt: AnsiStr::from(if color { "\x1B[2;33m" } else { "" }),
+                  clr: AnsiStr::from(if color { "\x1B[0m" } else { "" }),
+                  lineend: if color { b"\x1B[0m\n" } else { b"\n" },
+                  header,
+                  dur_t,
+                  date_offset,
+                  date_fmt,
+                  out })
+    }
+    #[cfg(test)]
+    pub fn from_str(s: impl AsRef<str>) -> Self {
+        let args = cli::build_cli().get_matches_from(s.as_ref().split_whitespace());
+        Self::try_new(&args, &Toml::default()).unwrap()
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::{config::{err, ArgParse},
             table::Disp,
-            wtb, DurationStyle, Styles};
+            wtb, Conf, DurationStyle};
 use anyhow::{bail, Error};
 use log::{debug, warn};
 use regex::Regex;
@@ -58,14 +58,14 @@ pub fn fmt_utctime(ts: i64) -> String {
 pub struct FmtDate(pub i64);
 /// Format dates according to user preferencess
 impl Disp for FmtDate {
-    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
         let start = buf.len();
-        if st.date_fmt.0.is_empty() {
+        if conf.date_fmt.0.is_empty() {
             write!(buf, "{}", self.0).expect("write to buf");
         } else {
             OffsetDateTime::from_unix_timestamp(self.0).expect("unix from i64")
-                                                       .to_offset(st.date_offset)
-                                                       .format_into(buf, &st.date_fmt.0)
+                                                       .to_offset(conf.date_offset)
+                                                       .format_into(buf, &conf.date_fmt.0)
                                                        .expect("write to buf");
         }
         buf.len() - start
@@ -245,13 +245,13 @@ impl Timespan {
 /// Wrapper around a duration (seconds) to implement `table::Disp`
 pub struct FmtDur(pub i64);
 impl crate::table::Disp for FmtDur {
-    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
         use std::io::Write;
         use DurationStyle::*;
         let sec = self.0;
-        let dur = st.dur.val;
+        let dur = conf.dur.val;
         let start = buf.len();
-        match st.dur_t {
+        match conf.dur_t {
             _ if sec < 0 => wtb!(buf, "{dur}?"),
             HMS if sec >= 3600 => {
                 wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60)
@@ -272,7 +272,7 @@ impl crate::table::Disp for FmtDur {
                 }
             },
         }
-        buf.len() - start - st.dur.val.len()
+        buf.len() - start - conf.dur.val.len()
     }
 }
 
@@ -382,7 +382,7 @@ mod test {
         {
             for (st, exp) in [("hms", hms), ("hmsfixed", fixed), ("secs", secs), ("human", human)] {
                 let mut buf = vec![];
-                FmtDur(i).out(&mut buf, &Styles::from_str(format!("emlop l --color=n --dur {st}")));
+                FmtDur(i).out(&mut buf, &Conf::from_str(format!("emlop l --color=n --dur {st}")));
                 assert_eq!(exp, &String::from_utf8(buf).unwrap());
             }
         }

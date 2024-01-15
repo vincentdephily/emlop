@@ -6,12 +6,11 @@ use std::{collections::{BTreeMap, HashMap},
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_log(args: &ArgMatches, conf: ConfAll, sconf: ConfLog) -> Result<bool, Error> {
-    let st = &Styles::from_args(args, &conf);
+pub fn cmd_log(args: &ArgMatches, conf: &Conf, sconf: ConfLog) -> Result<bool, Error> {
     let show = *args.get_one("show").unwrap();
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
-                        get_parse(args, "from", parse_date, st.date_offset)?,
-                        get_parse(args, "to", parse_date, st.date_offset)?,
+                        get_parse(args, "from", parse_date, conf.date_offset)?,
+                        get_parse(args, "to", parse_date, conf.date_offset)?,
                         show,
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;
@@ -21,7 +20,7 @@ pub fn cmd_log(args: &ArgMatches, conf: ConfAll, sconf: ConfLog) -> Result<bool,
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
-    let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
+    let mut tbl = Table::new(conf).align_left(0).align_left(2).margin(2, " ").last(last);
     tbl.header(["Date", "Duration", "Package/Repo"]);
     for p in hist {
         match p {
@@ -34,7 +33,7 @@ pub fn cmd_log(args: &ArgMatches, conf: ConfAll, sconf: ConfLog) -> Result<bool,
                 let started = merges.remove(key).unwrap_or(ts + 1);
                 tbl.row([&[&FmtDate(if stt { started } else { ts })],
                          &[&FmtDur(ts - started)],
-                         &[&st.merge, &p.ebuild_version()]]);
+                         &[&conf.merge, &p.ebuild_version()]]);
             },
             Hist::UnmergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if an unmerge started but never finished
@@ -45,7 +44,7 @@ pub fn cmd_log(args: &ArgMatches, conf: ConfAll, sconf: ConfLog) -> Result<bool,
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 tbl.row([&[&FmtDate(if stt { started } else { ts })],
                          &[&FmtDur(ts - started)],
-                         &[&st.unmerge, &p.ebuild_version()]]);
+                         &[&conf.unmerge, &p.ebuild_version()]]);
             },
             Hist::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
@@ -56,7 +55,7 @@ pub fn cmd_log(args: &ArgMatches, conf: ConfAll, sconf: ConfLog) -> Result<bool,
                     found += 1;
                     tbl.row([&[&FmtDate(if stt { started } else { ts })],
                              &[&FmtDur(ts - started)],
-                             &[&st.clr, &"Sync ", &repo]]);
+                             &[&conf.clr, &"Sync ", &repo]]);
                 } else {
                     warn!("Sync stop without a start at {ts}");
                 }
@@ -143,21 +142,20 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(args: &ArgMatches, conf: ConfAll, sconf: ConfStats) -> Result<bool, Error> {
-    let st = &Styles::from_args(args, &conf);
+pub fn cmd_stats(args: &ArgMatches, conf: &Conf, sconf: ConfStats) -> Result<bool, Error> {
     let show = *args.get_one("show").unwrap();
     let timespan_opt: Option<&Timespan> = args.get_one("group");
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
-                        get_parse(args, "from", parse_date, st.date_offset)?,
-                        get_parse(args, "to", parse_date, st.date_offset)?,
+                        get_parse(args, "from", parse_date, conf.date_offset)?,
+                        get_parse(args, "to", parse_date, conf.date_offset)?,
                         show,
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;
     let lim = *args.get_one("limit").unwrap();
     let tsname = timespan_opt.map_or("", |timespan| timespan.name());
-    let mut tbls = Table::new(st).align_left(0).align_left(1).margin(1, " ");
+    let mut tbls = Table::new(conf).align_left(0).align_left(1).margin(1, " ");
     tbls.header([tsname, "Repo", "Sync count", "Total time", "Predict time"]);
-    let mut tblp = Table::new(st).align_left(0).align_left(1).margin(1, " ");
+    let mut tblp = Table::new(conf).align_left(0).align_left(1).margin(1, " ");
     tblp.header([tsname,
                  "Package",
                  "Merge count",
@@ -166,7 +164,7 @@ pub fn cmd_stats(args: &ArgMatches, conf: ConfAll, sconf: ConfStats) -> Result<b
                  "Unmerge count",
                  "Total time",
                  "Predict time"]);
-    let mut tblt = Table::new(st).align_left(0).margin(1, " ");
+    let mut tblt = Table::new(conf).align_left(0).margin(1, " ");
     tblt.header([tsname,
                  "Merge count",
                  "Total time",
@@ -185,15 +183,15 @@ pub fn cmd_stats(args: &ArgMatches, conf: ConfAll, sconf: ConfStats) -> Result<b
         if let Some(timespan) = timespan_opt {
             let t = p.ts();
             if nextts == 0 {
-                nextts = timespan.next(t, st.date_offset);
+                nextts = timespan.next(t, conf.date_offset);
                 curts = t;
             } else if t > nextts {
-                let group = timespan.at(curts, st.date_offset);
-                cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, st, lim, sconf.avg, show, group,
-                                &sync_time, &pkg_time);
+                let group = timespan.at(curts, conf.date_offset);
+                cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, conf, lim, sconf.avg, show,
+                                group, &sync_time, &pkg_time);
                 sync_time.clear();
                 pkg_time.clear();
-                nextts = timespan.next(t, st.date_offset);
+                nextts = timespan.next(t, conf.date_offset);
                 curts = t;
             }
         }
@@ -232,9 +230,10 @@ pub fn cmd_stats(args: &ArgMatches, conf: ConfAll, sconf: ConfStats) -> Result<b
             },
         }
     }
-    let group = timespan_opt.map(|timespan| timespan.at(curts, st.date_offset)).unwrap_or_default();
-    cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, st, lim, sconf.avg, show, group, &sync_time,
-                    &pkg_time);
+    let group =
+        timespan_opt.map(|timespan| timespan.at(curts, conf.date_offset)).unwrap_or_default();
+    cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, &conf, lim, sconf.avg, show, group,
+                    &sync_time, &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
     let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
     drop(tbls);
@@ -254,7 +253,7 @@ pub fn cmd_stats(args: &ArgMatches, conf: ConfAll, sconf: ConfStats) -> Result<b
 fn cmd_stats_group(tbls: &mut Table<5>,
                    tblp: &mut Table<8>,
                    tblt: &mut Table<7>,
-                   st: &Styles,
+                   conf: &Conf,
                    lim: u16,
                    avg: Average,
                    show: Show,
@@ -266,7 +265,7 @@ fn cmd_stats_group(tbls: &mut Table<5>,
         for (repo, time) in sync_time {
             tbls.row([&[&group],
                       &[repo],
-                      &[&st.cnt, &time.count],
+                      &[&conf.cnt, &time.count],
                       &[&FmtDur(time.tot)],
                       &[&FmtDur(time.pred(lim, avg))]]);
         }
@@ -275,11 +274,11 @@ fn cmd_stats_group(tbls: &mut Table<5>,
     if show.pkg && !pkg_time.is_empty() {
         for (pkg, (merge, unmerge)) in pkg_time {
             tblp.row([&[&group],
-                      &[&st.pkg, pkg],
-                      &[&st.cnt, &merge.count],
+                      &[&conf.pkg, pkg],
+                      &[&conf.cnt, &merge.count],
                       &[&FmtDur(merge.tot)],
                       &[&FmtDur(merge.pred(lim, avg))],
-                      &[&st.cnt, &unmerge.count],
+                      &[&conf.cnt, &unmerge.count],
                       &[&FmtDur(unmerge.tot)],
                       &[&FmtDur(unmerge.pred(lim, avg))]]);
         }
@@ -297,10 +296,10 @@ fn cmd_stats_group(tbls: &mut Table<5>,
             unmerge_count += unmerge.count;
         }
         tblt.row([&[&group],
-                  &[&st.cnt, &merge_count],
+                  &[&conf.cnt, &merge_count],
                   &[&FmtDur(merge_time)],
                   &[&FmtDur(merge_time.checked_div(merge_count).unwrap_or(-1))],
-                  &[&st.cnt, &unmerge_count],
+                  &[&conf.cnt, &unmerge_count],
                   &[&FmtDur(unmerge_time)],
                   &[&FmtDur(unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
     }
@@ -309,8 +308,7 @@ fn cmd_stats_group(tbls: &mut Table<5>,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(args: &ArgMatches, conf: ConfAll, sconf: ConfPred) -> Result<bool, Error> {
-    let st = &Styles::from_args(args, &conf);
+pub fn cmd_predict(args: &ArgMatches, conf: &Conf, sconf: ConfPred) -> Result<bool, Error> {
     let now = epoch_now();
     let show: Show = *args.get_one("show").unwrap();
     let first = *args.get_one("first").unwrap_or(&usize::MAX);
@@ -322,7 +320,7 @@ pub fn cmd_predict(args: &ArgMatches, conf: ConfAll, sconf: ConfPred) -> Result<
     let lim = *args.get_one("limit").unwrap();
     let resume = args.get_one("resume").copied();
     let unknown_pred = *args.get_one("unknown").unwrap();
-    let mut tbl = Table::new(st).align_left(0).align_left(2).margin(2, " ").last(last);
+    let mut tbl = Table::new(conf).align_left(0).align_left(2).margin(2, " ").last(last);
     let mut tmpdirs: Vec<PathBuf> = args.get_many("tmpdir").unwrap().cloned().collect();
 
     // Gather and print info about current merge process.
@@ -343,8 +341,8 @@ pub fn cmd_predict(args: &ArgMatches, conf: ConfAll, sconf: ConfPred) -> Result<
 
     // Parse emerge log.
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
-                        get_parse(args, "from", parse_date, st.date_offset)?,
-                        get_parse(args, "to", parse_date, st.date_offset)?,
+                        get_parse(args, "from", parse_date, conf.date_offset)?,
+                        get_parse(args, "to", parse_date, conf.date_offset)?,
                         Show { merge: true, ..Show::default() },
                         vec![],
                         false)?;
@@ -412,35 +410,35 @@ pub fn cmd_predict(args: &ArgMatches, conf: ConfAll, sconf: ConfPred) -> Result<
         if show.merge && totcount <= first {
             if elapsed > 0 {
                 let stage = get_buildlog(&p, &tmpdirs).unwrap_or_default();
-                tbl.row([&[&st.pkg, &p.ebuild_version()],
+                tbl.row([&[&conf.pkg, &p.ebuild_version()],
                          &[&FmtDur(fmtpred)],
-                         &[&st.clr, &"- ", &FmtDur(elapsed), &st.clr, &stage]]);
+                         &[&conf.clr, &"- ", &FmtDur(elapsed), &conf.clr, &stage]]);
             } else {
-                tbl.row([&[&st.pkg, &p.ebuild_version()], &[&FmtDur(fmtpred)], &[]]);
+                tbl.row([&[&conf.pkg, &p.ebuild_version()], &[&FmtDur(fmtpred)], &[]]);
             }
         }
     }
     if totcount > 0 {
         if show.tot {
             let mut s: Vec<&dyn Disp> = vec![&"Estimate for ",
-                                             &st.cnt,
+                                             &conf.cnt,
                                              &totcount,
-                                             &st.clr,
+                                             &conf.clr,
                                              if totcount > 1 { &" ebuilds" } else { &" ebuild" }];
             if totunknown > 0 {
-                s.extend::<[&dyn Disp; 5]>([&", ", &st.cnt, &totunknown, &st.clr, &" unknown"]);
+                s.extend::<[&dyn Disp; 5]>([&", ", &conf.cnt, &totunknown, &conf.clr, &" unknown"]);
             }
             let tothidden = totcount.saturating_sub(first.min(last - 1));
             if tothidden > 0 {
-                s.extend::<[&dyn Disp; 5]>([&", ", &st.cnt, &tothidden, &st.clr, &" hidden"]);
+                s.extend::<[&dyn Disp; 5]>([&", ", &conf.cnt, &tothidden, &conf.clr, &" hidden"]);
             }
             let e = FmtDur(totelapsed);
             if totelapsed > 0 {
-                s.extend::<[&dyn Disp; 4]>([&", ", &e, &st.clr, &" elapsed"]);
+                s.extend::<[&dyn Disp; 4]>([&", ", &e, &conf.clr, &" elapsed"]);
             }
             tbl.row([&s,
-                     &[&FmtDur(totpredict), &st.clr],
-                     &[&"@ ", &st.dur, &FmtDate(now + totpredict)]]);
+                     &[&FmtDur(totpredict), &conf.clr],
+                     &[&"@ ", &conf.dur, &FmtDate(now + totpredict)]]);
         }
     } else {
         tbl.row([&[&"No pretended merge found"], &[], &[]]);
@@ -448,12 +446,11 @@ pub fn cmd_predict(args: &ArgMatches, conf: ConfAll, sconf: ConfPred) -> Result<
     Ok(totcount > 0)
 }
 
-pub fn cmd_accuracy(args: &ArgMatches, conf: ConfAll, sconf: ConfAccuracy) -> Result<bool, Error> {
-    let st = &Styles::from_args(args, &conf);
+pub fn cmd_accuracy(args: &ArgMatches, conf: &Conf, sconf: ConfAccuracy) -> Result<bool, Error> {
     let show: Show = *args.get_one("show").unwrap();
     let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
-                        get_parse(args, "from", parse_date, st.date_offset)?,
-                        get_parse(args, "to", parse_date, st.date_offset)?,
+                        get_parse(args, "from", parse_date, conf.date_offset)?,
+                        get_parse(args, "to", parse_date, conf.date_offset)?,
                         Show { merge: true, ..Show::default() },
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;
@@ -463,7 +460,7 @@ pub fn cmd_accuracy(args: &ArgMatches, conf: ConfAll, sconf: ConfAccuracy) -> Re
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let mut tbl = Table::new(st).align_left(0).align_left(1).last(last);
+    let mut tbl = Table::new(conf).align_left(0).align_left(1).last(last);
     tbl.header(["Date", "Package", "Real", "Predicted", "Error"]);
     for p in hist {
         match p {
@@ -480,7 +477,7 @@ pub fn cmd_accuracy(args: &ArgMatches, conf: ConfAll, sconf: ConfAccuracy) -> Re
                         -1 => {
                             if show.merge {
                                 tbl.row([&[&FmtDate(ts)],
-                                         &[&st.merge, &p.ebuild_version()],
+                                         &[&conf.merge, &p.ebuild_version()],
                                          &[&FmtDur(real)],
                                          &[],
                                          &[]])
@@ -490,10 +487,10 @@ pub fn cmd_accuracy(args: &ArgMatches, conf: ConfAll, sconf: ConfAccuracy) -> Re
                             let err = (pred - real).abs() as f64 * 100.0 / real as f64;
                             if show.merge {
                                 tbl.row([&[&FmtDate(ts)],
-                                         &[&st.merge, &p.ebuild_version()],
+                                         &[&conf.merge, &p.ebuild_version()],
                                          &[&FmtDur(real)],
                                          &[&FmtDur(pred)],
-                                         &[&st.cnt, &format!("{err:.1}%")]])
+                                         &[&conf.cnt, &format!("{err:.1}%")]])
                             }
                             let errs = pkg_errs.entry(p.ebuild().to_owned()).or_default();
                             errs.push(err);
@@ -507,11 +504,11 @@ pub fn cmd_accuracy(args: &ArgMatches, conf: ConfAll, sconf: ConfAccuracy) -> Re
     }
     drop(tbl);
     if show.tot {
-        let mut tbl = Table::new(st).align_left(0);
+        let mut tbl = Table::new(conf).align_left(0);
         tbl.header(["Package", "Error"]);
         for (p, e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
-            tbl.row([&[&st.pkg, &p], &[&st.cnt, &format!("{avg:.1}%")]]);
+            tbl.row([&[&conf.pkg, &p], &[&conf.cnt, &format!("{avg:.1}%")]]);
         }
     }
     Ok(found)
