@@ -1,4 +1,4 @@
-use crate::DateStyle;
+use crate::*;
 use anyhow::{Context, Error};
 use clap::{error::{ContextKind, ContextValue, Error as ClapError, ErrorKind},
            ArgMatches};
@@ -97,43 +97,54 @@ impl ArgParse<String> for Average {
     }
 }
 
-pub enum Config<'a> {
-    Log(&'a ArgMatches, ConfigAll, ConfigLog),
-    Stats(&'a ArgMatches, ConfigAll, ConfigStats),
-    Predict(&'a ArgMatches, ConfigAll, ConfigPred),
-    Accuracy(&'a ArgMatches, ConfigAll, ConfigAccuracy),
-    Complete(&'a ArgMatches),
+pub enum Conf {
+    Log(ArgMatches, ConfAll, ConfLog),
+    Stats(ArgMatches, ConfAll, ConfStats),
+    Predict(ArgMatches, ConfAll, ConfPred),
+    Accuracy(ArgMatches, ConfAll, ConfAccuracy),
+    Complete(ArgMatches),
 }
-pub struct ConfigAll {
+pub struct ConfAll {
     pub date: DateStyle,
 }
-pub struct ConfigLog {
+pub struct ConfLog {
     pub starttime: bool,
     pub first: usize,
 }
-pub struct ConfigPred {
+pub struct ConfPred {
     pub avg: Average,
 }
-pub struct ConfigStats {
+pub struct ConfStats {
     pub avg: Average,
 }
-pub struct ConfigAccuracy {
+pub struct ConfAccuracy {
     pub avg: Average,
 }
-
-impl<'a> Config<'a> {
-    pub fn try_new(args: &'a ArgMatches) -> Result<Self, Error> {
+impl Conf {
+    pub fn try_new() -> Result<Self, Error> {
+        let args = cli::build_cli().get_matches();
+        let level = match args.get_count("verbose") {
+            0 => LevelFilter::Error,
+            1 => LevelFilter::Warn,
+            2 => LevelFilter::Info,
+            3 => LevelFilter::Debug,
+            _ => LevelFilter::Trace,
+        };
+        env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
+        trace!("{:?}", args);
         let toml = Toml::load(args.get_one::<String>("config"), var("EMLOP_CONFIG").ok())?;
         log::trace!("{:?}", toml);
-        let conf = ConfigAll::try_new(args, &toml)?;
+        let conf = ConfAll::try_new(&args, &toml)?;
         Ok(match args.subcommand() {
-            Some(("log", sub)) => Self::Log(sub, conf, ConfigLog::try_new(sub, &toml)?),
-            Some(("stats", sub)) => Self::Stats(sub, conf, ConfigStats::try_new(sub, &toml)?),
-            Some(("predict", sub)) => Self::Predict(sub, conf, ConfigPred::try_new(sub, &toml)?),
-            Some(("accuracy", sub)) => {
-                Self::Accuracy(sub, conf, ConfigAccuracy::try_new(sub, &toml)?)
+            Some(("log", sub)) => Self::Log(sub.clone(), conf, ConfLog::try_new(sub, &toml)?),
+            Some(("stats", sub)) => Self::Stats(sub.clone(), conf, ConfStats::try_new(sub, &toml)?),
+            Some(("predict", sub)) => {
+                Self::Predict(sub.clone(), conf, ConfPred::try_new(sub, &toml)?)
             },
-            Some(("complete", sub)) => Self::Complete(sub),
+            Some(("accuracy", sub)) => {
+                Self::Accuracy(sub.clone(), conf, ConfAccuracy::try_new(sub, &toml)?)
+            },
+            Some(("complete", sub)) => Self::Complete(sub.clone()),
             _ => unreachable!("clap should have exited already"),
         })
     }
@@ -156,13 +167,13 @@ fn sel<T, R>(args: &ArgMatches,
     }
 }
 
-impl ConfigAll {
+impl ConfAll {
     pub fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { date: sel(args, "date", toml.date.as_ref(), "date")? })
     }
 }
 
-impl ConfigLog {
+impl ConfLog {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { starttime: sel(args,
                                  "starttime",
@@ -172,7 +183,7 @@ impl ConfigLog {
     }
 }
 
-impl ConfigPred {
+impl ConfPred {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { avg: sel(args,
                            "avg",
@@ -181,7 +192,7 @@ impl ConfigPred {
     }
 }
 
-impl ConfigStats {
+impl ConfStats {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { avg: sel(args,
                            "avg",
@@ -189,7 +200,7 @@ impl ConfigStats {
                            "[predict] average")? })
     }
 }
-impl ConfigAccuracy {
+impl ConfAccuracy {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { avg: sel(args,
                            "avg",

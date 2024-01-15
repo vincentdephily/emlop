@@ -14,24 +14,14 @@ use clap::{error::ErrorKind, ArgMatches, Error as ClapErr};
 use log::*;
 use std::{io::IsTerminal, str::FromStr};
 
-fn main() {
-    let args = cli::build_cli().get_matches();
-    let level = match args.get_count("verbose") {
-        0 => LevelFilter::Error,
-        1 => LevelFilter::Warn,
-        2 => LevelFilter::Info,
-        3 => LevelFilter::Debug,
-        _ => LevelFilter::Trace,
-    };
-    env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
-    trace!("{:?}", args);
 
-    let res = match Config::try_new(&args) {
-        Ok(Config::Log(subargs, conf, subconf)) => cmd_log(subargs, conf, subconf),
-        Ok(Config::Stats(subargs, conf, subconf)) => cmd_stats(subargs, conf, subconf),
-        Ok(Config::Predict(subargs, conf, subconf)) => cmd_predict(subargs, conf, subconf),
-        Ok(Config::Accuracy(subargs, conf, subconf)) => cmd_accuracy(subargs, conf, subconf),
-        Ok(Config::Complete(subargs)) => cmd_complete(subargs),
+fn main() {
+    let res = match Conf::try_new() {
+        Ok(Conf::Log(args, gconf, sconf)) => cmd_log(&args, gconf, sconf),
+        Ok(Conf::Stats(args, gconf, sconf)) => cmd_stats(&args, gconf, sconf),
+        Ok(Conf::Predict(args, gconf, sconf)) => cmd_predict(&args, gconf, sconf),
+        Ok(Conf::Accuracy(args, gconf, sconf)) => cmd_accuracy(&args, gconf, sconf),
+        Ok(Conf::Complete(args)) => cmd_complete(&args),
         Err(e) => Err(e),
     };
     match res {
@@ -182,7 +172,7 @@ pub struct Styles {
     out: OutStyle,
 }
 impl Styles {
-    fn from_args(args: &ArgMatches, conf: ConfigAll) -> Self {
+    fn from_args(args: &ArgMatches, conf: &ConfAll) -> Self {
         let isterm = std::io::stdout().is_terminal();
         let color = match args.get_one("color") {
             Some(ColorStyle::Always) => true,
@@ -214,6 +204,6 @@ impl Styles {
     #[cfg(test)]
     fn from_str(s: impl AsRef<str>) -> Self {
         let args = cli::build_cli().get_matches_from(s.as_ref().split_whitespace());
-        Self::from_args(&args, ConfigAll::try_new(&args, &Toml::default()).unwrap())
+        Self::from_args(&args, &ConfAll::try_new(&args, &Toml::default()).unwrap())
     }
 }
