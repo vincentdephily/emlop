@@ -1,0 +1,46 @@
+use serde::Deserialize;
+use anyhow::{Context, Error};
+use std::{env::var, fs::File, io::Read};
+
+#[derive(Deserialize, Debug)]
+pub struct TomlLog {
+    pub starttime: Option<bool>,
+}
+#[derive(Deserialize, Debug)]
+pub struct TomlPred {
+    pub average: Option<String>,
+}
+#[derive(Deserialize, Debug)]
+pub struct TomlStats {
+    pub average: Option<String>,
+}
+#[derive(Deserialize, Debug)]
+pub struct TomlAccuracy {
+    pub average: Option<String>,
+}
+#[derive(Deserialize, Debug, Default)]
+pub struct Toml {
+    pub date: Option<String>,
+    pub log: Option<TomlLog>,
+    pub predict: Option<TomlPred>,
+    pub stats: Option<TomlStats>,
+    pub accuracy: Option<TomlAccuracy>,
+}
+impl Toml {
+    pub fn load(arg: Option<&String>, env: Option<String>) -> Result<Self, Error> {
+        match arg.or(env.as_ref()) {
+            Some(s) if s.is_empty() => Ok(Self::default()),
+            Some(s) => Self::doload(s.as_str()),
+            _ => Self::doload(&format!("{}/.config/emlop.toml",
+                                       var("HOME").unwrap_or("".to_string()))),
+        }
+    }
+    fn doload(name: &str) -> Result<Self, Error> {
+        log::trace!("Loading config {name:?}");
+        let mut f = File::open(name).with_context(|| format!("Cannot open {name:?}"))?;
+        let mut buf = String::new();
+        // TODO Streaming read
+        f.read_to_string(&mut buf).with_context(|| format!("Cannot read {name:?}"))?;
+        toml::from_str(&buf).with_context(|| format!("Cannot parse {name:?}"))
+    }
+}

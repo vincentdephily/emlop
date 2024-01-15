@@ -1,52 +1,11 @@
-use crate::*;
-use anyhow::{Context, Error};
+mod toml;
+
+use crate::{*, config::toml::Toml};
+use anyhow::{Error};
 use clap::{error::{ContextKind, ContextValue, Error as ClapError, ErrorKind},
            ArgMatches};
-use serde::Deserialize;
-use std::{env::var, fs::File, io::Read};
+use std::{env::var};
 
-#[derive(Deserialize, Debug)]
-struct TomlLog {
-    starttime: Option<bool>,
-}
-#[derive(Deserialize, Debug)]
-struct TomlPred {
-    average: Option<String>,
-}
-#[derive(Deserialize, Debug)]
-struct TomlStats {
-    average: Option<String>,
-}
-#[derive(Deserialize, Debug)]
-struct TomlAccuracy {
-    average: Option<String>,
-}
-#[derive(Deserialize, Debug, Default)]
-pub struct Toml {
-    date: Option<String>,
-    log: Option<TomlLog>,
-    predict: Option<TomlPred>,
-    stats: Option<TomlStats>,
-    accuracy: Option<TomlAccuracy>,
-}
-impl Toml {
-    fn load(arg: Option<&String>, env: Option<String>) -> Result<Self, Error> {
-        match arg.or(env.as_ref()) {
-            Some(s) if s.is_empty() => Ok(Self::default()),
-            Some(s) => Self::doload(s.as_str()),
-            _ => Self::doload(&format!("{}/.config/emlop.toml",
-                                       var("HOME").unwrap_or("".to_string()))),
-        }
-    }
-    fn doload(name: &str) -> Result<Self, Error> {
-        log::trace!("Loading config {name:?}");
-        let mut f = File::open(name).with_context(|| format!("Cannot open {name:?}"))?;
-        let mut buf = String::new();
-        // TODO Streaming read
-        f.read_to_string(&mut buf).with_context(|| format!("Cannot read {name:?}"))?;
-        toml::from_str(&buf).with_context(|| format!("Cannot parse {name:?}"))
-    }
-}
 
 pub fn err(val: String, src: &'static str, possible: &'static str) -> ClapError {
     let mut err = clap::Error::new(ErrorKind::InvalidValue);
@@ -104,6 +63,7 @@ pub enum Configs {
     Accuracy(ArgMatches, Conf, ConfAccuracy),
     Complete(ArgMatches),
 }
+
 /// Global config
 ///
 /// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
