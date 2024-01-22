@@ -134,17 +134,22 @@ mod tests {
                                          .unix_timestamp()
     }
 
-    #[test] #[rustfmt::skip]
+    /// Check that our impl get similar results as `ps`
+    ///
+    /// Ignored by default: False negatives on very busy systems
+    #[test]
+    #[ignore]
+    #[rustfmt::skip]
     fn start_time() {
         // First get the system's process start times using our implementation
+        // Store it as pid => (cmd, rust_time, ps_time)
         let mut tmpdirs = vec![];
-        let mut info: BTreeMap<i32,(String,Option<i64>,Option<i64>)> = //pid => (cmd, rust_time, ps_time)
-            get_all_info(None, &mut tmpdirs)
+        let mut info = get_all_info(None, &mut tmpdirs)
             .iter()
-            .fold(BTreeMap::new(), |mut a,i| {a.insert(i.pid, (i.cmdline.clone(),Some(i.start),None)); a});
+            .map(|i| (i.pid, (i.cmdline.clone(), Some(i.start), None)))
+            .collect::<BTreeMap<i32, (String, Option<i64>, Option<i64>)>>();
         // Then get them using the ps implementation (merging them into the same data structure)
         let ps_start = epoch_now();
-        let re = Regex::new("^ *([0-9]+) [A-Za-z]+ ([a-zA-Z0-9: ]+)$").unwrap();
         let cmd = Command::new("ps").env("TZ", "UTC")
                                     .env("LC_ALL", "C") // Use a consistent format for datetimes
                                     .args(&["-o",
@@ -153,17 +158,16 @@ mod tests {
                                             "--no-header"]) // No headers
                                     .output()
                                     .expect("failed to execute ps");
+        let re = Regex::new("^ *([0-9]+) [A-Za-z]+ ([a-zA-Z0-9: ]+)$").unwrap();
         for lineres in cmd.stdout.lines() {
             if let Ok(line) = lineres {
                 match re.captures(&line) {
                     Some(c) => {
                         let pid = c.get(1).unwrap().as_str().parse::<i32>().unwrap();
                         let time = parse_ps_time(c.get(2).unwrap().as_str());
-                        if let Some((comm, t, None)) =
-                            info.insert(pid, ("?".into(), None, Some(time)))
-                        {
-                            info.insert(pid, (comm, t, Some(time)));
-                        }
+                        info.entry(pid)
+                            .and_modify(|t| t.2 = Some(time))
+                            .or_insert(("?".into(), None, Some(time)));
                     },
                     None => assert!(false, "Couldn't parse {}", line),
                 }
@@ -175,18 +179,17 @@ mod tests {
         assert!(info.len() > 5, "Only {} processes found", info.len());
         let mut e: u32 = 0;
         for (pid, times) in info {
-            match times {
-                (ref c,Some(t), None) =>                           {e+=1; println!("WARN {:>20} {:>7} {}: disappeared after rust run", c, pid, fmt_utctime(t));},
-                (ref c,None, Some(t)) if t >= ps_start -1 =>       {e+=1; println!("WARN {:>20} {:>7} {}: appeared right after rust run", c, pid, fmt_utctime(t));},
-                (ref c,None, Some(t)) =>                           {e+=10;println!("ERR  {:>20} {:>7} {}: seen by ps but not by rust", c, pid, fmt_utctime(t));},
-                (ref c,Some(tr), Some(tp)) if tr == tp =>          {e+=0; println!("OK   {:>20} {:>7} {}: same time", c, pid, fmt_utctime(tr));},
-                (ref c,Some(tr), Some(tp)) if (tr-tp).abs() < 2 => {e+=0; println!("IGN  {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_utctime(tr), tr-tp, fmt_utctime(tp));},
-                (ref c,Some(tr), Some(tp)) if (tr-tp).abs() < 5 => {e+=1; println!("WARN {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_utctime(tr), tr-tp, fmt_utctime(tp));},
-                (ref c,Some(tr), Some(tp)) =>                      {e+=5; println!("ERR  {:>20} {:>7} {}: {} secs diff {}", c, pid, fmt_utctime(tr), tr-tp, fmt_utctime(tp));},
-                (ref c,None, None) =>                              {e+=10;println!("ERR  {:>20} {:>7}: no times", c, pid);},
+            e += match times {
+                (c, Some(t), None) =>                           {println!("WARN {pid} {} disappeared after rust run\t{c}", fmt_utctime(t)); 1},
+                (c, None, Some(t)) if t >= ps_start -1 =>       {println!("WARN {pid} {} appeared right after rust run\t{c}", fmt_utctime(t)); 1},
+                (c, None, Some(t)) =>                           {println!("ERR  {pid} {} seen by ps but not by rust\t{c}", fmt_utctime(t)); 10},
+                (c, Some(tr), Some(tp)) if (tr-tp).abs() < 2 => {println!("OK   {pid} {} {} secs diff\t{c}", fmt_utctime(tr), tr-tp); 0},
+                (c, Some(tr), Some(tp)) if (tr-tp).abs() < 5 => {println!("WARN {pid} {} {} secs diff\t{c}", fmt_utctime(tr), tr-tp); 1},
+                (c, Some(tr), Some(tp)) =>                      {println!("ERR  {pid} {} {} secs diff\t{c}", fmt_utctime(tr), tr-tp); 5},
+                (c, None, None) =>                              {println!("ERR  {pid}: no times\t{c}"); 10},
             }
         }
-        assert!(e < 10, "Got failure score of {}", e);
+        assert!(e < 10, "Got failure score of {e}");
     }
 
     #[test]
