@@ -1,60 +1,12 @@
 mod toml;
+mod types;
 
-use crate::{*, config::toml::Toml};
-use anyhow::{Error};
-use clap::{error::{ContextKind, ContextValue, Error as ClapError, ErrorKind},
-           ArgMatches};
-use std::{env::var};
+use crate::{config::toml::Toml, *};
+use anyhow::Error;
+use clap::{error::Error as ClapError, ArgMatches};
+use std::env::var;
+pub use types::*;
 
-
-pub fn err(val: String, src: &'static str, possible: &'static str) -> ClapError {
-    let mut err = clap::Error::new(ErrorKind::InvalidValue);
-    err.insert(ContextKind::InvalidValue, ContextValue::String(val));
-    let p = possible.split_ascii_whitespace().map(|s| s.to_string()).collect();
-    err.insert(ContextKind::ValidValue, ContextValue::Strings(p));
-    err.insert(ContextKind::InvalidArg, ContextValue::String(src.to_string()));
-    err
-}
-
-pub trait ArgParse<T> {
-    fn parse(val: &T, src: &'static str) -> Result<Self, ClapError>
-        where Self: Sized;
-}
-impl ArgParse<bool> for bool {
-    fn parse(b: &bool, _src: &'static str) -> Result<Self, ClapError> {
-        Ok(*b)
-    }
-}
-impl ArgParse<String> for bool {
-    fn parse(s: &String, src: &'static str) -> Result<Self, ClapError> {
-        match s.as_str() {
-            "y" | "yes" => Ok(true),
-            "n" | "no" => Ok(false),
-            _ => Err(err(s.to_owned(), src, "y(es) n(o)")),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Default)]
-pub enum Average {
-    Arith,
-    #[default]
-    Median,
-    WeightedArith,
-    WeightedMedian,
-}
-impl ArgParse<String> for Average {
-    fn parse(s: &String, src: &'static str) -> Result<Self, ClapError> {
-        use Average::*;
-        match s.as_str() {
-            "a" | "arith" => Ok(Arith),
-            "m" | "median" => Ok(Median),
-            "wa" | "weighted-arith" => Ok(WeightedArith),
-            "wm" | "weighted-median" => Ok(WeightedMedian),
-            _ => Err(err(s.to_owned(), src, "arith median weightedarith weigtedmedian a m wa wm")),
-        }
-    }
-}
 
 pub enum Configs {
     Log(ArgMatches, Conf, ConfLog),
@@ -127,19 +79,21 @@ impl Configs {
 }
 
 // TODO nicer way to specify src
-fn sel<T, R>(args: &ArgMatches,
-             argsrc: &'static str,
-             toml: Option<&T>,
-             tomlsrc: &'static str)
-             -> Result<R, ClapError>
-    where R: ArgParse<String> + ArgParse<T> + Default
+fn sel<T, A, R>(args: &ArgMatches,
+                argsrc: &'static str,
+                toml: Option<&T>,
+                tomlsrc: &'static str,
+                parg: A,
+                def: R)
+                -> Result<R, ClapError>
+    where R: ArgParse<String, A> + ArgParse<T, A>
 {
     if let Some(a) = args.get_one::<String>(argsrc) {
-        R::parse(a, argsrc)
+        R::parse(a, parg, argsrc)
     } else if let Some(a) = toml {
-        R::parse(a, tomlsrc)
+        R::parse(a, parg, tomlsrc)
     } else {
-        Ok(R::default())
+        Ok(def)
     }
 }
 
@@ -158,7 +112,7 @@ impl Conf {
         };
         let header = args.get_flag("header");
         let dur_t = *args.get_one("duration").unwrap();
-        let date_fmt = sel(args, "date", toml.date.as_ref(), "date")?;
+        let date_fmt = sel(args, "date", toml.date.as_ref(), "date", (), DateStyle::default())?;
         let date_offset = get_offset(args.get_flag("utc"));
         Ok(Self { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
                   merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
@@ -185,7 +139,9 @@ impl ConfLog {
         Ok(Self { starttime: sel(args,
                                  "starttime",
                                  toml.log.as_ref().and_then(|l| l.starttime.as_ref()),
-                                 "[log] starttime")?,
+                                 "[log] starttime",
+                                 (),
+                                 false)?,
                   first: *args.get_one("first").unwrap_or(&usize::MAX) })
     }
 }
@@ -195,7 +151,9 @@ impl ConfPred {
         Ok(Self { avg: sel(args,
                            "avg",
                            toml.predict.as_ref().and_then(|t| t.average.as_ref()),
-                           "[predict] average")? })
+                           "[predict] average",
+                           (),
+                           Average::Median)? })
     }
 }
 
@@ -204,7 +162,9 @@ impl ConfStats {
         Ok(Self { avg: sel(args,
                            "avg",
                            toml.stats.as_ref().and_then(|t| t.average.as_ref()),
-                           "[predict] average")? })
+                           "[stats] average",
+                           (),
+                           Average::Median)? })
     }
 }
 impl ConfAccuracy {
@@ -212,6 +172,8 @@ impl ConfAccuracy {
         Ok(Self { avg: sel(args,
                            "avg",
                            toml.accuracy.as_ref().and_then(|t| t.average.as_ref()),
-                           "[predict] average")? })
+                           "[predict] average",
+                           (),
+                           Average::Median)? })
     }
 }

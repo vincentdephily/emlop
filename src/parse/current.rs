@@ -116,7 +116,7 @@ fn read_buildlog(file: File, max: usize) -> String {
                 format!(" ({})", tag.trim_matches('.'))
             } else {
                 format!(" ({}: {})", tag.trim_matches('.'), last)
-            }
+            };
         }
         if last.is_empty() {
             let stripped = Ansi::strip(&line, max);

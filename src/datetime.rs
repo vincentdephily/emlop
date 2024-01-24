@@ -33,9 +33,9 @@ impl Default for DateStyle {
         Self(format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"))
     }
 }
-impl ArgParse<String> for DateStyle {
-    fn parse(s: &String, src: &'static str) -> Result<Self, clap::error::Error> {
-        let fmt = match s.as_str() {
+impl ArgParse<String, ()> for DateStyle {
+    fn parse(s: &String, _: (), src: &'static str) -> Result<Self, clap::error::Error> {
+        Ok(Self(match s.as_str() {
             "ymd" | "d" => format_description!("[year]-[month]-[day]"),
             "ymdhms" | "dt" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
             "ymdhmso" | "dto" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
@@ -44,8 +44,7 @@ impl ArgParse<String> for DateStyle {
             "compact" => format_description!("[year][month][day][hour][minute][second]"),
             "unix" => &[],
             _ => return Err(err(s.to_owned(), src, "ymd d ymdhms dt ymdhmso dto rfc3339 3339 rfc2822 2822 compact unix"))
-        };
-        Ok(Self(fmt))
+        }))
     }
 }
 

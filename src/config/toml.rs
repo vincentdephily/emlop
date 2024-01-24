@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use anyhow::{Context, Error};
+use serde::Deserialize;
 use std::{env::var, fs::File, io::Read};
 
 #[derive(Deserialize, Debug)]
