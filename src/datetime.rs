@@ -232,7 +232,7 @@ impl Timespan {
         }
     }
 
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
             Timespan::Year => "Year",
             Timespan::Month => "Month",

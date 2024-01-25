@@ -112,10 +112,10 @@ fn read_buildlog(file: File, max: usize) -> String {
     for line in rev_lines::RevLines::new(BufReader::new(file)).map_while(Result::ok) {
         if line.starts_with(">>>") {
             let tag = line.split_ascii_whitespace().skip(1).take(2).collect::<Vec<_>>().join(" ");
-            if last.is_empty() {
-                return format!(" ({})", tag.trim_matches('.'));
+            return if last.is_empty() {
+                format!(" ({})", tag.trim_matches('.'))
             } else {
-                return format!(" ({}: {})", tag.trim_matches('.'), last);
+                format!(" ({}: {})", tag.trim_matches('.'), last)
             }
         }
         if last.is_empty() {

@@ -49,7 +49,7 @@ impl<'a, const N: usize> Table<'a, N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
                widths: [0; N],
-               conf: conf,
+               conf,
                have_header: false,
                aligns: [Align::Right; N],
                margins: ["  "; N],

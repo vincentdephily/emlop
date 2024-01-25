@@ -57,7 +57,7 @@ impl Hist {
             _ => unreachable!("No ebuild/version for {:?}", self),
         }
     }
-    pub fn ts(&self) -> i64 {
+    pub const fn ts(&self) -> i64 {
         match self {
             Self::MergeStart { ts, .. } => *ts,
             Self::MergeStop { ts, .. } => *ts,

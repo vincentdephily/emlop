@@ -15,6 +15,9 @@ edition = "2021"
 rust-version = "1.70.0"
 exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
+[lints.clippy]
+missing_const_for_fn = "warn"
+
 [dependencies]
 anyhow = "1.0.32"
 atoi = "2.0.0"

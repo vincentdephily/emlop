@@ -75,7 +75,7 @@ struct Times {
     tot: i64,
 }
 impl Times {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self { vals: vec![], count: 0, tot: 0 }
     }
     /// Digest new data point
@@ -202,7 +202,7 @@ pub fn cmd_stats(args: &ArgMatches, conf: &Conf, sconf: ConfStats) -> Result<boo
             Hist::MergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = merge_start.remove(key) {
                     let (times, _) = pkg_time.entry(p.ebuild().to_owned())
-                                             .or_insert_with(|| (Times::new(), Times::new()));
+                                             .or_insert((Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
@@ -212,7 +212,7 @@ pub fn cmd_stats(args: &ArgMatches, conf: &Conf, sconf: ConfStats) -> Result<boo
             Hist::UnmergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = unmerge_start.remove(key) {
                     let (_, times) = pkg_time.entry(p.ebuild().to_owned())
-                                             .or_insert_with(|| (Times::new(), Times::new()));
+                                             .or_insert((Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
@@ -222,7 +222,7 @@ pub fn cmd_stats(args: &ArgMatches, conf: &Conf, sconf: ConfStats) -> Result<boo
             },
             Hist::SyncStop { ts, repo } => {
                 if let Some(start_ts) = sync_start.take() {
-                    let times = sync_time.entry(repo).or_insert_with(Times::new);
+                    let times = sync_time.entry(repo).or_insert(Times::new());
                     times.insert(ts - start_ts);
                 } else {
                     warn!("Sync stop without a start at {ts}")
@@ -232,7 +232,7 @@ pub fn cmd_stats(args: &ArgMatches, conf: &Conf, sconf: ConfStats) -> Result<boo
     }
     let group =
         timespan_opt.map(|timespan| timespan.at(curts, conf.date_offset)).unwrap_or_default();
-    cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, &conf, lim, sconf.avg, show, group,
+    cmd_stats_group(&mut tbls, &mut tblp, &mut tblt, conf, lim, sconf.avg, show, group,
                     &sync_time, &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
     let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
@@ -355,7 +355,7 @@ pub fn cmd_predict(args: &ArgMatches, conf: &Conf, sconf: ConfPred) -> Result<bo
             },
             Hist::MergeStop { ts, .. } => {
                 if let Some(start_ts) = started.remove(&Pkg::new(p.ebuild(), p.version())) {
-                    let timevec = times.entry(p.ebuild().to_string()).or_insert_with(Times::new);
+                    let timevec = times.entry(p.ebuild().to_string()).or_insert(Times::new());
                     timevec.insert(ts - start_ts);
                 }
             },
@@ -471,7 +471,7 @@ pub fn cmd_accuracy(args: &ArgMatches, conf: &Conf, sconf: ConfAccuracy) -> Resu
             Hist::MergeStop { ts, ref key, .. } => {
                 found = true;
                 if let Some(start) = pkg_starts.remove(key) {
-                    let times = pkg_times.entry(p.ebuild().to_owned()).or_insert_with(Times::new);
+                    let times = pkg_times.entry(p.ebuild().to_owned()).or_insert(Times::new());
                     let real = ts - start;
                     match times.pred(lim, sconf.avg) {
                         -1 => {
