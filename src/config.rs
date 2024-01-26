@@ -35,16 +35,20 @@ pub struct Conf {
     pub out: OutStyle,
 }
 pub struct ConfLog {
+    pub show: Show,
     pub starttime: bool,
     pub first: usize,
 }
 pub struct ConfPred {
+    pub show: Show,
     pub avg: Average,
 }
 pub struct ConfStats {
+    pub show: Show,
     pub avg: Average,
 }
 pub struct ConfAccuracy {
+    pub show: Show,
     pub avg: Average,
 }
 
@@ -136,7 +140,13 @@ impl Conf {
 
 impl ConfLog {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { starttime: sel(args,
+        Ok(Self { show: sel(args,
+                            "show",
+                            toml.log.as_ref().and_then(|t| t.show.as_ref()),
+                            "[log] show",
+                            "musa",
+                            Show::m())?,
+                  starttime: sel(args,
                                  "starttime",
                                  toml.log.as_ref().and_then(|l| l.starttime.as_ref()),
                                  "[log] starttime",
@@ -148,7 +158,13 @@ impl ConfLog {
 
 impl ConfPred {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { avg: sel(args,
+        Ok(Self { show: sel(args,
+                            "show",
+                            toml.predict.as_ref().and_then(|t| t.show.as_ref()),
+                            "[predict] show",
+                            "emta",
+                            Show::emt())?,
+                  avg: sel(args,
                            "avg",
                            toml.predict.as_ref().and_then(|t| t.average.as_ref()),
                            "[predict] average",
@@ -159,7 +175,13 @@ impl ConfPred {
 
 impl ConfStats {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { avg: sel(args,
+        Ok(Self { show: sel(args,
+                            "show",
+                            toml.predict.as_ref().and_then(|t| t.show.as_ref()),
+                            "[stats] show",
+                            "ptsa",
+                            Show::p())?,
+                  avg: sel(args,
                            "avg",
                            toml.stats.as_ref().and_then(|t| t.average.as_ref()),
                            "[stats] average",
@@ -169,7 +191,13 @@ impl ConfStats {
 }
 impl ConfAccuracy {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { avg: sel(args,
+        Ok(Self { show: sel(args,
+                            "show",
+                            toml.predict.as_ref().and_then(|t| t.show.as_ref()),
+                            "[accuracy] show",
+                            "mta",
+                            Show::mt())?,
+                  avg: sel(args,
                            "avg",
                            toml.accuracy.as_ref().and_then(|t| t.average.as_ref()),
                            "[predict] average",

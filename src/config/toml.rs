@@ -4,18 +4,22 @@ use std::{env::var, fs::File, io::Read};
 
 #[derive(Deserialize, Debug)]
 pub struct TomlLog {
+    pub show: Option<String>,
     pub starttime: Option<bool>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlPred {
+    pub show: Option<String>,
     pub average: Option<String>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlStats {
+    pub show: Option<String>,
     pub average: Option<String>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlAccuracy {
+    pub show: Option<String>,
     pub average: Option<String>,
 }
 #[derive(Deserialize, Debug, Default)]

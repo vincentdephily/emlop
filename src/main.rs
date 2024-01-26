@@ -68,49 +68,6 @@ pub fn get_parse<T, P, A>(args: &ArgMatches,
 #[macro_export]
 macro_rules! wtb { ($b:ident, $($arg:expr),+) => {write!($b, $($arg),+).expect("write to buf")} }
 
-#[derive(Clone, Copy, Default)]
-pub struct Show {
-    pub pkg: bool,
-    pub tot: bool,
-    pub sync: bool,
-    pub merge: bool,
-    pub unmerge: bool,
-    pub emerge: bool,
-}
-impl Show {
-    fn parse(show: &str, valid: &str) -> Result<Self, String> {
-        debug_assert!(valid.is_ascii()); // Because we use `chars()` we need to stick to ascii for `valid`.
-        if show.chars().all(|c| valid.contains(c)) {
-            Ok(Self { pkg: show.contains('p') || show.contains('a'),
-                      tot: show.contains('t') || show.contains('a'),
-                      sync: show.contains('s') || show.contains('a'),
-                      merge: show.contains('m') || show.contains('a'),
-                      unmerge: show.contains('u') || show.contains('a'),
-                      emerge: show.contains('e') || show.contains('a') })
-        } else {
-            Err(format!("Valid values are letters of '{valid}'"))
-        }
-    }
-}
-impl std::fmt::Display for Show {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut sep = "";
-        for (b, s) in [(self.pkg, "pkg"),
-                       (self.tot, "total"),
-                       (self.sync, "sync"),
-                       (self.merge, "merge"),
-                       (self.unmerge, "unmerge"),
-                       (self.emerge, "emerge")]
-        {
-            if b {
-                write!(f, "{sep}{s}")?;
-                sep = ",";
-            }
-        }
-        Ok(())
-    }
-}
-
 
 #[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum ResumeKind {
