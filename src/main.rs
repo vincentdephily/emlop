@@ -16,10 +16,10 @@ use std::{io::IsTerminal, str::FromStr};
 
 fn main() {
     let res = match Configs::load() {
-        Ok(Configs::Log(args, conf, sconf)) => cmd_log(&args, &conf, sconf),
-        Ok(Configs::Stats(args, conf, sconf)) => cmd_stats(&args, &conf, sconf),
-        Ok(Configs::Predict(args, conf, sconf)) => cmd_predict(&args, &conf, sconf),
-        Ok(Configs::Accuracy(args, conf, sconf)) => cmd_accuracy(&args, &conf, sconf),
+        Ok(Configs::Log(args, gc, sc)) => cmd_log(&args, &gc, &sc),
+        Ok(Configs::Stats(args, gc, sc)) => cmd_stats(&args, &gc, &sc),
+        Ok(Configs::Predict(args, gc, sc)) => cmd_predict(&args, &gc, &sc),
+        Ok(Configs::Accuracy(args, gc, sc)) => cmd_accuracy(&args, &gc, &sc),
         Ok(Configs::Complete(args)) => cmd_complete(&args),
         Err(e) => Err(e),
     };
