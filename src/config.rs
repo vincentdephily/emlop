@@ -83,16 +83,16 @@ impl Configs {
 }
 
 // TODO nicer way to specify src
-fn sel<T, A, R>(args: &ArgMatches,
-                argsrc: &'static str,
+fn sel<T, A, R>(cli: Option<&String>,
                 toml: Option<&T>,
+                argsrc: &'static str,
                 tomlsrc: &'static str,
                 parg: A,
                 def: R)
                 -> Result<R, ClapError>
     where R: ArgParse<String, A> + ArgParse<T, A>
 {
-    if let Some(a) = args.get_one::<String>(argsrc) {
+    if let Some(a) = cli {
         R::parse(a, parg, argsrc)
     } else if let Some(a) = toml {
         R::parse(a, parg, tomlsrc)
@@ -100,6 +100,26 @@ fn sel<T, A, R>(args: &ArgMatches,
         Ok(def)
     }
 }
+
+macro_rules! sel {
+    ($cli: expr, $toml: expr, $name: ident, $arg: expr, $def: expr) => {
+        sel($cli.get_one::<String>(stringify!($name)),
+            $toml.$name.as_ref(),
+            concat!("--", stringify!($name)),
+            stringify!($name),
+            $arg,
+            $def)
+    };
+    ($cli: expr, $toml: expr, $section: ident, $name: ident, $arg: expr, $def: expr) => {
+        sel($cli.get_one::<String>(stringify!($name)),
+            $toml.$section.as_ref().and_then(|t| t.$name.as_ref()),
+            concat!("--", stringify!($name)),
+            stringify!([$section] $name),
+            $arg,
+            $def)
+    }
+}
+
 
 impl Conf {
     pub fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
@@ -116,7 +136,7 @@ impl Conf {
         };
         let header = args.get_flag("header");
         let dur_t = *args.get_one("duration").unwrap();
-        let date_fmt = sel(args, "date", toml.date.as_ref(), "date", (), DateStyle::default())?;
+        let date_fmt = sel!(args, toml, date, (), DateStyle::default())?;
         let date_offset = get_offset(args.get_flag("utc"));
         Ok(Self { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
                   merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
@@ -140,68 +160,28 @@ impl Conf {
 
 impl ConfLog {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel(args,
-                            "show",
-                            toml.log.as_ref().and_then(|t| t.show.as_ref()),
-                            "[log] show",
-                            "musa",
-                            Show::m())?,
-                  starttime: sel(args,
-                                 "starttime",
-                                 toml.log.as_ref().and_then(|l| l.starttime.as_ref()),
-                                 "[log] starttime",
-                                 (),
-                                 false)?,
+        Ok(Self { show: sel!(args, toml, log, show, "musa", Show::m())?,
+                  starttime: sel!(args, toml, log, starttime, (), false)?,
                   first: *args.get_one("first").unwrap_or(&usize::MAX) })
     }
 }
 
 impl ConfPred {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel(args,
-                            "show",
-                            toml.predict.as_ref().and_then(|t| t.show.as_ref()),
-                            "[predict] show",
-                            "emta",
-                            Show::emt())?,
-                  avg: sel(args,
-                           "avg",
-                           toml.predict.as_ref().and_then(|t| t.average.as_ref()),
-                           "[predict] average",
-                           (),
-                           Average::Median)? })
+        Ok(Self { show: sel!(args, toml, predict, show, "emta", Show::emt())?,
+                  avg: sel!(args, toml, predict, avg, (), Average::Median)? })
     }
 }
 
 impl ConfStats {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel(args,
-                            "show",
-                            toml.predict.as_ref().and_then(|t| t.show.as_ref()),
-                            "[stats] show",
-                            "ptsa",
-                            Show::p())?,
-                  avg: sel(args,
-                           "avg",
-                           toml.stats.as_ref().and_then(|t| t.average.as_ref()),
-                           "[stats] average",
-                           (),
-                           Average::Median)? })
+        Ok(Self { show: sel!(args, toml, stats, show, "ptsa", Show::p())?,
+                  avg: sel!(args, toml, stats, avg, (), Average::Median)? })
     }
 }
 impl ConfAccuracy {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel(args,
-                            "show",
-                            toml.predict.as_ref().and_then(|t| t.show.as_ref()),
-                            "[accuracy] show",
-                            "mta",
-                            Show::mt())?,
-                  avg: sel(args,
-                           "avg",
-                           toml.accuracy.as_ref().and_then(|t| t.average.as_ref()),
-                           "[predict] average",
-                           (),
-                           Average::Median)? })
+        Ok(Self { show: sel!(args, toml, accuracy, show, "mta", Show::mt())?,
+                  avg: sel!(args, toml, accuracy, avg, (), Average::Median)? })
     }
 }
