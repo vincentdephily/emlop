@@ -24,6 +24,7 @@ pub struct TomlAccuracy {
 }
 #[derive(Deserialize, Debug, Default)]
 pub struct Toml {
+    pub logfile: Option<String>,
     pub date: Option<String>,
     pub log: Option<TomlLog>,
     pub predict: Option<TomlPred>,

@@ -83,7 +83,7 @@ fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Sen
 }
 
 /// Parse emerge log into a channel of `Parsed` enums.
-pub fn get_hist(file: String,
+pub fn get_hist(file: &str,
                 min_ts: Option<i64>,
                 max_ts: Option<i64>,
                 show: Show,
@@ -92,7 +92,7 @@ pub fn get_hist(file: String,
                 -> Result<Receiver<Hist>, Error> {
     debug!("File: {file}");
     debug!("Show: {show}");
-    let mut buf = open_any_buffered(&file)?;
+    let mut buf = open_any_buffered(file)?;
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
     let filter = FilterStr::try_new(search_terms, search_exact)?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
@@ -110,7 +110,7 @@ pub fn get_hist(file: String,
                 Ok(_) => {
                     if let Some((t, s)) = parse_ts(&line, ts_min, ts_max) {
                         if prev_t > t {
-                            warn!("{file}:{curline}: System clock jump: {} -> {}",
+                            warn!("logfile:{curline}: System clock jump: {} -> {}",
                                   fmt_utctime(prev_t),
                                   fmt_utctime(t));
                         }
@@ -144,7 +144,7 @@ pub fn get_hist(file: String,
                     }
                 },
                 // Could be invalid UTF8, system read error...
-                Err(e) => warn!("{file}:{curline}: {e}"),
+                Err(e) => warn!("logfile:{curline}: {e}"),
             }
             line.clear();
             curline += 1;
@@ -342,7 +342,7 @@ mod tests {
             "shortline" => (1327867709, 1327871057),
             o => unimplemented!("Unknown test log file {:?}", o),
         };
-        let hist = get_hist(format!("tests/emerge.{}.log", file),
+        let hist = get_hist(&format!("tests/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
                             Show { pkg: false,

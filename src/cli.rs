@@ -261,7 +261,6 @@ pub fn build_cli_nocomplete() -> Command {
                                      .short('F')
                                      .global(true)
                                      .num_args(1)
-                                     .default_value("/var/log/emerge.log")
                                      .display_order(1)
                                      .help("Location of emerge log file");
     let tmpdir = Arg::new("tmpdir").value_name("dir")

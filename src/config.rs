@@ -33,6 +33,7 @@ pub struct Conf {
     pub date_offset: time::UtcOffset,
     pub date_fmt: DateStyle,
     pub out: OutStyle,
+    pub logfile: String,
 }
 pub struct ConfLog {
     pub show: Show,
@@ -136,9 +137,9 @@ impl Conf {
         };
         let header = args.get_flag("header");
         let dur_t = *args.get_one("duration").unwrap();
-        let date_fmt = sel!(args, toml, date, (), DateStyle::default())?;
         let date_offset = get_offset(args.get_flag("utc"));
-        Ok(Self { pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
+        Ok(Self { logfile: sel!(args, toml, logfile, (), String::from("/var/log/emerge.log"))?,
+                  pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
                   merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
                   unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
                   dur: AnsiStr::from(if color { "\x1B[1;35m" } else { "" }),
@@ -148,7 +149,7 @@ impl Conf {
                   header,
                   dur_t,
                   date_offset,
-                  date_fmt,
+                  date_fmt: sel!(args, toml, date, (), DateStyle::default())?,
                   out })
     }
     #[cfg(test)]

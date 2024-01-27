@@ -10,12 +10,17 @@
 ########################################
 
 
+# logfile = "/var/log/emerge.log"
 # date = "rfc2822"
 [log]
+#show = "mus"
 #starttime = true
 [predict]
-#average = "arith"
+#show = "emt"
+#avg = "arith"
 [stats]
-#average = "arith"
+#show = "pts"
+#avg = "arith"
 [accuracy]
-#average = "arith"
+#show = "mt"
+#avg = "arith"

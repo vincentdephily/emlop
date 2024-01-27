@@ -18,6 +18,11 @@ impl ArgParse<bool, ()> for bool {
         Ok(*b)
     }
 }
+impl ArgParse<String, ()> for String {
+    fn parse(s: &String, _: (), _src: &'static str) -> Result<Self, ClapError> {
+        Ok((*s).clone())
+    }
+}
 impl ArgParse<String, ()> for bool {
     fn parse(s: &String, _: (), src: &'static str) -> Result<Self, ClapError> {
         match s.as_str() {

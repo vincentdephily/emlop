@@ -7,7 +7,7 @@ use std::{collections::{BTreeMap, HashMap},
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(args: &ArgMatches, gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
-    let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
+    let hist = get_hist(&gc.logfile,
                         get_parse(args, "from", parse_date, gc.date_offset)?,
                         get_parse(args, "to", parse_date, gc.date_offset)?,
                         sc.show,
@@ -142,7 +142,7 @@ impl Times {
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(args: &ArgMatches, gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
     let timespan_opt: Option<&Timespan> = args.get_one("group");
-    let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
+    let hist = get_hist(&gc.logfile,
                         get_parse(args, "from", parse_date, gc.date_offset)?,
                         get_parse(args, "to", parse_date, gc.date_offset)?,
                         sc.show,
@@ -333,7 +333,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
     }
 
     // Parse emerge log.
-    let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
+    let hist = get_hist(&gc.logfile,
                         get_parse(args, "from", parse_date, gc.date_offset)?,
                         get_parse(args, "to", parse_date, gc.date_offset)?,
                         Show::m(),
@@ -440,7 +440,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
 }
 
 pub fn cmd_accuracy(args: &ArgMatches, gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
-    let hist = get_hist(args.get_one::<String>("logfile").unwrap().to_owned(),
+    let hist = get_hist(&gc.logfile,
                         get_parse(args, "from", parse_date, gc.date_offset)?,
                         get_parse(args, "to", parse_date, gc.date_offset)?,
                         Show::m(),
