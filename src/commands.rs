@@ -1,4 +1,5 @@
 use crate::{datetime::*, parse::*, proces::*, table::*, *};
+use clap::ArgMatches;
 use std::{collections::{BTreeMap, HashMap},
           io::stdin,
           path::PathBuf};
@@ -8,8 +9,8 @@ use std::{collections::{BTreeMap, HashMap},
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(args: &ArgMatches, gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile,
-                        get_parse(args, "from", parse_date, gc.date_offset)?,
-                        get_parse(args, "to", parse_date, gc.date_offset)?,
+                        gc.from,
+                        gc.to,
                         sc.show,
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;
@@ -143,8 +144,8 @@ impl Times {
 pub fn cmd_stats(args: &ArgMatches, gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
     let timespan_opt: Option<&Timespan> = args.get_one("group");
     let hist = get_hist(&gc.logfile,
-                        get_parse(args, "from", parse_date, gc.date_offset)?,
-                        get_parse(args, "to", parse_date, gc.date_offset)?,
+                        gc.from,
+                        gc.to,
                         sc.show,
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;
@@ -333,12 +334,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
     }
 
     // Parse emerge log.
-    let hist = get_hist(&gc.logfile,
-                        get_parse(args, "from", parse_date, gc.date_offset)?,
-                        get_parse(args, "to", parse_date, gc.date_offset)?,
-                        Show::m(),
-                        vec![],
-                        false)?;
+    let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), vec![], false)?;
     let mut started: BTreeMap<Pkg, i64> = BTreeMap::new();
     let mut times: HashMap<String, Times> = HashMap::new();
     for p in hist {
@@ -441,8 +437,8 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
 
 pub fn cmd_accuracy(args: &ArgMatches, gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile,
-                        get_parse(args, "from", parse_date, gc.date_offset)?,
-                        get_parse(args, "to", parse_date, gc.date_offset)?,
+                        gc.from,
+                        gc.to,
                         Show::m(),
                         args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
                         args.get_flag("exact"))?;

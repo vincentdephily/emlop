@@ -1,4 +1,4 @@
-use crate::{config::{err, ArgParse},
+use crate::{config::{ArgError, ArgParse},
             table::Disp,
             wtb, Conf, DurationStyle};
 use anyhow::{bail, Error};
@@ -34,7 +34,7 @@ impl Default for DateStyle {
     }
 }
 impl ArgParse<String, ()> for DateStyle {
-    fn parse(s: &String, _: (), src: &'static str) -> Result<Self, clap::error::Error> {
+    fn parse(s: &String, _: (), src: &'static str) -> Result<Self, ArgError> {
         Ok(Self(match s.as_str() {
             "ymd" | "d" => format_description!("[year]-[month]-[day]"),
             "ymdhms" | "dt" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
@@ -43,7 +43,7 @@ impl ArgParse<String, ()> for DateStyle {
             "rfc2822" | "2822" => format_description!("[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
             "compact" => format_description!("[year][month][day][hour][minute][second]"),
             "unix" => &[],
-            _ => return Err(err(s.to_owned(), src, "ymd d ymdhms dt ymdhmso dto rfc3339 3339 rfc2822 2822 compact unix"))
+            _ => return Err(ArgError::new(s, src).pos("ymd d ymdhms dt ymdhmso dto rfc3339 3339 rfc2822 2822 compact unix"))
         }))
     }
 }
@@ -76,20 +76,25 @@ pub fn epoch_now() -> i64 {
 }
 
 /// Parse datetime in various formats, returning unix timestamp
-pub fn parse_date(s: &str, offset: UtcOffset) -> Result<i64, &'static str> {
-    let s = s.trim();
-    i64::from_str(s).or_else(|e| {
-                        debug!("{s}: bad timestamp: {e}");
-                        parse_date_yyyymmdd(s, offset)
-                    })
-                    .or_else(|e| {
-                        debug!("{s}: bad absolute date: {e}");
-                        parse_date_ago(s)
-                    })
-                    .map_err(|e| {
-                        debug!("{s}: bad relative date: {e}");
-                        "Enable debug log level for details"
-                    })
+impl ArgParse<String, UtcOffset> for i64 {
+    fn parse(val: &String, offset: UtcOffset, src: &'static str) -> Result<Self, ArgError> {
+        let s = val.trim();
+        let et = match i64::from_str(s) {
+            Ok(i) => return Ok(i),
+            Err(et) => et,
+        };
+        let ea = match parse_date_yyyymmdd(s, offset) {
+            Ok(i) => return Ok(i),
+            Err(ea) => ea,
+        };
+        match parse_date_ago(s) {
+            Ok(i) => Ok(i),
+            Err(er) => {
+                let m = format!("Not a unix timestamp ({et}), absolute date ({ea}), or relative date ({er})");
+                Err(ArgError::new(val, src).msg(m))
+            },
+        }
+    }
 }
 
 /// Parse a number of day/years/hours/etc in the past, relative to current time
@@ -283,6 +288,9 @@ mod test {
 
     fn parse_3339(s: &str) -> OffsetDateTime {
         OffsetDateTime::parse(s, &Rfc3339).expect(s)
+    }
+    fn parse_date(s: &str, o: UtcOffset) -> Result<i64, ArgError> {
+        i64::parse(&String::from(s), o, "")
     }
     fn ts(t: OffsetDateTime) -> i64 {
         t.unix_timestamp()

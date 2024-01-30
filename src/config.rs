@@ -3,7 +3,7 @@ mod types;
 
 use crate::{config::toml::Toml, *};
 use anyhow::Error;
-use clap::{error::Error as ClapError, ArgMatches};
+use clap::ArgMatches;
 use std::env::var;
 pub use types::*;
 
@@ -34,6 +34,8 @@ pub struct Conf {
     pub date_fmt: DateStyle,
     pub out: OutStyle,
     pub logfile: String,
+    pub from: Option<i64>,
+    pub to: Option<i64>,
 }
 pub struct ConfLog {
     pub show: Show,
@@ -90,7 +92,7 @@ fn sel<T, A, R>(cli: Option<&String>,
                 tomlsrc: &'static str,
                 parg: A,
                 def: R)
-                -> Result<R, ClapError>
+                -> Result<R, ArgError>
     where R: ArgParse<String, A> + ArgParse<T, A>
 {
     if let Some(a) = cli {
@@ -137,8 +139,12 @@ impl Conf {
         };
         let header = args.get_flag("header");
         let dur_t = *args.get_one("duration").unwrap();
-        let date_offset = get_offset(args.get_flag("utc"));
+        let offset = get_offset(args.get_flag("utc"));
         Ok(Self { logfile: sel!(args, toml, logfile, (), String::from("/var/log/emerge.log"))?,
+                  from: args.get_one("from")
+                            .map(|d| i64::parse(d, offset, "--from"))
+                            .transpose()?,
+                  to: args.get_one("to").map(|d| i64::parse(d, offset, "--to")).transpose()?,
                   pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
                   merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
                   unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
@@ -148,7 +154,7 @@ impl Conf {
                   lineend: if color { b"\x1B[0m\n" } else { b"\n" },
                   header,
                   dur_t,
-                  date_offset,
+                  date_offset: offset,
                   date_fmt: sel!(args, toml, date, (), DateStyle::default())?,
                   out })
     }

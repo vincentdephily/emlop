@@ -10,7 +10,6 @@ mod table;
 
 use crate::{commands::*, config::*, datetime::*, parse::AnsiStr};
 use anyhow::Error;
-use clap::{error::ErrorKind, ArgMatches, Error as ClapErr};
 use log::*;
 use std::{io::IsTerminal, str::FromStr};
 
@@ -26,12 +25,15 @@ fn main() {
     match res {
         Ok(true) => std::process::exit(0),
         Ok(false) => std::process::exit(1),
-        Err(e) => match e.downcast::<ClapErr>() {
-            Ok(ce) => ce.format(&mut cli::build_cli()).exit(),
-            Err(e) => {
-                log_err(e);
-                std::process::exit(2)
-            },
+        Err(e) => {
+            match e.downcast::<clap::Error>() {
+                Ok(ce) => ce.format(&mut cli::build_cli()).print().unwrap_or(()),
+                Err(e) => match e.downcast::<ArgError>() {
+                    Ok(ae) => eprintln!("{ae}"),
+                    Err(e) => log_err(e),
+                },
+            }
+            std::process::exit(2)
         },
     }
 }
@@ -40,27 +42,6 @@ pub fn log_err(e: Error) {
     match e.source() {
         Some(s) => error!("{}: {}", e, s),
         None => error!("{}", e),
-    }
-}
-
-/// Parse and return optional argument from an ArgMatches
-///
-/// This is similar to clap's `get_one()` with `value_parser` except it allows late parsing with an
-/// argument.
-pub fn get_parse<T, P, A>(args: &ArgMatches,
-                          name: &str,
-                          parse: P,
-                          arg: A)
-                          -> Result<Option<T>, ClapErr>
-    where P: FnOnce(&str, A) -> Result<T, &'static str>
-{
-    match args.get_one::<String>(name) {
-        None => Ok(None),
-        Some(s) => match parse(s, arg) {
-            Ok(v) => Ok(Some(v)),
-            Err(e) => Err(ClapErr::raw(ErrorKind::InvalidValue,
-                                       format!("\"{s}\" isn't a valid for '--{name}': {e}"))),
-        },
     }
 }
 
