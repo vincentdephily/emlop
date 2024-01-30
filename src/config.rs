@@ -39,6 +39,8 @@ pub struct Conf {
 }
 pub struct ConfLog {
     pub show: Show,
+    pub search: Vec<String>,
+    pub exact: bool,
     pub starttime: bool,
     pub first: usize,
 }
@@ -48,10 +50,14 @@ pub struct ConfPred {
 }
 pub struct ConfStats {
     pub show: Show,
+    pub search: Vec<String>,
+    pub exact: bool,
     pub avg: Average,
 }
 pub struct ConfAccuracy {
     pub show: Show,
+    pub search: Vec<String>,
+    pub exact: bool,
     pub avg: Average,
 }
 
@@ -168,6 +174,8 @@ impl Conf {
 impl ConfLog {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { show: sel!(args, toml, log, show, "musa", Show::m())?,
+                  search: args.get_many("search").unwrap_or_default().cloned().collect(),
+                  exact: args.get_flag("exact"),
                   starttime: sel!(args, toml, log, starttime, (), false)?,
                   first: *args.get_one("first").unwrap_or(&usize::MAX) })
     }
@@ -183,12 +191,16 @@ impl ConfPred {
 impl ConfStats {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { show: sel!(args, toml, stats, show, "ptsa", Show::p())?,
+                  search: args.get_many("search").unwrap_or_default().cloned().collect(),
+                  exact: args.get_flag("exact"),
                   avg: sel!(args, toml, stats, avg, (), Average::Median)? })
     }
 }
 impl ConfAccuracy {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { show: sel!(args, toml, accuracy, show, "mta", Show::mt())?,
+                  search: args.get_many("search").unwrap_or_default().cloned().collect(),
+                  exact: args.get_flag("exact"),
                   avg: sel!(args, toml, accuracy, avg, (), Average::Median)? })
     }
 }

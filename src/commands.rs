@@ -8,12 +8,7 @@ use std::{collections::{BTreeMap, HashMap},
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(args: &ArgMatches, gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
-    let hist = get_hist(&gc.logfile,
-                        gc.from,
-                        gc.to,
-                        sc.show,
-                        args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
-                        args.get_flag("exact"))?;
+    let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
@@ -143,12 +138,7 @@ impl Times {
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(args: &ArgMatches, gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
     let timespan_opt: Option<&Timespan> = args.get_one("group");
-    let hist = get_hist(&gc.logfile,
-                        gc.from,
-                        gc.to,
-                        sc.show,
-                        args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
-                        args.get_flag("exact"))?;
+    let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
     let lim = *args.get_one("limit").unwrap();
     let tsname = timespan_opt.map_or("", |timespan| timespan.name());
     let mut tbls = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
@@ -334,7 +324,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
     }
 
     // Parse emerge log.
-    let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), vec![], false)?;
+    let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &vec![], false)?;
     let mut started: BTreeMap<Pkg, i64> = BTreeMap::new();
     let mut times: HashMap<String, Times> = HashMap::new();
     for p in hist {
@@ -436,12 +426,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
 }
 
 pub fn cmd_accuracy(args: &ArgMatches, gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
-    let hist = get_hist(&gc.logfile,
-                        gc.from,
-                        gc.to,
-                        Show::m(),
-                        args.get_many::<String>("search").unwrap_or_default().cloned().collect(),
-                        args.get_flag("exact"))?;
+    let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &sc.search, sc.exact)?;
     let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let lim = *args.get_one("limit").unwrap();
     let mut pkg_starts: HashMap<String, i64> = HashMap::new();
