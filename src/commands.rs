@@ -7,14 +7,13 @@ use std::{collections::{BTreeMap, HashMap},
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_log(args: &ArgMatches, gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
+pub fn cmd_log(gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
-    let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(last);
+    let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(sc.last);
     tbl.header(["Date", "Duration", "Package/Repo"]);
     for p in hist {
         match p {
@@ -295,12 +294,7 @@ fn cmd_stats_group(gc: &Conf,
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
 pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let now = epoch_now();
-    let first = *args.get_one("first").unwrap_or(&usize::MAX);
-    let last = match args.get_one("last") {
-        Some(&n) if sc.show.tot => n + 1,
-        Some(&n) => n,
-        None => usize::MAX,
-    };
+    let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
     let lim = *args.get_one("limit").unwrap();
     let resume = args.get_one("resume").copied();
     let unknown_pred = *args.get_one("unknown").unwrap();
@@ -386,7 +380,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
         totelapsed += elapsed;
 
         // Done
-        if sc.show.merge && totcount <= first {
+        if sc.show.merge && totcount <= sc.first {
             if elapsed > 0 {
                 let stage = get_buildlog(&p, &tmpdirs).unwrap_or_default();
                 tbl.row([&[&gc.pkg, &p.ebuild_version()],
@@ -407,7 +401,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
             if totunknown > 0 {
                 s.extend::<[&dyn Disp; 5]>([&", ", &gc.cnt, &totunknown, &gc.clr, &" unknown"]);
             }
-            let tothidden = totcount.saturating_sub(first.min(last - 1));
+            let tothidden = totcount.saturating_sub(sc.first.min(last - 1));
             if tothidden > 0 {
                 s.extend::<[&dyn Disp; 5]>([&", ", &gc.cnt, &tothidden, &gc.clr, &" hidden"]);
             }
@@ -427,13 +421,12 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
 
 pub fn cmd_accuracy(args: &ArgMatches, gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &sc.search, sc.exact)?;
-    let last = *args.get_one("last").unwrap_or(&usize::MAX);
     let lim = *args.get_one("limit").unwrap();
     let mut pkg_starts: HashMap<String, i64> = HashMap::new();
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let mut tbl = Table::new(gc).align_left(0).align_left(1).last(last);
+    let mut tbl = Table::new(gc).align_left(0).align_left(1).last(sc.last);
     tbl.header(["Date", "Package", "Real", "Predicted", "Error"]);
     for p in hist {
         match p {

@@ -9,7 +9,7 @@ pub use types::*;
 
 
 pub enum Configs {
-    Log(ArgMatches, Conf, ConfLog),
+    Log(Conf, ConfLog),
     Stats(ArgMatches, Conf, ConfStats),
     Predict(ArgMatches, Conf, ConfPred),
     Accuracy(ArgMatches, Conf, ConfAccuracy),
@@ -43,10 +43,13 @@ pub struct ConfLog {
     pub exact: bool,
     pub starttime: bool,
     pub first: usize,
+    pub last: usize,
 }
 pub struct ConfPred {
     pub show: Show,
     pub avg: Average,
+    pub first: usize,
+    pub last: usize,
 }
 pub struct ConfStats {
     pub show: Show,
@@ -59,6 +62,7 @@ pub struct ConfAccuracy {
     pub search: Vec<String>,
     pub exact: bool,
     pub avg: Average,
+    pub last: usize,
 }
 
 impl Configs {
@@ -77,7 +81,7 @@ impl Configs {
         log::trace!("{:?}", toml);
         let conf = Conf::try_new(&args, &toml)?;
         Ok(match args.subcommand() {
-            Some(("log", sub)) => Self::Log(sub.clone(), conf, ConfLog::try_new(sub, &toml)?),
+            Some(("log", sub)) => Self::Log(conf, ConfLog::try_new(sub, &toml)?),
             Some(("stats", sub)) => Self::Stats(sub.clone(), conf, ConfStats::try_new(sub, &toml)?),
             Some(("predict", sub)) => {
                 Self::Predict(sub.clone(), conf, ConfPred::try_new(sub, &toml)?)
@@ -177,14 +181,17 @@ impl ConfLog {
                   search: args.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: args.get_flag("exact"),
                   starttime: sel!(args, toml, log, starttime, (), false)?,
-                  first: *args.get_one("first").unwrap_or(&usize::MAX) })
+                  first: *args.get_one("first").unwrap_or(&usize::MAX),
+                  last: *args.get_one("last").unwrap_or(&usize::MAX) })
     }
 }
 
 impl ConfPred {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { show: sel!(args, toml, predict, show, "emta", Show::emt())?,
-                  avg: sel!(args, toml, predict, avg, (), Average::Median)? })
+                  avg: sel!(args, toml, predict, avg, (), Average::Median)?,
+                  first: *args.get_one("first").unwrap_or(&usize::MAX),
+                  last: *args.get_one("last").unwrap_or(&usize::MAX) })
     }
 }
 
@@ -196,11 +203,13 @@ impl ConfStats {
                   avg: sel!(args, toml, stats, avg, (), Average::Median)? })
     }
 }
+
 impl ConfAccuracy {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { show: sel!(args, toml, accuracy, show, "mta", Show::mt())?,
                   search: args.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: args.get_flag("exact"),
-                  avg: sel!(args, toml, accuracy, avg, (), Average::Median)? })
+                  avg: sel!(args, toml, accuracy, avg, (), Average::Median)?,
+                  last: *args.get_one("last").unwrap_or(&usize::MAX) })
     }
 }

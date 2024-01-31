@@ -15,7 +15,7 @@ use std::{io::IsTerminal, str::FromStr};
 
 fn main() {
     let res = match Configs::load() {
-        Ok(Configs::Log(args, gc, sc)) => cmd_log(&args, &gc, &sc),
+        Ok(Configs::Log(gc, sc)) => cmd_log(&gc, &sc),
         Ok(Configs::Stats(args, gc, sc)) => cmd_stats(&args, &gc, &sc),
         Ok(Configs::Predict(args, gc, sc)) => cmd_predict(&args, &gc, &sc),
         Ok(Configs::Accuracy(args, gc, sc)) => cmd_accuracy(&args, &gc, &sc),
