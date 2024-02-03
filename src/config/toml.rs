@@ -11,16 +11,19 @@ pub struct TomlLog {
 pub struct TomlPred {
     pub show: Option<String>,
     pub avg: Option<String>,
+    pub limit: Option<u16>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlStats {
     pub show: Option<String>,
     pub avg: Option<String>,
+    pub limit: Option<u16>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlAccuracy {
     pub show: Option<String>,
     pub avg: Option<String>,
+    pub limit: Option<u16>,
 }
 #[derive(Deserialize, Debug, Default)]
 pub struct Toml {

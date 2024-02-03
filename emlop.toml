@@ -18,9 +18,12 @@
 [predict]
 #show = "emt"
 #avg = "arith"
+#limit = 20
 [stats]
 #show = "pts"
 #avg = "arith"
+#limit = 20
 [accuracy]
 #show = "mt"
 #avg = "arith"
+#limit = 20

@@ -143,8 +143,6 @@ pub fn build_cli_nocomplete() -> Command {
                                  .display_order(2)
                                  .num_args(1)
                                  .value_name("num")
-                                 .value_parser(value_parser!(u16).range(1..))
-                                 .default_value("10")
                                  .help_heading("Stats")
                                  .help("Use the last <num> merge times to predict durations");
     let avg =

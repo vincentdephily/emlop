@@ -18,7 +18,7 @@ fn main() {
         Ok(Configs::Log(gc, sc)) => cmd_log(&gc, &sc),
         Ok(Configs::Stats(args, gc, sc)) => cmd_stats(&args, &gc, &sc),
         Ok(Configs::Predict(args, gc, sc)) => cmd_predict(&args, &gc, &sc),
-        Ok(Configs::Accuracy(args, gc, sc)) => cmd_accuracy(&args, &gc, &sc),
+        Ok(Configs::Accuracy(gc, sc)) => cmd_accuracy(&gc, &sc),
         Ok(Configs::Complete(args)) => cmd_complete(&args),
         Err(e) => Err(e),
     };

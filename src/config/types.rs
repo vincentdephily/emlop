@@ -1,3 +1,5 @@
+use std::{ops::Range, str::FromStr};
+
 /// Parsing trait for args
 ///
 /// Similar to std::convert::From but takes extra context and returns a custom error
@@ -5,14 +7,14 @@ pub trait ArgParse<T, A> {
     fn parse(val: &T, arg: A, src: &'static str) -> Result<Self, ArgError>
         where Self: Sized;
 }
-impl ArgParse<bool, ()> for bool {
-    fn parse(b: &bool, _: (), _src: &'static str) -> Result<Self, ArgError> {
-        Ok(*b)
-    }
-}
 impl ArgParse<String, ()> for String {
     fn parse(s: &String, _: (), _src: &'static str) -> Result<Self, ArgError> {
         Ok((*s).clone())
+    }
+}
+impl ArgParse<bool, ()> for bool {
+    fn parse(b: &bool, _: (), _src: &'static str) -> Result<Self, ArgError> {
+        Ok(*b)
     }
 }
 impl ArgParse<String, ()> for bool {
@@ -21,6 +23,21 @@ impl ArgParse<String, ()> for bool {
             "y" | "yes" => Ok(true),
             "n" | "no" => Ok(false),
             _ => Err(ArgError::new(s, src).pos("y(es) n(o)")),
+        }
+    }
+}
+impl ArgParse<String, Range<u16>> for u16 {
+    fn parse(s: &String, r: Range<u16>, src: &'static str) -> Result<Self, ArgError> {
+        let i = u16::from_str(s).map_err(|_| ArgError::new(s, src).msg("Not an integer"))?;
+        Self::parse(&i, r, src)
+    }
+}
+impl ArgParse<u16, Range<u16>> for u16 {
+    fn parse(i: &u16, r: Range<u16>, src: &'static str) -> Result<Self, ArgError> {
+        if r.contains(i) {
+            Ok(*i)
+        } else {
+            Err(ArgError::new(i, src).msg(format!("Should be between {} and {}", r.start, r.end)))
         }
     }
 }
@@ -38,12 +55,12 @@ pub struct ArgError {
 }
 impl ArgError {
     /// Instantiate basic error with value and source
-    pub fn new(val: impl Into<String>, src: &'static str) -> Self {
-        Self { val: val.into(), src, msg: String::new(), possible: "" }
+    pub fn new(val: impl ToString, src: &'static str) -> Self {
+        Self { val: val.to_string(), src, msg: String::new(), possible: "" }
     }
     /// Set extra error message
-    pub fn msg(mut self, msg: impl Into<String>) -> Self {
-        self.msg = msg.into();
+    pub fn msg(mut self, msg: impl ToString) -> Self {
+        self.msg = msg.to_string();
         self
     }
     /// Set possible values (as a space-delimited string or as a set of letters)

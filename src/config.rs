@@ -12,7 +12,7 @@ pub enum Configs {
     Log(Conf, ConfLog),
     Stats(ArgMatches, Conf, ConfStats),
     Predict(ArgMatches, Conf, ConfPred),
-    Accuracy(ArgMatches, Conf, ConfAccuracy),
+    Accuracy(Conf, ConfAccuracy),
     Complete(ArgMatches),
 }
 
@@ -50,12 +50,14 @@ pub struct ConfPred {
     pub avg: Average,
     pub first: usize,
     pub last: usize,
+    pub lim: u16,
 }
 pub struct ConfStats {
     pub show: Show,
     pub search: Vec<String>,
     pub exact: bool,
     pub avg: Average,
+    pub lim: u16,
 }
 pub struct ConfAccuracy {
     pub show: Show,
@@ -63,6 +65,7 @@ pub struct ConfAccuracy {
     pub exact: bool,
     pub avg: Average,
     pub last: usize,
+    pub lim: u16,
 }
 
 impl Configs {
@@ -86,9 +89,7 @@ impl Configs {
             Some(("predict", sub)) => {
                 Self::Predict(sub.clone(), conf, ConfPred::try_new(sub, &toml)?)
             },
-            Some(("accuracy", sub)) => {
-                Self::Accuracy(sub.clone(), conf, ConfAccuracy::try_new(sub, &toml)?)
-            },
+            Some(("accuracy", sub)) => Self::Accuracy(conf, ConfAccuracy::try_new(sub, &toml)?),
             Some(("complete", sub)) => Self::Complete(sub.clone()),
             _ => unreachable!("clap should have exited already"),
         })
@@ -190,6 +191,7 @@ impl ConfPred {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { show: sel!(args, toml, predict, show, "emta", Show::emt())?,
                   avg: sel!(args, toml, predict, avg, (), Average::Median)?,
+                  lim: sel!(args, toml, predict, limit, 1..u16::MAX, 10)?,
                   first: *args.get_one("first").unwrap_or(&usize::MAX),
                   last: *args.get_one("last").unwrap_or(&usize::MAX) })
     }
@@ -200,6 +202,7 @@ impl ConfStats {
         Ok(Self { show: sel!(args, toml, stats, show, "ptsa", Show::p())?,
                   search: args.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: args.get_flag("exact"),
+                  lim: sel!(args, toml, stats, limit, 1..u16::MAX, 10)?,
                   avg: sel!(args, toml, stats, avg, (), Average::Median)? })
     }
 }
@@ -210,6 +213,7 @@ impl ConfAccuracy {
                   search: args.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: args.get_flag("exact"),
                   avg: sel!(args, toml, accuracy, avg, (), Average::Median)?,
+                  lim: sel!(args, toml, accuracy, limit, 1..u16::MAX, 10)?,
                   last: *args.get_one("last").unwrap_or(&usize::MAX) })
     }
 }
