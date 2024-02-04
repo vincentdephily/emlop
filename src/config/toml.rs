@@ -18,6 +18,7 @@ pub struct TomlStats {
     pub show: Option<String>,
     pub avg: Option<String>,
     pub limit: Option<u16>,
+    pub group: Option<String>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlAccuracy {

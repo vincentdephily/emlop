@@ -130,13 +130,12 @@ pub fn build_cli_nocomplete() -> Command {
     let group = Arg::new("group").short('g')
                                  .long("groupby")
                                  .display_order(1)
-                                 .value_name("y,m,w,d")
-                                 .value_parser(value_parser!(crate::datetime::Timespan))
+                                 .value_name("y,m,w,d,n")
                                  .hide_possible_values(true)
                                  .help_heading("Stats")
-                                 .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay")
-                                 .long_help("Group by (y)ear, (m)onth, (w)eek, or (d)ay\n\
-                                             The grouping key is displayed in the first column. \
+                                 .help("Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one")
+                                 .long_help("Group by (y)ear, (m)onth, (w)eek, (d)ay, or (n)one\n\
+                                             The grouping key is displayed in the first column.\n\
                                              Weeks start on monday and are formated as \
                                              'year-weeknumber'.");
     let limit = Arg::new("limit").long("limit")

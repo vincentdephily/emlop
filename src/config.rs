@@ -10,7 +10,7 @@ pub use types::*;
 
 pub enum Configs {
     Log(Conf, ConfLog),
-    Stats(ArgMatches, Conf, ConfStats),
+    Stats(Conf, ConfStats),
     Predict(ArgMatches, Conf, ConfPred),
     Accuracy(Conf, ConfAccuracy),
     Complete(ArgMatches),
@@ -58,6 +58,7 @@ pub struct ConfStats {
     pub exact: bool,
     pub avg: Average,
     pub lim: u16,
+    pub group: Timespan,
 }
 pub struct ConfAccuracy {
     pub show: Show,
@@ -85,7 +86,7 @@ impl Configs {
         let conf = Conf::try_new(&args, &toml)?;
         Ok(match args.subcommand() {
             Some(("log", sub)) => Self::Log(conf, ConfLog::try_new(sub, &toml)?),
-            Some(("stats", sub)) => Self::Stats(sub.clone(), conf, ConfStats::try_new(sub, &toml)?),
+            Some(("stats", sub)) => Self::Stats(conf, ConfStats::try_new(sub, &toml)?),
             Some(("predict", sub)) => {
                 Self::Predict(sub.clone(), conf, ConfPred::try_new(sub, &toml)?)
             },
@@ -203,7 +204,8 @@ impl ConfStats {
                   search: args.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: args.get_flag("exact"),
                   lim: sel!(args, toml, stats, limit, 1..u16::MAX, 10)?,
-                  avg: sel!(args, toml, stats, avg, (), Average::Median)? })
+                  avg: sel!(args, toml, stats, avg, (), Average::Median)?,
+                  group: sel!(args, toml, stats, group, (), Timespan::None)? })
     }
 }
 

@@ -135,14 +135,12 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(args: &ArgMatches, gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
-    let timespan_opt: Option<&Timespan> = args.get_one("group");
+pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let tsname = timespan_opt.map_or("", |timespan| timespan.name());
     let mut tbls = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
-    tbls.header([tsname, "Repo", "Sync count", "Total time", "Predict time"]);
+    tbls.header([sc.group.name(), "Repo", "Sync count", "Total time", "Predict time"]);
     let mut tblp = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
-    tblp.header([tsname,
+    tblp.header([sc.group.name(),
                  "Package",
                  "Merge count",
                  "Total time",
@@ -151,7 +149,7 @@ pub fn cmd_stats(args: &ArgMatches, gc: &Conf, sc: &ConfStats) -> Result<bool, E
                  "Total time",
                  "Predict time"]);
     let mut tblt = Table::new(gc).align_left(0).margin(1, " ");
-    tblt.header([tsname,
+    tblt.header([sc.group.name(),
                  "Merge count",
                  "Total time",
                  "Average time",
@@ -166,18 +164,18 @@ pub fn cmd_stats(args: &ArgMatches, gc: &Conf, sc: &ConfStats) -> Result<bool, E
     let mut nextts = 0;
     let mut curts = 0;
     for p in hist {
-        if let Some(timespan) = timespan_opt {
+        if !matches!(sc.group, Timespan::None) {
             let t = p.ts();
             if nextts == 0 {
-                nextts = timespan.next(t, gc.date_offset);
+                nextts = sc.group.next(t, gc.date_offset);
                 curts = t;
             } else if t > nextts {
-                let group = timespan.at(curts, gc.date_offset);
+                let group = sc.group.at(curts, gc.date_offset);
                 cmd_stats_group(gc, sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time,
                                 &pkg_time);
                 sync_time.clear();
                 pkg_time.clear();
-                nextts = timespan.next(t, gc.date_offset);
+                nextts = sc.group.next(t, gc.date_offset);
                 curts = t;
             }
         }
@@ -216,7 +214,7 @@ pub fn cmd_stats(args: &ArgMatches, gc: &Conf, sc: &ConfStats) -> Result<bool, E
             },
         }
     }
-    let group = timespan_opt.map(|timespan| timespan.at(curts, gc.date_offset)).unwrap_or_default();
+    let group = sc.group.at(curts, gc.date_offset);
     cmd_stats_group(gc, sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time, &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
     let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());

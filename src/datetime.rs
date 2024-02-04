@@ -186,28 +186,37 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())
 }
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Clone, Copy)]
 pub enum Timespan {
-    #[clap(id("y"))]
     Year,
-    #[clap(id("m"))]
     Month,
-    #[clap(id("w"))]
     Week,
-    #[clap(id("d"))]
     Day,
+    None,
+}
+impl ArgParse<String, ()> for Timespan {
+    fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "y" | "year" => Ok(Self::Year),
+            "m" | "month" => Ok(Self::Month),
+            "w" | "week" => Ok(Self::Week),
+            "d" | "day" => Ok(Self::Day),
+            "n" | "none" => Ok(Self::None),
+            _ => Err(ArgError::new(v, s).pos("(y)ear (m)onth (w)eek (d)ay (n)one")),
+        }
+    }
 }
 impl Timespan {
     /// Given a unix timestamp, advance to the beginning of the next year/month/week/day.
     pub fn next(&self, ts: i64, offset: UtcOffset) -> i64 {
         let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset).date();
         let d2 = match self {
-            Timespan::Year => Date::from_calendar_date(d.year() + 1, Month::January, 1).unwrap(),
-            Timespan::Month => {
+            Self::Year => Date::from_calendar_date(d.year() + 1, Month::January, 1).unwrap(),
+            Self::Month => {
                 let year = if d.month() == Month::December { d.year() + 1 } else { d.year() };
                 Date::from_calendar_date(year, d.month().next(), 1).unwrap()
             },
-            Timespan::Week => {
+            Self::Week => {
                 let til_monday = match d.weekday() {
                     Weekday::Monday => 7,
                     Weekday::Tuesday => 6,
@@ -219,29 +228,32 @@ impl Timespan {
                 };
                 d.checked_add(Duration::days(til_monday)).unwrap()
             },
-            Timespan::Day => d.checked_add(Duration::DAY).unwrap(),
+            Self::Day => d.checked_add(Duration::DAY).unwrap(),
+            Self::None => panic!("Called next() on a Timespan::None"),
         };
         let res = d2.with_hms(0, 0, 0).unwrap().assume_offset(offset).unix_timestamp();
-        debug!("{} + {:?} = {}", fmt_utctime(ts), self, fmt_utctime(res));
+        debug!("{} + {} = {}", fmt_utctime(ts), self.name(), fmt_utctime(res));
         res
     }
 
     pub fn at(&self, ts: i64, offset: UtcOffset) -> String {
         let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset);
         match self {
-            Timespan::Year => d.format(format_description!("[year]")).unwrap(),
-            Timespan::Month => d.format(format_description!("[year]-[month]")).unwrap(),
-            Timespan::Week => d.format(format_description!("[year]-[week_number]")).unwrap(),
-            Timespan::Day => d.format(format_description!("[year]-[month]-[day]")).unwrap(),
+            Self::Year => d.format(format_description!("[year]")).unwrap(),
+            Self::Month => d.format(format_description!("[year]-[month]")).unwrap(),
+            Self::Week => d.format(format_description!("[year]-[week_number]")).unwrap(),
+            Self::Day => d.format(format_description!("[year]-[month]-[day]")).unwrap(),
+            Self::None => String::new(),
         }
     }
 
     pub const fn name(&self) -> &'static str {
         match self {
-            Timespan::Year => "Year",
-            Timespan::Month => "Month",
-            Timespan::Week => "Week",
-            Timespan::Day => "Date",
+            Self::Year => "Year",
+            Self::Month => "Month",
+            Self::Week => "Week",
+            Self::Day => "Date",
+            Self::None => "",
         }
     }
 }

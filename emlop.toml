@@ -23,6 +23,7 @@
 #show = "pts"
 #avg = "arith"
 #limit = 20
+#group = "y"
 [accuracy]
 #show = "mt"
 #avg = "arith"
