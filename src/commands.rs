@@ -291,7 +291,6 @@ fn cmd_stats_group(gc: &Conf,
 pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let now = epoch_now();
     let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
-    let resume = args.get_one("resume").copied();
     let unknown_pred = *args.get_one("unknown").unwrap();
     let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(last);
     let mut tmpdirs: Vec<PathBuf> = args.get_many("tmpdir").unwrap().cloned().collect();
@@ -306,7 +305,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
     }
     if cms == std::i64::MAX
        && std::io::stdin().is_terminal()
-       && (resume == Some(ResumeKind::No) || resume.is_none())
+       && matches!(sc.resume, ResumeKind::No | ResumeKind::Current)
     {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
         return Ok(false);
@@ -334,7 +333,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
     // Build list of pending merges
     let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
         // From resume data + emerge.log after current merge process start time
-        let mut r = get_resume(resume.unwrap_or(ResumeKind::Main));
+        let mut r = get_resume(sc.resume);
         for p in started.iter().filter(|&(_, t)| *t > cms).map(|(p, _)| p) {
             if !r.contains(p) {
                 r.push(p.clone())

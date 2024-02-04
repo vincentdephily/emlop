@@ -114,11 +114,24 @@ impl ArgParse<String, ()> for Average {
             "m" | "median" => Ok(Self::Median),
             "wa" | "weighted-arith" => Ok(Self::WeightedArith),
             "wm" | "weighted-median" => Ok(Self::WeightedMedian),
-            _ => Err(ArgError::new(v, s).pos("arith median weightedarith weigtedmedian a m wa wm")),
+            _ => Err(ArgError::new(v, s).pos("(a)rith (m)edian wa/weightedarith wm/weigtedmedian")),
         }
     }
 }
 
+#[derive(Clone, Copy, clap::ValueEnum)]
+pub enum ResumeKind {
+    #[clap(hide(true))]
+    Current,
+    #[clap(alias("a"))]
+    Any,
+    #[clap(alias("m"))]
+    Main,
+    #[clap(alias("b"))]
+    Backup,
+    #[clap(alias("n"))]
+    No,
+}
 
 #[derive(Clone, Copy)]
 pub struct Show {

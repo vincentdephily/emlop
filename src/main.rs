@@ -50,17 +50,6 @@ pub fn log_err(e: Error) {
 macro_rules! wtb { ($b:ident, $($arg:expr),+) => {write!($b, $($arg),+).expect("write to buf")} }
 
 
-#[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum ResumeKind {
-    #[clap(alias("a"))]
-    Any,
-    #[clap(alias("m"))]
-    Main,
-    #[clap(alias("b"))]
-    Backup,
-    #[clap(alias("n"))]
-    No,
-}
 
 #[derive(Clone, Copy, clap::ValueEnum)]
 pub enum DurationStyle {

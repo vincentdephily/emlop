@@ -280,7 +280,7 @@ pub fn build_cli_nocomplete() -> Command {
              no|n:          Never use resume list";
     let resume = Arg::new("resume").long("resume")
                                    .value_name("source")
-                                   .value_parser(value_parser!(crate::ResumeKind))
+                                   .value_parser(value_parser!(crate::config::ResumeKind))
                                    .hide_possible_values(true)
                                    .num_args(..=1)
                                    .default_missing_value("any")

@@ -51,6 +51,7 @@ pub struct ConfPred {
     pub first: usize,
     pub last: usize,
     pub lim: u16,
+    pub resume: ResumeKind,
 }
 pub struct ConfStats {
     pub show: Show,
@@ -193,6 +194,7 @@ impl ConfPred {
         Ok(Self { show: sel!(args, toml, predict, show, "emta", Show::emt())?,
                   avg: sel!(args, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(args, toml, predict, limit, 1..u16::MAX, 10)?,
+                  resume: *args.get_one("resume").unwrap_or(&ResumeKind::Current),
                   first: *args.get_one("first").unwrap_or(&usize::MAX),
                   last: *args.get_one("last").unwrap_or(&usize::MAX) })
     }

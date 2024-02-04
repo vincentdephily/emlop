@@ -81,14 +81,14 @@ pub fn get_resume(kind: ResumeKind) -> Vec<Pkg> {
     get_resume_priv(kind, "/var/cache/edb/mtimedb").unwrap_or_default()
 }
 fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
-    if kind == ResumeKind::No {
+    if matches!(kind, ResumeKind::No) {
         return Some(vec![]);
     }
     let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
     let db: Mtimedb = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
     let r = match kind {
         ResumeKind::Any => db.resume.or(db.resume_backup)?,
-        ResumeKind::Main => db.resume?,
+        ResumeKind::Main | ResumeKind::Current => db.resume?,
         ResumeKind::Backup => db.resume_backup?,
         ResumeKind::No => unreachable!(),
     };
