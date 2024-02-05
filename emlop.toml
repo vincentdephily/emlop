@@ -19,6 +19,7 @@
 #show = "emt"
 #avg = "arith"
 #limit = 20
+#unknown = 300
 [stats]
 #show = "pts"
 #avg = "arith"

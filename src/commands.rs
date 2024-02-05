@@ -291,7 +291,6 @@ fn cmd_stats_group(gc: &Conf,
 pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let now = epoch_now();
     let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
-    let unknown_pred = *args.get_one("unknown").unwrap();
     let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(last);
     let mut tmpdirs: Vec<PathBuf> = args.get_many("tmpdir").unwrap().cloned().collect();
 
@@ -367,7 +366,7 @@ pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, 
             },
             None => {
                 totunknown += 1;
-                (-1, unknown_pred)
+                (-1, sc.unknown)
             },
         };
         totpredict += std::cmp::max(0, pred - elapsed);

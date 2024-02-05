@@ -52,6 +52,7 @@ pub struct ConfPred {
     pub last: usize,
     pub lim: u16,
     pub resume: ResumeKind,
+    pub unknown: i64,
 }
 pub struct ConfStats {
     pub show: Show,
@@ -193,7 +194,8 @@ impl ConfPred {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         Ok(Self { show: sel!(args, toml, predict, show, "emta", Show::emt())?,
                   avg: sel!(args, toml, predict, avg, (), Average::Median)?,
-                  lim: sel!(args, toml, predict, limit, 1..u16::MAX, 10)?,
+                  lim: sel!(args, toml, predict, limit, 1..65000, 10)? as u16,
+                  unknown: sel!(args, toml, predict, unknown, 0..3600, 10)?,
                   resume: *args.get_one("resume").unwrap_or(&ResumeKind::Current),
                   first: *args.get_one("first").unwrap_or(&usize::MAX),
                   last: *args.get_one("last").unwrap_or(&usize::MAX) })
@@ -205,7 +207,7 @@ impl ConfStats {
         Ok(Self { show: sel!(args, toml, stats, show, "ptsa", Show::p())?,
                   search: args.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: args.get_flag("exact"),
-                  lim: sel!(args, toml, stats, limit, 1..u16::MAX, 10)?,
+                  lim: sel!(args, toml, stats, limit, 1..65000, 10)? as u16,
                   avg: sel!(args, toml, stats, avg, (), Average::Median)?,
                   group: sel!(args, toml, stats, group, (), Timespan::None)? })
     }
@@ -217,7 +219,7 @@ impl ConfAccuracy {
                   search: args.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: args.get_flag("exact"),
                   avg: sel!(args, toml, accuracy, avg, (), Average::Median)?,
-                  lim: sel!(args, toml, accuracy, limit, 1..u16::MAX, 10)?,
+                  lim: sel!(args, toml, accuracy, limit, 1..65000, 10)? as u16,
                   last: *args.get_one("last").unwrap_or(&usize::MAX) })
     }
 }

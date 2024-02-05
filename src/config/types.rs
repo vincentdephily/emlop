@@ -26,14 +26,14 @@ impl ArgParse<String, ()> for bool {
         }
     }
 }
-impl ArgParse<String, Range<u16>> for u16 {
-    fn parse(s: &String, r: Range<u16>, src: &'static str) -> Result<Self, ArgError> {
-        let i = u16::from_str(s).map_err(|_| ArgError::new(s, src).msg("Not an integer"))?;
+impl ArgParse<String, Range<i64>> for i64 {
+    fn parse(s: &String, r: Range<i64>, src: &'static str) -> Result<Self, ArgError> {
+        let i = i64::from_str(s).map_err(|_| ArgError::new(s, src).msg("Not an integer"))?;
         Self::parse(&i, r, src)
     }
 }
-impl ArgParse<u16, Range<u16>> for u16 {
-    fn parse(i: &u16, r: Range<u16>, src: &'static str) -> Result<Self, ArgError> {
+impl ArgParse<i64, Range<i64>> for i64 {
+    fn parse(i: &i64, r: Range<i64>, src: &'static str) -> Result<Self, ArgError> {
         if r.contains(i) {
             Ok(*i)
         } else {

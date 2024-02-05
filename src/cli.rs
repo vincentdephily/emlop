@@ -161,8 +161,6 @@ pub fn build_cli_nocomplete() -> Command {
                                      .display_order(4)
                                      .num_args(1)
                                      .value_name("secs")
-                                     .value_parser(value_parser!(i64).range(0..))
-                                     .default_value("10")
                                      .help_heading("Stats")
                                      .help("Assume unkown packages take <secs> seconds to merge");
 
