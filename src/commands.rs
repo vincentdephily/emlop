@@ -1,8 +1,7 @@
 use crate::{datetime::*, parse::*, proces::*, table::*, *};
 use clap::ArgMatches;
 use std::{collections::{BTreeMap, HashMap},
-          io::stdin,
-          path::PathBuf};
+          io::stdin};
 
 /// Straightforward display of merge events
 ///
@@ -288,11 +287,11 @@ fn cmd_stats_group(gc: &Conf,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(args: &ArgMatches, gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
+pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let now = epoch_now();
     let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
     let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(last);
-    let mut tmpdirs: Vec<PathBuf> = args.get_many("tmpdir").unwrap().cloned().collect();
+    let mut tmpdirs = sc.tmpdirs.clone();
 
     // Gather and print info about current merge process.
     let mut cms = std::i64::MAX;

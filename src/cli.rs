@@ -262,7 +262,6 @@ pub fn build_cli_nocomplete() -> Command {
                                    .long("tmpdir")
                                    .num_args(1)
                                    .action(Append)
-                                   .default_value("/var/tmp")
                                    .value_parser(value_parser!(PathBuf))
                                    .display_order(2)
                                    .help("Location of portage tmpdir")
@@ -458,7 +457,6 @@ mod test {
         assert_eq!(one!(ColorStyle, "color", "l --color never"), Some(&ColorStyle::Never));
 
         let pathvec = |s: &str| Some(s.split_whitespace().map(PathBuf::from).collect());
-        assert_eq!(many!(PathBuf, "tmpdir", "p"), pathvec("/var/tmp"));
         assert_eq!(many!(PathBuf, "tmpdir", "p --tmpdir a"), pathvec("a"));
         assert_eq!(many!(PathBuf, "tmpdir", "p --tmpdir a --tmpdir b"), pathvec("a b"));
     }

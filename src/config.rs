@@ -4,14 +4,14 @@ mod types;
 use crate::{config::toml::Toml, *};
 use anyhow::Error;
 use clap::ArgMatches;
-use std::env::var;
+use std::{env::var, path::PathBuf};
 pub use types::*;
 
 
 pub enum Configs {
     Log(Conf, ConfLog),
     Stats(Conf, ConfStats),
-    Predict(ArgMatches, Conf, ConfPred),
+    Predict(Conf, ConfPred),
     Accuracy(Conf, ConfAccuracy),
     Complete(ArgMatches),
 }
@@ -53,6 +53,7 @@ pub struct ConfPred {
     pub lim: u16,
     pub resume: ResumeKind,
     pub unknown: i64,
+    pub tmpdirs: Vec<PathBuf>,
 }
 pub struct ConfStats {
     pub show: Show,
@@ -89,9 +90,7 @@ impl Configs {
         Ok(match args.subcommand() {
             Some(("log", sub)) => Self::Log(conf, ConfLog::try_new(sub, &toml)?),
             Some(("stats", sub)) => Self::Stats(conf, ConfStats::try_new(sub, &toml)?),
-            Some(("predict", sub)) => {
-                Self::Predict(sub.clone(), conf, ConfPred::try_new(sub, &toml)?)
-            },
+            Some(("predict", sub)) => Self::Predict(conf, ConfPred::try_new(sub, &toml)?),
             Some(("accuracy", sub)) => Self::Accuracy(conf, ConfAccuracy::try_new(sub, &toml)?),
             Some(("complete", sub)) => Self::Complete(sub.clone()),
             _ => unreachable!("clap should have exited already"),
@@ -192,11 +191,19 @@ impl ConfLog {
 
 impl ConfPred {
     fn try_new(args: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
+        let tmpdirs = if let Some(a) = args.get_many::<PathBuf>("tmpdir") {
+            a.cloned().collect()
+        } else if let Some(a) = toml.predict.as_ref().and_then(|t| t.tmpdir.as_ref()) {
+            a.to_vec()
+        } else {
+            vec![PathBuf::from("/var/tmp")]
+        };
         Ok(Self { show: sel!(args, toml, predict, show, "emta", Show::emt())?,
                   avg: sel!(args, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(args, toml, predict, limit, 1..65000, 10)? as u16,
                   unknown: sel!(args, toml, predict, unknown, 0..3600, 10)?,
                   resume: *args.get_one("resume").unwrap_or(&ResumeKind::Current),
+                  tmpdirs,
                   first: *args.get_one("first").unwrap_or(&usize::MAX),
                   last: *args.get_one("last").unwrap_or(&usize::MAX) })
     }

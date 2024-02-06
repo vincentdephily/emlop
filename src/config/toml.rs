@@ -1,6 +1,6 @@
 use anyhow::{Context, Error};
 use serde::Deserialize;
-use std::{env::var, fs::File, io::Read};
+use std::{env::var, fs::File, io::Read, path::PathBuf};
 
 #[derive(Deserialize, Debug)]
 pub struct TomlLog {
@@ -13,6 +13,7 @@ pub struct TomlPred {
     pub avg: Option<String>,
     pub limit: Option<i64>,
     pub unknown: Option<i64>,
+    pub tmpdir: Option<Vec<PathBuf>>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlStats {

@@ -20,6 +20,7 @@
 #avg = "arith"
 #limit = 20
 #unknown = 300
+#tmpdir = ["/foo", "/bar"]
 [stats]
 #show = "pts"
 #avg = "arith"
