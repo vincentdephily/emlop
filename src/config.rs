@@ -13,7 +13,7 @@ pub enum Configs {
     Stats(Conf, ConfStats),
     Predict(Conf, ConfPred),
     Accuracy(Conf, ConfAccuracy),
-    Complete(ArgMatches),
+    Complete(ConfComplete),
 }
 
 /// Global config
@@ -71,6 +71,9 @@ pub struct ConfAccuracy {
     pub last: usize,
     pub lim: u16,
 }
+pub struct ConfComplete {
+    pub shell: clap_complete::Shell,
+}
 
 impl Configs {
     pub fn load() -> Result<Configs, Error> {
@@ -92,7 +95,7 @@ impl Configs {
             Some(("stats", sub)) => Self::Stats(conf, ConfStats::try_new(sub, &toml)?),
             Some(("predict", sub)) => Self::Predict(conf, ConfPred::try_new(sub, &toml)?),
             Some(("accuracy", sub)) => Self::Accuracy(conf, ConfAccuracy::try_new(sub, &toml)?),
-            Some(("complete", sub)) => Self::Complete(sub.clone()),
+            Some(("complete", sub)) => Self::Complete(ConfComplete::try_new(sub)?),
             _ => unreachable!("clap should have exited already"),
         })
     }
@@ -228,5 +231,11 @@ impl ConfAccuracy {
                   avg: sel!(cli, toml, accuracy, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, accuracy, limit, 1..65000, 10)? as u16,
                   last: *cli.get_one("last").unwrap_or(&usize::MAX) })
+    }
+}
+
+impl ConfComplete {
+    fn try_new(cli: &ArgMatches) -> Result<Self, Error> {
+        Ok(Self { shell: *cli.get_one("shell").unwrap() })
     }
 }

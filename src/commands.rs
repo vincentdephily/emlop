@@ -1,5 +1,4 @@
 use crate::{datetime::*, parse::*, proces::*, table::*, *};
-use clap::ArgMatches;
 use std::{collections::{BTreeMap, HashMap},
           io::stdin};
 
@@ -471,10 +470,9 @@ pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
     Ok(found)
 }
 
-pub fn cmd_complete(args: &ArgMatches) -> Result<bool, Error> {
-    let shell: clap_complete::Shell = *args.get_one("shell").unwrap();
+pub fn cmd_complete(sc: &ConfComplete) -> Result<bool, Error> {
     let mut cli = cli::build_cli_nocomplete();
-    clap_complete::generate(shell, &mut cli, "emlop", &mut std::io::stdout());
+    clap_complete::generate(sc.shell, &mut cli, "emlop", &mut std::io::stdout());
     Ok(true)
 }
 

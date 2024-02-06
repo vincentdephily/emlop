@@ -19,7 +19,7 @@ fn main() {
         Ok(Configs::Stats(gc, sc)) => cmd_stats(&gc, &sc),
         Ok(Configs::Predict(gc, sc)) => cmd_predict(&gc, &sc),
         Ok(Configs::Accuracy(gc, sc)) => cmd_accuracy(&gc, &sc),
-        Ok(Configs::Complete(args)) => cmd_complete(&args),
+        Ok(Configs::Complete(sc)) => cmd_complete(&sc),
         Err(e) => Err(e),
     };
     match res {
