@@ -295,17 +295,6 @@ pub fn build_cli_nocomplete() -> Command {
                                                  -v:   show warnings\n  \
                                                  -vv:  show info\n  \
                                                  -vvv: show debug");
-    let h = "Location of emlop config file\n\
-             Default is $HOME/.config/emlop.toml (or $EMLOP_CONFIG if set)\n\
-             Set to an empty string to disable\n\
-             Config in in TOML format, see example file in /usr/share/doc/emlop-x.y.z/";
-    let config = Arg::new("config").value_name("file")
-                                   .long("config")
-                                   .global(true)
-                                   .num_args(1)
-                                   .display_order(5)
-                                   .help(h.split_once('\n').unwrap().0)
-                                   .long_help(h);
 
     ////////////////////////////////////////////////////////////
     // Subcommands
@@ -364,9 +353,11 @@ pub fn build_cli_nocomplete() -> Command {
     let about = "A fast, accurate, ergonomic EMerge LOg Parser\n\
                  https://github.com/vincentdephily/emlop";
     let after_help =
-        "Subcommands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
-         Subcommands have their own -h / --help\n\
-         Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of other errors";
+        concat!("Commands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
+                 Commands have their own -h / --help\n\
+                 Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of other errors\n\
+                 Config can be set in $HOME/.config/emlop.toml, see example in /usr/share/doc/emlop-",
+                crate_version!());
     let styles =
         styling::Styles::styled().header(styling::AnsiColor::Blue.on_default()
                                          | styling::Effects::BOLD)
@@ -392,7 +383,6 @@ pub fn build_cli_nocomplete() -> Command {
                          .arg(color)
                          .arg(output)
                          .arg(logfile)
-                         .arg(config)
                          .arg(verbose)
                          .subcommand(cmd_log)
                          .subcommand(cmd_pred)

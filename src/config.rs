@@ -6,7 +6,7 @@ pub use crate::config::{cli::*, types::*};
 use crate::{config::toml::Toml, *};
 use anyhow::Error;
 use clap::ArgMatches;
-use std::{env::var, path::PathBuf};
+use std::path::PathBuf;
 
 
 pub enum Configs {
@@ -88,8 +88,8 @@ impl Configs {
         };
         env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
         trace!("{:?}", cli);
-        let toml = Toml::load(cli.get_one::<String>("config"), var("EMLOP_CONFIG").ok())?;
-        log::trace!("{:?}", toml);
+        let toml = Toml::load()?;
+        trace!("{:?}", toml);
         let conf = Conf::try_new(&cli, &toml)?;
         Ok(match cli.subcommand() {
             Some(("log", sub)) => Self::Log(conf, ConfLog::try_new(sub, &toml)?),

@@ -41,8 +41,8 @@ pub struct Toml {
     pub accuracy: Option<TomlAccuracy>,
 }
 impl Toml {
-    pub fn load(arg: Option<&String>, env: Option<String>) -> Result<Self, Error> {
-        match arg.or(env.as_ref()) {
+    pub fn load() -> Result<Self, Error> {
+        match var("EMLOP_CONFIG").ok() {
             Some(s) if s.is_empty() => Ok(Self::default()),
             Some(s) => Self::doload(s.as_str()),
             _ => Self::doload(&format!("{}/.config/emlop.toml",
@@ -50,7 +50,7 @@ impl Toml {
         }
     }
     fn doload(name: &str) -> Result<Self, Error> {
-        log::trace!("Loading config {name:?}");
+        log::debug!("Loading config {name:?}");
         let mut f = File::open(name).with_context(|| format!("Cannot open {name:?}"))?;
         let mut buf = String::new();
         // TODO Streaming read
