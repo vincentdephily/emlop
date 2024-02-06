@@ -32,6 +32,9 @@ pub struct TomlAccuracy {
 pub struct Toml {
     pub logfile: Option<String>,
     pub date: Option<String>,
+    pub duration: Option<String>,
+    pub header: Option<bool>,
+    pub utc: Option<bool>,
     pub log: Option<TomlLog>,
     pub predict: Option<TomlPred>,
     pub stats: Option<TomlStats>,

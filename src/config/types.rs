@@ -134,6 +134,42 @@ pub enum ResumeKind {
 }
 
 #[derive(Clone, Copy)]
+pub enum DurationStyle {
+    HMS,
+    HMSFixed,
+    Secs,
+    Human,
+}
+impl ArgParse<String, ()> for DurationStyle {
+    fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "hms" => Ok(Self::HMS),
+            "hmsfixed" => Ok(Self::HMSFixed),
+            "s" | "secs" => Ok(Self::Secs),
+            "h" | "human" => Ok(Self::Human),
+            _ => Err(ArgError::new(v, s).pos("hms hmsfixed (s)ecs (h)uman")),
+        }
+    }
+}
+
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
+#[derive(Clone, Copy, clap::ValueEnum)]
+pub enum ColorStyle {
+    #[clap(alias("y"))]
+    Always,
+    #[clap(alias("n"))]
+    Never,
+}
+
+#[derive(Clone, Copy, clap::ValueEnum, PartialEq, Eq)]
+pub enum OutStyle {
+    #[clap(alias("c"))]
+    Columns,
+    #[clap(alias("t"))]
+    Tab,
+}
+
+#[derive(Clone, Copy)]
 pub struct Show {
     pub pkg: bool,
     pub tot: bool,

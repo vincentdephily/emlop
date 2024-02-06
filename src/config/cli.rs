@@ -169,9 +169,11 @@ pub fn build_cli_nocomplete() -> Command {
     ////////////////////////////////////////////////////////////
     let header = Arg::new("header").short('H')
                                    .long("header")
-                                   .action(SetTrue)
                                    .global(true)
                                    .display_order(1)
+                                   .num_args(..=1)
+                                   .default_missing_value("y")
+                                   .value_name("bool")
                                    .help_heading("Format")
                                    .help("Show table header");
     let date =
@@ -194,21 +196,21 @@ pub fn build_cli_nocomplete() -> Command {
                                        .long("duration")
                                        .display_order(3)
                                        .global(true)
-                                       .value_parser(value_parser!(crate::DurationStyle))
                                        .hide_possible_values(true)
-                                       .default_value("hms")
                                        .display_order(51)
                                        .help_heading("Format")
                                        .help("Output durations in different formats")
                                        .long_help("Output durations in different formats\n  \
-                                                   hms:      10:30\n  \
-                                                   hmsfixed: 0:10:30\n  \
-                                                   secs|s:   630\n  \
-                                                   human|h:  10 minutes, 30 seconds");
+                                                   hms|(default): 10:30\n  \
+                                                   hmsfixed:      0:10:30\n  \
+                                                   secs|s:        630\n  \
+                                                   human|h:       10 minutes, 30 seconds");
     let utc = Arg::new("utc").long("utc")
                              .global(true)
-                             .action(SetTrue)
                              .display_order(4)
+                             .num_args(..=1)
+                             .default_missing_value("y")
+                             .value_name("bool")
                              .help_heading("Format")
                              .help("Parse/display dates in UTC instead of local time");
     let starttime = Arg::new("starttime").long("starttime")

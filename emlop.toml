@@ -12,6 +12,9 @@
 
 # logfile = "/var/log/emerge.log"
 # date = "rfc2822"
+# duration = "human"
+# utc = true
+# header = true
 [log]
 #show = "mus"
 #starttime = true

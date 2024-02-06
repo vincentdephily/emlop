@@ -47,32 +47,3 @@ pub fn log_err(e: Error) {
 /// Alias to `write!(...).expect("write to buf")` just to save on typing/indent.
 #[macro_export]
 macro_rules! wtb { ($b:ident, $($arg:expr),+) => {write!($b, $($arg),+).expect("write to buf")} }
-
-
-#[derive(Clone, Copy, clap::ValueEnum)]
-pub enum DurationStyle {
-    HMS,
-    #[clap(id("hmsfixed"))]
-    HMSFixed,
-    #[clap(alias("s"))]
-    Secs,
-    #[clap(alias("h"))]
-    Human,
-}
-
-#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
-#[derive(Clone, Copy, clap::ValueEnum)]
-pub enum ColorStyle {
-    #[clap(alias("y"))]
-    Always,
-    #[clap(alias("n"))]
-    Never,
-}
-
-#[derive(Clone, Copy, clap::ValueEnum, PartialEq, Eq)]
-pub enum OutStyle {
-    #[clap(alias("c"))]
-    Columns,
-    #[clap(alias("t"))]
-    Tab,
-}

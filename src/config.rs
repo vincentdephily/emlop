@@ -154,9 +154,7 @@ impl Conf {
             None if isterm => OutStyle::Columns,
             None => OutStyle::Tab,
         };
-        let header = cli.get_flag("header");
-        let dur_t = *cli.get_one("duration").unwrap();
-        let offset = get_offset(cli.get_flag("utc"));
+        let offset = get_offset(sel!(cli, toml, utc, (), false)?);
         Ok(Self { logfile: sel!(cli, toml, logfile, (), String::from("/var/log/emerge.log"))?,
                   from: cli.get_one("from")
                            .map(|d| i64::parse(d, offset, "--from"))
@@ -169,8 +167,8 @@ impl Conf {
                   cnt: AnsiStr::from(if color { "\x1B[2;33m" } else { "" }),
                   clr: AnsiStr::from(if color { "\x1B[0m" } else { "" }),
                   lineend: if color { b"\x1B[0m\n" } else { b"\n" },
-                  header,
-                  dur_t,
+                  header: sel!(cli, toml, header, (), false)?,
+                  dur_t: sel!(cli, toml, duration, (), DurationStyle::HMS)?,
                   date_offset: offset,
                   date_fmt: sel!(cli, toml, date, (), DateStyle::default())?,
                   out })
