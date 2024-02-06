@@ -471,7 +471,7 @@ pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
 }
 
 pub fn cmd_complete(sc: &ConfComplete) -> Result<bool, Error> {
-    let mut cli = cli::build_cli_nocomplete();
+    let mut cli = build_cli_nocomplete();
     clap_complete::generate(sc.shell, &mut cli, "emlop", &mut std::io::stdout());
     Ok(true)
 }

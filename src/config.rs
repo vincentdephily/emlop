@@ -1,11 +1,12 @@
+mod cli;
 mod toml;
 mod types;
 
+pub use crate::config::{cli::*, types::*};
 use crate::{config::toml::Toml, *};
 use anyhow::Error;
 use clap::ArgMatches;
 use std::{env::var, path::PathBuf};
-pub use types::*;
 
 
 pub enum Configs {

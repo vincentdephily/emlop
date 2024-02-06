@@ -1,6 +1,5 @@
 #![cfg_attr(feature = "unstable", feature(test))]
 
-mod cli;
 mod commands;
 mod config;
 mod datetime;
@@ -27,7 +26,7 @@ fn main() {
         Ok(false) => std::process::exit(1),
         Err(e) => {
             match e.downcast::<clap::Error>() {
-                Ok(ce) => ce.format(&mut cli::build_cli()).print().unwrap_or(()),
+                Ok(ce) => ce.format(&mut build_cli()).print().unwrap_or(()),
                 Err(e) => match e.downcast::<ArgError>() {
                     Ok(ae) => eprintln!("{ae}"),
                     Err(e) => log_err(e),
