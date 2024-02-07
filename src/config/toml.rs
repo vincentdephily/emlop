@@ -51,10 +51,16 @@ impl Toml {
     }
     fn doload(name: &str) -> Result<Self, Error> {
         log::debug!("Loading config {name:?}");
-        let mut f = File::open(name).with_context(|| format!("Cannot open {name:?}"))?;
-        let mut buf = String::new();
-        // TODO Streaming read
-        f.read_to_string(&mut buf).with_context(|| format!("Cannot read {name:?}"))?;
-        toml::from_str(&buf).with_context(|| format!("Cannot parse {name:?}"))
+        match File::open(name) {
+            Err(e) => {
+                log::warn!("Cannot open {name:?}: {e}");
+                Ok(Self::default())
+            },
+            Ok(mut f) => {
+                let mut buf = String::new();
+                f.read_to_string(&mut buf).with_context(|| format!("Cannot read {name:?}"))?;
+                toml::from_str(&buf).with_context(|| format!("Cannot parse {name:?}"))
+            },
+        }
     }
 }
