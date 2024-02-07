@@ -135,16 +135,16 @@ pub enum ResumeKind {
 
 #[derive(Clone, Copy)]
 pub enum DurationStyle {
-    HMS,
-    HMSFixed,
+    Hms,
+    HmsFixed,
     Secs,
     Human,
 }
 impl ArgParse<String, ()> for DurationStyle {
     fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
         match v.as_str() {
-            "hms" => Ok(Self::HMS),
-            "hmsfixed" => Ok(Self::HMSFixed),
+            "hms" => Ok(Self::Hms),
+            "hmsfixed" => Ok(Self::HmsFixed),
             "s" | "secs" => Ok(Self::Secs),
             "h" | "human" => Ok(Self::Human),
             _ => Err(ArgError::new(v, s).pos("hms hmsfixed (s)ecs (h)uman")),

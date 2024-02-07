@@ -269,12 +269,12 @@ impl crate::table::Disp for FmtDur {
         let start = buf.len();
         match conf.dur_t {
             _ if sec < 0 => wtb!(buf, "{dur}?"),
-            HMS if sec >= 3600 => {
+            Hms if sec >= 3600 => {
                 wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60)
             },
-            HMS if sec >= 60 => wtb!(buf, "{dur}{}:{:02}", sec % 3600 / 60, sec % 60),
-            HMS | Secs => wtb!(buf, "{dur}{sec}"),
-            HMSFixed => wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60),
+            Hms if sec >= 60 => wtb!(buf, "{dur}{}:{:02}", sec % 3600 / 60, sec % 60),
+            Hms | Secs => wtb!(buf, "{dur}{sec}"),
+            HmsFixed => wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60),
             Human if sec == 0 => wtb!(buf, "{dur}0 second"),
             Human => {
                 let a = [(sec / 86400, "day"),

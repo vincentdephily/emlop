@@ -168,7 +168,7 @@ impl Conf {
                   clr: AnsiStr::from(if color { "\x1B[0m" } else { "" }),
                   lineend: if color { b"\x1B[0m\n" } else { b"\n" },
                   header: sel!(cli, toml, header, (), false)?,
-                  dur_t: sel!(cli, toml, duration, (), DurationStyle::HMS)?,
+                  dur_t: sel!(cli, toml, duration, (), DurationStyle::Hms)?,
                   date_offset: offset,
                   date_fmt: sel!(cli, toml, date, (), DateStyle::default())?,
                   out })
