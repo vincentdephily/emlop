@@ -57,7 +57,7 @@ impl Hist {
             _ => unreachable!("No ebuild/version for {:?}", self),
         }
     }
-    pub fn ts(&self) -> i64 {
+    pub const fn ts(&self) -> i64 {
         match self {
             Self::MergeStart { ts, .. } => *ts,
             Self::MergeStop { ts, .. } => *ts,
@@ -83,16 +83,16 @@ fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Sen
 }
 
 /// Parse emerge log into a channel of `Parsed` enums.
-pub fn get_hist(file: String,
+pub fn get_hist(file: &str,
                 min_ts: Option<i64>,
                 max_ts: Option<i64>,
                 show: Show,
-                search_terms: Vec<String>,
+                search_terms: &Vec<String>,
                 search_exact: bool)
                 -> Result<Receiver<Hist>, Error> {
     debug!("File: {file}");
     debug!("Show: {show}");
-    let mut buf = open_any_buffered(&file)?;
+    let mut buf = open_any_buffered(file)?;
     let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
     let filter = FilterStr::try_new(search_terms, search_exact)?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
@@ -110,7 +110,7 @@ pub fn get_hist(file: String,
                 Ok(_) => {
                     if let Some((t, s)) = parse_ts(&line, ts_min, ts_max) {
                         if prev_t > t {
-                            warn!("{file}:{curline}: System clock jump: {} -> {}",
+                            warn!("logfile:{curline}: System clock jump: {} -> {}",
                                   fmt_utctime(prev_t),
                                   fmt_utctime(t));
                         }
@@ -144,7 +144,7 @@ pub fn get_hist(file: String,
                     }
                 },
                 // Could be invalid UTF8, system read error...
-                Err(e) => warn!("{file}:{curline}: {e}"),
+                Err(e) => warn!("logfile:{curline}: {e}"),
             }
             line.clear();
             curline += 1;
@@ -179,19 +179,21 @@ enum FilterStr {
     Re { r: RegexSet },
 }
 impl FilterStr {
-    fn try_new(terms: Vec<String>, exact: bool) -> Result<Self, regex::Error> {
+    fn try_new(terms: &Vec<String>, exact: bool) -> Result<Self, regex::Error> {
         debug!("Search: {terms:?} {exact}");
         Ok(match (terms.len(), exact) {
             (0, _) => Self::True,
             (_, true) => {
                 let (b, c) = terms.iter().cloned().partition(|s| s.contains('/'));
-                Self::Eq { a: terms, b, c: c.into_iter().map(|s| format!("/{s}")).collect() }
+                Self::Eq { a: terms.clone(),
+                           b,
+                           c: c.into_iter().map(|s| format!("/{s}")).collect() }
             },
             (1, false) => {
                 Self::Re1 { r: RegexBuilder::new(&terms[0]).case_insensitive(true).build()? }
             },
             (_, false) => {
-                Self::Re { r: RegexSetBuilder::new(&terms).case_insensitive(true).build()? }
+                Self::Re { r: RegexSetBuilder::new(terms).case_insensitive(true).build()? }
             },
         })
     }
@@ -342,14 +344,16 @@ mod tests {
             "shortline" => (1327867709, 1327871057),
             o => unimplemented!("Unknown test log file {:?}", o),
         };
-        let hist = get_hist(format!("tests/emerge.{}.log", file),
+        let hist = get_hist(&format!("tests/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
-                            Show { merge: parse_merge,
-                                   unmerge: parse_unmerge,
+                            Show { pkg: false,
+                                   tot: false,
                                    sync: parse_sync,
-                                   ..Show::default() },
-                            filter_terms.clone(),
+                                   merge: parse_merge,
+                                   unmerge: parse_unmerge,
+                                   emerge: false },
+                            &filter_terms,
                             exact).unwrap();
         let re_atom = Regex::new("^[a-zA-Z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();
@@ -516,7 +520,7 @@ mod tests {
                      ("a.", false, "ab", true, true),];
         for (terms, e, s, mpkg, mstr) in t {
             let t: Vec<String> = terms.split_whitespace().map(str::to_string).collect();
-            let f = FilterStr::try_new(t.clone(), e).unwrap();
+            let f = FilterStr::try_new(&t, e).unwrap();
             assert_eq!(f.match_pkg(s), mpkg, "filter({t:?}, {e}).match_pkg({s:?})");
             assert_eq!(f.match_str(s), mstr, "filter({t:?}, {e}).match_str({s:?})");
         }
@@ -524,7 +528,7 @@ mod tests {
 
     #[test]
     fn split_atom() {
-        let f = FilterStr::try_new(vec![], false).unwrap();
+        let f = FilterStr::try_new(&vec![], false).unwrap();
         let g = |s| find_version(s, &f).map(|n| (&s[..n - 1], &s[n..]));
         assert_eq!(None, g(""));
         assert_eq!(None, g("a"));

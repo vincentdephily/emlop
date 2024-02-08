@@ -81,14 +81,14 @@ pub fn get_resume(kind: ResumeKind) -> Vec<Pkg> {
     get_resume_priv(kind, "/var/cache/edb/mtimedb").unwrap_or_default()
 }
 fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
-    if kind == ResumeKind::No {
+    if matches!(kind, ResumeKind::No) {
         return Some(vec![]);
     }
     let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
     let db: Mtimedb = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
     let r = match kind {
         ResumeKind::Any => db.resume.or(db.resume_backup)?,
-        ResumeKind::Main => db.resume?,
+        ResumeKind::Main | ResumeKind::Current => db.resume?,
         ResumeKind::Backup => db.resume_backup?,
         ResumeKind::No => unreachable!(),
     };
@@ -112,11 +112,11 @@ fn read_buildlog(file: File, max: usize) -> String {
     for line in rev_lines::RevLines::new(BufReader::new(file)).map_while(Result::ok) {
         if line.starts_with(">>>") {
             let tag = line.split_ascii_whitespace().skip(1).take(2).collect::<Vec<_>>().join(" ");
-            if last.is_empty() {
-                return format!(" ({})", tag.trim_matches('.'));
+            return if last.is_empty() {
+                format!(" ({})", tag.trim_matches('.'))
             } else {
-                return format!(" ({}: {})", tag.trim_matches('.'), last);
-            }
+                format!(" ({}: {})", tag.trim_matches('.'), last)
+            };
         }
         if last.is_empty() {
             let stripped = Ansi::strip(&line, max);

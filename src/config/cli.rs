@@ -34,8 +34,6 @@ pub fn build_cli_nocomplete() -> Command {
     let show_l = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("m,u,s,a")
-                                 .value_parser(|s: &str| crate::Show::parse(s, "musa"))
-                                 .default_value("m")
                                  .display_order(3)
                                  .help_heading("Filter")
                                  .help("Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll")
@@ -47,8 +45,6 @@ pub fn build_cli_nocomplete() -> Command {
     let show_s = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("p,t,s,a")
-                                 .value_parser(|s: &str| crate::Show::parse(s, "ptsa"))
-                                 .default_value("p")
                                  .display_order(3)
                                  .help_heading("Filter")
                                  .help("Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll")
@@ -60,8 +56,6 @@ pub fn build_cli_nocomplete() -> Command {
     let show_p = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("e,m,t,a")
-                                 .value_parser(|s: &str| crate::Show::parse(s, "emta"))
-                                 .default_value("emt")
                                  .display_order(3)
                                  .help_heading("Filter")
                                  .help("Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll")
@@ -73,8 +67,6 @@ pub fn build_cli_nocomplete() -> Command {
     let show_a = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("m,t,a")
-                                 .value_parser(|s: &str| crate::Show::parse(s, "mta"))
-                                 .default_value("mt")
                                  .display_order(3)
                                  .help_heading("Filter")
                                  .help("Show (m)erges, (t)otals, and/or (a)ll")
@@ -82,38 +74,39 @@ pub fn build_cli_nocomplete() -> Command {
                                              m: Package merges\n  \
                                              t: Totals\n  \
                                              a: All of the above");
-
-    let from = Arg::new("from").value_name("date")
-                               .short('f')
+    let h = "Only parse log entries after <date>\n  \
+             2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
+             123456789:                                       Absolute unix timestamp\n  \
+             1 year, 2 months|10d:                            Relative date";
+    let from = Arg::new("from").short('f')
                                .long("from")
-                               .display_order(4)
+                               .value_name("date")
                                .global(true)
                                .num_args(1)
+                               .display_order(4)
                                .help_heading("Filter")
-                               .help("Only parse log entries after <date>")
-                               .long_help("Only parse log entries after <date>\n  \
-                                           2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
-                                           123456789:                                       Absolute unix timestamp\n  \
-                                           1 year, 2 months|10d:                            Relative date");
-    let to = Arg::new("to").value_name("date")
-                           .short('t')
+                               .help(h.split_once('\n').unwrap().0)
+                               .long_help(h);
+    let h = "Only parse log entries before <date>\n  \
+             2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
+             123456789:                                       Absolute unix timestamp\n  \
+             1 year, 2 months|10d:                            Relative date";
+    let to = Arg::new("to").short('t')
                            .long("to")
-                           .display_order(5)
+                           .value_name("date")
                            .global(true)
                            .num_args(1)
+                           .display_order(5)
                            .help_heading("Filter")
-                           .help("Only parse log entries before <date>")
-                           .long_help("Only parse log entries before <date>\n  \
-                                       2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
-                                       123456789:                                       Absolute unix timestamp\n  \
-                                       1 year, 2 months|10d:                            Relative date");
+                           .help(h.split_once('\n').unwrap().0)
+                           .long_help(h);
     let first = Arg::new("first").short('N')
                                  .long("first")
                                  .value_name("num")
-                                 .display_order(6)
                                  .num_args(..=1)
                                  .default_missing_value("1")
                                  .value_parser(value_parser!(usize))
+                                 .display_order(6)
                                  .help_heading("Filter")
                                  .help("Show only the first <num> entries")
                                  .long_help("Show only the first <num> entries\n  \
@@ -122,60 +115,69 @@ pub fn build_cli_nocomplete() -> Command {
     let last = Arg::new("last").short('n')
                                .long("last")
                                .value_name("num")
-                               .display_order(7)
                                .num_args(..=1)
                                .default_missing_value("1")
                                .value_parser(value_parser!(usize))
+                               .display_order(7)
                                .help_heading("Filter")
                                .help("Show only the last <num> entries")
                                .long_help("Show only the last <num> entries\n  \
                                              (empty)|1: last entry\n  \
                                              5:         last 5 entries\n");
+    let h = "Use main, backup, any, or no portage resume list\n\
+             This is ignored if STDIN is a piped `emerge -p` output\n  \
+             (default):     Use main resume list, if currently emerging\n  \
+             any|a|(empty): Use main or backup resume list\n  \
+             main|m:        Use main resume list\n  \
+             backup|b:      Use backup resume list\n  \
+             no|n:          Never use resume list";
+    let resume = Arg::new("resume").long("resume")
+                                   .value_name("source")
+                                   .value_parser(value_parser!(crate::config::ResumeKind))
+                                   .hide_possible_values(true)
+                                   .num_args(..=1)
+                                   .default_missing_value("any")
+                                   .display_order(8)
+                                   .help_heading("Filter")
+                                   .help(h.split_once('\n').unwrap().0)
+                                   .long_help(h);
 
     ////////////////////////////////////////////////////////////
     // Stats arguments
     ////////////////////////////////////////////////////////////
     let group = Arg::new("group").short('g')
                                  .long("groupby")
-                                 .display_order(1)
-                                 .value_name("y,m,w,d")
-                                 .value_parser(value_parser!(crate::datetime::Timespan))
+                                 .value_name("y,m,w,d,n")
                                  .hide_possible_values(true)
+                                 .display_order(10)
                                  .help_heading("Stats")
-                                 .help("Group by (y)ear, (m)onth, (w)eek, or (d)ay")
-                                 .long_help("Group by (y)ear, (m)onth, (w)eek, or (d)ay\n\
-                                             The grouping key is displayed in the first column. \
+                                 .help("Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one")
+                                 .long_help("Group by (y)ear, (m)onth, (w)eek, (d)ay, or (n)one\n\
+                                             The grouping key is displayed in the first column.\n\
                                              Weeks start on monday and are formated as \
                                              'year-weeknumber'.");
     let limit = Arg::new("limit").long("limit")
-                                 .display_order(2)
-                                 .num_args(1)
                                  .value_name("num")
-                                 .value_parser(value_parser!(u16).range(1..))
-                                 .default_value("10")
+                                 .num_args(1)
+                                 .display_order(11)
                                  .help_heading("Stats")
                                  .help("Use the last <num> merge times to predict durations");
     let avg =
         Arg::new("avg").long("avg")
                        .value_name("fn")
-                       .display_order(3)
-                       .value_parser(value_parser!(crate::Average))
                        .hide_possible_values(true)
-                       .default_value("median")
+                       .display_order(12)
                        .help_heading("Stats")
                        .help("Select function used to predict durations")
                        .long_help("Select function used to predict durations\n  \
                                    arith|a:            simple 'sum/count' average\n  \
-                                   median|m:           middle value, mitigates outliers\n  \
+                                   (defaut)|median|m:  middle value, mitigates outliers\n  \
                                    weighted-arith|wa:  'sum/count' with more weight for recent values\n  \
                                    weighted-median|wm: \"middle\" value shifted toward recent values");
-
     let unknown = Arg::new("unknown").long("unknown")
-                                     .display_order(4)
                                      .num_args(1)
                                      .value_name("secs")
-                                     .value_parser(value_parser!(i64).range(0..))
-                                     .default_value("10")
+                                     .display_order(13)
                                      .help_heading("Stats")
                                      .help("Assume unkown packages take <secs> seconds to merge");
 
@@ -184,79 +186,76 @@ pub fn build_cli_nocomplete() -> Command {
     ////////////////////////////////////////////////////////////
     let header = Arg::new("header").short('H')
                                    .long("header")
-                                   .action(SetTrue)
+                                   .value_name("bool")
                                    .global(true)
-                                   .display_order(1)
+                                   .num_args(..=1)
+                                   .default_missing_value("y")
+                                   .display_order(20)
                                    .help_heading("Format")
                                    .help("Show table header");
     let date =
-        Arg::new("date").value_name("format")
-                        .long("date")
-                        .display_order(2)
+        Arg::new("date").long("date")
+                        .value_name("format")
                         .global(true)
-                        .value_parser(value_parser!(crate::datetime::DateStyle))
-                        .hide_possible_values(true)
-                        .default_value("ymdhms")
-                        .display_order(52)
+                        .display_order(21)
                         .help_heading("Format")
                         .help("Output dates in different formats")
                         .long_help("Output dates in different formats\n  \
-                                    ymd|d:        2022-01-31\n  \
-                                    ymdhms|dt:    2022-01-31 08:59:46\n  \
-                                    ymdhmso|dto:  2022-01-31 08:59:46 +00:00\n  \
-                                    rfc3339|3339: 2022-01-31T08:59:46+00:00\n  \
-                                    rfc2822|2822: Mon, 31 Jan 2022 08:59:46 +00:00\n  \
-                                    compact:      20220131085946\n  \
-                                    unix:         1643619586");
-    let duration = Arg::new("duration").value_name("format")
-                                       .long("duration")
-                                       .display_order(3)
+                                    ymd|d:               2022-01-31\n  \
+                                    (default)|ymdhms|dt: 2022-01-31 08:59:46\n  \
+                                    ymdhmso|dto:         2022-01-31 08:59:46 +00:00\n  \
+                                    rfc3339|3339:        2022-01-31T08:59:46+00:00\n  \
+                                    rfc2822|2822:        Mon, 31 Jan 2022 08:59:46 +00:00\n  \
+                                    compact:             20220131085946\n  \
+                                    unix:                1643619586");
+    let duration = Arg::new("duration").long("duration")
+                                       .value_name("format")
                                        .global(true)
-                                       .value_parser(value_parser!(crate::DurationStyle))
                                        .hide_possible_values(true)
-                                       .default_value("hms")
-                                       .display_order(51)
+                                       .display_order(22)
                                        .help_heading("Format")
                                        .help("Output durations in different formats")
                                        .long_help("Output durations in different formats\n  \
-                                                   hms:      10:30\n  \
-                                                   hmsfixed: 0:10:30\n  \
-                                                   secs|s:   630\n  \
-                                                   human|h:  10 minutes, 30 seconds");
+                                                   hms|(default): 10:30\n  \
+                                                   hmsfixed:      0:10:30\n  \
+                                                   secs|s:        630\n  \
+                                                   human|h:       10 minutes, 30 seconds");
     let utc = Arg::new("utc").long("utc")
+                             .value_name("bool")
                              .global(true)
-                             .action(SetTrue)
-                             .display_order(4)
+                             .num_args(..=1)
+                             .default_missing_value("y")
+                             .display_order(23)
                              .help_heading("Format")
                              .help("Parse/display dates in UTC instead of local time");
     let starttime = Arg::new("starttime").long("starttime")
-                                         .action(SetTrue)
-                                         .display_order(5)
+                                         .value_name("bool")
+                                         .num_args(..=1)
+                                         .default_missing_value("y")
+                                         .display_order(24)
                                          .help_heading("Format")
                                          .help("Display start time instead of end time");
     let color = Arg::new("color").long("color")
-                                 .alias("colour")
-                                 .display_order(6)
+                                 .value_name("when")
                                  .global(true)
                                  .value_parser(value_parser!(crate::ColorStyle))
                                  .hide_possible_values(true)
                                  .num_args(..=1)
                                  .default_missing_value("y")
-                                 .value_name("when")
-                                 .display_order(55)
+                                 .display_order(25)
                                  .help_heading("Format")
                                  .help("Enable color (always/never/y/n)")
                                  .long_help("Enable color (always/never/y/n)\n  \
                                              (default):        colored if on tty\n  \
                                              (empty)|always|y: colored\n  \
                                              never|n:          not colored");
-    let output = Arg::new("output").long("output")
-                                   .short('o')
+    let output = Arg::new("output").short('o')
+                                   .long("output")
                                    .value_name("format")
                                    .global(true)
                                    .value_parser(value_parser!(crate::OutStyle))
                                    .hide_possible_values(true)
-                                   .display_order(7)
+                                   .display_order(26)
                                    .help_heading("Format")
                                    .help("Ouput format (columns/c/tab/t)")
                                    .long_help("Ouput format (columns/c/tab/t)\n  \
@@ -267,45 +266,27 @@ pub fn build_cli_nocomplete() -> Command {
     ////////////////////////////////////////////////////////////
     // Misc arguments
     ////////////////////////////////////////////////////////////
-    let logfile = Arg::new("logfile").value_name("file")
+    let logfile = Arg::new("logfile").short('F')
                                      .long("logfile")
-                                     .short('F')
+                                     .value_name("file")
                                      .global(true)
                                      .num_args(1)
-                                     .default_value("/var/log/emerge.log")
-                                     .display_order(1)
+                                     .display_order(30)
                                      .help("Location of emerge log file");
-    let tmpdir = Arg::new("tmpdir").value_name("dir")
-                                   .long("tmpdir")
+    let tmpdir = Arg::new("tmpdir").long("tmpdir")
+                                   .value_name("dir")
                                    .num_args(1)
                                    .action(Append)
-                                   .default_value("/var/tmp")
                                    .value_parser(value_parser!(PathBuf))
-                                   .display_order(2)
+                                   .display_order(31)
                                    .help("Location of portage tmpdir")
                                    .long_help("Location of portage tmpdir\n\
                                                Multiple folders can be provided\n\
                                                Emlop also looks for tmpdir using current emerge processes");
-    let h = "Use main, backup, any, or no portage resume list\n\
-             This is ignored if STDIN is a piped `emerge -p` output\n  \
-             (default):     Use main resume list, if currently emerging\n  \
-             any|a|(empty): Use main or backup resume list\n  \
-             main|m:        Use main resume list\n  \
-             backup|b:      Use backup resume list\n  \
-             no|n:          Never use resume list";
-    let resume = Arg::new("resume").long("resume")
-                                   .value_name("source")
-                                   .value_parser(value_parser!(crate::ResumeKind))
-                                   .hide_possible_values(true)
-                                   .num_args(..=1)
-                                   .default_missing_value("any")
-                                   .display_order(3)
-                                   .help(h.split_once('\n').unwrap().0)
-                                   .long_help(h);
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
                                      .action(Count)
-                                     .display_order(4)
+                                     .display_order(33)
                                      .help("Increase verbosity (can be given multiple times)")
                                      .long_help("Increase verbosity (defaults to errors only)\n  \
                                                  -v:   show warnings\n  \
@@ -369,10 +350,11 @@ pub fn build_cli_nocomplete() -> Command {
     let about = "A fast, accurate, ergonomic EMerge LOg Parser\n\
                  https://github.com/vincentdephily/emlop";
     let after_help =
-        "Subcommands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
-                      Subcommands have their own -h / --help\n\
-                      Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of \
-                      other errors";
+        concat!("Commands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
+                 Commands have their own -h / --help\n\
+                 Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of other errors\n\
+                 Config can be set in $HOME/.config/emlop.toml, see example in /usr/share/doc/emlop-",
+                crate_version!());
     let styles =
         styling::Styles::styled().header(styling::AnsiColor::Blue.on_default()
                                          | styling::Effects::BOLD)
@@ -464,7 +446,6 @@ mod test {
         assert_eq!(one!(ColorStyle, "color", "l --color never"), Some(&ColorStyle::Never));
 
         let pathvec = |s: &str| Some(s.split_whitespace().map(PathBuf::from).collect());
-        assert_eq!(many!(PathBuf, "tmpdir", "p"), pathvec("/var/tmp"));
         assert_eq!(many!(PathBuf, "tmpdir", "p --tmpdir a"), pathvec("a"));
         assert_eq!(many!(PathBuf, "tmpdir", "p --tmpdir a --tmpdir b"), pathvec("a b"));
     }

@@ -1,4 +1,6 @@
-use crate::{table::Disp, wtb, DurationStyle, Styles};
+use crate::{config::{ArgError, ArgParse},
+            table::Disp,
+            wtb, Conf, DurationStyle};
 use anyhow::{bail, Error};
 use log::{debug, warn};
 use regex::Regex;
@@ -26,10 +28,14 @@ pub fn get_offset(utc: bool) -> UtcOffset {
 // See <https://github.com/time-rs/time/issues/429>
 #[derive(Clone, Copy)]
 pub struct DateStyle(&'static [time::format_description::FormatItem<'static>]);
-impl FromStr for DateStyle {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let fmt = match s {
+impl Default for DateStyle {
+    fn default() -> Self {
+        Self(format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"))
+    }
+}
+impl ArgParse<String, ()> for DateStyle {
+    fn parse(s: &String, _: (), src: &'static str) -> Result<Self, ArgError> {
+        Ok(Self(match s.as_str() {
             "ymd" | "d" => format_description!("[year]-[month]-[day]"),
             "ymdhms" | "dt" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
             "ymdhmso" | "dto" => format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
@@ -37,9 +43,8 @@ impl FromStr for DateStyle {
             "rfc2822" | "2822" => format_description!("[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]"),
             "compact" => format_description!("[year][month][day][hour][minute][second]"),
             "unix" => &[],
-            _ => return Err("Valid values are ymd, d, ymdhms, dt, ymdhmso, dto, rfc3339, 3339, rfc2822, 2822, compact, unix"),
-        };
-        Ok(Self(fmt))
+            _ => return Err(ArgError::new(s, src).pos("ymd d ymdhms dt ymdhmso dto rfc3339 3339 rfc2822 2822 compact unix"))
+        }))
     }
 }
 
@@ -52,14 +57,14 @@ pub fn fmt_utctime(ts: i64) -> String {
 pub struct FmtDate(pub i64);
 /// Format dates according to user preferencess
 impl Disp for FmtDate {
-    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
         let start = buf.len();
-        if st.date_fmt.0.is_empty() {
+        if conf.date_fmt.0.is_empty() {
             write!(buf, "{}", self.0).expect("write to buf");
         } else {
             OffsetDateTime::from_unix_timestamp(self.0).expect("unix from i64")
-                                                       .to_offset(st.date_offset)
-                                                       .format_into(buf, &st.date_fmt.0)
+                                                       .to_offset(conf.date_offset)
+                                                       .format_into(buf, &conf.date_fmt.0)
                                                        .expect("write to buf");
         }
         buf.len() - start
@@ -71,20 +76,25 @@ pub fn epoch_now() -> i64 {
 }
 
 /// Parse datetime in various formats, returning unix timestamp
-pub fn parse_date(s: &str, offset: UtcOffset) -> Result<i64, &'static str> {
-    let s = s.trim();
-    i64::from_str(s).or_else(|e| {
-                        debug!("{s}: bad timestamp: {e}");
-                        parse_date_yyyymmdd(s, offset)
-                    })
-                    .or_else(|e| {
-                        debug!("{s}: bad absolute date: {e}");
-                        parse_date_ago(s)
-                    })
-                    .map_err(|e| {
-                        debug!("{s}: bad relative date: {e}");
-                        "Enable debug log level for details"
-                    })
+impl ArgParse<String, UtcOffset> for i64 {
+    fn parse(val: &String, offset: UtcOffset, src: &'static str) -> Result<Self, ArgError> {
+        let s = val.trim();
+        let et = match i64::from_str(s) {
+            Ok(i) => return Ok(i),
+            Err(et) => et,
+        };
+        let ea = match parse_date_yyyymmdd(s, offset) {
+            Ok(i) => return Ok(i),
+            Err(ea) => ea,
+        };
+        match parse_date_ago(s) {
+            Ok(i) => Ok(i),
+            Err(er) => {
+                let m = format!("Not a unix timestamp ({et}), absolute date ({ea}), or relative date ({er})");
+                Err(ArgError::new(val, src).msg(m))
+            },
+        }
+    }
 }
 
 /// Parse a number of day/years/hours/etc in the past, relative to current time
@@ -176,28 +186,37 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())
 }
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Clone, Copy)]
 pub enum Timespan {
-    #[clap(id("y"))]
     Year,
-    #[clap(id("m"))]
     Month,
-    #[clap(id("w"))]
     Week,
-    #[clap(id("d"))]
     Day,
+    None,
+}
+impl ArgParse<String, ()> for Timespan {
+    fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "y" | "year" => Ok(Self::Year),
+            "m" | "month" => Ok(Self::Month),
+            "w" | "week" => Ok(Self::Week),
+            "d" | "day" => Ok(Self::Day),
+            "n" | "none" => Ok(Self::None),
+            _ => Err(ArgError::new(v, s).pos("(y)ear (m)onth (w)eek (d)ay (n)one")),
+        }
+    }
 }
 impl Timespan {
     /// Given a unix timestamp, advance to the beginning of the next year/month/week/day.
     pub fn next(&self, ts: i64, offset: UtcOffset) -> i64 {
         let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset).date();
         let d2 = match self {
-            Timespan::Year => Date::from_calendar_date(d.year() + 1, Month::January, 1).unwrap(),
-            Timespan::Month => {
+            Self::Year => Date::from_calendar_date(d.year() + 1, Month::January, 1).unwrap(),
+            Self::Month => {
                 let year = if d.month() == Month::December { d.year() + 1 } else { d.year() };
                 Date::from_calendar_date(year, d.month().next(), 1).unwrap()
             },
-            Timespan::Week => {
+            Self::Week => {
                 let til_monday = match d.weekday() {
                     Weekday::Monday => 7,
                     Weekday::Tuesday => 6,
@@ -209,29 +228,32 @@ impl Timespan {
                 };
                 d.checked_add(Duration::days(til_monday)).unwrap()
             },
-            Timespan::Day => d.checked_add(Duration::DAY).unwrap(),
+            Self::Day => d.checked_add(Duration::DAY).unwrap(),
+            Self::None => panic!("Called next() on a Timespan::None"),
         };
         let res = d2.with_hms(0, 0, 0).unwrap().assume_offset(offset).unix_timestamp();
-        debug!("{} + {:?} = {}", fmt_utctime(ts), self, fmt_utctime(res));
+        debug!("{} + {} = {}", fmt_utctime(ts), self.name(), fmt_utctime(res));
         res
     }
 
     pub fn at(&self, ts: i64, offset: UtcOffset) -> String {
         let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset);
         match self {
-            Timespan::Year => d.format(format_description!("[year]")).unwrap(),
-            Timespan::Month => d.format(format_description!("[year]-[month]")).unwrap(),
-            Timespan::Week => d.format(format_description!("[year]-[week_number]")).unwrap(),
-            Timespan::Day => d.format(format_description!("[year]-[month]-[day]")).unwrap(),
+            Self::Year => d.format(format_description!("[year]")).unwrap(),
+            Self::Month => d.format(format_description!("[year]-[month]")).unwrap(),
+            Self::Week => d.format(format_description!("[year]-[week_number]")).unwrap(),
+            Self::Day => d.format(format_description!("[year]-[month]-[day]")).unwrap(),
+            Self::None => String::new(),
         }
     }
 
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
-            Timespan::Year => "Year",
-            Timespan::Month => "Month",
-            Timespan::Week => "Week",
-            Timespan::Day => "Date",
+            Self::Year => "Year",
+            Self::Month => "Month",
+            Self::Week => "Week",
+            Self::Day => "Date",
+            Self::None => "",
         }
     }
 }
@@ -239,20 +261,20 @@ impl Timespan {
 /// Wrapper around a duration (seconds) to implement `table::Disp`
 pub struct FmtDur(pub i64);
 impl crate::table::Disp for FmtDur {
-    fn out(&self, buf: &mut Vec<u8>, st: &Styles) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
         use std::io::Write;
         use DurationStyle::*;
         let sec = self.0;
-        let dur = st.dur.val;
+        let dur = conf.dur.val;
         let start = buf.len();
-        match st.dur_t {
+        match conf.dur_t {
             _ if sec < 0 => wtb!(buf, "{dur}?"),
-            HMS if sec >= 3600 => {
+            Hms if sec >= 3600 => {
                 wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60)
             },
-            HMS if sec >= 60 => wtb!(buf, "{dur}{}:{:02}", sec % 3600 / 60, sec % 60),
-            HMS | Secs => wtb!(buf, "{dur}{sec}"),
-            HMSFixed => wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60),
+            Hms if sec >= 60 => wtb!(buf, "{dur}{}:{:02}", sec % 3600 / 60, sec % 60),
+            Hms | Secs => wtb!(buf, "{dur}{sec}"),
+            HmsFixed => wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60),
             Human if sec == 0 => wtb!(buf, "{dur}0 second"),
             Human => {
                 let a = [(sec / 86400, "day"),
@@ -266,7 +288,7 @@ impl crate::table::Disp for FmtDur {
                 }
             },
         }
-        buf.len() - start - st.dur.val.len()
+        buf.len() - start - conf.dur.val.len()
     }
 }
 
@@ -278,6 +300,9 @@ mod test {
 
     fn parse_3339(s: &str) -> OffsetDateTime {
         OffsetDateTime::parse(s, &Rfc3339).expect(s)
+    }
+    fn parse_date(s: &str, o: UtcOffset) -> Result<i64, ArgError> {
+        i64::parse(&String::from(s), o, "")
     }
     fn ts(t: OffsetDateTime) -> i64 {
         t.unix_timestamp()
@@ -376,7 +401,7 @@ mod test {
         {
             for (st, exp) in [("hms", hms), ("hmsfixed", fixed), ("secs", secs), ("human", human)] {
                 let mut buf = vec![];
-                FmtDur(i).out(&mut buf, &Styles::from_str(format!("emlop l --color=n --dur {st}")));
+                FmtDur(i).out(&mut buf, &Conf::from_str(format!("emlop l --color=n --dur {st}")));
                 assert_eq!(exp, &String::from_utf8(buf).unwrap());
             }
         }

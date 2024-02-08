@@ -1,0 +1,30 @@
+# This is an example `emlop` config file.
+#
+# It is loaded from `$HOME/.config/emlop.toml` by default.
+# Use `$EMLOP_CONFIG` to set a different location, empty string to disable config loading.
+# Entries have the same name and format as command-line args, see `emlop <command> --help`.
+# Some args are only avaible via the command line.
+
+# logfile = "/var/log/emerge.log"
+# date = "rfc2822"
+# duration = "human"
+# utc = true
+# header = true
+[log]
+# show = "mus"
+# starttime = true
+[predict]
+# show = "emt"
+# avg = "arith"
+# limit = 20
+# unknown = 300
+# tmpdir = ["/foo", "/bar"]
+[stats]
+# show = "pts"
+# avg = "arith"
+# limit = 20
+# group = "y"
+[accuracy]
+# show = "mt"
+# avg = "arith"
+# limit = 20

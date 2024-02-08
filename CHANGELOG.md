@@ -2,6 +2,11 @@
 
 * Support searching by multiple terms
   - eg `emlop s -e gcc clang llvm rust`
+* Support configuration file
+  - Located by default in `~/.config/emlop.toml`, overridable with `$EMLOP_CONFIG` env var
+  - Example config added to repo, should be installed alongside emlop docs
+  - Config options, when available, always correspond to a cli arg
+  - Many flags/args now take an optional `no` value, so the cli can override the conf
 * Improve predict:
   - Autodetect `tmpdir` using currently running emerge processes
   - Support multiple `--tmpdir` arguments
