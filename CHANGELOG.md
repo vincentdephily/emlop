@@ -22,6 +22,7 @@
 * Support reading gzip compressed `emerge.log.gz` file
 * Upgraded argument parser dependency
   - Inline help styling/content changed a bit
+* Fixed column width when `--last` is used
 * Raised MSRV to 1.70
 
 # 0.6.1 2023-06-23

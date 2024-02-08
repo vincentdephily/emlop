@@ -28,8 +28,6 @@ pub struct Table<'a, const N: usize> {
     buf: Vec<u8>,
     /// Visible length, and start/stop index into buffer
     rows: VecDeque<[(usize, usize, usize); N]>,
-    /// Max column widths seen so far
-    widths: [usize; N],
     /// Whether a header has been set
     have_header: bool,
 
@@ -48,7 +46,6 @@ impl<'a, const N: usize> Table<'a, N> {
     pub fn new(conf: &'a Conf) -> Table<N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
-               widths: [0; N],
                conf,
                have_header: false,
                aligns: [Align::Right; N],
@@ -80,7 +77,6 @@ impl<'a, const N: usize> Table<'a, N> {
             for i in 0..N {
                 let start = self.buf.len();
                 self.buf.extend(row[i].as_bytes());
-                self.widths[i] = usize::max(self.widths[i], row[i].len());
                 idxrow[i] = (row[i].len(), start, self.buf.len());
             }
             self.rows.push_back(idxrow);
@@ -103,7 +99,6 @@ impl<'a, const N: usize> Table<'a, N> {
         for i in 0..N {
             let start = self.buf.len();
             let len = row[i].iter().map(|c| c.out(&mut self.buf, self.conf)).sum();
-            self.widths[i] = usize::max(self.widths[i], len);
             idxrow[i] = (len, start, self.buf.len());
         }
         self.rows.push_back(idxrow);
@@ -119,6 +114,9 @@ impl<'a, const N: usize> Table<'a, N> {
         if self.is_empty() {
             return;
         }
+        // Check the max len of each column, for the rows we have
+        let widths: [usize; N] =
+            std::array::from_fn(|i| self.rows.iter().fold(0, |m, r| usize::max(m, r[i].0)));
         let spaces = [b' '; 128];
         for row in &self.rows {
             let mut first = true;
@@ -127,7 +125,7 @@ impl<'a, const N: usize> Table<'a, N> {
             #[allow(clippy::needless_range_loop)]
             for i in 0..N {
                 // Skip fully-empty columns
-                if self.widths[i] == 0 {
+                if widths[i] == 0 {
                     continue;
                 }
                 let (len, pos0, pos1) = row[i];
@@ -142,7 +140,7 @@ impl<'a, const N: usize> Table<'a, N> {
                         out.write_all(self.margins[i].as_bytes()).unwrap_or(());
                     }
                     // Write the cell with alignment
-                    let pad = &spaces[0..usize::min(spaces.len(), self.widths[i] - len)];
+                    let pad = &spaces[0..usize::min(spaces.len(), widths[i] - len)];
                     match self.aligns[i] {
                         Align::Right => {
                             out.write_all(pad).unwrap_or(());
@@ -219,7 +217,16 @@ mod test {
         let res = "short                1\n\
                    looooooooooooong     1\n\
                    high              9999\n";
-        assert!(res.split_terminator('\n').all(|l| l.len() == 22));
+        check(t, res);
+    }
+
+    #[test]
+    fn align_cols_last() {
+        let conf = Conf::from_str("emlop log --color=n --output=c");
+        let mut t = Table::<2>::new(&conf).align_left(0).last(1);
+        t.row([&[&"looooooooooooong"], &[&1]]);
+        t.row([&[&"short"], &[&1]]);
+        let res = "short  1\n";
         check(t, res);
     }
 
