@@ -130,6 +130,28 @@ fn read_buildlog(file: File, max: usize) -> String {
     format!(" ({last})")
 }
 
+#[derive(Debug)]
+pub struct EmergeInfo {
+    pub start: i64,
+    pub cmds: Vec<crate::proces::Proc>,
+}
+
+/// Get info from currently running emerge processes
+///
+/// * emerge /usr/lib/python-exec/python3.11/emerge -Ov1 dummybuild
+///   gives us the emerge command, and the tmpdir (looking at open fds)
+pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
+    let mut res = EmergeInfo { start: i64::MAX, cmds: vec![], pkgs: vec![] };
+    let re_python = Regex::new("^[a-z/-]+python[0-9.]* [a-z/-]+python[0-9.]*/").unwrap();
+    for mut proc in crate::proces::get_all_info(&["emerge"], tmpdirs) {
+        res.start = std::cmp::min(res.start, proc.start);
+        proc.cmdline = re_python.replace(&proc.cmdline, "").to_string();
+        res.cmds.push(proc);
+    }
+    trace!("{:?}", res);
+    res
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

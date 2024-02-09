@@ -1,4 +1,4 @@
-use crate::{datetime::*, parse::*, proces::*, table::*, *};
+use crate::{datetime::*, parse::*, table::*, *};
 use std::{collections::{BTreeMap, HashMap},
           io::stdin};
 
@@ -290,22 +290,22 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let now = epoch_now();
     let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
     let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(last);
+    // TODO: should be able to extend inside sc
     let mut tmpdirs = sc.tmpdirs.clone();
 
     // Gather and print info about current merge process.
-    let mut cms = std::i64::MAX;
-    for i in get_all_info(Some("emerge"), &mut tmpdirs) {
-        cms = std::cmp::min(cms, i.start);
-        if sc.show.emerge {
-            tbl.row([&[&i], &[&FmtDur(now - i.start)], &[]]);
-        }
-    }
-    if cms == std::i64::MAX
+    let einfo = get_emerge(&mut tmpdirs);
+    if einfo.cmds.is_empty()
        && std::io::stdin().is_terminal()
        && matches!(sc.resume, ResumeKind::No | ResumeKind::Current)
     {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
         return Ok(false);
+    }
+    if sc.show.emerge {
+        for proc in &einfo.cmds {
+            tbl.row([&[&proc], &[&FmtDur(now - proc.start)], &[]]);
+        }
     }
 
     // Parse emerge log.
@@ -331,7 +331,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
         // From resume data + emerge.log after current merge process start time
         let mut r = get_resume(sc.resume);
-        for p in started.iter().filter(|&(_, t)| *t > cms).map(|(p, _)| p) {
+        for p in started.iter().filter(|&(_, t)| *t > einfo.start).map(|(p, _)| p) {
             if !r.contains(p) {
                 r.push(p.clone())
             }
@@ -352,7 +352,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
         let elapsed = match started.remove(&p) {
-            Some(s) if s > cms => now - s,
+            Some(s) if s > einfo.start => now - s,
             _ => 0,
         };
 

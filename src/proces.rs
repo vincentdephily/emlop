@@ -13,13 +13,14 @@ use std::{fs::{read_dir, DirEntry, File},
           path::PathBuf};
 
 #[derive(Debug)]
-pub struct Info {
+pub struct Proc {
+    pub idx: usize,
     pub cmdline: String,
     pub start: i64,
     pub pid: i32,
 }
 
-impl std::fmt::Display for Info {
+impl std::fmt::Display for Proc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let pid = format!("Pid {}: ", self.pid);
         let capacity = f.precision().unwrap_or(45).saturating_sub(pid.len());
@@ -35,12 +36,12 @@ impl std::fmt::Display for Info {
 }
 
 /// Get command name, arguments, start time, and pid for one process.
-fn get_proc_info(filter: Option<&str>,
+fn get_proc_info(filter: &[&str],
                  entry: &DirEntry,
                  clocktick: i64,
                  time_ref: i64,
                  tmpdirs: &mut Vec<PathBuf>)
-                 -> Option<Info> {
+                 -> Option<Proc> {
     // Parse pid.
     // At this stage we expect `entry` to not always correspond to a process.
     let pid = i32::from_str(&entry.file_name().to_string_lossy()).ok()?;
@@ -50,9 +51,11 @@ fn get_proc_info(filter: Option<&str>,
     // Parse command name, bail out now if it doesn't match.
     // The command name is surrounded by parens and may contain spaces.
     let (cmd_start, cmd_end) = (stat.find('(')? + 1, stat.rfind(')')?);
-    if filter.map_or(false, |f| f != &stat[cmd_start..cmd_end]) {
-        return None;
-    }
+    let idx = if filter.is_empty() {
+        usize::MAX
+    } else {
+        filter.iter().position(|&f| stat[cmd_start..cmd_end].starts_with(f))?
+    };
     // Parse start time
     let start_time = i64::from_str(stat[cmd_end + 1..].split(' ').nth(20)?).ok()?;
     // Parse arguments
@@ -62,7 +65,7 @@ fn get_proc_info(filter: Option<&str>,
     // Find portage tmpdir
     extend_tmpdirs(entry.path(), tmpdirs);
     // Done
-    Some(Info { cmdline, start: time_ref + start_time / clocktick, pid })
+    Some(Proc { idx, cmdline, start: time_ref + start_time / clocktick, pid })
 }
 
 /// Find tmpdir by looking for "build.log" in the process fds, and add it to the provided vector.
@@ -88,15 +91,13 @@ fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
-pub fn get_all_info(filter: Option<&str>, tmpdirs: &mut Vec<PathBuf>) -> Vec<Info> {
+pub fn get_all_info(filter: &[&str], tmpdirs: &mut Vec<PathBuf>) -> Vec<Proc> {
     get_all_info_result(filter, tmpdirs).unwrap_or_else(|e| {
                                             log_err(e);
                                             vec![]
                                         })
 }
-fn get_all_info_result(filter: Option<&str>,
-                       tmpdirs: &mut Vec<PathBuf>)
-                       -> Result<Vec<Info>, Error> {
+fn get_all_info_result(filter: &[&str], tmpdirs: &mut Vec<PathBuf>) -> Result<Vec<Proc>, Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
@@ -109,7 +110,7 @@ fn get_all_info_result(filter: Option<&str>,
     let uptime = i64::from_str(uptimestr.split('.').next().unwrap()).unwrap();
     let time_ref = epoch_now() - uptime;
     // Now iterate through /proc/<pid>
-    let mut ret: Vec<Info> = Vec::new();
+    let mut ret: Vec<Proc> = Vec::new();
     for entry in read_dir("/proc/").context("Listing /proc/")? {
         if let Some(i) = get_proc_info(filter, &entry?, clocktick, time_ref, tmpdirs) {
             ret.push(i)
@@ -121,11 +122,10 @@ fn get_all_info_result(filter: Option<&str>,
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use regex::Regex;
     use std::{collections::BTreeMap, process::Command};
     use time::{macros::format_description, PrimitiveDateTime};
-
-    use crate::proces::*;
 
     fn parse_ps_time(s: &str) -> i64 {
         let fmt = format_description!("[month repr:short] [day padding:space] [hour]:[minute]:[second] [year]");
@@ -144,7 +144,7 @@ mod tests {
         // First get the system's process start times using our implementation
         // Store it as pid => (cmd, rust_time, ps_time)
         let mut tmpdirs = vec![];
-        let mut info = get_all_info(None, &mut tmpdirs)
+        let mut info = get_all_info(&[], &mut tmpdirs)
             .iter()
             .map(|i| (i.pid, (i.cmdline.clone(), Some(i.start), None)))
             .collect::<BTreeMap<i32, (String, Option<i64>, Option<i64>)>>();
@@ -222,7 +222,7 @@ mod tests {
                                                      (22, 9, 12, "Pid 22: ...i"),];
         for (pid, cmdlen, precision, out) in t.into_iter() {
             dbg!((pid, cmdlen, precision, out));
-            let i = Info { pid, cmdline: s[..cmdlen].to_string(), start: 0 };
+            let i = Proc { idx: usize::MAX, pid, cmdline: s[..cmdlen].to_string(), start: 0 };
             let f = format!("{1:.0$}", precision, i);
             assert!(precision < 10 || f.len() <= precision, "{} <= {}", f.len(), precision);
             assert_eq!(f, out);
