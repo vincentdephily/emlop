@@ -4,21 +4,20 @@ mod commands;
 mod config;
 mod datetime;
 mod parse;
-mod proces;
 mod table;
 
-use crate::{commands::*, config::*, datetime::*, parse::AnsiStr};
+use crate::{config::*, datetime::*};
 use anyhow::Error;
 use log::*;
 use std::{io::IsTerminal, str::FromStr};
 
 fn main() {
     let res = match Configs::load() {
-        Ok(Configs::Log(gc, sc)) => cmd_log(&gc, &sc),
-        Ok(Configs::Stats(gc, sc)) => cmd_stats(&gc, &sc),
-        Ok(Configs::Predict(gc, sc)) => cmd_predict(&gc, &sc),
-        Ok(Configs::Accuracy(gc, sc)) => cmd_accuracy(&gc, &sc),
-        Ok(Configs::Complete(sc)) => cmd_complete(&sc),
+        Ok(Configs::Log(gc, sc)) => commands::cmd_log(&gc, &sc),
+        Ok(Configs::Stats(gc, sc)) => commands::cmd_stats(&gc, &sc),
+        Ok(Configs::Predict(gc, sc)) => commands::cmd_predict(&gc, &sc),
+        Ok(Configs::Accuracy(gc, sc)) => commands::cmd_accuracy(&gc, &sc),
+        Ok(Configs::Complete(sc)) => commands::cmd_complete(&sc),
         Err(e) => Err(e),
     };
     match res {

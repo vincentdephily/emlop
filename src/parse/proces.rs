@@ -6,7 +6,7 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
-use crate::{datetime::*, *};
+use crate::*;
 use anyhow::{ensure, Context};
 use std::{fs::{read_dir, DirEntry, File},
           io::prelude::*,

@@ -1,6 +1,7 @@
 //! Handles parsing of current emerge state.
 
-use super::Ansi;
+use super::{proces::{get_all_info, Proc},
+            Ansi};
 use crate::ResumeKind;
 use log::*;
 use regex::Regex;
@@ -133,7 +134,7 @@ fn read_buildlog(file: File, max: usize) -> String {
 #[derive(Debug)]
 pub struct EmergeInfo {
     pub start: i64,
-    pub cmds: Vec<crate::proces::Proc>,
+    pub cmds: Vec<Proc>,
 }
 
 /// Get info from currently running emerge processes
@@ -143,7 +144,7 @@ pub struct EmergeInfo {
 pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
     let mut res = EmergeInfo { start: i64::MAX, cmds: vec![], pkgs: vec![] };
     let re_python = Regex::new("^[a-z/-]+python[0-9.]* [a-z/-]+python[0-9.]*/").unwrap();
-    for mut proc in crate::proces::get_all_info(&["emerge"], tmpdirs) {
+    for mut proc in get_all_info(&["emerge"], tmpdirs) {
         res.start = std::cmp::min(res.start, proc.start);
         proc.cmdline = re_python.replace(&proc.cmdline, "").to_string();
         res.cmds.push(proc);

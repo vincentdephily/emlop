@@ -3,7 +3,7 @@ mod toml;
 mod types;
 
 pub use crate::config::{cli::*, types::*};
-use crate::{config::toml::Toml, *};
+use crate::{config::toml::Toml, parse::AnsiStr, *};
 use anyhow::Error;
 use clap::ArgMatches;
 use std::path::PathBuf;
