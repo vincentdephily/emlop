@@ -78,7 +78,9 @@ struct Mtimedb {
 
 /// Parse resume list from portage mtimedb
 pub fn get_resume(kind: ResumeKind) -> Vec<Pkg> {
-    get_resume_priv(kind, "/var/cache/edb/mtimedb").unwrap_or_default()
+    let r = get_resume_priv(kind, "/var/cache/edb/mtimedb").unwrap_or_default();
+    debug!("Loaded {kind:?} resume list: {r:?}");
+    r
 }
 fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
     if matches!(kind, ResumeKind::No) {

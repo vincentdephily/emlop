@@ -119,7 +119,7 @@ impl ArgParse<String, ()> for Average {
     }
 }
 
-#[derive(Clone, Copy, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ResumeKind {
     #[clap(hide(true))]
     Current,
