@@ -135,19 +135,32 @@ fn read_buildlog(file: File, max: usize) -> String {
 pub struct EmergeInfo {
     pub start: i64,
     pub cmds: Vec<Proc>,
+    pub pkgs: Vec<Pkg>,
 }
 
 /// Get info from currently running emerge processes
 ///
 /// * emerge /usr/lib/python-exec/python3.11/emerge -Ov1 dummybuild
 ///   gives us the emerge command, and the tmpdir (looking at open fds)
+/// * python3.11 /usr/lib/portage/python3.11/pid-ns-init 250 250 250 18 0,1,2 /usr/bin/sandbox
+///   [app-portage/dummybuild-0.1.600] sandbox /usr/lib/portage/python3.11/ebuild.sh unpack
+///   gives us the actually emerging ebuild and stage (depends on portage FEATURES=sandbox, which
+///   should be the case for almost all users)
 pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
     let mut res = EmergeInfo { start: i64::MAX, cmds: vec![], pkgs: vec![] };
     let re_python = Regex::new("^[a-z/-]+python[0-9.]* [a-z/-]+python[0-9.]*/").unwrap();
-    for mut proc in get_all_info(&["emerge"], tmpdirs) {
+    for mut proc in get_all_info(&["emerge", "python"], tmpdirs) {
         res.start = std::cmp::min(res.start, proc.start);
-        proc.cmdline = re_python.replace(&proc.cmdline, "").to_string();
-        res.cmds.push(proc);
+        if proc.idx == 0 {
+            proc.cmdline = re_python.replace(&proc.cmdline, "").to_string();
+            res.cmds.push(proc);
+        } else if let Some(a) = proc.cmdline.find("sandbox [") {
+            if let Some(b) = proc.cmdline.find("] sandbox") {
+                if let Some(p) = Pkg::try_new(&proc.cmdline[(a + 9)..b]) {
+                    res.pkgs.push(p);
+                }
+            }
+        }
     }
     trace!("{:?}", res);
     res

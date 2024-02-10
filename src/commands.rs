@@ -329,11 +329,20 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
 
     // Build list of pending merges
     let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
-        // From resume data + emerge.log after current merge process start time
+        // From resume list
         let mut r = get_resume(sc.resume);
-        for p in started.iter().filter(|&(_, t)| *t > einfo.start).map(|(p, _)| p) {
+        // From specific emerge processes
+        for p in einfo.pkgs.iter() {
             if !r.contains(p) {
                 r.push(p.clone())
+            }
+        }
+        // From emerge.log after main emerge process start time, if we didn't spot any specific process
+        if einfo.pkgs.is_empty() {
+            for (p, t) in started.iter() {
+                if *t > einfo.start && !r.contains(p) {
+                    r.push(p.clone())
+                }
             }
         }
         r
@@ -341,6 +350,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
         // From portage's stdout
         get_pretend(stdin(), "STDIN")
     };
+    trace!("pending: {pkgs:?}");
 
     // Gather and print per-package and indivudual stats.
     let mut totcount = 0;
@@ -352,7 +362,8 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
         // Find the elapsed time, if any (heuristic is that emerge process started before
         // this merge finished, it's not failsafe but IMHO no worse than genlop).
         let elapsed = match started.remove(&p) {
-            Some(s) if s > einfo.start => now - s,
+            Some(s) if einfo.pkgs.contains(&p) => now - s,
+            Some(s) if einfo.pkgs.is_empty() && s > einfo.start => now - s,
             _ => 0,
         };
 
