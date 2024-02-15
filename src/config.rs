@@ -144,11 +144,7 @@ macro_rules! sel {
 impl Conf {
     pub fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         let isterm = std::io::stdout().is_terminal();
-        let color = match cli.get_one("color") {
-            Some(ColorStyle::Always) => true,
-            Some(ColorStyle::Never) => false,
-            None => isterm,
-        };
+        let color = sel!(cli, toml, color, isterm, isterm)?;
         let out = match cli.get_one("output") {
             Some(o) => *o,
             None if isterm => OutStyle::Columns,

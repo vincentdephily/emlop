@@ -35,6 +35,7 @@ pub struct Toml {
     pub duration: Option<String>,
     pub header: Option<bool>,
     pub utc: Option<bool>,
+    pub color: Option<String>,
     pub log: Option<TomlLog>,
     pub predict: Option<TomlPred>,
     pub stats: Option<TomlStats>,

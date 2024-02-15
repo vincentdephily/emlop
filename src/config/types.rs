@@ -152,13 +152,16 @@ impl ArgParse<String, ()> for DurationStyle {
     }
 }
 
-#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
-#[derive(Clone, Copy, clap::ValueEnum)]
-pub enum ColorStyle {
-    #[clap(alias("y"))]
-    Always,
-    #[clap(alias("n"))]
-    Never,
+pub type ColorStyle = bool;
+impl ArgParse<String, bool> for ColorStyle {
+    fn parse(v: &String, isterm: bool, s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "tty" | "t" => Ok(isterm),
+            "yes" | "y" => Ok(true),
+            "no" | "n" => Ok(false),
+            _ => Err(ArgError::new(v, s).pos("(a)lways (n)ever (t)ty y")),
+        }
+    }
 }
 
 #[derive(Clone, Copy, clap::ValueEnum, PartialEq, Eq)]

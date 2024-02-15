@@ -238,17 +238,15 @@ pub fn build_cli_nocomplete() -> Command {
     let color = Arg::new("color").long("color")
                                  .value_name("when")
                                  .global(true)
-                                 .value_parser(value_parser!(crate::ColorStyle))
-                                 .hide_possible_values(true)
                                  .num_args(..=1)
                                  .default_missing_value("y")
                                  .display_order(25)
                                  .help_heading("Format")
-                                 .help("Enable color (always/never/y/n)")
-                                 .long_help("Enable color (always/never/y/n)\n  \
-                                             (default):        colored if on tty\n  \
-                                             (empty)|always|y: colored\n  \
-                                             never|n:          not colored");
+                                 .help("Enable color (yes/no/tty/y/n/t)")
+                                 .long_help("Enable color (yes/no/tty/y/n/t)\n  \
+                                             (default)|tty|t: colored if on tty\n  \
+                                             (empty)|yes|y:   colored\n  \
+                                             no|n:            not colored");
     let output = Arg::new("output").short('o')
                                    .long("output")
                                    .value_name("format")
@@ -405,7 +403,6 @@ pub fn build_cli() -> Command {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::*;
 
     fn matches(args: &str) -> clap::ArgMatches {
         build_cli().get_matches_from(format!("emlop {args}").split_whitespace())
@@ -438,12 +435,6 @@ mod test {
         assert_eq!(one!(usize, "last", "l --last"), Some(&1usize));
         assert_eq!(one!(usize, "last", "l --last 2"), Some(&2usize));
         assert_eq!(one!(usize, "last", "l -n 2"), Some(&2usize));
-
-        assert_eq!(one!(ColorStyle, "color", "l"), None);
-        assert_eq!(one!(ColorStyle, "color", "l --color"), Some(&ColorStyle::Always));
-        assert_eq!(one!(ColorStyle, "color", "l --color=y"), Some(&ColorStyle::Always));
-        assert_eq!(one!(ColorStyle, "color", "l --color n"), Some(&ColorStyle::Never));
-        assert_eq!(one!(ColorStyle, "color", "l --color never"), Some(&ColorStyle::Never));
 
         let pathvec = |s: &str| Some(s.split_whitespace().map(PathBuf::from).collect());
         assert_eq!(many!(PathBuf, "tmpdir", "p --tmpdir a"), pathvec("a"));

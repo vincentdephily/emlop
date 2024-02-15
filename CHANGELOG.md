@@ -18,7 +18,8 @@
 * Improve resume list selection:
   - Added `--resume=any` variant to resume either main or backup list
   - Passing `--resume` without argument is now the same as `--resume any`
-* Remove `--resume=auto` and `--color=auto` variants (just don't pass the option)
+* Remove `--resume=auto` variant (just don't pass the option)
+* `--color` variants renamed to `(y)es`, `(n)o`, `(t)ty`
 * Support reading gzip compressed `emerge.log.gz` file
 * Upgraded argument parser dependency
   - Inline help styling/content changed a bit
