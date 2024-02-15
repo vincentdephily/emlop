@@ -147,7 +147,6 @@ pub fn build_cli_nocomplete() -> Command {
     let group = Arg::new("group").short('g')
                                  .long("groupby")
                                  .value_name("y,m,w,d,n")
-                                 .hide_possible_values(true)
                                  .display_order(10)
                                  .help_heading("Stats")
                                  .help("Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one")
@@ -164,7 +163,6 @@ pub fn build_cli_nocomplete() -> Command {
     let avg =
         Arg::new("avg").long("avg")
                        .value_name("fn")
-                       .hide_possible_values(true)
                        .display_order(12)
                        .help_heading("Stats")
                        .help("Select function used to predict durations")
@@ -195,7 +193,6 @@ pub fn build_cli_nocomplete() -> Command {
     let duration = Arg::new("duration").long("duration")
                                        .value_name("format")
                                        .global(true)
-                                       .hide_possible_values(true)
                                        .display_order(21)
                                        .help_heading("Format")
                                        .help("Output durations in different formats")
