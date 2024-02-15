@@ -30,7 +30,6 @@ pub fn build_cli_nocomplete() -> Command {
                                              virtual/rust: Matches only `virtual/rust`\n  \
                                              RuSt:         Matches nothing (case-sensitive)\n  \
                                              ru:           Matches nothing (whole name only)");
-
     let show_l = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("m,u,s,a")
@@ -193,11 +192,23 @@ pub fn build_cli_nocomplete() -> Command {
                                    .display_order(20)
                                    .help_heading("Format")
                                    .help("Show table header");
+    let duration = Arg::new("duration").long("duration")
+                                       .value_name("format")
+                                       .global(true)
+                                       .hide_possible_values(true)
+                                       .display_order(21)
+                                       .help_heading("Format")
+                                       .help("Output durations in different formats")
+                                       .long_help("Output durations in different formats\n  \
+                                                   hms|(default): 10:30\n  \
+                                                   hmsfixed:      0:10:30\n  \
+                                                   secs|s:        630\n  \
+                                                   human|h:       10 minutes, 30 seconds");
     let date =
         Arg::new("date").long("date")
                         .value_name("format")
                         .global(true)
-                        .display_order(21)
+                        .display_order(22)
                         .help_heading("Format")
                         .help("Output dates in different formats")
                         .long_help("Output dates in different formats\n  \
@@ -208,18 +219,6 @@ pub fn build_cli_nocomplete() -> Command {
                                     rfc2822|2822:        Mon, 31 Jan 2022 08:59:46 +00:00\n  \
                                     compact:             20220131085946\n  \
                                     unix:                1643619586");
-    let duration = Arg::new("duration").long("duration")
-                                       .value_name("format")
-                                       .global(true)
-                                       .hide_possible_values(true)
-                                       .display_order(22)
-                                       .help_heading("Format")
-                                       .help("Output durations in different formats")
-                                       .long_help("Output durations in different formats\n  \
-                                                   hms|(default): 10:30\n  \
-                                                   hmsfixed:      0:10:30\n  \
-                                                   secs|s:        630\n  \
-                                                   human|h:       10 minutes, 30 seconds");
     let utc = Arg::new("utc").long("utc")
                              .value_name("bool")
                              .global(true)
