@@ -136,22 +136,22 @@ impl Times {
 pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
     let mut tbls = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
-    tbls.header([sc.group.name(), "Repo", "Sync count", "Total time", "Predict time"]);
+    tbls.header([sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"]);
     let mut tblp = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
     tblp.header([sc.group.name(),
                  "Package",
-                 "Merge count",
+                 "Merges",
                  "Total time",
                  "Predict time",
-                 "Unmerge count",
+                 "Unmerges",
                  "Total time",
                  "Predict time"]);
     let mut tblt = Table::new(gc).align_left(0).margin(1, " ");
     tblt.header([sc.group.name(),
-                 "Merge count",
+                 "Merges",
                  "Total time",
                  "Average time",
-                 "Unmerge count",
+                 "Unmerges",
                  "Total time",
                  "Average time"]);
     let mut merge_start: HashMap<String, i64> = HashMap::new();
@@ -331,13 +331,13 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
         // From resume list
         let mut r = get_resume(sc.resume);
-        // From specific emerge processes
+        // Plus specific emerge processes
         for p in einfo.pkgs.iter() {
             if !r.contains(p) {
                 r.push(p.clone())
             }
         }
-        // From emerge.log after main emerge process start time, if we didn't spot any specific process
+        // Plus emerge.log after main process start time, if we didn't see specific processes
         if einfo.pkgs.is_empty() {
             for (p, t) in started.iter() {
                 if *t > einfo.start && !r.contains(p) {
@@ -359,8 +359,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let mut totelapsed = 0;
     for p in pkgs {
         totcount += 1;
-        // Find the elapsed time, if any (heuristic is that emerge process started before
-        // this merge finished, it's not failsafe but IMHO no worse than genlop).
+        // Find the elapsed time, if currently running
         let elapsed = match started.remove(&p) {
             Some(s) if einfo.pkgs.contains(&p) => now - s,
             Some(s) if einfo.pkgs.is_empty() && s > einfo.start => now - s,
