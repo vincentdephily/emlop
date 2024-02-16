@@ -159,7 +159,7 @@ impl ArgParse<String, bool> for ColorStyle {
             "tty" | "t" => Ok(isterm),
             "yes" | "y" => Ok(true),
             "no" | "n" => Ok(false),
-            _ => Err(ArgError::new(v, s).pos("(a)lways (n)ever (t)ty y")),
+            _ => Err(ArgError::new(v, s).pos("(y)es (n)o (t)ty")),
         }
     }
 }
