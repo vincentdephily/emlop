@@ -11,6 +11,7 @@
 # utc = true
 # header = true
 # color = "yes"
+# output = "columns"
 [log]
 # show = "mus"
 # starttime = true

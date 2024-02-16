@@ -164,12 +164,20 @@ impl ArgParse<String, bool> for ColorStyle {
     }
 }
 
-#[derive(Clone, Copy, clap::ValueEnum, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum OutStyle {
-    #[clap(alias("c"))]
     Columns,
-    #[clap(alias("t"))]
     Tab,
+}
+impl ArgParse<String, bool> for OutStyle {
+    fn parse(v: &String, isterm: bool, s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "auto" | "a" => Ok(if isterm { Self::Columns } else { Self::Tab }),
+            "tab" | "t" => Ok(Self::Tab),
+            "columns" | "c" => Ok(Self::Columns),
+            _ => Err(ArgError::new(v, s).pos("(c)olumns (t)ab (a)uto")),
+        }
+    }
 }
 
 #[derive(Clone, Copy)]

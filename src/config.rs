@@ -145,11 +145,7 @@ impl Conf {
     pub fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         let isterm = std::io::stdout().is_terminal();
         let color = sel!(cli, toml, color, isterm, isterm)?;
-        let out = match cli.get_one("output") {
-            Some(o) => *o,
-            None if isterm => OutStyle::Columns,
-            None => OutStyle::Tab,
-        };
+        let outdef = if isterm { OutStyle::Columns } else { OutStyle::Tab };
         let offset = get_offset(sel!(cli, toml, utc, (), false)?);
         Ok(Self { logfile: sel!(cli, toml, logfile, (), String::from("/var/log/emerge.log"))?,
                   from: cli.get_one("from")
@@ -167,7 +163,7 @@ impl Conf {
                   dur_t: sel!(cli, toml, duration, (), DurationStyle::Hms)?,
                   date_offset: offset,
                   date_fmt: sel!(cli, toml, date, (), DateStyle::default())?,
-                  out })
+                  out: sel!(cli, toml, output, isterm, outdef)? })
     }
     #[cfg(test)]
     pub fn from_str(s: impl AsRef<str>) -> Self {

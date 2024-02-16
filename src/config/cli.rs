@@ -247,15 +247,13 @@ pub fn build_cli_nocomplete() -> Command {
                                    .long("output")
                                    .value_name("format")
                                    .global(true)
-                                   .value_parser(value_parser!(crate::OutStyle))
-                                   .hide_possible_values(true)
                                    .display_order(26)
                                    .help_heading("Format")
-                                   .help("Ouput format (columns/c/tab/t)")
-                                   .long_help("Ouput format (columns/c/tab/t)\n  \
-                                               (default): columns on tty, tab otherwise\n  \
-                                               columns|c: space-aligned columns\n  \
-                                               tab|t:     tab-separated values");
+                                   .help("Ouput format (columns/tab/auto)")
+                                   .long_help("Ouput format (columns/tab/auto)\n  \
+                                               (default)|auto|a: columns on tty, tab otherwise\n  \
+                                               columns|c:        space-aligned columns\n  \
+                                               tab|t:            tab-separated values");
 
     ////////////////////////////////////////////////////////////
     // Misc arguments

@@ -13,7 +13,7 @@
   - Display elapsed time also while compiling an unknown package
   - Assume unknown packages take 10s (overridable with `--unknown`) to compile instead of 0
 * Improve output selection:
-  - `--tabs` has been renamed `--output=tab/columns` (or `-ot` for short)
+  - `--tabs` has been renamed `--output=tab/columns/auto` (or `-ot` for short)
   - Default output is now `columns` on tty and `tab` otherwise, to simplify `emlop ...|cut -f...` workflow
 * Improve resume list selection:
   - Added `--resume=any` variant to resume either main or backup list
