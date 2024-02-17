@@ -1,29 +1,38 @@
-# Unreleased
+# 0.7.0
+
+## New features
 
 * Support searching by multiple terms
   - eg `emlop s -e gcc clang llvm rust`
 * Support configuration file
-  - Located by default in `~/.config/emlop.toml`, overridable with `$EMLOP_CONFIG` env var
-  - Example config added to repo, should be installed alongside emlop docs
-  - Config options, when available, always correspond to a cli arg
-  - Many flags/args now take an optional `no` value, so the cli can override the conf
-* Improve predict:
-  - Autodetect `tmpdir` using currently running emerge processes
-  - Support multiple `--tmpdir` arguments
-  - Display elapsed time also while compiling an unknown package
-  - Assume unknown packages take 10s (overridable with `--unknown`) to compile instead of 0
-* Improve output selection:
-  - `--tabs` has been renamed `--output=tab/columns/auto` (or `-ot` for short)
+  - Located at `~/.config/emlop.toml`, or whereever `$EMLOP_CONFIG` says
+  - Example file added to repo, should be installed alongside emlop docs
+  - All available config options correspond to a cli arg, which takes precedance
+* Support reading gzip-compressed `emerge.log.gz` file
+* Autodetect `tmpdir` using currently running emerge processes
+* Assume unknown packages take 10s (overridable with `--unknown`) to compile instead of 0
+
+## Interface changes
+
+* Support multiple `--tmpdir` arguments
+* `--tabs` has been renamed `--output=tab/columns/auto` (or `-ot` for short)
   - Default output is now `columns` on tty and `tab` otherwise, to simplify `emlop ...|cut -f...` workflow
-* Improve resume list selection:
-  - Added `--resume=any` variant to resume either main or backup list
+* Added `--resume=any` variant to resume either main or backup list
   - Passing `--resume` without argument is now the same as `--resume any`
-* Remove `--resume=auto` variant (just don't pass the option)
+  - Default value remains `main`
+  - Removed `--resume=auto` variant (just don't pass the option)
 * `--color` variants renamed to `(y)es`, `(n)o`, `(t)ty`
-* Support reading gzip compressed `emerge.log.gz` file
-* Upgraded argument parser dependency
-  - Inline help styling/content changed a bit
+* Improved inline help and error messages
+  - Upgraded argument parser dependency
+  - We now do our own parsing and error rendering for many args
+  - Color scheme, style, and texts updated
+
+## Bug fixes and misc
+
 * Fixed column width when `--last` is used
+* Fixed noticing a failed/interruped merge when the emerge proces keeps going
+* Ignore a performance-sensitive test during emerge
+* Display elapsed time also while compiling an unknown package
 * Raised MSRV to 1.70
 
 # 0.6.1 2023-06-23

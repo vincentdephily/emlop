@@ -10,16 +10,16 @@ ergonomic, see [comparison](docs/COMPARISON.md).
 
 ## Usage
 
-Emlop is split into commands. Command names and arguments can be abbreviated, and shell completion
-is available. See `emlop --help` and `emlop <sucommand> --help` for complete and up to date usage
-info.
+Emlop is split into commands. Command names and arguments can be abbreviated (so `emlop log --from
+'1 day' --duration human` is the same as `emlop l -f1d --dur h`), and shell completion is
+available. See `emlop --help` and `emlop <command> --help` for complete and up to date usage info.
 
 ### Common options
 
 All commands share these arguments, affecting parsing and output:
 
     Options:
-      -F, --logfile <file>  Location of emerge log file [default: /var/log/emerge.log]
+      -F, --logfile <file>  Location of emerge log file
       -v...                 Increase verbosity (can be given multiple times)
       -h, --help            Print help (see more with '--help')
       -V, --version         Print version
@@ -27,13 +27,12 @@ All commands share these arguments, affecting parsing and output:
       -f, --from <date>  Only parse log entries after <date>
       -t, --to <date>    Only parse log entries before <date>
     Format:
-      -H, --header             Show table header
-          --utc                Parse/display dates in UTC instead of local time
-      -o, --output <format>    Ouput format (cols/c/tab/t)
-          --duration <format>  Output durations in different formats [default: hms]
-          --date <format>      Output dates in different formats [default: ymdhms]
+      -H, --header [<bool>]    Show table header
+          --duration <format>  Output durations in different formats
+          --date <format>      Output dates in different formats
+          --utc [<bool>]       Parse/display dates in UTC instead of local time
           --color [<when>]     Enable color (always/never/y/n)
-
+      -o, --output <format>    Ouput format (columns/c/tab/t)
 
 ### List merges, unmerges, and syncs  with `log`
 
@@ -41,10 +40,12 @@ All commands share these arguments, affecting parsing and output:
 
 Log-specific options:
 
+    Format:
+          --starttime [<bool>]  Display start time instead of end time
     Filter:
       [search]...           Show only packages/repos matching <search>
       -e, --exact           Match <search> using plain string
-      -s, --show <m,u,s,a>  Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll [default: m]
+      -s, --show <m,u,s,a>  Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll
       -N, --first [<num>]   Show only the first <num> entries
       -n, --last [<num>]    Show only the last <num> entries
 
@@ -58,15 +59,16 @@ Note that `emaint sync` currently [doesn't write to emerge.log](https://bugs.gen
 Predict-specific arguments:
 
     Options:
-          --tmpdir <dir>       Location of portage tmpdir [default: /var/tmp]
-          --resume [<source>]  Use main, backup, any, or no portage resume list
+          --tmpdir <dir>    Location of portage tmpdir
     Filter:
-      -s, --show <e,m,t,a>  Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll [default: emt]
-      -N, --first [<num>]   Show only the first <num> entries
-      -n, --last [<num>]    Show only the last <num> entries
+      -s, --show <e,m,t,a>     Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll
+      -N, --first [<num>]      Show only the first <num> entries
+      -n, --last [<num>]       Show only the last <num> entries
+          --resume [<source>]  Use main, backup, any, or no portage resume list
     Stats:
-          --limit <num>  Use the last <num> merge times to predict durations [default: 10]
-          --avg <fn>     Select function used to predict durations [default: median]
+          --limit <num>     Use the last <num> merge times to predict durations
+          --avg <fn>        Select function used to predict durations
+          --unknown <secs>  Assume unkown packages take <secs> seconds to merge
 
 ### Show aggregated statistics with `stats`
 
@@ -77,16 +79,26 @@ Stats-specific arguments:
     Filter:
       [search]...           Show only packages/repos matching <search>
       -e, --exact           Match <search> using plain string
-      -s, --show <p,t,s,a>  Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll [default: p]
+      -s, --show <p,t,s,a>  Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll
     Stats:
-      -g, --groupby <y,m,w,d>  Group by (y)ear, (m)onth, (w)eek, or (d)ay
-          --limit <num>        Use the last <num> merge times to predict durations [default: 10]
-          --avg <fn>           Select function used to predict durations [default: median]
+      -g, --groupby <y,m,w,d,n>  Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one
+          --limit <num>          Use the last <num> merge times to predict durations
+          --avg <fn>             Select function used to predict durations
 
 ### Other commands
 
 * `complete` generates shell completions
 * `accuracy` helps analizing predictions accuracy
+
+### Configuration file
+
+![Config demo](config.webp)
+
+Emlop reads default settings from `$HOME/.config/emlop.toml`. Set `$EMLOP_CONFIG` env var to change
+the file location, or set it to  `""` to disable config file.
+
+This [example file](emlop.toml) documents the format, and lists supported options. Command-line
+arguments take precedence over the config file.
 
 ## Installation
 

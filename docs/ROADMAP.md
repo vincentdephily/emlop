@@ -14,7 +14,6 @@ Currently a 'parsing' and a 'main' tread but should be possible to parse using a
 
 ## Features
 ### Use colors to carry mmore information
-* Color-code predict durations ?
 * Dark-green for packages not in world file ?
 ### Parse and optionaly display failed merges
 ### Distinguish autoclean from explicit unmerges
@@ -28,8 +27,6 @@ Because why not. Could help with unit-testing.
 * build time trend
 * distinct version count
 ### Sort stats by any column
-### Config file to set defaults
-### Allow specifying multiple search strings
 ### embed audit info in binary
 https://github.com/Shnatsel/rust-audit
 ### stats visuals
