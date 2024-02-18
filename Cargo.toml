@@ -1,6 +1,6 @@
 [package]
 name = "emlop"
-version = "0.6.1"
+version = "0.7.0"
 description = "A fast, accurate, ergonomic emerge.log parser"
 keywords = ["gentoo", "portage", "emerge"]
 categories = ["command-line-utilities", "parsing"]
@@ -12,7 +12,7 @@ authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Illia Shestakov <ishestakov@airmail.cc>",
            "Alexis <flexibeast@gmail.com>"]
 edition = "2021"
-rust-version = "1.70.0"
+rust-version = "1.71.0"
 exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
 [lints.clippy]

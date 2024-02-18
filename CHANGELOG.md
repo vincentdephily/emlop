@@ -33,7 +33,7 @@
 * Fixed noticing a failed/interruped merge when the emerge proces keeps going
 * Ignore a performance-sensitive test during emerge
 * Display elapsed time also while compiling an unknown package
-* Raised MSRV to 1.70
+* Raised MSRV to 1.71
 
 # 0.6.1 2023-06-23
 
