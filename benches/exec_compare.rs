@@ -36,6 +36,8 @@ fn main() {
         ("v", "genlop", &["-v"], None),
         ("v", "qlop",   &["-V"], None),
         ("v", "emlop",  &["-V"], None),
+        // Minimal command to read the first result (no equivalent in genlop/qlop)
+        ("start", "emlop",  &["-F","{emerge.log}","l","-N"],  None),
         // Minimal "show all merges" command (genlop adds version, emlop adds version+duration)
         ("l", "genlop", &["-f","{emerge.log}","-l"], None),
         ("l", "qlop",   &["-f","{emerge.log}","-m"], None),
@@ -156,6 +158,11 @@ fn main() {
              .short('f')
              .num_args(1)
              .default_value("./benches/emerge.log"))
+        .arg(Arg::new("conf")
+             .long("conf")
+             .num_args(1)
+             .default_value("")
+             .help("Let emlop load its config file"))
         .get_matches();
 
     // CLI parsing
@@ -211,6 +218,7 @@ fn main() {
                                   .unwrap());
 
     // Run the tests and collect the results
+    std::env::set_var("EMLOP_CONFIG", cli.get_one::<String>("conf").unwrap());
     tests.shuffle(&mut rand::thread_rng());
     let mut n = tests.len();
     let mut times: BTreeMap<String, Vec<f64>> = BTreeMap::new();
