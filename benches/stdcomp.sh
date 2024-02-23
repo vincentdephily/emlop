@@ -3,7 +3,7 @@
 ##################################################
 # Check preconditions
 ##################################################
-cd $(dirname $(realpath $0))
+cd $(dirname $(realpath $0))/..
 
 if [ ! $TERM = alacritty ]; then
     echo "Restart in alacritty terminal"
@@ -13,7 +13,7 @@ fi
 while true; do
     C=$(tput cols)
     L=$(tput lines)
-    P=$(emlop p -sm --tab|rg dummybuild|cut -f1)
+    P=$(emlop p -sm -ot|rg dummybuild|cut -f1)
     if [ $C = 120 -a $L = 30 -a -n "$P" ]; then
         break
     else
@@ -32,13 +32,13 @@ cargo build -r
 ##################################################
 # Run the tests
 ##################################################
-./benches/exec_compare.rs -o bench1.csv -r 50 -p e:./target/release/emlop,q,g -sl,ltmu,egcc,tgcc,c
+./benches/exec_compare.rs -o benches/bench1.csv -r 50 -p e:./target/release/emlop,q,g -sl,ltmu,egcc,tgcc,c
 # qlop doesn't implement pgcc,pqt,pkde
-./benches/exec_compare.rs -o bench2.csv -r 50 -p e:./target/release/emlop,g -spgcc
+./benches/exec_compare.rs -o benches/bench2.csv -r 50 -p e:./target/release/emlop,g -spgcc
 # genlop is too slow for 50 iterations of pqt,pkde
-./benches/exec_compare.rs -o bench3.csv -r 50 -p e:./target/release/emlop -spqt,pkde
-./benches/exec_compare.rs -o bench4.csv -r 10 -p g -spqt
-./benches/exec_compare.rs -o bench5.csv -r 3 -p g -spkde
+./benches/exec_compare.rs -o benches/bench3.csv -r 50 -p e:./target/release/emlop -spqt,pkde
+./benches/exec_compare.rs -o benches/bench4.csv -r 10 -p g -spqt
+./benches/exec_compare.rs -o benches/bench5.csv -r 3 -p g -spkde
 
 
 ##################################################
@@ -49,4 +49,4 @@ cargo build -r
 qlop --version
 genlop --version
 
-cut -f1,2,4 bench?.csv|rg -v '^\*'|sort
+cut -f1,2,4 benches/bench?.csv|rg -v '^\*'|sort
