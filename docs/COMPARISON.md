@@ -148,7 +148,6 @@ faster than by case-(in)sensitive regexp ({gen,em}lop only).
 | `genlop -l; qlop -m; emlop l`                                 |    437 |   94 |    60 |
 | `genlop -lut; qlop -muUvt; emlop l -smu`                      |    653 |  148 |   108 |
 | `genlop gcc; qlop -m gcc; emlop l -e gcc`                     |    362 |   36 |    18 |
-| `genlop -tu gcc; qlop -muUvt gcc; emlop l -smu -e gcc`        |    659 |   47 |    25 |
 | `emerge dummybuild&;genlop -c;qlop -r;emlop p`                |    480 |   67 |    57 |
 | `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`    |    388 |  n/a |    44 |
 | `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`     |   3098 |  n/a |    45 |

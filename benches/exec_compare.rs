@@ -73,8 +73,7 @@ fn main() {
         ("emany", "qlop",   &["-f","{emerge.log}","-m","llvm","emacs", "gcc"],     None),
         ("emany", "emlop",  &["-F","{emerge.log}","l","-e","llvm","emacs", "gcc"], None),
         ("rmany", "emlop",  &["-F","{emerge.log}","l","llvm","emacs", "gcc"],      None),
-        // Version+duration package merge+unmerge log
-        ("tgcc", "genlop", &["-f","{emerge.log}","-tu","gcc"],           None),
+        // Version+duration package merge+unmerge log (genlop ignores filter when showig unmerges)
         ("tgcc", "qlop",   &["-f","{emerge.log}","-tvmuU","gcc"],        None),
         ("tgcc", "emlop",  &["-F","{emerge.log}","l","-smu","-e","gcc"], None),
         // Predict current merge(s)

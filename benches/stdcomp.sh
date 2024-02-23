@@ -32,7 +32,7 @@ cargo build -r
 ##################################################
 # Run the tests
 ##################################################
-./benches/exec_compare.rs -o benches/bench1.csv -r 50 -p e:./target/release/emlop,q,g -sl,ltmu,egcc,tgcc,c
+./benches/exec_compare.rs -o benches/bench1.csv -r 50 -p e:./target/release/emlop,q,g -sl,ltmu,egcc,c
 # qlop doesn't implement pgcc,pqt,pkde
 ./benches/exec_compare.rs -o benches/bench2.csv -r 50 -p e:./target/release/emlop,g -spgcc
 # genlop is too slow for 50 iterations of pqt,pkde
