@@ -297,7 +297,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     let einfo = get_emerge(&mut tmpdirs);
     if einfo.cmds.is_empty()
        && std::io::stdin().is_terminal()
-       && matches!(sc.resume, ResumeKind::No | ResumeKind::Current)
+       && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
     {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
         return Ok(false);

@@ -121,10 +121,10 @@ impl ArgParse<String, ()> for Average {
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ResumeKind {
-    #[clap(hide(true))]
-    Current,
     #[clap(alias("a"))]
-    Any,
+    Auto,
+    #[clap(alias("e"))]
+    Either,
     #[clap(alias("m"))]
     Main,
     #[clap(alias("b"))]

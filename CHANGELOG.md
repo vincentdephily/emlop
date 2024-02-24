@@ -17,10 +17,9 @@
 * Support multiple `--tmpdir` arguments
 * `--tabs` has been renamed `--output=tab/columns/auto` (or `-ot` for short)
   - Default output is now `columns` on tty and `tab` otherwise, to simplify `emlop ...|cut -f...` workflow
-* Added `--resume=any` variant to resume either main or backup list
-  - Passing `--resume` without argument is now the same as `--resume any`
-  - Default value remains `main`
-  - Removed `--resume=auto` variant (just don't pass the option)
+* Added `--resume=either` variant to resume either main or backup list
+  - Passing `--resume` without argument is now the same as `--resume either`
+  - Default value remains `auto` (use main list if currently emerging)
 * `--color` variants renamed to `(y)es`, `(n)o`, `(t)ty`
 * Improved inline help and error messages
   - Upgraded argument parser dependency

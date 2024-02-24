@@ -64,7 +64,7 @@ Predict-specific arguments:
       -s, --show <e,m,t,a>     Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll
       -N, --first [<num>]      Show only the first <num> entries
       -n, --last [<num>]       Show only the last <num> entries
-          --resume [<source>]  Use main, backup, any, or no portage resume list
+          --resume [<source>]  Use main, backup, either, or no portage resume list
     Stats:
           --limit <num>     Use the last <num> merge times to predict durations
           --avg <fn>        Select function used to predict durations

@@ -196,7 +196,7 @@ impl ConfPred {
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, predict, limit, 1..65000, 10)? as u16,
                   unknown: sel!(cli, toml, predict, unknown, 0..3600, 10)?,
-                  resume: *cli.get_one("resume").unwrap_or(&ResumeKind::Current),
+                  resume: *cli.get_one("resume").unwrap_or(&ResumeKind::Auto),
                   tmpdirs,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),
                   last: *cli.get_one("last").unwrap_or(&usize::MAX) })

@@ -90,8 +90,8 @@ fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
     let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
     let db: Mtimedb = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
     let r = match kind {
-        ResumeKind::Any => db.resume.or(db.resume_backup)?,
-        ResumeKind::Main | ResumeKind::Current => db.resume?,
+        ResumeKind::Either => db.resume.or(db.resume_backup)?,
+        ResumeKind::Main | ResumeKind::Auto => db.resume?,
         ResumeKind::Backup => db.resume_backup?,
         ResumeKind::No => unreachable!(),
     };
@@ -219,11 +219,11 @@ mod tests {
         check_resume(ResumeKind::Main, "mtimedb.ok", Some(main));
         check_resume(ResumeKind::Backup, "mtimedb.ok", Some(bkp));
         check_resume(ResumeKind::No, "mtimedb.ok", Some(&[]));
-        check_resume(ResumeKind::Any, "mtimedb.ok", Some(main));
-        check_resume(ResumeKind::Any, "mtimedb.backuponly", Some(bkp));
-        check_resume(ResumeKind::Any, "mtimedb.empty", Some(&[]));
-        check_resume(ResumeKind::Any, "mtimedb.noresume", None);
-        check_resume(ResumeKind::Any, "mtimedb.badjson", None);
+        check_resume(ResumeKind::Either, "mtimedb.ok", Some(main));
+        check_resume(ResumeKind::Either, "mtimedb.backuponly", Some(bkp));
+        check_resume(ResumeKind::Either, "mtimedb.empty", Some(&[]));
+        check_resume(ResumeKind::Either, "mtimedb.noresume", None);
+        check_resume(ResumeKind::Either, "mtimedb.badjson", None);
     }
 
     #[test]

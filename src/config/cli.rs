@@ -123,19 +123,19 @@ pub fn build_cli_nocomplete() -> Command {
                                .long_help("Show only the last <num> entries\n  \
                                              (empty)|1: last entry\n  \
                                              5:         last 5 entries\n");
-    let h = "Use main, backup, any, or no portage resume list\n\
+    let h = "Use main, backup, either, or no portage resume list\n\
              This is ignored if STDIN is a piped `emerge -p` output\n  \
-             (default):     Use main resume list, if currently emerging\n  \
-             any|a|(empty): Use main or backup resume list\n  \
-             main|m:        Use main resume list\n  \
-             backup|b:      Use backup resume list\n  \
-             no|n:          Never use resume list";
+             (default)|auto|a: Use main resume list, if currently emerging\n  \
+             (empty)|either|e: Use main or backup resume list\n  \
+             main|m:           Use main resume list\n  \
+             backup|b:         Use backup resume list\n  \
+             no|n:             Never use resume list";
     let resume = Arg::new("resume").long("resume")
                                    .value_name("source")
                                    .value_parser(value_parser!(crate::config::ResumeKind))
                                    .hide_possible_values(true)
                                    .num_args(..=1)
-                                   .default_missing_value("any")
+                                   .default_missing_value("either")
                                    .display_order(8)
                                    .help_heading("Filter")
                                    .help(h.split_once('\n').unwrap().0)
