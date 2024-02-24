@@ -156,10 +156,10 @@ pub type ColorStyle = bool;
 impl ArgParse<String, bool> for ColorStyle {
     fn parse(v: &String, isterm: bool, s: &'static str) -> Result<Self, ArgError> {
         match v.as_str() {
-            "tty" | "t" => Ok(isterm),
+            "auto" | "a" => Ok(isterm),
             "yes" | "y" => Ok(true),
             "no" | "n" => Ok(false),
-            _ => Err(ArgError::new(v, s).pos("(y)es (n)o (t)ty")),
+            _ => Err(ArgError::new(v, s).pos("(y)es (n)o (a)uto")),
         }
     }
 }

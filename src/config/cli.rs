@@ -232,17 +232,17 @@ pub fn build_cli_nocomplete() -> Command {
                                          .help_heading("Format")
                                          .help("Display start time instead of end time");
     let color = Arg::new("color").long("color")
-                                 .value_name("when")
+                                 .value_name("bool")
                                  .global(true)
                                  .num_args(..=1)
                                  .default_missing_value("y")
                                  .display_order(25)
                                  .help_heading("Format")
-                                 .help("Enable color (yes/no/tty/y/n/t)")
-                                 .long_help("Enable color (yes/no/tty/y/n/t)\n  \
-                                             (default)|tty|t: colored if on tty\n  \
-                                             (empty)|yes|y:   colored\n  \
-                                             no|n:            not colored");
+                                 .help("Enable color (yes/no/auto)")
+                                 .long_help("Enable color (yes/no/auto)\n  \
+                                             (default)|auto|a: colored if on tty\n  \
+                                             (empty)|yes|y:    colored\n  \
+                                             no|n:             not colored");
     let output = Arg::new("output").short('o')
                                    .long("output")
                                    .value_name("format")

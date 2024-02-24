@@ -31,8 +31,8 @@ All commands share these arguments, affecting parsing and output:
           --duration <format>  Output durations in different formats
           --date <format>      Output dates in different formats
           --utc [<bool>]       Parse/display dates in UTC instead of local time
-          --color [<when>]     Enable color (always/never/y/n)
-      -o, --output <format>    Ouput format (columns/c/tab/t)
+          --color [<bool>]     Enable color (yes/no/auto)
+      -o, --output <format>    Ouput format (columns/tab/auto)
 
 ### List merges, unmerges, and syncs  with `log`
 
