@@ -119,14 +119,12 @@ fn main() {
                      Reduce the scroll buffer size and check performance-related settings.\n\
                      * Use -n option (redirect to /dev/null) to ignore terminal overhead.\n\
                      * Pipe to cat to disable colors (see also color-specific sets).")
-        .arg(Arg::new("programs")
-             .help("Programs to test, formated as 'NAME[:PATH][,...]'")
-             .long_help("Programs to test, formated as 'NAME[:PATH][,...]'\n  \
-                         coma-separated list, name can be abbreviated, alternative path can \
-                         be provided.\n  eg 'emlop,e:target/release/emlop,q'")
-             .short('p')
+        .arg(Arg::new("program")
+             .help("Programs to test, formated as 'NAME[:PATH]'")
+             .long_help("Programs to test, formated as 'NAME[:PATH]'\n  \
+                         name can be abbreviated, alternative path can be provided.\n  \
+                         eg 'emlop e:target/release/emlop q'")
              .num_args(1..)
-             .use_value_delimiter(true)
              .default_value("emlop"))
         .arg(Arg::new("sets")
              .help("Test sets")
@@ -171,7 +169,7 @@ fn main() {
     // CLI parsing
     let runs = *cli.get_one("runs").unwrap();
     let buckets = *cli.get_one("buckets").unwrap();
-    let progs: Vec<&String> = cli.get_many("programs").unwrap().collect();
+    let progs: Vec<&String> = cli.get_many("program").unwrap().collect();
     let sets: Vec<&String> = cli.get_many("sets").unwrap().collect();
     let nullout = cli.get_flag("nullout");
     let logfile: &String = cli.get_one("logfile").unwrap();
