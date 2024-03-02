@@ -47,9 +47,13 @@ fn main() {
         ("ltmu", "qlop",   &["-f","{emerge.log}","-muUvt"],   None),
         ("ltmu", "emlop",  &["-F","{emerge.log}","l","-smu"], None),
         // Show sync history
-        ("ls", "genlop", &["-f","{emerge.log}","-r"],      None),
-        ("ls", "qlop",   &["-f","{emerge.log}","-st"],     None),
-        ("ls", "emlop",  &["-F","{emerge.log}","l","-ss"], None),
+        ("s", "genlop", &["-f","{emerge.log}","-r"],      None),
+        ("s", "qlop",   &["-f","{emerge.log}","-st"],     None),
+        ("s", "emlop",  &["-F","{emerge.log}","l","-ss"], None),
+        // Show last sync
+        ("ls", "genlop", &["-f","{emerge.log}","-r","--date","2020-10-08"], None),
+        ("ls", "qlop",   &["-f","{emerge.log}","-stl"],                     None),
+        ("ls", "emlop",  &["-F","{emerge.log}","l","-ss","-n"],             None),
         // Read only part of a file
         ("ld1", "genlop", &["-f","{emerge.log}","-l", "--date","2019-02-01","--date","2019-02-28"], None),
         ("ld1", "qlop",   &["-f","{emerge.log}","-mv","--date","2019-02-01","--date","2019-02-28"], None),
@@ -92,7 +96,7 @@ fn main() {
         ("igcc", "qlop",   &["-f","{emerge.log}","-c","gcc"],     None),
         ("igcc", "emlop",  &["-F","{emerge.log}","s","gcc","-e"], None),
         // Show overall stats
-        ("s", "emlop",  &["-F","{emerge.log}","s","-sa"], None),
+        ("st", "emlop",  &["-F","{emerge.log}","s","-sa"], None),
     ];
 
     // CLI definition
