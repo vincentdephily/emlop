@@ -43,7 +43,7 @@ assert_cmd = "~2.0.0"
 name = "exec_compare"
 bench = false
 # https://github.com/rust-lang/cargo/issues/13456
-path = "make cargo publish happy"
+path = "benches/exec_compare.rs"
 
 [features]
 # Experimental features, may require nightly compiler.
