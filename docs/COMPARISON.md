@@ -2,7 +2,7 @@
 
 Original motivation for Emlop was a faster/more accurate version of `genlop -p`, and learning
 Rust. It has since gained features and maturity to compete on all fronts. This file compares
-`genlop-0.30.11`, `qlop-0.96`, and `emlop-0.6.1`. Please report any outdated/incorrect info using
+`genlop-0.30.11`, `qlop-0.96.1`, and `emlop-0.7.0`. Please report any outdated/incorrect info using
 the [issue tracker](https://github.com/vincentdephily/emlop/issues).
 
 Known emerge log parsers:
@@ -26,8 +26,8 @@ tries to merge functions where that makes sense, for example `emlop l` combines 
 
 ## Output
 
-Emlop output aims to be compact, beautiful, and easy to read/parse. Qlop is similar to genlop, but
-did make some outputs more compact.
+Emlop output aims to be compact, beautiful, flexible, and easy to read/parse. Qlop is similar to
+genlop, but did make some outputs more compact.
 
 Default qlop duration output depends on length: `45s` -> `3′45″` -> `1:23:45`. Machine output
 applies to dates and durations at the same time.
@@ -88,16 +88,16 @@ For relative dates, genlop accepts fancy strings like "last month" or "2 weeks a
 less flexible but less verbose (no "ago" needed), and emlop only accepts a number of days/weeks/etc
 which can be abbreviated (for example "1 week, 3 days" -> "1w3d").
 
-|                                                        | genlop      | qlop  | emlop       |
-| :----------------------------------------------------- | :----:      | :---: | :----:      |
-| Limit log parsing by date                              | yes         | yes   | yes         |
-| Limit log to number fisrt/last n entries               | no          | no    | yes         |
-| Limit log to last operation                            | no          | yes   | no          |
-| Filter by package categ/name                           | yes         | yes   | yes         |
-| Filter by sync repo                                    | no          | no    | yes         |
-| Read filter list from file                             | no          | yes   | no          |
-| Search modes                                           | plain/regex | plain | plain/regex |
-| Default search mode                                    | plain       | plain | regex       |
+|                                          | genlop      | qlop  | emlop       |
+|:-----------------------------------------|:-----------:|:-----:|:-----------:|
+| Limit log parsing by date                | yes         | yes   | yes         |
+| Limit log to number fisrt/last n entries | no          | no    | yes         |
+| Limit log to last emerge operation       | no          | yes   | no          |
+| Filter by package categ/name             | yes         | yes   | yes         |
+| Filter by sync repo                      | no          | no    | yes         |
+| Read filter list from file               | no          | yes   | no          |
+| Search modes                             | plain/regex | plain | plain/regex |
+| Default search mode                      | plain       | plain | regex       |
 
 ## Merge time prediction
 
@@ -143,15 +143,16 @@ mode. Genlop can't show unmerges of specific package only. Qlop -r still searche
 unfinished merges when it doesn't find an ongoing merge. Filtering by plaintext isn't noticeably
 faster than by case-(in)sensitive regexp ({gen,em}lop only).
 
-|                                                               | genlop | qlop | emlop |
-| :-------------------------------------------------------------| -----: | ---: | ----: |
-| `genlop -l; qlop -m; emlop l`                                 |    437 |   94 |    60 |
-| `genlop -lut; qlop -muUvt; emlop l -smu`                      |    653 |  148 |   108 |
-| `genlop gcc; qlop -m gcc; emlop l -e gcc`                     |    362 |   36 |    18 |
-| `emerge dummybuild&;genlop -c;qlop -r;emlop p`                |    480 |   67 |    57 |
-| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out`    |    388 |  n/a |    44 |
-| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`     |   3098 |  n/a |    45 |
-| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out`    |  19513 |  n/a |    45 |
+|                                                            | genlop | qlop | emlop |
+|:-----------------------------------------------------------|-------:|-----:|------:|
+| `genlop -l; qlop -m; emlop l`                              |    701 |   85 |    61 |
+| `genlop -lut; qlop -muUvt; emlop l -smu`                   |    931 |  140 |   109 |
+| `genlop gcc; qlop -m gcc; emlop l -e gcc`                  |    648 |   34 |    19 |
+| `genlop -r --date 2020-10-08; qlop -stl; emlop l -ss -n`   |    625 |   65 |    12 |
+| `emerge dummybuild&;genlop -c;qlop -r;emlop p`             |    760 |   77 |    70 |
+| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out` |    669 |  n/a |    46 |
+| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`  |   3383 |  n/a |    48 |
+| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out` |  20063 |  n/a |    46 |
 
 Emlop is faster than qlop, which is already comfortably fast (the wall time is often dominated by
 the terminal emulator). Genlop is noticably slow for basic tasks, and can be prohibitively slow for

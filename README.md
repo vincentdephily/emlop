@@ -95,7 +95,7 @@ Stats-specific arguments:
 ![Config demo](config.webp)
 
 Emlop reads default settings from `$HOME/.config/emlop.toml`. Set `$EMLOP_CONFIG` env var to change
-the file location, or set it to  `""` to disable config file.
+the file location, or set it to  `""` to disable.
 
 This [example file](emlop.toml) documents the format, and lists supported options. Command-line
 arguments take precedence over the config file.
