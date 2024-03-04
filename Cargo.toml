@@ -42,6 +42,8 @@ assert_cmd = "~2.0.0"
 # This is meant to be started directly, using scriptisto not cargo
 name = "exec_compare"
 bench = false
+# https://github.com/rust-lang/cargo/issues/13456
+path = "make cargo publish happy"
 
 [features]
 # Experimental features, may require nightly compiler.
