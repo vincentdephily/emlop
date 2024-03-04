@@ -561,6 +561,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
+    use crate::config::*;
     extern crate test;
 
     fn pkgs() -> Vec<String> {
@@ -569,11 +570,11 @@ mod bench {
             Hist::SyncStop { repo, .. } => repo,
             _ => String::from("other"),
         };
-        let show = Show { merge: true, sync: true, ..Show::default() };
+        let show = Show::parse(&String::from("ms"), "ms", "ut").unwrap();
         let file = String::from("benches/emerge.log");
         let pkgs: Vec<_> =
-            get_hist(file, None, None, show, vec![], true).unwrap().iter().map(f).collect();
-        assert_eq!(pkgs.len(), 21963);
+            get_hist(&file, None, None, show, &vec![], true).unwrap().iter().map(f).collect();
+        assert_eq!(pkgs.len(), 21969);
         pkgs
     }
 
@@ -585,7 +586,7 @@ mod bench {
                 let p = pkgs();
                 let t: Vec<String> = $t.split_whitespace().map(str::to_string).collect();
                 b.iter(move || {
-                     let f = FilterStr::try_new(t.clone(), $e).unwrap();
+                     let f = FilterStr::try_new(&t, $e).unwrap();
                      p.iter().fold(true, |a, p| a ^ f.match_pkg(&p))
                  });
             }
