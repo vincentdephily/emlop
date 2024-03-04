@@ -1,4 +1,6 @@
-# 0.7.0
+# 0.7.0 2024-03-04
+
+Feature release: Multi-term search, config file, and many goodies
 
 ## New features
 
