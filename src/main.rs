@@ -9,7 +9,7 @@ mod table;
 use crate::{config::*, datetime::*};
 use anyhow::Error;
 use log::*;
-use std::{io::IsTerminal, str::FromStr};
+use std::str::FromStr;
 
 fn main() {
     let res = match Configs::load() {

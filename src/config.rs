@@ -4,9 +4,8 @@ mod types;
 
 pub use crate::config::{cli::*, types::*};
 use crate::{config::toml::Toml, parse::AnsiStr, *};
-use anyhow::Error;
 use clap::ArgMatches;
-use std::path::PathBuf;
+use std::{io::IsTerminal, path::PathBuf};
 
 
 pub enum Configs {

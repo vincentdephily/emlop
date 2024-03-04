@@ -1,6 +1,6 @@
 use crate::{datetime::*, parse::*, table::*, *};
 use std::{collections::{BTreeMap, HashMap},
-          io::stdin};
+          io::{stdin, IsTerminal}};
 
 /// Straightforward display of merge events
 ///

@@ -4,8 +4,7 @@ use crate::{config::{ArgError, ArgParse},
 use anyhow::{bail, Error};
 use log::{debug, warn};
 use regex::Regex;
-use std::{convert::TryFrom,
-          io::Write as _,
+use std::{io::Write as _,
           str::FromStr,
           time::{SystemTime, UNIX_EPOCH}};
 use time::{macros::format_description, parsing::Parsed, Date, Duration, Month, OffsetDateTime,
@@ -295,8 +294,7 @@ impl crate::table::Disp for FmtDur {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::convert::TryInto;
-    use time::{format_description::well_known::Rfc3339, Weekday};
+    use time::format_description::well_known::Rfc3339;
 
     fn parse_3339(s: &str) -> OffsetDateTime {
         OffsetDateTime::parse(s, &Rfc3339).expect(s)

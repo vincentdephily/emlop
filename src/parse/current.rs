@@ -169,7 +169,6 @@ pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
 
     /// Check that `get_pretend()` has the expected output
     fn check_pretend(file: &str, expect: &[(&str, &str)]) {
