@@ -481,8 +481,23 @@ pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
 }
 
 pub fn cmd_complete(sc: &ConfComplete) -> Result<bool, Error> {
-    let mut cli = build_cli_nocomplete();
-    clap_complete::generate(sc.shell, &mut cli, "emlop", &mut std::io::stdout());
+    if let Some(s) = &sc.shell {
+        #[cfg(feature = "clap_complete")]
+        {
+            let mut cli = build_cli();
+            let shell = clap_complete::Shell::from_str(s).expect("Unsupported shell");
+            clap_complete::generate(shell, &mut cli, "emlop", &mut std::io::stdout());
+        }
+        #[cfg(not(feature = "clap_complete"))]
+        {
+            match s.as_str() {
+                "bash" => print!("{}", std::include_str!("../completion.bash")),
+                "zsh" => print!("{}", std::include_str!("../completion.zsh")),
+                "fish" => print!("{}", std::include_str!("../completion.fish")),
+                o => println!("Shell {o:?} not supported"),
+            }
+        }
+    }
     Ok(true)
 }
 
