@@ -15,9 +15,6 @@ _emlop() {
             emlop,accuracy)
                 cmd="emlop__accuracy"
                 ;;
-            emlop,complete)
-                cmd="emlop__complete"
-                ;;
             emlop,log)
                 cmd="emlop__log"
                 ;;
@@ -34,7 +31,7 @@ _emlop() {
 
     case "${cmd}" in
         emlop)
-            opts="-f -t -H -o -F -v -h -V --from --to --header --duration --date --utc --color --output --logfile --help --version log predict stats accuracy complete"
+            opts="-f -t -H -o -F -v -h -V --from --to --header --duration --date --utc --color --output --logfile --help --version log predict stats accuracy"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -131,80 +128,6 @@ _emlop() {
                     return 0
                     ;;
                 --limit)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --from)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -f)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --to)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -t)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --header)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -H)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --duration)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --date)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --utc)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --color)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --output)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -o)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --logfile)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -F)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                *)
-                    COMPREPLY=()
-                    ;;
-            esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-            return 0
-            ;;
-        emlop__complete)
-            opts="-f -t -H -o -F -v -h --shell --from --to --header --duration --date --utc --color --output --logfile --help"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
-                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-                return 0
-            fi
-            case "${prev}" in
-                --shell)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

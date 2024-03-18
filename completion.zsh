@@ -166,28 +166,6 @@ _arguments "${_arguments_options[@]}" \
 '*::search --     Show only packages/repos matching <search>:' \
 && ret=0
 ;;
-(complete)
-_arguments "${_arguments_options[@]}" \
-'--shell=[Write shell completion script to stdout]: : ' \
-'-f+[Only parse log entries after <date>]:date: ' \
-'--from=[Only parse log entries after <date>]:date: ' \
-'-t+[Only parse log entries before <date>]:date: ' \
-'--to=[Only parse log entries before <date>]:date: ' \
-'-H+[Show table header]' \
-'--header=[Show table header]' \
-'--duration=[Output durations in different formats]:format: ' \
-'--date=[Output dates in different formats]:format: ' \
-'--utc=[Parse/display dates in UTC instead of local time]' \
-'--color=[Enable color (yes/no/auto)]' \
-'-o+[Ouput format (columns/tab/auto)]:format: ' \
-'--output=[Ouput format (columns/tab/auto)]:format: ' \
-'-F+[Location of emerge log file]:file: ' \
-'--logfile=[Location of emerge log file]:file: ' \
-'*-v[Increase verbosity (can be given multiple times)]' \
-'-h[Print help (see more with '\''--help'\'')]' \
-'--help[Print help (see more with '\''--help'\'')]' \
-&& ret=0
-;;
         esac
     ;;
 esac
@@ -200,7 +178,6 @@ _emlop_commands() {
 'predict:Predict merge times for current or pretended merges' \
 'stats:Show statistics about syncs, per-package (un)merges, and total (un)merges' \
 'accuracy:Compare actual merge time against predicted merge time' \
-'complete:Shell completion helper' \
     )
     _describe -t commands 'emlop commands' commands "$@"
 }
@@ -208,11 +185,6 @@ _emlop_commands() {
 _emlop__accuracy_commands() {
     local commands; commands=()
     _describe -t commands 'emlop accuracy commands' commands "$@"
-}
-(( $+functions[_emlop__complete_commands] )) ||
-_emlop__complete_commands() {
-    local commands; commands=()
-    _describe -t commands 'emlop complete commands' commands "$@"
 }
 (( $+functions[_emlop__log_commands] )) ||
 _emlop__log_commands() {

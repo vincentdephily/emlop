@@ -14,7 +14,6 @@ complete -c emlop -n "__fish_use_subcommand" -f -a "log" -d 'Show log of sucessf
 complete -c emlop -n "__fish_use_subcommand" -f -a "predict" -d 'Predict merge times for current or pretended merges'
 complete -c emlop -n "__fish_use_subcommand" -f -a "stats" -d 'Show statistics about syncs, per-package (un)merges, and total (un)merges'
 complete -c emlop -n "__fish_use_subcommand" -f -a "accuracy" -d 'Compare actual merge time against predicted merge time'
-complete -c emlop -n "__fish_use_subcommand" -f -a "complete" -d 'Shell completion helper'
 complete -c emlop -n "__fish_seen_subcommand_from log" -l starttime -d 'Display start time instead of end time' -r
 complete -c emlop -n "__fish_seen_subcommand_from log" -s N -l first -d 'Show only the first <num> entries' -r
 complete -c emlop -n "__fish_seen_subcommand_from log" -s n -l last -d 'Show only the last <num> entries' -r
@@ -82,15 +81,3 @@ complete -c emlop -n "__fish_seen_subcommand_from accuracy" -s F -l logfile -d '
 complete -c emlop -n "__fish_seen_subcommand_from accuracy" -s e -l exact -d 'Match <search> using plain string'
 complete -c emlop -n "__fish_seen_subcommand_from accuracy" -s v -d 'Increase verbosity (can be given multiple times)'
 complete -c emlop -n "__fish_seen_subcommand_from accuracy" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c emlop -n "__fish_seen_subcommand_from complete" -l shell -d 'Write shell completion script to stdout' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -s f -l from -d 'Only parse log entries after <date>' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -s t -l to -d 'Only parse log entries before <date>' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -s H -l header -d 'Show table header' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -l duration -d 'Output durations in different formats' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -l date -d 'Output dates in different formats' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -l utc -d 'Parse/display dates in UTC instead of local time' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -l color -d 'Enable color (yes/no/auto)' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -s o -l output -d 'Ouput format (columns/tab/auto)' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -s F -l logfile -d 'Location of emerge log file' -r
-complete -c emlop -n "__fish_seen_subcommand_from complete" -s v -d 'Increase verbosity (can be given multiple times)'
-complete -c emlop -n "__fish_seen_subcommand_from complete" -s h -l help -d 'Print help (see more with \'--help\')'
