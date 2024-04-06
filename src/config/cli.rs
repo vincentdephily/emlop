@@ -284,7 +284,7 @@ pub fn build_cli() -> Command {
                                                  -v:   show warnings\n  \
                                                  -vv:  show info\n  \
                                                  -vvv: show debug");
-    let h = "Write shell completion script to stdout\n\n\
+    let h = "Write <shell> completion script to stdout\n\n\
              You should redirect the output to a file that will be sourced by your shell\n\
              For example: `emlop complete --shell bash > ~/.bash_completion.d/emlop`\n\
              To apply the changes, either restart you shell or `source` the generated file";
@@ -293,6 +293,13 @@ pub fn build_cli() -> Command {
                                  .long_help(h)
                                  .num_args(1)
                                  .display_order(34);
+    let h = "List matching packages from emerge.log\n\n\
+             It uses the same semantics as `log <search>` filtering. \
+             An empty search lists everything.";
+    let onepkg = Arg::new("pkg").help(h.split_once('\n').unwrap().0)
+                                .long_help(h)
+                                .num_args(1)
+                                .display_order(35);
 
     ////////////////////////////////////////////////////////////
     // Subcommands
@@ -344,10 +351,8 @@ pub fn build_cli() -> Command {
                                                .arg(last)
                                                .arg(avg)
                                                .arg(limit);
-    let h = "Shell completion helper\n\n\
-             See README to install shell completions.";
     let cmd_complete =
-        Command::new("complete").about(h.split_once('\n').unwrap().0).long_about(h).arg(shell);
+        Command::new("complete").about("Shell completion helper").arg(onepkg).arg(shell);
 
     ////////////////////////////////////////////////////////////
     // Main command
@@ -358,8 +363,9 @@ pub fn build_cli() -> Command {
         concat!("Commands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
                  Commands have their own -h / --help\n\
                  Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of other errors\n\
-                 Config can be set in $HOME/.config/emlop.toml, see example in /usr/share/doc/emlop-",
-                crate_version!());
+                 Config can be set in $HOME/.config/emlop.toml\n\
+                 See readme, changelog, and sample config in /usr/share/doc/emlop-",
+                crate_version!(), "/");
     let styles =
         styling::Styles::styled().header(styling::AnsiColor::Blue.on_default()
                                          | styling::Effects::BOLD)

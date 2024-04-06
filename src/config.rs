@@ -13,7 +13,7 @@ pub enum Configs {
     Stats(Conf, ConfStats),
     Predict(Conf, ConfPred),
     Accuracy(Conf, ConfAccuracy),
-    Complete(ConfComplete),
+    Complete(Conf, ConfComplete),
 }
 
 /// Global config
@@ -73,6 +73,7 @@ pub struct ConfAccuracy {
 }
 pub struct ConfComplete {
     pub shell: Option<String>,
+    pub pkg: Option<String>,
 }
 
 impl Configs {
@@ -95,7 +96,7 @@ impl Configs {
             Some(("stats", sub)) => Self::Stats(conf, ConfStats::try_new(sub, &toml)?),
             Some(("predict", sub)) => Self::Predict(conf, ConfPred::try_new(sub, &toml)?),
             Some(("accuracy", sub)) => Self::Accuracy(conf, ConfAccuracy::try_new(sub, &toml)?),
-            Some(("complete", sub)) => Self::Complete(ConfComplete::try_new(sub)?),
+            Some(("complete", sub)) => Self::Complete(conf, ConfComplete::try_new(sub)?),
             _ => unreachable!("clap should have exited already"),
         })
     }
@@ -226,6 +227,6 @@ impl ConfAccuracy {
 
 impl ConfComplete {
     fn try_new(cli: &ArgMatches) -> Result<Self, Error> {
-        Ok(Self { shell: cli.get_one("shell").cloned() })
+        Ok(Self { shell: cli.get_one("shell").cloned(), pkg: cli.get_one("pkg").cloned() })
     }
 }

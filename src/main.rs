@@ -17,7 +17,7 @@ fn main() {
         Ok(Configs::Stats(gc, sc)) => commands::cmd_stats(&gc, &sc),
         Ok(Configs::Predict(gc, sc)) => commands::cmd_predict(&gc, &sc),
         Ok(Configs::Accuracy(gc, sc)) => commands::cmd_accuracy(&gc, &sc),
-        Ok(Configs::Complete(sc)) => commands::cmd_complete(&sc),
+        Ok(Configs::Complete(gc, sc)) => commands::cmd_complete(&gc, &sc),
         Err(e) => Err(e),
     };
     match res {

@@ -87,8 +87,8 @@ Stats-specific arguments:
 
 ### Other commands
 
-* `complete` generates shell completions
-* `accuracy` helps analizing predictions accuracy
+* `complete`: shell completion helper
+* `accuracy`: analize predictions accuracy
 
 ### Configuration file
 
@@ -132,9 +132,9 @@ you might need to pass `--locked` to `cargo install`, to use explicitly tested d
 
 #### Shell completion
 
-    emlop complete bash > /usr/share/bash-completion/completions/emlop
-    emlop complete zsh > /usr/share/zsh/site-functions/_emlop
-    emlop complete fish > /usr/share/fish/vendor_completions.d/emlop.fish
+    emlop complete --shell bash > /usr/share/bash-completion/completions/emlop
+    emlop complete --shell zsh > /usr/share/zsh/site-functions/_emlop
+    emlop complete --shell fish > /usr/share/fish/vendor_completions.d/emlop.fish
 
 ## Contributing
 
