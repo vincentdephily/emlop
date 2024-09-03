@@ -284,17 +284,14 @@ pub fn build_cli() -> Command {
                                                  -v:   show warnings\n  \
                                                  -vv:  show info\n  \
                                                  -vvv: show debug");
-    let h = "Write <shell> completion script to stdout\n\n\
-             You should redirect the output to a file that will be sourced by your shell\n\
-             For example: `emlop complete --shell bash > ~/.bash_completion.d/emlop`\n\
-             To apply the changes, either restart you shell or `source` the generated file";
-    let shell = Arg::new("shell").long("shell")
-                                 .help(h.split_once('\n').unwrap().0)
-                                 .long_help(h)
-                                 .num_args(1)
-                                 .display_order(34);
-    let h = "List matching packages from emerge.log\n\n\
-             It uses the same semantics as `log <search>` filtering. \
+    #[cfg(feature = "clap_complete")]
+    let shell =
+        Arg::new("shell").long("shell")
+                         .help("Write generated (development) <shell> completion script to stdout")
+                         .num_args(1)
+                         .display_order(34);
+    let h = "List matching packages from emerge.log\n\
+             Uses the same semantics as `log <search>` filtering. \
              An empty search lists everything.";
     let onepkg = Arg::new("pkg").help(h.split_once('\n').unwrap().0)
                                 .long_help(h)
@@ -351,8 +348,11 @@ pub fn build_cli() -> Command {
                                                .arg(last)
                                                .arg(avg)
                                                .arg(limit);
+    #[cfg(feature = "clap_complete")]
     let cmd_complete =
-        Command::new("complete").about("Shell completion helper").arg(onepkg).arg(shell);
+        Command::new("complete").about("Shell completion helper").arg(shell).arg(onepkg);
+    #[cfg(not(feature = "clap_complete"))]
+    let cmd_complete = Command::new("complete").about("Shell completion helper").arg(onepkg);
 
     ////////////////////////////////////////////////////////////
     // Main command

@@ -72,6 +72,7 @@ pub struct ConfAccuracy {
     pub lim: u16,
 }
 pub struct ConfComplete {
+    #[cfg(feature = "clap_complete")]
     pub shell: Option<String>,
     pub pkg: Option<String>,
 }
@@ -227,6 +228,8 @@ impl ConfAccuracy {
 
 impl ConfComplete {
     fn try_new(cli: &ArgMatches) -> Result<Self, Error> {
-        Ok(Self { shell: cli.get_one("shell").cloned(), pkg: cli.get_one("pkg").cloned() })
+        Ok(Self { #[cfg(feature = "clap_complete")]
+                  shell: cli.get_one("shell").cloned(),
+                  pkg: cli.get_one("pkg").cloned() })
     }
 }
