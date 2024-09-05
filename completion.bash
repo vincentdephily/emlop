@@ -3,508 +3,281 @@ _emlop() {
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd=""
+    cmd="emlop"
     opts=""
 
-    for i in ${COMP_WORDS[@]}
-    do
-        case "${cmd},${i}" in
-            ",$1")
-                cmd="emlop"
-                ;;
-            emlop,accuracy)
-                cmd="emlop__accuracy"
-                ;;
-            emlop,log)
-                cmd="emlop__log"
-                ;;
-            emlop,predict)
-                cmd="emlop__predict"
-                ;;
-            emlop,stats)
-                cmd="emlop__stats"
+    i=0
+    for w in ${COMP_WORDS[@]}; do
+        found=$(compgen -W 'accuracy log predict stats' -- "${w}")
+        case ${found} in
+            "")
                 ;;
             *)
+                if [[ $i == $COMP_CWORD ]]; then
+                    COMPREPLY=($found)
+                    return 0
+                else
+                    cmd="emlop__$found"
+                    break
+                fi
                 ;;
         esac
+        let i=$i+1
     done
 
     case "${cmd}" in
         emlop)
-            opts="-f -t -H -o -F -v -h -V --from --to --header --duration --date --utc --color --output --logfile --help --version log predict stats accuracy"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
+            opts="log predict stats accuracy -f -t -H -o -F -v -h -V --from --to --header --duration --date --utc --color --output --logfile --help --version"
+            if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                --from)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --from|--to|-f|-t)
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                -f)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --to)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -t)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --header)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -H)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --header|-H)
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "hms secs hmsfixed human" "${cur}"))
                     ;;
                 --date)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
                     ;;
                 --utc)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
                     ;;
-                --output)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --output|-o)
+                    COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
                     ;;
-                -o)
+                --logfile|-F)
                     COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --logfile)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -F)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
                     ;;
                 *)
-                    COMPREPLY=()
+                    COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
                     ;;
             esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
         emlop__accuracy)
-            opts="-e -s -n -f -t -H -o -F -v -h --exact --show --last --avg --limit --from --to --header --duration --date --utc --color --output --logfile --help [search]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+            opts="[search]... -e -s -n -f -t -H -o -F -v -h --exact --show --last --avg --limit --from --to --header --duration --date --utc --color --output --logfile --help"
+            if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                --show)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --from|--to|-f|-t)
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                -s)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --last)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -n)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --avg)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --limit)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --from)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -f)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --to)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -t)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --header)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -H)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --header|-H)
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "hms secs hmsfixed human" "${cur}"))
                     ;;
                 --date)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
                     ;;
                 --utc)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
                     ;;
-                --output)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --output|-o)
+                    COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
                     ;;
-                -o)
+                --logfile|-F)
                     COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
                     ;;
-                --logfile)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --show|-s)
+                    COMPREPLY=($(compgen -W "mta" "${cur}"))
                     ;;
-                -F)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --last|-n)
+                    COMPREPLY=($(compgen -W "1 5 10 20 100" "${cur}"))
+                    ;;
+                --avg)
+                    COMPREPLY=($(compgen -W "arith median weighted-arith weighted-median" "${cur}"))
+                    ;;
+                --limit)
+                    COMPREPLY=($(compgen -W "1 5 20 999" "${cur}"))
                     ;;
                 *)
-                    COMPREPLY=()
+                    if [[ -z "${cur}" ]]; then
+                        COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                    else
+                        COMPREPLY=($(emlop complete -- "${cur}"))
+                    fi
                     ;;
             esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
         emlop__log)
-            opts="-N -n -s -e -f -t -H -o -F -v -h --starttime --first --last --show --exact --from --to --header --duration --date --utc --color --output --logfile --help [search]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+            opts=" [search]... -N -n -s -e -f -t -H -o -F -v -h --starttime --first --last --show --exact --from --to --header --duration --date --utc --color --output --logfile --help"
+            if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                --starttime)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --from|--to|-f|-t)
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                --first)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -N)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --last)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -n)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --show)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -s)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --from)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -f)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --to)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -t)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --header)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -H)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --header|-H)
+                    COMPREPLY=($(compgen -W "yes no ${opts}" "${cur}"))
                     ;;
                 --duration)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "hms secs hmsfixed human" "${cur}"))
                     ;;
                 --date)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
                     ;;
                 --utc)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
                     ;;
-                --output)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --output|-o)
+                    COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
                     ;;
-                -o)
+                --logfile|-F)
                     COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
                     ;;
-                --logfile)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --starttime)
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
-                -F)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --first|-N|--last|-n)
+                    COMPREPLY=($(compgen -W "1 5 10 20 100" "${cur}"))
+                    ;;
+                --show|-s)
+                    COMPREPLY=($(compgen -W "musa" "${cur}"))
                     ;;
                 *)
-                    COMPREPLY=()
+                    if [[ -z "${cur}" ]]; then
+                        COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                    else
+                        COMPREPLY=($(emlop complete -- "${cur}"))
+                    fi
                     ;;
             esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
         emlop__predict)
             opts="-s -N -n -f -t -H -o -F -v -h --show --first --last --tmpdir --resume --unknown --avg --limit --from --to --header --duration --date --utc --color --output --logfile --help"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+            if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                --show)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --from|--to|-f|-t)
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                -s)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --header|-H)
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
-                --first)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --duration)
+                    COMPREPLY=($(compgen -W "hms secs hmsfixed human" "${cur}"))
                     ;;
-                -N)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --date)
+                    COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
                     ;;
-                --last)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --utc)
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
-                -n)
+                --color)
+                    COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
+                    ;;
+                --output|-o)
+                    COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
+                    ;;
+                --logfile|-F)
                     COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    ;;
+                --show|-s)
+                    COMPREPLY=($(compgen -W "emta" "${cur}"))
+                    ;;
+                --first|-N|--last|-n)
+                    COMPREPLY=($(compgen -W "1 5 10 20 100" "${cur}"))
                     ;;
                 --tmpdir)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -d "${cur}"))
                     ;;
                 --resume)
                     COMPREPLY=($(compgen -W "auto either main backup no" -- "${cur}"))
-                    return 0
                     ;;
                 --unknown)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "0 5 10 20 60" "${cur}"))
                     ;;
                 --avg)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "arith median weighted-arith weighted-median" "${cur}"))
                     ;;
                 --limit)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --from)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -f)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --to)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -t)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --header)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -H)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --duration)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --date)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --utc)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --color)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --output)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -o)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --logfile)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -F)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "1 5 20 999" "${cur}"))
                     ;;
                 *)
-                    COMPREPLY=()
+                    COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
                     ;;
             esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
         emlop__stats)
-            opts="-s -g -e -f -t -H -o -F -v -h --show --groupby --exact --avg --limit --from --to --header --duration --date --utc --color --output --logfile --help [search]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+            opts="[search]... -s -g -e -f -t -H -o -F -v -h --show --groupby --exact --avg --limit --from --to --header --duration --date --utc --color --output --logfile --help"
+            if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                --show)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --from|--to|-f|-t)
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                -s)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --groupby)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -g)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --avg)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --limit)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --from)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -f)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --to)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -t)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --header)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                -H)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --header|-H)
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "hms secs hmsfixed human" "${cur}"))
                     ;;
                 --date)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
                     ;;
                 --utc)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                    COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
                     ;;
-                --output)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --output|-o)
+                    COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
                     ;;
-                -o)
+                --logfile|-F)
                     COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
                     ;;
-                --logfile)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --show|-s)
+                    COMPREPLY=($(compgen -W "ptsa" "${cur}"))
                     ;;
-                -F)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
+                --groupby|-g)
+                    COMPREPLY=($(compgen -W "year month week day none" "${cur}"))
+                    ;;
+                --avg)
+                    COMPREPLY=($(compgen -W "arith median weighted-arith weighted-median" "${cur}"))
+                    ;;
+                --limit)
+                    COMPREPLY=($(compgen -W "1 5 20 999" "${cur}"))
                     ;;
                 *)
-                    COMPREPLY=()
+                    if [[ -z "${cur}" ]]; then
+                        COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                    else
+                        COMPREPLY=($(emlop complete -- "${cur}"))
+                    fi
                     ;;
             esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
     esac
 }
 
-if [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -ge 4 || "${BASH_VERSINFO[0]}" -gt 4 ]]; then
-    complete -F _emlop -o nosort -o bashdefault -o default emlop
-else
-    complete -F _emlop -o bashdefault -o default emlop
-fi
+complete -F _emlop -o nosort -o bashdefault -o default emlop
