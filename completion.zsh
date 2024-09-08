@@ -1,20 +1,10 @@
 #compdef emlop
 
-autoload -U is-at-least
-
 _emlop() {
     typeset -A opt_args
-    typeset -a _arguments_options
-    local ret=1
-
-    if is-at-least 5.2; then
-        _arguments_options=(-s -S -C)
-    else
-        _arguments_options=(-s -C)
-    fi
-
     local context curcontext="$curcontext" state line
-    _arguments "${_arguments_options[@]}" \
+
+    _arguments -s -S -C \
 '-f+[Only parse log entries after <date>]:date: ' \
 '--from=[Only parse log entries after <date>]:date: ' \
 '-t+[Only parse log entries before <date>]:date: ' \
@@ -35,8 +25,7 @@ _emlop() {
 '-V[Print version]' \
 '--version[Print version]' \
 ":: :_emlop_commands" \
-"*::: :->emlop" \
-&& ret=0
+"*::: :->emlop"
     case $state in
     (emlop)
         words=($line[1] "${words[@]}")
@@ -44,7 +33,7 @@ _emlop() {
         curcontext="${curcontext%:*:*}:emlop-command-$line[1]:"
         case $line[1] in
             (log)
-_arguments "${_arguments_options[@]}" \
+                _arguments -s -S -C \
 '--starttime=[Display start time instead of end time]' \
 '-N+[Show only the first <num> entries]' \
 '--first=[Show only the first <num> entries]' \
@@ -71,11 +60,10 @@ _arguments "${_arguments_options[@]}" \
 '*-v[Increase verbosity (can be given multiple times)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
-'*::search --     Show only packages/repos matching <search>:' \
-&& ret=0
-;;
-(predict)
-_arguments "${_arguments_options[@]}" \
+'*::search:($(emlop complete))'
+                ;;
+            (predict)
+                _arguments -s -S -C \
 '-s+[Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll]:e,m,t,a: ' \
 '--show=[Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll]:e,m,t,a: ' \
 '-N+[Show only the first <num> entries]' \
@@ -103,11 +91,10 @@ _arguments "${_arguments_options[@]}" \
 '--logfile=[Location of emerge log file]:file: ' \
 '*-v[Increase verbosity (can be given multiple times)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
-'--help[Print help (see more with '\''--help'\'')]' \
-&& ret=0
-;;
-(stats)
-_arguments "${_arguments_options[@]}" \
+'--help[Print help (see more with '\''--help'\'')]'
+                ;;
+            (stats)
+                _arguments -s -S -C \
 '-s+[Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll]:p,t,s,a: ' \
 '--show=[Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll]:p,t,s,a: ' \
 '-g+[Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one]:y,m,w,d,n: ' \
@@ -133,11 +120,10 @@ _arguments "${_arguments_options[@]}" \
 '*-v[Increase verbosity (can be given multiple times)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
-'*::search --     Show only packages/repos matching <search>:' \
-&& ret=0
-;;
-(accuracy)
-_arguments "${_arguments_options[@]}" \
+'*::search:($(emlop complete))'
+                ;;
+            (accuracy)
+                _arguments -s -S -C \
 '-s+[Show (m)erges, (t)otals, and/or (a)ll]:m,t,a: ' \
 '--show=[Show (m)erges, (t)otals, and/or (a)ll]:m,t,a: ' \
 '-n+[Show only the last <num> entries]' \
@@ -163,12 +149,11 @@ _arguments "${_arguments_options[@]}" \
 '*-v[Increase verbosity (can be given multiple times)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
-'*::search --     Show only packages/repos matching <search>:' \
-&& ret=0
-;;
+'*::search:($(emlop complete))'
+                ;;
         esac
-    ;;
-esac
+        ;;
+    esac
 }
 
 (( $+functions[_emlop_commands] )) ||
