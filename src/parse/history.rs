@@ -168,7 +168,7 @@ fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
                   fmt_utctime(b))
         },
     }
-    Ok((min.unwrap_or(std::i64::MIN), max.unwrap_or(std::i64::MAX)))
+    Ok((min.unwrap_or(i64::MIN), max.unwrap_or(i64::MAX)))
 }
 
 /// Matches package/repo depending on options.
@@ -484,7 +484,7 @@ mod tests {
     #[test]
     /// Filtering by timestamp
     fn parse_hist_filter_ts() {
-        let (umin, umax, fmin, fmax) = (std::i64::MIN, std::i64::MAX, 1517609348, 1520891098);
+        let (umin, umax, fmin, fmax) = (i64::MIN, i64::MAX, 1517609348, 1520891098);
         #[rustfmt::skip]
         let t = vec![(Some(umin),       None,           889, 832, 832, 832, 326, 150),
                      (Some(fmin),       None,           889, 832, 832, 832, 326, 150),

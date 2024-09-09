@@ -87,8 +87,8 @@ Stats-specific arguments:
 
 ### Other commands
 
-* `complete` generates shell completions
-* `accuracy` helps analizing predictions accuracy
+* `complete`: shell completion helper
+* `accuracy`: analize predictions accuracy
 
 ### Configuration file
 
@@ -130,11 +130,13 @@ you might need to pass `--locked` to `cargo install`, to use explicitly tested d
     cargo test
     cargo install -f --path .
 
-#### Shell completion
+#### Misc files
 
-    emlop complete bash > /usr/share/bash-completion/completions/emlop
-    emlop complete zsh > /usr/share/zsh/site-functions/_emlop
-    emlop complete fish > /usr/share/fish/vendor_completions.d/emlop.fish
+Cargo only installs the binary, which is all you really need, but you may want to manualy install
+some files fetched from [github](https://github.com/vincentdephily/emlop) or the [crates.io
+page](https://crates.io/crates/emlop): [bash completion](completion.bash), [zsh
+completion](completion.zsh), [fish completion](completion.fish), and [example config
+file](emlop.toml).
 
 ## Contributing
 

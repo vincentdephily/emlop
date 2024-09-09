@@ -22,13 +22,13 @@ missing_const_for_fn = "warn"
 anyhow = "1.0.32"
 atoi = "2.0.0"
 clap = { version = "~4.4.11", features = ["cargo", "derive"] }
-clap_complete = "~4.4.4"
+clap_complete = { version = "~4.4.4", optional = true }
 crossbeam-channel = "0.5.0"
 env_logger = { version = "0.11.0", default-features = false, features = ["auto-color"] }
 flate2 = "1.0.28"
 libc = { version = "0.2.126", default-features = false }
 log = "0.4.11"
-regex = { version = "1.10.0", default_features = false, features = ["std", "perf-inline", "perf-literal", "unicode-case"] }
+regex = { version = "1.10.0", default-features = false, features = ["std", "perf-inline", "perf-literal", "unicode-case"] }
 rev_lines = "0.3.0"
 serde = { version = "1.0.184", features = ["derive"] }
 serde_json = "1.0.89"
@@ -49,6 +49,9 @@ path = "benches/exec_compare.rs"
 # Experimental features, may require nightly compiler.
 # Currently only benchmarking.
 unstable = []
+# Generate shell completions at runtime instead of using static version.
+# Only intended for developers.
+clap_complete = ["dep:clap_complete"]
 
 [profile.release]
 debug = false

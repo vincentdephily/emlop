@@ -53,17 +53,17 @@ impl<'a, const N: usize> Table<'a, N> {
                last: usize::MAX }
     }
     /// Specify column alignment
-    pub fn align_left(mut self, col: usize) -> Self {
+    pub const fn align_left(mut self, col: usize) -> Self {
         self.aligns[col] = Align::Left;
         self
     }
     /// Specify column left margin (1st printted column never has a left margin)
-    pub fn margin(mut self, col: usize, margin: &'static str) -> Self {
+    pub const fn margin(mut self, col: usize, margin: &'static str) -> Self {
         self.margins[col] = margin;
         self
     }
     /// Specify column left margin (1st printted column never has a left margin)
-    pub fn last(mut self, last: usize) -> Self {
+    pub const fn last(mut self, last: usize) -> Self {
         self.last = last;
         self
     }
@@ -249,8 +249,8 @@ mod test {
         let mut t = Table::<2>::new(&conf).align_left(0);
         t.row([&[&"123"], &[&1]]);
         t.row([&[&conf.merge, &1, &conf.dur, &2, &conf.cnt, &3, &conf.clr], &[&1]]);
-        let res = "123  1\x1B[0m\n\
-                   \x1B[1;32m1\x1B[1;35m2\x1B[2;33m3\x1B[0m  1\x1B[0m\n";
+        let res = "123  1\x1B[m\n\
+                   \x1B[1;32m1\x1B[1;35m2\x1B[2;33m3\x1B[m  1\x1B[m\n";
         let (l1, l2) = res.split_once('\n').expect("two lines");
         assert_eq!(Ansi::strip(l1, 100), "123  1");
         assert_eq!(Ansi::strip(l1, 100), Ansi::strip(l2, 100));

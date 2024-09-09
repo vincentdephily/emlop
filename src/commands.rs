@@ -1,5 +1,5 @@
 use crate::{datetime::*, parse::*, table::*, *};
-use std::{collections::{BTreeMap, HashMap},
+use std::{collections::{BTreeMap, HashMap, HashSet},
           io::{stdin, IsTerminal}};
 
 /// Straightforward display of merge events
@@ -480,9 +480,28 @@ pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
     Ok(found)
 }
 
-pub fn cmd_complete(sc: &ConfComplete) -> Result<bool, Error> {
-    let mut cli = build_cli_nocomplete();
-    clap_complete::generate(sc.shell, &mut cli, "emlop", &mut std::io::stdout());
+pub fn cmd_complete(gc: &Conf, sc: &ConfComplete) -> Result<bool, Error> {
+    // Generate standard clap completions
+    #[cfg(feature = "clap_complete")]
+    if let Some(s) = &sc.shell {
+        let mut cli = build_cli();
+        let shell = clap_complete::Shell::from_str(s).expect("Unsupported shell");
+        clap_complete::generate(shell, &mut cli, "emlop", &mut std::io::stdout());
+        return Ok(true);
+    }
+    // Look for (un)merged matching packages in the log and print each once
+    let term: Vec<_> = sc.pkg.iter().cloned().collect();
+    let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &term, false)?;
+    let mut pkgs: HashSet<String> = HashSet::new();
+    for p in hist {
+        if let Hist::MergeStart { .. } = p {
+            let e = p.ebuild();
+            if !pkgs.contains(e) {
+                println!("{}", e);
+                pkgs.insert(e.to_string());
+            }
+        }
+    }
     Ok(true)
 }
 

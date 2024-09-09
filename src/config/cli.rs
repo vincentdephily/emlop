@@ -2,7 +2,7 @@ use clap::{builder::styling, crate_version, value_parser, Arg, ArgAction::*, Com
 use std::path::PathBuf;
 
 /// Generate cli argument parser without the `complete` subcommand.
-pub fn build_cli_nocomplete() -> Command {
+pub fn build_cli() -> Command {
     ////////////////////////////////////////////////////////////
     // Filter arguments
     ////////////////////////////////////////////////////////////
@@ -284,6 +284,19 @@ pub fn build_cli_nocomplete() -> Command {
                                                  -v:   show warnings\n  \
                                                  -vv:  show info\n  \
                                                  -vvv: show debug");
+    #[cfg(feature = "clap_complete")]
+    let shell =
+        Arg::new("shell").long("shell")
+                         .help("Write generated (development) <shell> completion script to stdout")
+                         .num_args(1)
+                         .display_order(34);
+    let h = "List matching packages from emerge.log\n\
+             Uses the same semantics as `log <search>` filtering. \
+             An empty search lists everything.";
+    let onepkg = Arg::new("pkg").help(h.split_once('\n').unwrap().0)
+                                .long_help(h)
+                                .num_args(1)
+                                .display_order(35);
 
     ////////////////////////////////////////////////////////////
     // Subcommands
@@ -335,6 +348,11 @@ pub fn build_cli_nocomplete() -> Command {
                                                .arg(last)
                                                .arg(avg)
                                                .arg(limit);
+    #[cfg(feature = "clap_complete")]
+    let cmd_complete =
+        Command::new("complete").about("Shell completion helper").arg(shell).arg(onepkg);
+    #[cfg(not(feature = "clap_complete"))]
+    let cmd_complete = Command::new("complete").about("Shell completion helper").arg(onepkg);
 
     ////////////////////////////////////////////////////////////
     // Main command
@@ -345,8 +363,9 @@ pub fn build_cli_nocomplete() -> Command {
         concat!("Commands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
                  Commands have their own -h / --help\n\
                  Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of other errors\n\
-                 Config can be set in $HOME/.config/emlop.toml, see example in /usr/share/doc/emlop-",
-                crate_version!());
+                 Config can be set in $HOME/.config/emlop.toml\n\
+                 See readme, changelog, and sample config in /usr/share/doc/emlop-",
+                crate_version!(), "/");
     let styles =
         styling::Styles::styled().header(styling::AnsiColor::Blue.on_default()
                                          | styling::Effects::BOLD)
@@ -377,22 +396,9 @@ pub fn build_cli_nocomplete() -> Command {
                          .subcommand(cmd_pred)
                          .subcommand(cmd_stats)
                          .subcommand(cmd_accuracy)
+                         .subcommand(cmd_complete)
 }
 
-/// Generate cli argument parser.
-pub fn build_cli() -> Command {
-    let labout = "Write shell completion script to stdout\n\n\
-                  You should redirect the output to a file that will be sourced by your shell\n\
-                  For example: `emlop complete bash > ~/.bash_completion.d/emlop`\n\
-                  To apply the changes, either restart you shell or `source` the generated file";
-    let shell = Arg::new("shell").help("Target shell")
-                                 .required(true)
-                                 .value_parser(value_parser!(clap_complete::Shell));
-    let cmd = Command::new("complete").about("Generate shell completion script")
-                                      .long_about(labout)
-                                      .arg(shell);
-    build_cli_nocomplete().subcommand(cmd)
-}
 
 #[cfg(test)]
 mod test {

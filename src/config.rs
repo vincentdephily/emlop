@@ -1,3 +1,6 @@
+/// Runtime config
+///
+/// Order of precedance is command line (clap), config file (toml), default.
 mod cli;
 mod toml;
 mod types;
@@ -7,19 +10,17 @@ use crate::{config::toml::Toml, parse::AnsiStr, *};
 use clap::ArgMatches;
 use std::{io::IsTerminal, path::PathBuf};
 
-
+/// Global config, one enum variant per command
 pub enum Configs {
     Log(Conf, ConfLog),
     Stats(Conf, ConfStats),
     Predict(Conf, ConfPred),
     Accuracy(Conf, ConfAccuracy),
-    Complete(ConfComplete),
+    Complete(Conf, ConfComplete),
 }
-
-/// Global config
+/// Common config
 ///
-/// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
-/// alignments properly.
+/// Using raw `set/clear` ANSI colors instead of some `paint()` method to simplify alignment.
 pub struct Conf {
     pub pkg: AnsiStr,
     pub merge: AnsiStr,
@@ -72,7 +73,9 @@ pub struct ConfAccuracy {
     pub lim: u16,
 }
 pub struct ConfComplete {
-    pub shell: clap_complete::Shell,
+    #[cfg(feature = "clap_complete")]
+    pub shell: Option<String>,
+    pub pkg: Option<String>,
 }
 
 impl Configs {
@@ -95,7 +98,7 @@ impl Configs {
             Some(("stats", sub)) => Self::Stats(conf, ConfStats::try_new(sub, &toml)?),
             Some(("predict", sub)) => Self::Predict(conf, ConfPred::try_new(sub, &toml)?),
             Some(("accuracy", sub)) => Self::Accuracy(conf, ConfAccuracy::try_new(sub, &toml)?),
-            Some(("complete", sub)) => Self::Complete(ConfComplete::try_new(sub)?),
+            Some(("complete", sub)) => Self::Complete(conf, ConfComplete::try_new(sub)?),
             _ => unreachable!("clap should have exited already"),
         })
     }
@@ -139,7 +142,6 @@ macro_rules! sel {
     }
 }
 
-
 impl Conf {
     pub fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
         let isterm = std::io::stdout().is_terminal();
@@ -156,8 +158,8 @@ impl Conf {
                   unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
                   dur: AnsiStr::from(if color { "\x1B[1;35m" } else { "" }),
                   cnt: AnsiStr::from(if color { "\x1B[2;33m" } else { "" }),
-                  clr: AnsiStr::from(if color { "\x1B[0m" } else { "" }),
-                  lineend: if color { b"\x1B[0m\n" } else { b"\n" },
+                  clr: AnsiStr::from(if color { "\x1B[m" } else { "" }),
+                  lineend: if color { b"\x1B[m\n" } else { b"\n" },
                   header: sel!(cli, toml, header, (), false)?,
                   dur_t: sel!(cli, toml, duration, (), DurationStyle::Hms)?,
                   date_offset: offset,
@@ -226,6 +228,8 @@ impl ConfAccuracy {
 
 impl ConfComplete {
     fn try_new(cli: &ArgMatches) -> Result<Self, Error> {
-        Ok(Self { shell: *cli.get_one("shell").unwrap() })
+        Ok(Self { #[cfg(feature = "clap_complete")]
+                  shell: cli.get_one("shell").cloned(),
+                  pkg: cli.get_one("pkg").cloned() })
     }
 }
