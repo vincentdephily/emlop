@@ -1,3 +1,6 @@
+/// Runtime config
+///
+/// Order of precedance is command line (clap), config file (toml), default.
 mod cli;
 mod toml;
 mod types;
@@ -7,7 +10,7 @@ use crate::{config::toml::Toml, parse::AnsiStr, *};
 use clap::ArgMatches;
 use std::{io::IsTerminal, path::PathBuf};
 
-
+/// Global config, one enum variant per command
 pub enum Configs {
     Log(Conf, ConfLog),
     Stats(Conf, ConfStats),
@@ -15,11 +18,9 @@ pub enum Configs {
     Accuracy(Conf, ConfAccuracy),
     Complete(Conf, ConfComplete),
 }
-
-/// Global config
+/// Common config
 ///
-/// Colors use `prefix/suffix()` instead of `paint()` because `paint()` doesn't handle `'{:>9}'`
-/// alignments properly.
+/// Using raw `set/clear` ANSI colors instead of some `paint()` method to simplify alignment.
 pub struct Conf {
     pub pkg: AnsiStr,
     pub merge: AnsiStr,
@@ -140,7 +141,6 @@ macro_rules! sel {
             $def)
     }
 }
-
 
 impl Conf {
     pub fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {

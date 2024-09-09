@@ -53,17 +53,17 @@ impl<'a, const N: usize> Table<'a, N> {
                last: usize::MAX }
     }
     /// Specify column alignment
-    pub fn align_left(mut self, col: usize) -> Self {
+    pub const fn align_left(mut self, col: usize) -> Self {
         self.aligns[col] = Align::Left;
         self
     }
     /// Specify column left margin (1st printted column never has a left margin)
-    pub fn margin(mut self, col: usize, margin: &'static str) -> Self {
+    pub const fn margin(mut self, col: usize, margin: &'static str) -> Self {
         self.margins[col] = margin;
         self
     }
     /// Specify column left margin (1st printted column never has a left margin)
-    pub fn last(mut self, last: usize) -> Self {
+    pub const fn last(mut self, last: usize) -> Self {
         self.last = last;
         self
     }
