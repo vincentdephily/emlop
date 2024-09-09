@@ -160,12 +160,12 @@ the terminal emulator). Genlop is noticably slow for basic tasks, and can be pro
 
 ## misc
 
-|                            | genlop       | qlop   | emlop             |
-|:---------------------------|:------------:|:------:|:-----------------:|
-| Shell completion           | bash         | none   | bash/zsh/fish/... |
-| Complete package name      | yes          | n/a    | no                |
-| Configuration file         | no           | no     | yes               |
-| Read compressed emerge.log | yes          | no     | yes               |
-| Unittests                  | no           | yes    | yes               |
-| Documentation and help     | ok           | good   | good              |
-| Development activity       | unmaintained | active | active            |
+|                            | genlop       | qlop   | emlop         |
+|:---------------------------|:------------:|:------:|:-------------:|
+| Shell completion           | bash         | none   | bash/zsh/fish |
+| Complete package name      | yes          | n/a    | yes           |
+| Configuration file         | no           | no     | yes           |
+| Read compressed emerge.log | yes          | no     | yes           |
+| Unittests                  | no           | yes    | yes           |
+| Documentation and help     | ok           | good   | good          |
+| Development activity       | unmaintained | active | active        |

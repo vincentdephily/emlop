@@ -1,3 +1,12 @@
+# Unreleased
+
+* Improved shell completion
+  - Complete on package names
+  - Various usability tweaks
+  - Completion files are now distributed in git, not in the compiled binary
+* Updated deps
+  - Notably needed to compile with Rust >= 1.80
+
 # 0.7.0 2024-03-04
 
 Feature release: Multi-term search, config file, and many goodies
