@@ -4,6 +4,7 @@
   - Complete on package names
   - Various usability tweaks
   - Completion files are now distributed in git, not in the compiled binary
+* `predict` now tries both merge lists when a merge process exists
 * Updated deps
   - Notably needed to compile with Rust >= 1.80
 

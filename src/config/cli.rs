@@ -125,7 +125,7 @@ pub fn build_cli() -> Command {
                                              5:         last 5 entries\n");
     let h = "Use main, backup, either, or no portage resume list\n\
              This is ignored if STDIN is a piped `emerge -p` output\n  \
-             (default)|auto|a: Use main resume list, if currently emerging\n  \
+             (default)|auto|a: Use main or backup resume list, if currently emerging\n  \
              (empty)|either|e: Use main or backup resume list\n  \
              main|m:           Use main resume list\n  \
              backup|b:         Use backup resume list\n  \

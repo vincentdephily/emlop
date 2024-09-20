@@ -90,8 +90,10 @@ fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
     let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
     let db: Mtimedb = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
     let r = match kind {
-        ResumeKind::Either => db.resume.or(db.resume_backup)?,
-        ResumeKind::Main | ResumeKind::Auto => db.resume?,
+        ResumeKind::Either | ResumeKind::Auto => {
+            db.resume.filter(|o| !o.mergelist.is_empty()).or(db.resume_backup)?
+        },
+        ResumeKind::Main => db.resume?,
         ResumeKind::Backup => db.resume_backup?,
         ResumeKind::No => unreachable!(),
     };
@@ -197,30 +199,23 @@ mod tests {
     }
 
     /// Check that `get_resume()` has the expected output
-    fn check_resume(kind: ResumeKind, file: &str, expect: Option<&[(&str, &str)]>) {
-        let file = &format!("tests/{file}");
-        match expect {
-            Some(ex) => {
-                let mut n = 0;
-                for p in get_resume_priv(kind, file).unwrap() {
-                    assert_eq!((p.ebuild(), p.version()), ex[n], "Mismatch for {file}:{n}");
-                    n += 1;
-                }
-            },
-            None => assert_eq!(None, get_resume_priv(kind, file)),
-        }
+    fn check_resume(kind: ResumeKind, file: &str, expect: Option<&[&str]>) {
+        let expect_pkg = expect.map(|o| o.into_iter().map(|s| Pkg::try_new(s).unwrap()).collect());
+        let res = get_resume_priv(kind, &format!("tests/{file}"));
+        assert_eq!(expect_pkg, res, "Mismatch for {file}");
     }
 
     #[test]
     fn resume() {
-        let main = &[("dev-lang/rust", "1.65.0"), ("app-portage/emlop", "0.5.0")];
-        let bkp = &[("app-portage/dummybuild", "0.1.600"), ("app-portage/dummybuild", "0.1.60")];
+        let main = &["dev-lang/rust-1.65.0", "app-portage/emlop-0.5.0"];
+        let bkp = &["app-portage/dummybuild-0.1.600", "app-portage/dummybuild-0.1.60"];
         check_resume(ResumeKind::Main, "mtimedb.ok", Some(main));
         check_resume(ResumeKind::Backup, "mtimedb.ok", Some(bkp));
         check_resume(ResumeKind::No, "mtimedb.ok", Some(&[]));
         check_resume(ResumeKind::Either, "mtimedb.ok", Some(main));
         check_resume(ResumeKind::Either, "mtimedb.backuponly", Some(bkp));
-        check_resume(ResumeKind::Either, "mtimedb.empty", Some(&[]));
+        check_resume(ResumeKind::Either, "mtimedb.empty", None);
+        check_resume(ResumeKind::Either, "mtimedb.mainempty", Some(bkp));
         check_resume(ResumeKind::Either, "mtimedb.noresume", None);
         check_resume(ResumeKind::Either, "mtimedb.badjson", None);
     }
