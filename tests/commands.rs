@@ -454,12 +454,9 @@ fn negative_merge_time() {
 
 /// Same as negative_merge_time() but for predict command.
 /// For `pred` the negative merge time is ignored.
-///
-/// Ignored by default: depends on there being no currently running emerge.
-#[ignore]
 #[test]
 fn negative_merge_time_pred() {
-    let a = "%Fnegtime.log p --date unix -oc";
+    let a = "%Fnegtime.log p -stm --date unix -oc";
     let i = "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n";
     let o = format!("kde-plasma/kwin-5.15.5  4:33 \n\
                      Estimate for 1 ebuild   4:33 @ {}\n",
