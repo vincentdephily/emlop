@@ -2,7 +2,7 @@
 
 Original motivation for Emlop was a faster/more accurate version of `genlop -p`, and learning
 Rust. It has since gained features and maturity to compete on all fronts. This file compares
-`genlop-0.30.11`, `qlop-0.96.1`, and `emlop-0.7.0`. Please report any outdated/incorrect info using
+`genlop-0.30.12`, `qlop-0.97`, and `emlop-0.7.1`. Please report any outdated/incorrect info using
 the [issue tracker](https://github.com/vincentdephily/emlop/issues).
 
 Known emerge log parsers:
@@ -14,6 +14,7 @@ Known emerge log parsers:
 * [Glop](https://github.com/kongo2002/glop) (Haskell) was a simple rewrite, dead upstream.
 * [Golop](https://github.com/klausman/golop) (Go) is a recent rewrite apparently abandoned quickly.
 * [Emwa](https://github.com/foxtrot-wx/emwa) (C) is a recent addition, time will tell.
+* [Genloppy](https://github.com/cklaucke/genloppy) (Python) aims for drop-in Genlop compatibility, work in progress.
 
 Rust, Perl, C, Python, Haskell, Go... at least Gentoo doesn't suffer from a language monoculture ;)
 
@@ -160,12 +161,12 @@ the terminal emulator). Genlop is noticably slow for basic tasks, and can be pro
 
 ## misc
 
-|                            | genlop       | qlop   | emlop         |
-|:---------------------------|:------------:|:------:|:-------------:|
-| Shell completion           | bash         | none   | bash/zsh/fish |
-| Complete package name      | yes          | n/a    | yes           |
-| Configuration file         | no           | no     | yes           |
-| Read compressed emerge.log | yes          | no     | yes           |
-| Unittests                  | no           | yes    | yes           |
-| Documentation and help     | ok           | good   | good          |
-| Development activity       | unmaintained | active | active        |
+|                            | genlop      | qlop   | emlop         |
+|:---------------------------|:-----------:|:------:|:-------------:|
+| Shell completion           | bash        | none   | bash/zsh/fish |
+| Complete package name      | gentoo repo | n/a    | any merged    |
+| Configuration file         | no          | no     | yes           |
+| Read compressed emerge.log | yes         | no     | yes           |
+| Unittests                  | no          | yes    | yes           |
+| Documentation and help     | ok          | good   | good          |
+| Development activity       | minimal     | active | active        |

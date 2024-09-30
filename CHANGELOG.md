@@ -1,8 +1,11 @@
-# Unreleased
+# 0.7.1 2024-09-30
+
+Maintenance release.
 
 * Improved shell completion
-  - Complete on package names
+  - Complete previously-merged package names
   - Various usability tweaks
+  - Fixed zsh completion
   - Completion files are now distributed in git, not in the compiled binary
 * `predict` now tries both merge lists when a merge process exists
 * Updated deps
