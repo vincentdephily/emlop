@@ -1,0 +1,64 @@
+{
+	"info": {
+		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.38/info": 1662451394,
+		"/usr/share/gcc-data/x86_64-pc-linux-gnu/11.3.0/info": 1658756964,
+		"/usr/share/info": 1669379712
+	},
+	"ldpath": {
+		"/lib": 1668683568,
+		"/lib64": 1669626055,
+		"/usr/lib": 1669627983,
+		"/usr/lib/llvm/15/lib64": 1667695134,
+		"/usr/lib/rust/lib": 1669627980,
+		"/usr/lib64": 1669713774,
+		"/usr/local/lib": 1635810354,
+		"/usr/local/lib64": 1635810354
+	},
+	"resume": {
+		"favorites": [
+			"dev-lang/rust",
+			"app-portage/emlop"
+		],
+		"mergelist": [
+		],
+		"myopts": {
+			"--backtrack": 100,
+			"--keep-going": true,
+			"--nodeps": true,
+			"--quiet-build": "y",
+			"--regex-search-auto": "y"
+		}
+	},
+	"resume_backup": {
+		"favorites": [
+			"app-portage/dummybuild:600",
+			"app-portage/dummybuild:60"
+		],
+		"mergelist": [
+			[
+				"ebuild",
+				"/",
+				"app-portage/dummybuild-0.1.600",
+				"merge"
+			],
+			[
+				"ebuild",
+				"/",
+				"app-portage/dummybuild-0.1.60",
+				"merge"
+			]
+		],
+		"myopts": {
+			"--oneshot": true,
+			"--quiet-build": "y",
+			"--regex-search-auto": "y",
+			"--verbose": true
+		}
+	},
+	"starttime": 0,
+	"updates": {
+		"/var/db/repos/gentoo/profiles/updates/4Q-2022": 1669625966,
+		"/var/db/repos/guru/profiles/updates/4Q-2021": 1640636540
+	},
+	"version": "3.0.38.1"
+}
