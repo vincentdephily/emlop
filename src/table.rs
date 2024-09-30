@@ -43,7 +43,7 @@ pub struct Table<'a, const N: usize> {
 
 impl<'a, const N: usize> Table<'a, N> {
     /// Initialize new table
-    pub fn new(conf: &'a Conf) -> Table<N> {
+    pub fn new(conf: &'a Conf) -> Table<'a, N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
                conf,
