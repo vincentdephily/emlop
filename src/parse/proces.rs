@@ -229,3 +229,19 @@ mod tests {
         }
     }
 }
+
+#[cfg(feature = "unstable")]
+#[cfg(test)]
+mod bench {
+    use super::*;
+    extern crate test;
+
+    #[bench]
+    /// Bench listing all processes
+    fn get_all(b: &mut test::Bencher) {
+        b.iter(move || {
+                   let mut tmpdirs = vec![];
+                   get_all_info(&[], &mut tmpdirs);
+                 });
+            }
+}
