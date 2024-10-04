@@ -8,16 +8,25 @@
 
 use crate::*;
 use anyhow::{ensure, Context};
+use libc::pid_t;
 use std::{fs::{read_dir, DirEntry, File},
           io::prelude::*,
           path::PathBuf};
 
 #[derive(Debug)]
+pub enum ProcKind {
+    Emerge,
+    Python,
+    Other,
+}
+
+#[derive(Debug)]
 pub struct Proc {
-    pub idx: usize,
+    pub kind: ProcKind,
     pub cmdline: String,
     pub start: i64,
-    pub pid: i32,
+    pub pid: pid_t,
+    pub ppid: pid_t,
 }
 
 impl std::fmt::Display for Proc {
@@ -36,36 +45,38 @@ impl std::fmt::Display for Proc {
 }
 
 /// Get command name, arguments, start time, and pid for one process.
-fn get_proc_info(filter: &[&str],
-                 entry: &DirEntry,
-                 clocktick: i64,
-                 time_ref: i64,
-                 tmpdirs: &mut Vec<PathBuf>)
-                 -> Option<Proc> {
+fn get_proc(entry: &DirEntry,
+            clocktick: i64,
+            time_ref: i64,
+            tmpdirs: &mut Vec<PathBuf>)
+            -> Option<Proc> {
     // Parse pid.
     // At this stage we expect `entry` to not always correspond to a process.
     let pid = i32::from_str(&entry.file_name().to_string_lossy()).ok()?;
-    // See linux/Documentation/filesystems/proc.txt Table 1-4: Contents of the stat files.
+    // See linux/Documentation/filesystems/proc.rst Table 1-4: Contents of the stat files.
     let mut stat = String::new();
     File::open(entry.path().join("stat")).ok()?.read_to_string(&mut stat).ok()?;
-    // Parse command name, bail out now if it doesn't match.
-    // The command name is surrounded by parens and may contain spaces.
+    // Parse command name (it's surrounded by parens and may contain spaces)
+    // If it's emerge, look for portage tmpdir in its fds
     let (cmd_start, cmd_end) = (stat.find('(')? + 1, stat.rfind(')')?);
-    let idx = if filter.is_empty() {
-        usize::MAX
+    let kind = if &stat[cmd_start..cmd_end] == "emerge" {
+        extend_tmpdirs(entry.path(), tmpdirs);
+        ProcKind::Emerge
+    } else if stat[cmd_start..cmd_end].starts_with("python") {
+        ProcKind::Python
     } else {
-        filter.iter().position(|&f| stat[cmd_start..cmd_end].starts_with(f))?
+        ProcKind::Other
     };
-    // Parse start time
-    let start_time = i64::from_str(stat[cmd_end + 1..].split(' ').nth(20)?).ok()?;
+    // Parse parent pid and start time
+    let mut fields = stat[cmd_end + 1..].split(' ');
+    let ppid = i32::from_str(fields.nth(2)?).ok()?;
+    let start_time = i64::from_str(fields.nth(17)?).ok()?;
     // Parse arguments
     let mut cmdline = String::new();
     File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
     cmdline = cmdline.replace('\0', " ").trim().into();
-    // Find portage tmpdir
-    extend_tmpdirs(entry.path(), tmpdirs);
     // Done
-    Some(Proc { idx, cmdline, start: time_ref + start_time / clocktick, pid })
+    Some(Proc { kind, cmdline, start: time_ref + start_time / clocktick, pid, ppid })
 }
 
 /// Find tmpdir by looking for "build.log" in the process fds, and add it to the provided vector.
@@ -91,13 +102,13 @@ fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
-pub fn get_all_info(filter: &[&str], tmpdirs: &mut Vec<PathBuf>) -> Vec<Proc> {
-    get_all_info_result(filter, tmpdirs).unwrap_or_else(|e| {
-                                            log_err(e);
-                                            vec![]
-                                        })
+pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> Vec<Proc> {
+    get_all_proc_result(tmpdirs).unwrap_or_else(|e| {
+                                    log_err(e);
+                                    vec![]
+                                })
 }
-fn get_all_info_result(filter: &[&str], tmpdirs: &mut Vec<PathBuf>) -> Result<Vec<Proc>, Error> {
+fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<Vec<Proc>, Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
@@ -112,7 +123,7 @@ fn get_all_info_result(filter: &[&str], tmpdirs: &mut Vec<PathBuf>) -> Result<Ve
     // Now iterate through /proc/<pid>
     let mut ret: Vec<Proc> = Vec::new();
     for entry in read_dir("/proc/").context("Listing /proc/")? {
-        if let Some(i) = get_proc_info(filter, &entry?, clocktick, time_ref, tmpdirs) {
+        if let Some(i) = get_proc(&entry?, clocktick, time_ref, tmpdirs) {
             ret.push(i)
         }
     }
@@ -144,7 +155,7 @@ mod tests {
         // First get the system's process start times using our implementation
         // Store it as pid => (cmd, rust_time, ps_time)
         let mut tmpdirs = vec![];
-        let mut info = get_all_info(&[], &mut tmpdirs)
+        let mut info = get_all_proc(&mut tmpdirs)
             .iter()
             .map(|i| (i.pid, (i.cmdline.clone(), Some(i.start), None)))
             .collect::<BTreeMap<i32, (String, Option<i64>, Option<i64>)>>();
@@ -222,7 +233,11 @@ mod tests {
                                                      (22, 9, 12, "Pid 22: ...i"),];
         for (pid, cmdlen, precision, out) in t.into_iter() {
             dbg!((pid, cmdlen, precision, out));
-            let i = Proc { idx: usize::MAX, pid, cmdline: s[..cmdlen].to_string(), start: 0 };
+            let i = Proc { kind: ProcKind::Other,
+                           pid,
+                           ppid: -1,
+                           cmdline: s[..cmdlen].to_string(),
+                           start: 0 };
             let f = format!("{1:.0$}", precision, i);
             assert!(precision < 10 || f.len() <= precision, "{} <= {}", f.len(), precision);
             assert_eq!(f, out);
@@ -240,8 +255,8 @@ mod bench {
     /// Bench listing all processes
     fn get_all(b: &mut test::Bencher) {
         b.iter(move || {
-                   let mut tmpdirs = vec![];
-                   get_all_info(&[], &mut tmpdirs);
-                 });
-            }
+             let mut tmpdirs = vec![];
+             get_all_proc(&mut tmpdirs);
+         });
+    }
 }

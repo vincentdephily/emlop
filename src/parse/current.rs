@@ -1,6 +1,6 @@
 //! Handles parsing of current emerge state.
 
-use super::{proces::{get_all_info, Proc},
+use super::{proces::{get_all_proc, Proc, ProcKind},
             Ansi};
 use crate::ResumeKind;
 use log::*;
@@ -151,17 +151,23 @@ pub struct EmergeInfo {
 pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
     let mut res = EmergeInfo { start: i64::MAX, cmds: vec![], pkgs: vec![] };
     let re_python = Regex::new("^[a-z/-]+python[0-9.]* [a-z/-]+python[0-9.]*/").unwrap();
-    for mut proc in get_all_info(&["emerge", "python"], tmpdirs) {
-        res.start = std::cmp::min(res.start, proc.start);
-        if proc.idx == 0 {
-            proc.cmdline = re_python.replace(&proc.cmdline, "").to_string();
-            res.cmds.push(proc);
-        } else if let Some(a) = proc.cmdline.find("sandbox [") {
-            if let Some(b) = proc.cmdline.find("] sandbox") {
-                if let Some(p) = Pkg::try_new(&proc.cmdline[(a + 9)..b]) {
-                    res.pkgs.push(p);
+    for mut proc in get_all_proc(tmpdirs) {
+        match proc.kind {
+            ProcKind::Emerge => {
+                res.start = std::cmp::min(res.start, proc.start);
+                proc.cmdline = re_python.replace(&proc.cmdline, "").to_string();
+                res.cmds.push(proc);
+            },
+            ProcKind::Python => {
+                if let Some(a) = proc.cmdline.find("sandbox [") {
+                    if let Some(b) = proc.cmdline.find("] sandbox") {
+                        if let Some(p) = Pkg::try_new(&proc.cmdline[(a + 9)..b]) {
+                            res.pkgs.push(p);
+                        }
+                    }
                 }
-            }
+            },
+            ProcKind::Other => (),
         }
     }
     trace!("{:?}", res);
