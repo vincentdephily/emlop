@@ -231,12 +231,19 @@ pub fn build_cli() -> Command {
                                          .display_order(24)
                                          .help_heading("Format")
                                          .help("Display start time instead of end time");
+    let procwidth = Arg::new("procwidth").long("procwidth")
+                                         .value_name("num")
+                                         .global(true)//TODO should be for predict only, not global
+                                         .num_args(1)
+                                         .display_order(25)
+                                         .help_heading("Format")
+                                         .help("Maximum display width for emerge process");
     let color = Arg::new("color").long("color")
                                  .value_name("bool")
                                  .global(true)
                                  .num_args(..=1)
                                  .default_missing_value("y")
-                                 .display_order(25)
+                                 .display_order(26)
                                  .help_heading("Format")
                                  .help("Enable color (yes/no/auto)")
                                  .long_help("Enable color (yes/no/auto)\n  \
@@ -247,7 +254,7 @@ pub fn build_cli() -> Command {
                                    .long("output")
                                    .value_name("format")
                                    .global(true)
-                                   .display_order(26)
+                                   .display_order(27)
                                    .help_heading("Format")
                                    .help("Ouput format (columns/tab/auto)")
                                    .long_help("Ouput format (columns/tab/auto)\n  \
@@ -389,6 +396,7 @@ pub fn build_cli() -> Command {
                          .arg(date)
                          .arg(utc)
                          .arg(color)
+                         .arg(procwidth)
                          .arg(output)
                          .arg(logfile)
                          .arg(verbose)

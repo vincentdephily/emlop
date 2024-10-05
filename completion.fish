@@ -34,6 +34,7 @@ complete -c emlop -n "__fish_seen_subcommand_from predict" -l resume -d 'Use mai
 complete -c emlop -n "__fish_seen_subcommand_from predict" -l unknown -d 'Assume unkown packages take <secs> seconds to merge' -x -a "0 5 10 20 60"
 complete -c emlop -n "__fish_seen_subcommand_from predict" -l avg -d 'Select function used to predict durations' -x -a "arith median weighted-arith weighted-median"
 complete -c emlop -n "__fish_seen_subcommand_from predict" -l limit -d 'Use the last <num> merge times to predict durations' -x -a "1 5 20 999"
+complete -c emlop -n "__fish_seen_subcommand_from predict" -l procwidth -d 'Maximum display width for emerge process' -x -a "10 20 40 80 160"
 
 complete -c emlop -n "__fish_seen_subcommand_from stats" -s s -l show -d 'Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll' -x -a "ptsa"
 complete -c emlop -n "__fish_seen_subcommand_from stats" -s g -l groupby -d 'Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one' -x -a "year month week day none"

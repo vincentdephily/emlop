@@ -37,6 +37,7 @@ pub struct Conf {
     pub logfile: String,
     pub from: Option<i64>,
     pub to: Option<i64>,
+    pub procwidth: usize,
 }
 pub struct ConfLog {
     pub show: Show,
@@ -164,6 +165,7 @@ impl Conf {
                   dur_t: sel!(cli, toml, duration, (), DurationStyle::Hms)?,
                   date_offset: offset,
                   date_fmt: sel!(cli, toml, date, (), DateStyle::default())?,
+                  procwidth: sel!(cli, toml, predict, procwidth, 10..1000, 60)? as usize,
                   out: sel!(cli, toml, output, isterm, outdef)? })
     }
     #[cfg(test)]

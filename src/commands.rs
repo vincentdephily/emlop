@@ -304,7 +304,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     }
     if sc.show.emerge {
         for proc in &einfo.cmds {
-            tbl.row([&[&proc], &[&FmtDur(now - proc.start)], &[]]);
+            tbl.row([&[&FmtProc(proc)], &[&FmtDur(now - proc.start)], &[]]);
         }
     }
 

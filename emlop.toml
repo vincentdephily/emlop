@@ -12,6 +12,7 @@
 # header = true
 # color = "yes"
 # output = "columns"
+# procwidth = 60
 [log]
 # show = "mus"
 # starttime = true

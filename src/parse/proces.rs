@@ -6,12 +6,14 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
-use crate::*;
+use crate::{table::Disp, *};
 use anyhow::{ensure, Context};
 use libc::pid_t;
+use regex::Regex;
 use std::{fs::{read_dir, DirEntry, File},
           io::prelude::*,
-          path::PathBuf};
+          path::PathBuf,
+          sync::OnceLock};
 
 #[derive(Debug)]
 pub enum ProcKind {
@@ -29,18 +31,30 @@ pub struct Proc {
     pub ppid: pid_t,
 }
 
-impl std::fmt::Display for Proc {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let pid = format!("Pid {}: ", self.pid);
-        let capacity = f.precision().unwrap_or(45).saturating_sub(pid.len());
-        let cmdlen = self.cmdline.len();
-        if capacity >= cmdlen || cmdlen < 4 {
-            write!(f, "{pid}{}", &self.cmdline)
-        } else if capacity > 3 {
-            write!(f, "{pid}...{}", &self.cmdline[(cmdlen - capacity + 3)..])
+/// Rewrite "/usr/bin/python312 /foo/bar/python312/emerge" as "emerge"
+// TODO: generalize to other cases, we just want the basename of the script/binary
+// TODO: msrv 1.80: switch to LazyLock
+static RE_PROC: OnceLock<Regex> = OnceLock::new();
+
+pub struct FmtProc<'a>(pub &'a Proc);
+impl Disp for FmtProc<'_> {
+    fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
+        let start = buf.len();
+        let prefixlen = (self.0.pid.max(1).ilog10() + 2) as usize;
+        let re_proc = RE_PROC.get_or_init(|| {
+    Regex::new("^[a-z/-]+(python|bash|sandbox)[0-9.]* [a-z/-]+python[0-9.]*/").unwrap()
+});
+        let cmdline = re_proc.replace(self.0.cmdline.replace('\0', " ").trim(), "").to_string();
+        let cmdcap = conf.procwidth.saturating_sub(prefixlen);
+        let cmdlen = cmdline.len();
+        if cmdcap >= cmdlen {
+            wtb!(buf, "{} {}", self.0.pid, cmdline)
+        } else if cmdcap > 3 {
+            wtb!(buf, "{} ...{}", self.0.pid, &cmdline[(cmdlen - cmdcap + 3)..])
         } else {
-            write!(f, "{pid}...")
+            wtb!(buf, "{} ...", self.0.pid)
         }
+        buf.len() - start
     }
 }
 
@@ -74,7 +88,6 @@ fn get_proc(entry: &DirEntry,
     // Parse arguments
     let mut cmdline = String::new();
     File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
-    cmdline = cmdline.replace('\0', " ").trim().into();
     // Done
     Some(Proc { kind, cmdline, start: time_ref + start_time / clocktick, pid, ppid })
 }
@@ -133,7 +146,7 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<Vec<Proc>, Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{config::Conf, *};
     use regex::Regex;
     use std::{collections::BTreeMap, process::Command};
     use time::{macros::format_description, PrimitiveDateTime};
@@ -204,43 +217,33 @@ mod tests {
     }
 
     #[test]
-    fn format_info() {
-        let s = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        let t: Vec<(i32, usize, usize, &str)> = vec![// Precison is way too small, use elipsis starting at 4 chars
-                                                     (1, 1, 1, "Pid 1: a"),
-                                                     (1, 2, 1, "Pid 1: ab"),
-                                                     (2, 3, 1, "Pid 2: abc"),
-                                                     (3, 4, 1, "Pid 3: ..."),
-                                                     (4, 5, 1, "Pid 4: ..."),
-                                                     (330, 1, 1, "Pid 330: a"),
-                                                     (331, 2, 1, "Pid 331: ab"),
-                                                     (332, 3, 1, "Pid 332: abc"),
-                                                     (333, 4, 1, "Pid 333: ..."),
-                                                     (334, 5, 1, "Pid 334: ..."),
-                                                     // Here we have enough space
-                                                     (1, 1, 12, "Pid 1: a"),
-                                                     (1, 2, 12, "Pid 1: ab"),
-                                                     (1, 3, 12, "Pid 1: abc"),
-                                                     (1, 4, 12, "Pid 1: abcd"),
-                                                     (1, 5, 12, "Pid 1: abcde"),
-                                                     (12, 4, 12, "Pid 12: abcd"),
-                                                     (123, 3, 12, "Pid 123: abc"),
-                                                     (1234, 2, 12, "Pid 1234: ab"),
-                                                     // Running out of space again, but we can display part of it
-                                                     (1, 6, 12, "Pid 1: ...ef"),
-                                                     (1, 7, 12, "Pid 1: ...fg"),
-                                                     (1, 8, 12, "Pid 1: ...gh"),
-                                                     (22, 9, 12, "Pid 22: ...i"),];
-        for (pid, cmdlen, precision, out) in t.into_iter() {
-            dbg!((pid, cmdlen, precision, out));
-            let i = Proc { kind: ProcKind::Other,
+    #[rustfmt::skip]
+    fn format_proc() {
+        let t: Vec<(i32, usize, &str)> = vec![// Here we have enough space
+                                              (1,       1, "1 1"),
+                                              (1,       2, "1 12"),
+                                              (1,       8, "1 12345678"),
+                                              (12,      7, "12 1234567"),
+                                              (123,     6, "123 123456"),
+                                              (1234,    5, "1234 12345"),
+                                              // Running out of space, but we can display part of it
+                                              (1,      10, "1 ...67890"),
+                                              (12345,  10, "12345 ...0"),
+                                              // Capacity is way too small, use elipsis starting at 4 chars
+                                              (1234567, 3, "1234567 ..."),
+                                              (123456,  3, "123456 123"),
+        ];
+        for (pid, cmdlen, out) in t.into_iter() {
+            dbg!((pid, cmdlen, out));
+            let conf = Conf::from_str(&format!("emlop p --procwidth 10"));
+            let mut buf = vec![];
+            let p = Proc { kind: ProcKind::Other,
                            pid,
                            ppid: -1,
-                           cmdline: s[..cmdlen].to_string(),
+                           cmdline: "1234567890"[..cmdlen].to_string(),
                            start: 0 };
-            let f = format!("{1:.0$}", precision, i);
-            assert!(precision < 10 || f.len() <= precision, "{} <= {}", f.len(), precision);
-            assert_eq!(f, out);
+            FmtProc(&p).out(&mut buf, &conf);
+            assert_eq!(String::from_utf8(buf), Ok(String::from(out)));
         }
     }
 }

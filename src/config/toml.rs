@@ -14,6 +14,7 @@ pub struct TomlPred {
     pub limit: Option<i64>,
     pub unknown: Option<i64>,
     pub tmpdir: Option<Vec<PathBuf>>,
+    pub procwidth: Option<i64>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlStats {

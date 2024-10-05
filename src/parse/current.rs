@@ -150,12 +150,10 @@ pub struct EmergeInfo {
 ///   should be the case for almost all users)
 pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
     let mut res = EmergeInfo { start: i64::MAX, cmds: vec![], pkgs: vec![] };
-    let re_python = Regex::new("^[a-z/-]+python[0-9.]* [a-z/-]+python[0-9.]*/").unwrap();
-    for mut proc in get_all_proc(tmpdirs) {
+    for proc in get_all_proc(tmpdirs) {
         match proc.kind {
             ProcKind::Emerge => {
                 res.start = std::cmp::min(res.start, proc.start);
-                proc.cmdline = re_python.replace(&proc.cmdline, "").to_string();
                 res.cmds.push(proc);
             },
             ProcKind::Python => {
