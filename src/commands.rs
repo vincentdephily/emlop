@@ -1,4 +1,5 @@
 use crate::{datetime::*, parse::*, table::*, *};
+use libc::pid_t;
 use std::{collections::{BTreeMap, HashMap, HashSet},
           io::{stdin, IsTerminal}};
 
@@ -283,6 +284,15 @@ fn cmd_stats_group(gc: &Conf,
     }
 }
 
+fn proc_tree(now: i64, tbl: &mut Table<3>, procs: &HashMap<pid_t, Proc>, pid: pid_t, depth: usize) {
+    if let Some(proc) = procs.get(&pid) {
+        tbl.row([&[&FmtProc(proc, depth)], &[&FmtDur(now - proc.start)], &[]]);
+        for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
+            proc_tree(now, tbl, procs, *child, depth + 1)
+        }
+    }
+}
+
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
@@ -295,7 +305,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
 
     // Gather and print info about current merge process.
     let einfo = get_emerge(&mut tmpdirs);
-    if einfo.cmds.is_empty()
+    if einfo.roots.is_empty()
        && std::io::stdin().is_terminal()
        && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
     {
@@ -303,8 +313,8 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
         return Ok(false);
     }
     if sc.show.emerge {
-        for proc in &einfo.cmds {
-            tbl.row([&[&FmtProc(proc)], &[&FmtDur(now - proc.start)], &[]]);
+        for p in einfo.roots {
+            proc_tree(now, &mut tbl, &einfo.procs, p, 0);
         }
     }
 

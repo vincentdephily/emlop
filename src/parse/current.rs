@@ -1,13 +1,14 @@
 //! Handles parsing of current emerge state.
 
-use super::{proces::{get_all_proc, Proc, ProcKind},
-            Ansi};
+use super::{get_all_proc, Ansi, Proc, ProcKind};
 use crate::ResumeKind;
+use libc::pid_t;
 use log::*;
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::from_reader;
-use std::{fs::File,
+use std::{collections::HashMap,
+          fs::File,
           io::{BufRead, BufReader, Read},
           path::PathBuf};
 
@@ -136,7 +137,8 @@ fn read_buildlog(file: File, max: usize) -> String {
 #[derive(Debug)]
 pub struct EmergeInfo {
     pub start: i64,
-    pub cmds: Vec<Proc>,
+    pub procs: HashMap<pid_t, Proc>,
+    pub roots: Vec<pid_t>,
     pub pkgs: Vec<Pkg>,
 }
 
@@ -149,12 +151,13 @@ pub struct EmergeInfo {
 ///   gives us the actually emerging ebuild and stage (depends on portage FEATURES=sandbox, which
 ///   should be the case for almost all users)
 pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
-    let mut res = EmergeInfo { start: i64::MAX, cmds: vec![], pkgs: vec![] };
-    for proc in get_all_proc(tmpdirs) {
+    let procs = get_all_proc(tmpdirs);
+    let mut res = EmergeInfo { start: i64::MAX, procs, roots: vec![], pkgs: vec![] };
+    for (pid, proc) in &res.procs {
         match proc.kind {
             ProcKind::Emerge => {
                 res.start = std::cmp::min(res.start, proc.start);
-                res.cmds.push(proc);
+                res.roots.push(*pid);
             },
             ProcKind::Python => {
                 if let Some(a) = proc.cmdline.find("sandbox [") {

@@ -10,7 +10,8 @@ use crate::{table::Disp, *};
 use anyhow::{ensure, Context};
 use libc::pid_t;
 use regex::Regex;
-use std::{fs::{read_dir, DirEntry, File},
+use std::{collections::HashMap,
+          fs::{read_dir, DirEntry, File},
           io::prelude::*,
           path::PathBuf,
           sync::OnceLock};
@@ -36,23 +37,28 @@ pub struct Proc {
 // TODO: msrv 1.80: switch to LazyLock
 static RE_PROC: OnceLock<Regex> = OnceLock::new();
 
-pub struct FmtProc<'a>(pub &'a Proc);
+pub struct FmtProc<'a>(pub &'a Proc, pub usize);
 impl Disp for FmtProc<'_> {
     fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
         let start = buf.len();
-        let prefixlen = (self.0.pid.max(1).ilog10() + 2) as usize;
-        let re_proc = RE_PROC.get_or_init(|| {
-    Regex::new("^[a-z/-]+(python|bash|sandbox)[0-9.]* [a-z/-]+python[0-9.]*/").unwrap()
-});
+        let prefixlen = self.0.pid.max(1).ilog10() as usize + 2 * self.1 + 2;
+        let re_proc =
+            RE_PROC.get_or_init(|| {
+                Regex::new("^[a-z/-]+(python|bash|sandbox)[0-9.]* [a-z/-]+python[0-9.]*/").unwrap()
+            });
         let cmdline = re_proc.replace(self.0.cmdline.replace('\0', " ").trim(), "").to_string();
         let cmdcap = conf.procwidth.saturating_sub(prefixlen);
         let cmdlen = cmdline.len();
         if cmdcap >= cmdlen {
-            wtb!(buf, "{} {}", self.0.pid, cmdline)
+            wtb!(buf, "{}{} {}", "  ".repeat(self.1), self.0.pid, cmdline)
         } else if cmdcap > 3 {
-            wtb!(buf, "{} ...{}", self.0.pid, &cmdline[(cmdlen - cmdcap + 3)..])
+            wtb!(buf,
+                 "{}{} ...{}",
+                 "  ".repeat(self.1),
+                 self.0.pid,
+                 &cmdline[(cmdlen - cmdcap + 3)..])
         } else {
-            wtb!(buf, "{} ...", self.0.pid)
+            wtb!(buf, "{}{} ...", "  ".repeat(self.1), self.0.pid)
         }
         buf.len() - start
     }
@@ -115,13 +121,13 @@ fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
-pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> Vec<Proc> {
+pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> HashMap<pid_t, Proc> {
     get_all_proc_result(tmpdirs).unwrap_or_else(|e| {
                                     log_err(e);
-                                    vec![]
+                                    HashMap::new()
                                 })
 }
-fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<Vec<Proc>, Error> {
+fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<HashMap<pid_t, Proc>, Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
@@ -134,10 +140,10 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<Vec<Proc>, Error> {
     let uptime = i64::from_str(uptimestr.split('.').next().unwrap()).unwrap();
     let time_ref = epoch_now() - uptime;
     // Now iterate through /proc/<pid>
-    let mut ret: Vec<Proc> = Vec::new();
+    let mut ret: HashMap<pid_t, Proc> = HashMap::new();
     for entry in read_dir("/proc/").context("Listing /proc/")? {
-        if let Some(i) = get_proc(&entry?, clocktick, time_ref, tmpdirs) {
-            ret.push(i)
+        if let Some(p) = get_proc(&entry?, clocktick, time_ref, tmpdirs) {
+            ret.insert(p.pid, p);
         }
     }
     Ok(ret)
@@ -170,8 +176,8 @@ mod tests {
         let mut tmpdirs = vec![];
         let mut info = get_all_proc(&mut tmpdirs)
             .iter()
-            .map(|i| (i.pid, (i.cmdline.clone(), Some(i.start), None)))
-            .collect::<BTreeMap<i32, (String, Option<i64>, Option<i64>)>>();
+            .map(|(pid, i)| (*pid, (i.cmdline.clone(), Some(i.start), None)))
+            .collect::<BTreeMap<pid_t, (String, Option<i64>, Option<i64>)>>();
         // Then get them using the ps implementation (merging them into the same data structure)
         let ps_start = epoch_now();
         let cmd = Command::new("ps").env("TZ", "UTC")
@@ -242,7 +248,7 @@ mod tests {
                            ppid: -1,
                            cmdline: "1234567890"[..cmdlen].to_string(),
                            start: 0 };
-            FmtProc(&p).out(&mut buf, &conf);
+            FmtProc(&p, 0).out(&mut buf, &conf);
             assert_eq!(String::from_utf8(buf), Ok(String::from(out)));
         }
     }

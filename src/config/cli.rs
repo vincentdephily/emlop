@@ -233,7 +233,7 @@ pub fn build_cli() -> Command {
                                          .help("Display start time instead of end time");
     let procwidth = Arg::new("procwidth").long("procwidth")
                                          .value_name("num")
-                                         .global(true)//TODO should be for predict only, not global
+                                         .global(true) //TODO should be for predict only, not global
                                          .num_args(1)
                                          .display_order(25)
                                          .help_heading("Format")

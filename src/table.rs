@@ -15,7 +15,7 @@ impl<T: std::fmt::Display> Disp for T {
 }
 
 #[derive(Clone, Copy)]
-pub enum Align {
+enum Align {
     Left,
     Right,
 }
