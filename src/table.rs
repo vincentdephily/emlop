@@ -20,6 +20,8 @@ pub enum Align {
     Right,
 }
 
+const SPACES: [u8; 512] = [b' '; 512];
+
 pub struct Table<'a, const N: usize> {
     /// Buffer where unaligned entries are written
     ///
@@ -117,7 +119,6 @@ impl<'a, const N: usize> Table<'a, N> {
         // Check the max len of each column, for the rows we have
         let widths: [usize; N] =
             std::array::from_fn(|i| self.rows.iter().fold(0, |m, r| usize::max(m, r[i].0)));
-        let spaces = [b' '; 128];
         for row in &self.rows {
             let mut first = true;
             // Clippy suggests `for (i, <item>) in row.iter().enumerate().take(N)` which IMHO
@@ -140,7 +141,7 @@ impl<'a, const N: usize> Table<'a, N> {
                         out.write_all(self.margins[i].as_bytes()).unwrap_or(());
                     }
                     // Write the cell with alignment
-                    let pad = &spaces[0..usize::min(spaces.len(), widths[i] - len)];
+                    let pad = &SPACES[0..usize::min(SPACES.len(), widths[i] - len)];
                     match self.aligns[i] {
                         Align::Right => {
                             out.write_all(pad).unwrap_or(());
