@@ -87,7 +87,8 @@ _emlop() {
 '--color=[Enable color (yes/no/auto)]' \
 '-o+[Ouput format (columns/tab/auto)]:format: ' \
 '--output=[Ouput format (columns/tab/auto)]:format: ' \
-'--procwidth=[Maximum display width for emerge process]'
+'--pwidth=[Maximum width of emerge proces comandline]'
+'--pdepth=[Maximum depth of emerge proces tree]'
 '-F+[Location of emerge log file]:file: ' \
 '--logfile=[Location of emerge log file]:file: ' \
 '*-v[Increase verbosity (can be given multiple times)]' \

@@ -37,9 +37,14 @@ pub struct Proc {
 // TODO: msrv 1.80: switch to LazyLock
 static RE_PROC: OnceLock<Regex> = OnceLock::new();
 
-pub struct FmtProc<'a>(pub &'a Proc, pub usize);
+pub struct FmtProc<'a>(/// process
+                       pub &'a Proc,
+                       /// Indent
+                       pub usize,
+                       /// Width
+                       pub usize);
 impl Disp for FmtProc<'_> {
-    fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, _conf: &Conf) -> usize {
         let start = buf.len();
         let prefixlen = self.0.pid.max(1).ilog10() as usize + 2 * self.1 + 2;
         let re_proc =
@@ -47,7 +52,7 @@ impl Disp for FmtProc<'_> {
                 Regex::new("^[a-z/-]+(python|bash|sandbox)[0-9.]* [a-z/-]+python[0-9.]*/").unwrap()
             });
         let cmdline = re_proc.replace(self.0.cmdline.replace('\0', " ").trim(), "").to_string();
-        let cmdcap = conf.procwidth.saturating_sub(prefixlen);
+        let cmdcap = self.2.saturating_sub(prefixlen);
         let cmdlen = cmdline.len();
         if cmdcap >= cmdlen {
             wtb!(buf, "{}{} {}", "  ".repeat(self.1), self.0.pid, cmdline)
@@ -241,14 +246,14 @@ mod tests {
         ];
         for (pid, cmdlen, out) in t.into_iter() {
             dbg!((pid, cmdlen, out));
-            let conf = Conf::from_str(&format!("emlop p --procwidth 10"));
+            let conf = Conf::from_str(&format!("emlop p"));
             let mut buf = vec![];
             let p = Proc { kind: ProcKind::Other,
                            pid,
                            ppid: -1,
                            cmdline: "1234567890"[..cmdlen].to_string(),
                            start: 0 };
-            FmtProc(&p, 0).out(&mut buf, &conf);
+            FmtProc(&p, 0, 10).out(&mut buf, &conf);
             assert_eq!(String::from_utf8(buf), Ok(String::from(out)));
         }
     }

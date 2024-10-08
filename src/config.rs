@@ -37,7 +37,6 @@ pub struct Conf {
     pub logfile: String,
     pub from: Option<i64>,
     pub to: Option<i64>,
-    pub procwidth: usize,
 }
 pub struct ConfLog {
     pub show: Show,
@@ -56,6 +55,8 @@ pub struct ConfPred {
     pub resume: ResumeKind,
     pub unknown: i64,
     pub tmpdirs: Vec<PathBuf>,
+    pub pwidth: usize,
+    pub pdepth: usize,
 }
 pub struct ConfStats {
     pub show: Show,
@@ -165,7 +166,6 @@ impl Conf {
                   dur_t: sel!(cli, toml, duration, (), DurationStyle::Hms)?,
                   date_offset: offset,
                   date_fmt: sel!(cli, toml, date, (), DateStyle::default())?,
-                  procwidth: sel!(cli, toml, predict, procwidth, 10..1000, 60)? as usize,
                   out: sel!(cli, toml, output, isterm, outdef)? })
     }
     #[cfg(test)]
@@ -202,7 +202,9 @@ impl ConfPred {
                   resume: *cli.get_one("resume").unwrap_or(&ResumeKind::Auto),
                   tmpdirs,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),
-                  last: *cli.get_one("last").unwrap_or(&usize::MAX) })
+                  last: *cli.get_one("last").unwrap_or(&usize::MAX),
+                  pwidth: sel!(cli, toml, predict, pwidth, 10..1000, 60)? as usize,
+                  pdepth: sel!(cli, toml, predict, pdepth, 0..100, 8)? as usize })
     }
 }
 

@@ -167,7 +167,7 @@ _emlop() {
             return 0
             ;;
         emlop__predict)
-            opts="-s -N -n -f -t -H -o -F -v -h --show --first --last --tmpdir --resume --unknown --avg --limit --from --to --header --duration --date --utc --color --output --procwidth --logfile --help"
+            opts="-s -N -n -f -t -H -o -F -v -h --show --first --last --tmpdir --resume --unknown --avg --limit --from --to --header --duration --date --utc --color --output --pdepth --pwidth --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -191,8 +191,11 @@ _emlop() {
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
                     ;;
-                --procwidth)
+                --pwidth)
                     COMPREPLY=($(compgen -W "10 20 40 80 160" "${cur}"))
+                    ;;
+                --pdepth)
+                    COMPREPLY=($(compgen -W "0 1 3 5 7 99" "${cur}"))
                     ;;
                 --output|-o)
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))

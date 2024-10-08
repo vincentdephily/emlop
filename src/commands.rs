@@ -284,11 +284,18 @@ fn cmd_stats_group(gc: &Conf,
     }
 }
 
-fn proc_tree(now: i64, tbl: &mut Table<3>, procs: &HashMap<pid_t, Proc>, pid: pid_t, depth: usize) {
-    if let Some(proc) = procs.get(&pid) {
-        tbl.row([&[&FmtProc(proc, depth)], &[&FmtDur(now - proc.start)], &[]]);
-        for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
-            proc_tree(now, tbl, procs, *child, depth + 1)
+fn proc_rows(now: i64,
+             tbl: &mut Table<3>,
+             procs: &HashMap<pid_t, Proc>,
+             pid: pid_t,
+             depth: usize,
+             sc: &ConfPred) {
+    if depth < sc.pdepth {
+        if let Some(proc) = procs.get(&pid) {
+            tbl.row([&[&FmtProc(proc, depth, sc.pwidth)], &[&FmtDur(now - proc.start)], &[]]);
+            for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
+                proc_rows(now, tbl, procs, *child, depth + 1, sc)
+            }
         }
     }
 }
@@ -314,7 +321,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     }
     if sc.show.emerge {
         for p in einfo.roots {
-            proc_tree(now, &mut tbl, &einfo.procs, p, 0);
+            proc_rows(now, &mut tbl, &einfo.procs, p, 0, sc);
         }
     }
 
