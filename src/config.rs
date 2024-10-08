@@ -197,14 +197,14 @@ impl ConfPred {
         };
         Ok(Self { show: sel!(cli, toml, predict, show, "emta", Show::emt())?,
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
-                  lim: sel!(cli, toml, predict, limit, 1..65000, 10)? as u16,
-                  unknown: sel!(cli, toml, predict, unknown, 0..3600, 10)?,
+                  lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,
+                  unknown: sel!(cli, toml, predict, unknown, 0..=3600, 10)?,
                   resume: *cli.get_one("resume").unwrap_or(&ResumeKind::Auto),
                   tmpdirs,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),
                   last: *cli.get_one("last").unwrap_or(&usize::MAX),
-                  pwidth: sel!(cli, toml, predict, pwidth, 10..1000, 60)? as usize,
-                  pdepth: sel!(cli, toml, predict, pdepth, 0..100, 8)? as usize })
+                  pwidth: sel!(cli, toml, predict, pwidth, 10..=1000, 60)? as usize,
+                  pdepth: sel!(cli, toml, predict, pdepth, 0..=100, 8)? as usize })
     }
 }
 
@@ -213,7 +213,7 @@ impl ConfStats {
         Ok(Self { show: sel!(cli, toml, stats, show, "ptsa", Show::p())?,
                   search: cli.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: cli.get_flag("exact"),
-                  lim: sel!(cli, toml, stats, limit, 1..65000, 10)? as u16,
+                  lim: sel!(cli, toml, stats, limit, 1..=65000, 10)? as u16,
                   avg: sel!(cli, toml, stats, avg, (), Average::Median)?,
                   group: sel!(cli, toml, stats, group, (), Timespan::None)? })
     }
@@ -225,7 +225,7 @@ impl ConfAccuracy {
                   search: cli.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: cli.get_flag("exact"),
                   avg: sel!(cli, toml, accuracy, avg, (), Average::Median)?,
-                  lim: sel!(cli, toml, accuracy, limit, 1..65000, 10)? as u16,
+                  lim: sel!(cli, toml, accuracy, limit, 1..=65000, 10)? as u16,
                   last: *cli.get_one("last").unwrap_or(&usize::MAX) })
     }
 }
