@@ -46,24 +46,20 @@ pub struct FmtProc<'a>(/// process
 impl Disp for FmtProc<'_> {
     fn out(&self, buf: &mut Vec<u8>, _conf: &Conf) -> usize {
         let start = buf.len();
-        let prefixlen = self.0.pid.max(1).ilog10() as usize + 2 * self.1 + 2;
+        let prefixlen = self.0.pid.max(1).ilog10() as usize + 2 * self.1 + 1;
         let re_proc =
             RE_PROC.get_or_init(|| {
                 Regex::new("^[a-z/-]+(python|bash|sandbox)[0-9.]* [a-z/-]+python[0-9.]*/").unwrap()
             });
         let cmdline = re_proc.replace(self.0.cmdline.replace('\0', " ").trim(), "").to_string();
-        let cmdcap = self.2.saturating_sub(prefixlen);
+        let cmdcap = self.2.saturating_sub(prefixlen + 1);
         let cmdlen = cmdline.len();
         if cmdcap >= cmdlen {
-            wtb!(buf, "{}{} {}", "  ".repeat(self.1), self.0.pid, cmdline)
+            wtb!(buf, "{:prefixlen$} {}", self.0.pid, cmdline)
         } else if cmdcap > 3 {
-            wtb!(buf,
-                 "{}{} ...{}",
-                 "  ".repeat(self.1),
-                 self.0.pid,
-                 &cmdline[(cmdlen - cmdcap + 3)..])
+            wtb!(buf, "{:prefixlen$} ...{}", self.0.pid, &cmdline[(cmdlen - cmdcap + 3)..])
         } else {
-            wtb!(buf, "{}{} ...", "  ".repeat(self.1), self.0.pid)
+            wtb!(buf, "{:prefixlen$} ...", self.0.pid)
         }
         buf.len() - start
     }
