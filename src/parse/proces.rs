@@ -61,7 +61,7 @@ impl Disp for FmtProc<'_> {
                 }
             }
         }
-        let cmd = proc.cmdline[cmdstart..].replace('\0', " ");
+        let cmd = proc.cmdline[cmdstart..].replace(|c: char| c.is_control(), " ");
         let cmd = cmd.trim();
 
         // Figure out how much space we have
@@ -260,7 +260,9 @@ mod tests {
             let mut buf = vec![];
             let p = Proc { kind: ProcKind::Other, pid, ppid: 1, cmdline: cmd.into(), start: 0 };
             FmtProc(&p, 0, 10).out(&mut buf, &conf);
-            assert_eq!(&String::from_utf8(buf).unwrap(), out, "got left expected right {pid} {cmd:?}");
+            assert_eq!(&String::from_utf8(buf).unwrap(),
+                       out,
+                       "got left expected right {pid} {cmd:?}");
         }
     }
 
