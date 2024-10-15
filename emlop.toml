@@ -22,7 +22,7 @@
 # unknown = 300
 # tmpdir = ["/foo", "/bar"]
 # pwidth = 60
-# pdepth = 8
+# pdepth = 3
 [stats]
 # show = "pts"
 # avg = "arith"

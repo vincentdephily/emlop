@@ -204,7 +204,7 @@ impl ConfPred {
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),
                   last: *cli.get_one("last").unwrap_or(&usize::MAX),
                   pwidth: sel!(cli, toml, predict, pwidth, 10..=1000, 60)? as usize,
-                  pdepth: sel!(cli, toml, predict, pdepth, 0..=100, 8)? as usize })
+                  pdepth: sel!(cli, toml, predict, pdepth, 0..=100, 3)? as usize })
     }
 }
 

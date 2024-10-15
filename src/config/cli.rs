@@ -236,13 +236,13 @@ pub fn build_cli() -> Command {
                                    .num_args(1)
                                    .display_order(25)
                                    .help_heading("Format")
-                                   .help("Maximum width of emerge proces commandline");
+                                   .help("Maximum width of emerge proces commandline (default 60)");
     let pdepth = Arg::new("pdepth").long("pdepth")
                                    .value_name("num")
                                    .num_args(1)
                                    .display_order(26)
                                    .help_heading("Format")
-                                   .help("Maximum depth of emerge proces tree");
+                                   .help("Maximum depth of emerge proces tree (default 3)");
     let color = Arg::new("color").long("color")
                                  .value_name("bool")
                                  .global(true)
