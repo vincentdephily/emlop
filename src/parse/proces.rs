@@ -9,12 +9,10 @@
 use crate::{table::Disp, *};
 use anyhow::{ensure, Context};
 use libc::pid_t;
-use regex::Regex;
 use std::{collections::HashMap,
           fs::{read_dir, DirEntry, File},
           io::prelude::*,
-          path::PathBuf,
-          sync::OnceLock};
+          path::PathBuf};
 
 #[derive(Debug)]
 pub enum ProcKind {
@@ -32,10 +30,14 @@ pub struct Proc {
     pub ppid: pid_t,
 }
 
-/// Rewrite "/usr/bin/python312 /foo/bar/python312/emerge" as "emerge"
-// TODO: generalize to other cases, we just want the basename of the script/binary
-// TODO: msrv 1.80: switch to LazyLock
-static RE_PROC: OnceLock<Regex> = OnceLock::new();
+/// Like `Path.file_name()`, but less likely to interpret package categ/name as files
+fn approx_filename(s: &str) -> Option<usize> {
+    if s.chars().all(|c| matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | '.' | '-' | '/')) {
+        s.rfind('/')
+    } else {
+        None
+    }
+}
 
 pub struct FmtProc<'a>(/// process
                        pub &'a Proc,
@@ -45,21 +47,35 @@ pub struct FmtProc<'a>(/// process
                        pub usize);
 impl Disp for FmtProc<'_> {
     fn out(&self, buf: &mut Vec<u8>, _conf: &Conf) -> usize {
+        let FmtProc(proc, indent, width) = *self;
+
+        // Skip path and interpreter from command line
+        let mut cmdstart = 0;
+        if let Some(z1) = proc.cmdline.find('\0') {
+            if let Some(f1) = approx_filename(&proc.cmdline[..z1]) {
+                cmdstart = f1 + 1;
+            }
+            if let Some(z2) = proc.cmdline[z1 + 1..].find('\0') {
+                if let Some(f2) = approx_filename(&proc.cmdline[z1 + 1..z1 + z2]) {
+                    cmdstart = z1 + f2 + 2;
+                }
+            }
+        }
+        let cmd = proc.cmdline[cmdstart..].replace('\0', " ");
+        let cmd = cmd.trim();
+
+        // Figure out how much space we have
+        let prefixlen = proc.pid.max(1).ilog10() as usize + 2 * indent + 1;
+        let cmdcap = width.saturating_sub(prefixlen + 1);
+
+        // Output it
         let start = buf.len();
-        let prefixlen = self.0.pid.max(1).ilog10() as usize + 2 * self.1 + 1;
-        let re_proc =
-            RE_PROC.get_or_init(|| {
-                Regex::new("^[a-z/-]+(python|bash|sandbox)[0-9.]* [a-z/-]+python[0-9.]*/").unwrap()
-            });
-        let cmdline = re_proc.replace(self.0.cmdline.replace('\0', " ").trim(), "").to_string();
-        let cmdcap = self.2.saturating_sub(prefixlen + 1);
-        let cmdlen = cmdline.len();
-        if cmdcap >= cmdlen {
-            wtb!(buf, "{:prefixlen$} {}", self.0.pid, cmdline)
+        if cmdcap >= cmd.len() {
+            wtb!(buf, "{:prefixlen$} {}", proc.pid, cmd)
         } else if cmdcap > 3 {
-            wtb!(buf, "{:prefixlen$} ...{}", self.0.pid, &cmdline[(cmdlen - cmdcap + 3)..])
+            wtb!(buf, "{:prefixlen$} ...{}", proc.pid, &cmd[(cmd.len() - cmdcap + 3)..])
         } else {
-            wtb!(buf, "{:prefixlen$} ...", self.0.pid)
+            wtb!(buf, "{:prefixlen$} ...", proc.pid)
         }
         buf.len() - start
     }
@@ -223,34 +239,50 @@ mod tests {
         assert!(e < 10, "Got failure score of {e}");
     }
 
+    /// FmtProc should try shorten (elipsis at start) the command line when ther is no space
     #[test]
-    #[rustfmt::skip]
-    fn format_proc() {
-        let t: Vec<(i32, usize, &str)> = vec![// Here we have enough space
-                                              (1,       1, "1 1"),
-                                              (1,       2, "1 12"),
-                                              (1,       8, "1 12345678"),
-                                              (12,      7, "12 1234567"),
-                                              (123,     6, "123 123456"),
-                                              (1234,    5, "1234 12345"),
-                                              // Running out of space, but we can display part of it
-                                              (1,      10, "1 ...67890"),
-                                              (12345,  10, "12345 ...0"),
-                                              // Capacity is way too small, use elipsis starting at 4 chars
-                                              (1234567, 3, "1234567 ..."),
-                                              (123456,  3, "123456 123"),
-        ];
-        for (pid, cmdlen, out) in t.into_iter() {
-            dbg!((pid, cmdlen, out));
-            let conf = Conf::from_str(&format!("emlop p"));
+    fn proc_shorten() {
+        let conf = Conf::from_str(&format!("emlop p"));
+        let t: Vec<_> = vec![// Here we have enough space
+                             (1, "1", "1 1"),
+                             (1, "12", "1 12"),
+                             (1, "12345678", "1 12345678"),
+                             (12, "1234567", "12 1234567"),
+                             (123, "123456", "123 123456"),
+                             (1234, "12345", "1234 12345"),
+                             // Running out of space, but we can display part of it
+                             (1, "1234567890", "1 ...67890"),
+                             (12345, "1234567890", "12345 ...0"),
+                             // Capacity is way too small, use elipsis starting at 4 chars
+                             (1234567, "123", "1234567 ..."),
+                             (123456, "123", "123456 123"),];
+        for (pid, cmd, out) in t.into_iter() {
             let mut buf = vec![];
-            let p = Proc { kind: ProcKind::Other,
-                           pid,
-                           ppid: -1,
-                           cmdline: "1234567890"[..cmdlen].to_string(),
-                           start: 0 };
+            let p = Proc { kind: ProcKind::Other, pid, ppid: 1, cmdline: cmd.into(), start: 0 };
             FmtProc(&p, 0, 10).out(&mut buf, &conf);
-            assert_eq!(String::from_utf8(buf), Ok(String::from(out)));
+            assert_eq!(&String::from_utf8(buf).unwrap(), out, "got left expected right {pid} {cmd:?}");
+        }
+    }
+
+    /// FmtProc should rewrite commands
+    #[test]
+    fn proc_cmdline() {
+        let conf = Conf::from_str(&format!("emlop p"));
+        let t: Vec<_> =
+            vec![("foo\0bar", "1 foo bar"),
+                 ("foo\0bar\0", "1 foo bar"),
+                 ("/usr/bin/bash\0toto", "1 bash toto"),
+                 ("/usr/bin/bash\0toto\0", "1 bash toto"),
+                 ("/usr/bin/bash\0toto\0--arg", "1 bash toto --arg"),
+                 ("/usr/bin/bash\0/path/to/toto\0--arg", "1 toto --arg"),
+                 ("bash\0/usr/lib/portage/python3.12/ebuild.sh\0unpack\0", "1 ebuild.sh unpack"),
+                 ("[foo/bar-0.1.600] sandbox\0/path/to/ebuild.sh\0unpack\0", "1 ebuild.sh unpack"),
+                 ("[foo/bar-0.1.600] sandbox\0blah\0", "1 [foo/bar-0.1.600] sandbox blah"),];
+        for (cmd, out) in t.into_iter() {
+            let mut buf = vec![];
+            let p = Proc { kind: ProcKind::Other, pid: 1, ppid: 1, cmdline: cmd.into(), start: 0 };
+            FmtProc(&p, 0, 100).out(&mut buf, &conf);
+            assert_eq!(&String::from_utf8(buf).unwrap(), out, "got left expected right {cmd:?}");
         }
     }
 }
