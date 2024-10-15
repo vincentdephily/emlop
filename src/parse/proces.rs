@@ -9,7 +9,7 @@
 use crate::{table::Disp, *};
 use anyhow::{ensure, Context};
 use libc::pid_t;
-use std::{collections::HashMap,
+use std::{collections::BTreeMap,
           fs::{read_dir, DirEntry, File},
           io::prelude::*,
           path::PathBuf};
@@ -138,13 +138,13 @@ fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
 }
 
 /// Get command name, arguments, start time, and pid for all processes.
-pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> HashMap<pid_t, Proc> {
+pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> BTreeMap<pid_t, Proc> {
     get_all_proc_result(tmpdirs).unwrap_or_else(|e| {
                                     log_err(e);
-                                    HashMap::new()
+                                    BTreeMap::new()
                                 })
 }
-fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<HashMap<pid_t, Proc>, Error> {
+fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<BTreeMap<pid_t, Proc>, Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
@@ -157,7 +157,7 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<HashMap<pid_t, Proc
     let uptime = i64::from_str(uptimestr.split('.').next().unwrap()).unwrap();
     let time_ref = epoch_now() - uptime;
     // Now iterate through /proc/<pid>
-    let mut ret: HashMap<pid_t, Proc> = HashMap::new();
+    let mut ret: BTreeMap<pid_t, Proc> = BTreeMap::new();
     for entry in read_dir("/proc/").context("Listing /proc/")? {
         if let Some(p) = get_proc(&entry?, clocktick, time_ref, tmpdirs) {
             ret.insert(p.pid, p);

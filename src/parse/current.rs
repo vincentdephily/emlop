@@ -7,7 +7,7 @@ use log::*;
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::from_reader;
-use std::{collections::HashMap,
+use std::{collections::BTreeMap,
           fs::File,
           io::{BufRead, BufReader, Read},
           path::PathBuf};
@@ -137,7 +137,7 @@ fn read_buildlog(file: File, max: usize) -> String {
 #[derive(Debug)]
 pub struct EmergeInfo {
     pub start: i64,
-    pub procs: HashMap<pid_t, Proc>,
+    pub procs: BTreeMap<pid_t, Proc>,
     pub roots: Vec<pid_t>,
     pub pkgs: Vec<Pkg>,
 }

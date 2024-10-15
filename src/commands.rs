@@ -286,7 +286,7 @@ fn cmd_stats_group(gc: &Conf,
 
 fn proc_rows(now: i64,
              tbl: &mut Table<3>,
-             procs: &HashMap<pid_t, Proc>,
+             procs: &BTreeMap<pid_t, Proc>,
              pid: pid_t,
              depth: usize,
              sc: &ConfPred) {
