@@ -46,38 +46,40 @@ pub struct FmtProc<'a>(/// process
                        /// Width
                        pub usize);
 impl Disp for FmtProc<'_> {
-    fn out(&self, buf: &mut Vec<u8>, _conf: &Conf) -> usize {
-        let FmtProc(proc, indent, width) = *self;
+    fn out(&self, buf: &mut Vec<u8>, gc: &Conf) -> usize {
+        let FmtProc(Proc { cmdline, pid, .. }, indent, width) = *self;
+        let (cnt, clr) = (gc.cnt.val, gc.clr.val);
 
         // Skip path and interpreter from command line
         let mut cmdstart = 0;
-        if let Some(z1) = proc.cmdline.find('\0') {
-            if let Some(f1) = approx_filename(&proc.cmdline[..z1]) {
+        if let Some(z1) = cmdline.find('\0') {
+            if let Some(f1) = approx_filename(&cmdline[..z1]) {
                 cmdstart = f1 + 1;
             }
-            if let Some(z2) = proc.cmdline[z1 + 1..].find('\0') {
-                if let Some(f2) = approx_filename(&proc.cmdline[z1 + 1..z1 + z2]) {
+            if let Some(z2) = cmdline[z1 + 1..].find('\0') {
+                if let Some(f2) = approx_filename(&cmdline[z1 + 1..z1 + z2]) {
                     cmdstart = z1 + f2 + 2;
                 }
             }
         }
-        let cmd = proc.cmdline[cmdstart..].replace(|c: char| c.is_control(), " ");
+        let cmd = cmdline[cmdstart..].replace(|c: char| c.is_control(), " ");
         let cmd = cmd.trim();
 
         // Figure out how much space we have
-        let prefixlen = proc.pid.max(1).ilog10() as usize + 2 * indent + 1;
-        let cmdcap = width.saturating_sub(prefixlen + 1);
+        let pidlen = pid.max(&1).ilog10() as usize + 2 * indent + 1;
+        let cmdcap = width.saturating_sub(pidlen + 1);
 
         // Output it
-        let start = buf.len();
         if cmdcap >= cmd.len() {
-            wtb!(buf, "{:prefixlen$} {}", proc.pid, cmd)
+            wtb!(buf, "{cnt}{pid:pidlen$}{clr} {cmd}");
+            pidlen + 1 + cmd.len()
         } else if cmdcap > 3 {
-            wtb!(buf, "{:prefixlen$} ...{}", proc.pid, &cmd[(cmd.len() - cmdcap + 3)..])
+            wtb!(buf, "{cnt}{pid:pidlen$}{clr} ...{}", &cmd[(cmd.len() - cmdcap + 3)..]);
+            pidlen + 1 + cmdcap
         } else {
-            wtb!(buf, "{:prefixlen$} ...", proc.pid)
+            wtb!(buf, "{cnt}{pid:pidlen$}{clr} ...");
+            pidlen + 4
         }
-        buf.len() - start
     }
 }
 
@@ -242,7 +244,7 @@ mod tests {
     /// FmtProc should try shorten (elipsis at start) the command line when ther is no space
     #[test]
     fn proc_shorten() {
-        let conf = Conf::from_str(&format!("emlop p"));
+        let conf = Conf::from_str(&format!("emlop p --color=n"));
         let t: Vec<_> = vec![// Here we have enough space
                              (1, "1", "1 1"),
                              (1, "12", "1 12"),
@@ -269,7 +271,7 @@ mod tests {
     /// FmtProc should rewrite commands
     #[test]
     fn proc_cmdline() {
-        let conf = Conf::from_str(&format!("emlop p"));
+        let conf = Conf::from_str(&format!("emlop p --color=n"));
         let t: Vec<_> =
             vec![("foo\0bar", "1 foo bar"),
                  ("foo\0bar\0", "1 foo bar"),
