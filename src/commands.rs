@@ -6,13 +6,13 @@ use std::{collections::{BTreeMap, HashMap, HashSet},
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_log(gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
+pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
-    let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(sc.last);
+    let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last);
     tbl.header(["Date", "Duration", "Package/Repo"]);
     for p in hist {
         match p {
@@ -134,11 +134,11 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
+pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let mut tbls = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
+    let mut tbls = Table::new(&gc).align_left(0).align_left(1).margin(1, " ");
     tbls.header([sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"]);
-    let mut tblp = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
+    let mut tblp = Table::new(&gc).align_left(0).align_left(1).margin(1, " ");
     tblp.header([sc.group.name(),
                  "Package",
                  "Merges",
@@ -147,7 +147,7 @@ pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
                  "Unmerges",
                  "Total time",
                  "Predict time"]);
-    let mut tblt = Table::new(gc).align_left(0).margin(1, " ");
+    let mut tblt = Table::new(&gc).align_left(0).margin(1, " ");
     tblt.header([sc.group.name(),
                  "Merges",
                  "Total time",
@@ -170,7 +170,7 @@ pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
                 curts = t;
             } else if t > nextts {
                 let group = sc.group.at(curts, gc.date_offset);
-                cmd_stats_group(gc, sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time,
+                cmd_stats_group(&gc, &sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time,
                                 &pkg_time);
                 sync_time.clear();
                 pkg_time.clear();
@@ -214,7 +214,7 @@ pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
         }
     }
     let group = sc.group.at(curts, gc.date_offset);
-    cmd_stats_group(gc, sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time, &pkg_time);
+    cmd_stats_group(&gc, &sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time, &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
     let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
     drop(tbls);
@@ -303,15 +303,13 @@ fn proc_rows(now: i64,
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
+pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     let now = epoch_now();
     let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
-    let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(last);
-    // TODO: should be able to extend inside sc
-    let mut tmpdirs = sc.tmpdirs.clone();
+    let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(last);
 
     // Gather and print info about current merge process.
-    let einfo = get_emerge(&mut tmpdirs);
+    let einfo = get_emerge(&mut sc.tmpdirs);
     if einfo.roots.is_empty()
        && std::io::stdin().is_terminal()
        && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
@@ -321,7 +319,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     }
     if sc.show.emerge {
         for p in einfo.roots {
-            proc_rows(now, &mut tbl, &einfo.procs, p, 0, sc);
+            proc_rows(now, &mut tbl, &einfo.procs, p, 0, &sc);
         }
     }
 
@@ -400,7 +398,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
         // Done
         if sc.show.merge && totcount <= sc.first {
             if elapsed > 0 {
-                let stage = get_buildlog(&p, &tmpdirs).unwrap_or_default();
+                let stage = get_buildlog(&p, &sc.tmpdirs).unwrap_or_default();
                 tbl.row([&[&gc.pkg, &p.ebuild_version()],
                          &[&FmtDur(fmtpred)],
                          &[&gc.clr, &"- ", &FmtDur(elapsed), &gc.clr, &stage]]);
@@ -437,13 +435,13 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     Ok(totcount > 0)
 }
 
-pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
+pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &sc.search, sc.exact)?;
     let mut pkg_starts: HashMap<String, i64> = HashMap::new();
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let mut tbl = Table::new(gc).align_left(0).align_left(1).last(sc.last);
+    let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last);
     tbl.header(["Date", "Package", "Real", "Predicted", "Error"]);
     for p in hist {
         match p {
@@ -487,7 +485,7 @@ pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
     }
     drop(tbl);
     if sc.show.tot {
-        let mut tbl = Table::new(gc).align_left(0);
+        let mut tbl = Table::new(&gc).align_left(0);
         tbl.header(["Package", "Error"]);
         for (p, e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
@@ -497,7 +495,7 @@ pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
     Ok(found)
 }
 
-pub fn cmd_complete(gc: &Conf, sc: &ConfComplete) -> Result<bool, Error> {
+pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
     // Generate standard clap completions
     #[cfg(feature = "clap_complete")]
     if let Some(s) = &sc.shell {
