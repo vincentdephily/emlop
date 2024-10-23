@@ -266,6 +266,17 @@ pub fn build_cli() -> Command {
                                                (default)|auto|a: columns on tty, tab otherwise\n  \
                                                columns|c:        space-aligned columns\n  \
                                                tab|t:            tab-separated values");
+    let elipsis = Arg::new("elipsis").long("elipsis")
+                                     .value_name("bool")
+                                     .global(true)
+                                     .num_args(..=1)
+                                     .default_missing_value("y")
+                                     .display_order(29)
+                                     .help_heading("Format")
+                                     .help("Show placeholder for skipped rows (yes/no)")
+                                     .long_help("Show placeholder for skipped rows (yes/no)\n  \
+                                                 (empty)|yes|y: Show '<num> skipped' placeholder\n  \
+                                                 no|n:          Skip rows silently");
 
     ////////////////////////////////////////////////////////////
     // Misc arguments
@@ -406,6 +417,7 @@ pub fn build_cli() -> Command {
                          .arg(output)
                          .arg(logfile)
                          .arg(verbose)
+                         .arg(elipsis)
                          .subcommand(cmd_log)
                          .subcommand(cmd_pred)
                          .subcommand(cmd_stats)

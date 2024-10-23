@@ -6,9 +6,8 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
-use crate::{table::Disp, *};
+use crate::{config::*, table::Disp, *};
 use anyhow::{ensure, Context};
-use libc::pid_t;
 use std::{collections::BTreeMap,
           fs::{read_dir, DirEntry, File},
           io::prelude::*,

@@ -299,6 +299,7 @@ fn proc_rows(now: i64,
              procs: &BTreeMap<pid_t, Proc>,
              pid: pid_t,
              depth: usize,
+             gc: &Conf,
              sc: &ConfPred) {
     // This should always succeed because we're getting pid from procs, but to allow experiments we
     // warn instead of panic/ignore.
@@ -316,11 +317,11 @@ fn proc_rows(now: i64,
     // Either recurse with children...
     if depth + 1 < sc.pdepth {
         for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
-            proc_rows(now, tbl, procs, *child, depth + 1, sc);
+            proc_rows(now, tbl, procs, *child, depth + 1, gc, sc);
         }
     }
     // ...or print skipped rows
-    else {
+    else if gc.elipsis {
         let children = proc_count(procs, pid) - 1;
         if children > 0 {
             tbl.row([&[&"  ".repeat(depth + 1), &"(", &children, &" skipped)"], &[], &[]]);
@@ -347,7 +348,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     }
     if sc.show.emerge {
         for p in einfo.roots {
-            proc_rows(now, &mut tbl, &einfo.procs, p, 0, &sc);
+            proc_rows(now, &mut tbl, &einfo.procs, p, 0, &gc, &sc);
         }
     }
 
@@ -584,7 +585,7 @@ mod tests {
         let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
         let now = epoch_now();
         let einfo = get_emerge(&mut sc.tmpdirs);
-        proc_rows(now, &mut tbl, &einfo.procs, 1, 0, &sc);
+        proc_rows(now, &mut tbl, &einfo.procs, 1, 0, &gc, &sc);
         println!("{}", tbl.to_string());
     }
 }

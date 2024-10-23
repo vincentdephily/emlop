@@ -8,6 +8,7 @@ mod types;
 pub use crate::config::{cli::*, types::*};
 use crate::{config::toml::Toml, parse::AnsiStr, *};
 use clap::ArgMatches;
+pub use libc::pid_t;
 use std::{io::IsTerminal, path::PathBuf};
 
 /// Global config, one enum variant per command
@@ -30,6 +31,7 @@ pub struct Conf {
     pub clr: AnsiStr,
     pub lineend: &'static [u8],
     pub header: bool,
+    pub elipsis: bool,
     pub dur_t: DurationStyle,
     pub date_offset: time::UtcOffset,
     pub date_fmt: DateStyle,
@@ -163,6 +165,7 @@ impl Conf {
                   clr: AnsiStr::from(if color { "\x1B[m" } else { "" }),
                   lineend: if color { b"\x1B[m\n" } else { b"\n" },
                   header: sel!(cli, toml, header, (), false)?,
+                  elipsis: sel!(cli, toml, elipsis, (), true)?,
                   dur_t: sel!(cli, toml, duration, (), DurationStyle::Hms)?,
                   date_offset: offset,
                   date_fmt: sel!(cli, toml, date, (), DateStyle::default())?,

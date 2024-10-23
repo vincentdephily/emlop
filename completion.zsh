@@ -11,6 +11,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--elipsis=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
@@ -47,6 +48,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--elipsis=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
@@ -81,6 +83,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--elipsis=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
@@ -109,6 +112,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--elipsis=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
@@ -138,6 +142,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--elipsis=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
