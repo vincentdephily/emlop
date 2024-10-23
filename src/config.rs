@@ -206,6 +206,12 @@ impl ConfPred {
                   pwidth: sel!(cli, toml, predict, pwidth, 10..=1000, 60)? as usize,
                   pdepth: sel!(cli, toml, predict, pdepth, 0..=100, 3)? as usize })
     }
+    #[cfg(test)]
+    pub fn from_str(s: impl AsRef<str>) -> (Conf, Self) {
+        let cli = cli::build_cli().get_matches_from(s.as_ref().split_whitespace());
+        (Conf::try_new(&cli, &Toml::default()).unwrap(),
+         ConfPred::try_new(cli.subcommand().unwrap().1, &Toml::default()).unwrap())
+    }
 }
 
 impl ConfStats {

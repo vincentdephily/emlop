@@ -160,6 +160,14 @@ impl<'a, const N: usize> Table<'a, N> {
             out.write_all(self.conf.lineend).unwrap_or(());
         }
     }
+
+    #[cfg(test)]
+    pub fn to_string(mut self) -> String {
+        let mut out = Vec::with_capacity(self.buf.len());
+        self.flush(&mut out);
+        self.rows.clear();
+        String::from_utf8(out).expect("Non-utf8 table output")
+    }
 }
 
 impl<const N: usize> Drop for Table<'_, N> {
@@ -174,13 +182,6 @@ mod test {
     use super::*;
     use crate::parse::Ansi;
 
-    fn check<const N: usize>(mut tbl: Table<N>, expect: &str) {
-        let mut out = Vec::with_capacity(tbl.buf.len());
-        tbl.flush(&mut out);
-        tbl.rows.clear();
-        assert_eq!(expect, String::from_utf8(out).unwrap());
-    }
-
     #[test]
     fn last() {
         let conf = Conf::from_str("emlop log --color=n -H");
@@ -190,14 +191,14 @@ mod test {
         for i in 1..10 {
             t.row([&[&format!("{i}")]]);
         }
-        check(t, "1\n2\n3\n4\n5\n6\n7\n8\n9\n");
+        assert_eq!(t.to_string(), "1\n2\n3\n4\n5\n6\n7\n8\n9\n");
 
         // 5 max
         let mut t = Table::<1>::new(&conf).last(5);
         for i in 1..10 {
             t.row([&[&format!("{i}")]]);
         }
-        check(t, "5\n6\n7\n8\n9\n");
+        assert_eq!(t.to_string(), "5\n6\n7\n8\n9\n");
 
         // 5 max ignoring header
         let mut t = Table::new(&conf).last(5);
@@ -205,7 +206,7 @@ mod test {
         for i in 1..10 {
             t.row([&[&format!("{i}")]]);
         }
-        check(t, "h\n5\n6\n7\n8\n9\n");
+        assert_eq!(t.to_string(), "h\n5\n6\n7\n8\n9\n");
     }
 
     #[test]
@@ -218,7 +219,7 @@ mod test {
         let res = "short                1\n\
                    looooooooooooong     1\n\
                    high              9999\n";
-        check(t, res);
+        assert_eq!(t.to_string(), res);
     }
 
     #[test]
@@ -228,7 +229,7 @@ mod test {
         t.row([&[&"looooooooooooong"], &[&1]]);
         t.row([&[&"short"], &[&1]]);
         let res = "short  1\n";
-        check(t, res);
+        assert_eq!(t.to_string(), res);
     }
 
     #[test]
@@ -241,7 +242,7 @@ mod test {
         let res = "short\t1\n\
                    looooooooooooong\t1\n\
                    high\t9999\n";
-        check(t, res);
+        assert_eq!(t.to_string(), res);
     }
 
     #[test]
@@ -255,7 +256,7 @@ mod test {
         let (l1, l2) = res.split_once('\n').expect("two lines");
         assert_eq!(Ansi::strip(l1, 100), "123  1");
         assert_eq!(Ansi::strip(l1, 100), Ansi::strip(l2, 100));
-        check(t, res);
+        assert_eq!(t.to_string(), res);
     }
 
     #[test]
@@ -266,6 +267,6 @@ mod test {
         t.row([&[&conf.merge, &1, &conf.dur, &2, &conf.cnt, &3, &conf.clr], &[&1]]);
         let res = "123      1\n\
                    >>> 123  1\n";
-        check(t, res);
+        assert_eq!(t.to_string(), res);
     }
 }

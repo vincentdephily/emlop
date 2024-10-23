@@ -284,18 +284,46 @@ fn cmd_stats_group(gc: &Conf,
     }
 }
 
+/// Count processes in tree, including given proces
+fn proc_count(procs: &BTreeMap<pid_t, Proc>, pid: pid_t) -> usize {
+    let mut count = 1;
+    for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
+        count += proc_count(procs, *child);
+    }
+    count
+}
+
+/// Display proces tree
 fn proc_rows(now: i64,
              tbl: &mut Table<3>,
              procs: &BTreeMap<pid_t, Proc>,
              pid: pid_t,
              depth: usize,
              sc: &ConfPred) {
+    // This should always succeed because we're getting pid from procs, but to allow experiments we
+    // warn instead of panic/ignore.
+    let proc = match procs.get(&pid) {
+        Some(p) => p,
+        None => {
+            error!("Could not find proces {pid}");
+            return;
+        },
+    };
+    // Print current level
     if depth < sc.pdepth {
-        if let Some(proc) = procs.get(&pid) {
-            tbl.row([&[&FmtProc(proc, depth, sc.pwidth)], &[&FmtDur(now - proc.start)], &[]]);
-            for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
-                proc_rows(now, tbl, procs, *child, depth + 1, sc)
-            }
+        tbl.row([&[&FmtProc(proc, depth, sc.pwidth)], &[&FmtDur(now - proc.start)], &[]]);
+    }
+    // Either recurse with children...
+    if depth + 1 < sc.pdepth {
+        for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
+            proc_rows(now, tbl, procs, *child, depth + 1, sc);
+        }
+    }
+    // ...or print skipped rows
+    else {
+        let children = proc_count(procs, pid) - 1;
+        if children > 0 {
+            tbl.row([&[&"  ".repeat(depth + 1), &"(", &children, &" skipped)"], &[], &[]]);
         }
     }
 }
@@ -523,9 +551,10 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn averages() {
-        use super::Times;
         use crate::Average::*;
         for (a, m, wa, wm, lim, vals) in
             [(-1, -1, -1, -1, 10, vec![]),
@@ -545,5 +574,17 @@ mod tests {
             assert_eq!(wa, t.pred(lim, WeightedArith), "weighted arith {lim} {vals:?}");
             assert_eq!(wm, t.pred(lim, WeightedMedian), "weighted median {lim} {vals:?}");
         }
+    }
+
+    /// Shows the whole system's processes.
+    /// Mainly useful as an interactive test, use `cargo test -- --nocapture procs_pid1`.
+    #[test]
+    fn procs_pid1() {
+        let (gc, mut sc) = ConfPred::from_str("emlop p --pdepth 4");
+        let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
+        let now = epoch_now();
+        let einfo = get_emerge(&mut sc.tmpdirs);
+        proc_rows(now, &mut tbl, &einfo.procs, 1, 0, &sc);
+        println!("{}", tbl.to_string());
     }
 }

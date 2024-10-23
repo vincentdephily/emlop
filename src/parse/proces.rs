@@ -243,7 +243,7 @@ mod tests {
 
     /// FmtProc should try shorten (elipsis at start) the command line when ther is no space
     #[test]
-    fn proc_shorten() {
+    fn proc_width() {
         let conf = Conf::from_str(&format!("emlop p --color=n"));
         let t: Vec<_> = vec![// Here we have enough space
                              (1, "1", "1 1"),
