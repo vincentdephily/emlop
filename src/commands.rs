@@ -285,7 +285,7 @@ fn cmd_stats_group(gc: &Conf,
 }
 
 /// Count processes in tree, including given proces
-fn proc_count(procs: &BTreeMap<pid_t, Proc>, pid: pid_t) -> usize {
+fn proc_count(procs: &ProcList, pid: pid_t) -> usize {
     let mut count = 1;
     for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
         count += proc_count(procs, *child);
@@ -296,7 +296,7 @@ fn proc_count(procs: &BTreeMap<pid_t, Proc>, pid: pid_t) -> usize {
 /// Display proces tree
 fn proc_rows(now: i64,
              tbl: &mut Table<3>,
-             procs: &BTreeMap<pid_t, Proc>,
+             procs: &ProcList,
              pid: pid_t,
              depth: usize,
              gc: &Conf,
@@ -338,7 +338,8 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(last);
 
     // Gather and print info about current merge process.
-    let einfo = get_emerge(&mut sc.tmpdirs);
+    let procs = get_all_proc(&mut sc.tmpdirs);
+    let einfo = get_emerge(&procs);
     if einfo.roots.is_empty()
        && std::io::stdin().is_terminal()
        && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
@@ -348,7 +349,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     }
     if sc.show.emerge {
         for p in einfo.roots {
-            proc_rows(now, &mut tbl, &einfo.procs, p, 0, &gc, &sc);
+            proc_rows(now, &mut tbl, &procs, p, 0, &gc, &sc);
         }
     }
 
@@ -553,6 +554,7 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parse::procs;
 
     #[test]
     fn averages() {
@@ -584,8 +586,38 @@ mod tests {
         let (gc, mut sc) = ConfPred::from_str("emlop p --pdepth 4");
         let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
         let now = epoch_now();
-        let einfo = get_emerge(&mut sc.tmpdirs);
-        proc_rows(now, &mut tbl, &einfo.procs, 1, 0, &gc, &sc);
+        let procs = get_all_proc(&mut sc.tmpdirs);
+        proc_rows(now, &mut tbl, &procs, 1, 0, &gc, &sc);
         println!("{}", tbl.to_string());
+    }
+
+    /// Check indentation and skipping
+    #[test]
+    fn procs_hierarchy() {
+        let (gc, sc) = ConfPred::from_str("emlop p --pdepth 3 --color=n");
+        let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
+        let procs = procs(&[(ProcKind::Other, "a", 1, 0),
+                            (ProcKind::Other, "a.a", 2, 1),
+                            (ProcKind::Other, "a.b", 3, 1),
+                            (ProcKind::Other, "a.a.a", 4, 2),
+                            (ProcKind::Other, "a.a.b", 5, 2),
+                            (ProcKind::Other, "a.b.a", 6, 3),
+                            // basic skip
+                            (ProcKind::Other, "a.a.a.a", 7, 4),
+                            // nested/sibling skip
+                            (ProcKind::Other, "a.a.b.a", 8, 5),
+                            (ProcKind::Other, "a.a.b.a.a", 9, 8),
+                            (ProcKind::Other, "a.a.b.b", 10, 5)]);
+        let out = r#"1 a                9
+  2 a.a            8
+    4 a.a.a        6
+      (1 skipped)   
+    5 a.a.b        5
+      (3 skipped)   
+  3 a.b            7
+    6 a.b.a        4
+"#;
+        proc_rows(10, &mut tbl, &procs, 1, 0, &gc, &sc);
+        assert_eq!(tbl.to_string(), out);
     }
 }

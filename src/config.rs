@@ -8,7 +8,6 @@ mod types;
 pub use crate::config::{cli::*, types::*};
 use crate::{config::toml::Toml, parse::AnsiStr, *};
 use clap::ArgMatches;
-pub use libc::pid_t;
 use std::{io::IsTerminal, path::PathBuf};
 
 /// Global config, one enum variant per command

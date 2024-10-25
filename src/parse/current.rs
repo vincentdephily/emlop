@@ -1,14 +1,13 @@
 //! Handles parsing of current emerge state.
 
-use super::{get_all_proc, Ansi, Proc, ProcKind};
+use super::{Ansi, ProcKind, ProcList};
 use crate::ResumeKind;
 use libc::pid_t;
 use log::*;
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::from_reader;
-use std::{collections::BTreeMap,
-          fs::File,
+use std::{fs::File,
           io::{BufRead, BufReader, Read},
           path::PathBuf};
 
@@ -137,7 +136,6 @@ fn read_buildlog(file: File, max: usize) -> String {
 #[derive(Debug)]
 pub struct EmergeInfo {
     pub start: i64,
-    pub procs: BTreeMap<pid_t, Proc>,
     pub roots: Vec<pid_t>,
     pub pkgs: Vec<Pkg>,
 }
@@ -150,10 +148,9 @@ pub struct EmergeInfo {
 ///   [app-portage/dummybuild-0.1.600] sandbox /usr/lib/portage/python3.11/ebuild.sh unpack
 ///   gives us the actually emerging ebuild and stage (depends on portage FEATURES=sandbox, which
 ///   should be the case for almost all users)
-pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
-    let procs = get_all_proc(tmpdirs);
-    let mut res = EmergeInfo { start: i64::MAX, procs, roots: vec![], pkgs: vec![] };
-    for (pid, proc) in &res.procs {
+pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
+    let mut res = EmergeInfo { start: i64::MAX, roots: vec![], pkgs: vec![] };
+    for (pid, proc) in procs {
         match proc.kind {
             ProcKind::Emerge => {
                 res.start = std::cmp::min(res.start, proc.start);

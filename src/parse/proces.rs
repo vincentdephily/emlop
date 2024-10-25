@@ -8,12 +8,13 @@
 
 use crate::{config::*, table::Disp, *};
 use anyhow::{ensure, Context};
+use libc::pid_t;
 use std::{collections::BTreeMap,
           fs::{read_dir, DirEntry, File},
           io::prelude::*,
           path::PathBuf};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ProcKind {
     Emerge,
     Python,
@@ -138,14 +139,16 @@ fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
     }
 }
 
+pub type ProcList = BTreeMap<pid_t, Proc>;
+
 /// Get command name, arguments, start time, and pid for all processes.
-pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> BTreeMap<pid_t, Proc> {
+pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> ProcList {
     get_all_proc_result(tmpdirs).unwrap_or_else(|e| {
                                     log_err(e);
                                     BTreeMap::new()
                                 })
 }
-fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<BTreeMap<pid_t, Proc>, Error> {
+fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
     // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
     // the system boot time; not sure why it doesn't, but it's still usable as a reference.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
@@ -169,11 +172,23 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<BTreeMap<pid_t, Pro
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::{config::Conf, *};
     use regex::Regex;
     use std::{collections::BTreeMap, process::Command};
     use time::{macros::format_description, PrimitiveDateTime};
+
+    /// Helper to create a process list
+    pub fn procs(procs: &[(ProcKind, &str, pid_t, pid_t)]) -> ProcList {
+        BTreeMap::from_iter(procs.into_iter().map(|p| {
+                                                 (p.2,
+                                                  Proc { kind: p.0,
+                                                         cmdline: p.1.into(),
+                                                         start: p.2 as i64,
+                                                         pid: p.2,
+                                                         ppid: p.3 })
+                                             }))
+    }
 
     fn parse_ps_time(s: &str) -> i64 {
         let fmt = format_description!("[month repr:short] [day padding:space] [hour]:[minute]:[second] [year]");
