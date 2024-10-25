@@ -168,6 +168,21 @@ pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
             ProcKind::Other => (),
         }
     }
+    // Remove roots that are (grand)children of another root
+    if res.roots.len() > 1 {
+        let origroots = res.roots.clone();
+        res.roots.retain(|&r| {
+                     let mut proc = procs.get(&r).expect("Root not in ProcList");
+                     while let Some(p) = procs.get(&proc.ppid) {
+                         if origroots.contains(&p.pid) {
+                             debug!("Skipping proces {}: grandchild of {}", r, p.pid);
+                             return false;
+                         }
+                         proc = p;
+                     }
+                     true
+                 });
+    }
     trace!("{:?}", res);
     res
 }
@@ -175,6 +190,7 @@ pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parse::procs;
 
     /// Check that `get_pretend()` has the expected output
     fn check_pretend(file: &str, expect: &[(&str, &str)]) {
@@ -246,5 +262,19 @@ mod tests {
             let f = File::open(&format!("tests/{file}")).expect(&format!("can't open {file:?}"));
             assert_eq!(format!(" ({res})"), read_buildlog(f, lim));
         }
+    }
+
+    /// Check that get_emerge() finds the expected roots
+    #[test]
+    fn get_emerge_roots() {
+        let _ = env_logger::try_init();
+        let procs = procs(&[(ProcKind::Emerge, "a", 1, 0),
+                            (ProcKind::Other, "a.a", 2, 1),
+                            (ProcKind::Emerge, "a.a.b", 3, 2),
+                            (ProcKind::Other, "b", 4, 0),
+                            (ProcKind::Emerge, "b.a", 5, 4),
+                            (ProcKind::Other, "b.a.a", 6, 5)]);
+        let einfo = get_emerge(&procs);
+        assert_eq!(einfo.roots, vec![1, 5]);
     }
 }
