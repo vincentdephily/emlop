@@ -324,7 +324,9 @@ fn proc_rows(now: i64,
     else if gc.elipsis {
         let children = proc_count(procs, pid) - 1;
         if children > 0 {
-            tbl.row([&[&"  ".repeat(depth + 1), &"(", &children, &" skipped)"], &[], &[]]);
+            tbl.row([&[&"  ".repeat(depth + 1), &gc.skip, &"(", &children, &" skipped)"],
+                     &[],
+                     &[]]);
         }
     }
 }

@@ -252,7 +252,7 @@ mod test {
         t.row([&[&"123"], &[&1]]);
         t.row([&[&conf.merge, &1, &conf.dur, &2, &conf.cnt, &3, &conf.clr], &[&1]]);
         let res = "123  1\x1B[m\n\
-                   \x1B[1;32m1\x1B[1;35m2\x1B[2;33m3\x1B[m  1\x1B[m\n";
+                   \x1B[1;32m1\x1B[1;35m2\x1B[33m3\x1B[m  1\x1B[m\n";
         let (l1, l2) = res.split_once('\n').expect("two lines");
         assert_eq!(Ansi::strip(l1, 100), "123  1");
         assert_eq!(Ansi::strip(l1, 100), Ansi::strip(l2, 100));
