@@ -57,7 +57,7 @@ impl Disp for FmtProc<'_> {
                 cmdstart = f1 + 1;
             }
             if let Some(z2) = cmdline[z1 + 1..].find('\0') {
-                if let Some(f2) = approx_filename(&cmdline[z1 + 1..z1 + z2]) {
+                if let Some(f2) = approx_filename(&cmdline[z1 + 1..z1 + 1 + z2]) {
                     cmdstart = z1 + f2 + 2;
                 }
             }
@@ -295,7 +295,8 @@ pub mod tests {
                  ("/usr/bin/bash\0/path/to/toto\0--arg", "1 toto --arg"),
                  ("bash\0/usr/lib/portage/python3.12/ebuild.sh\0unpack\0", "1 ebuild.sh unpack"),
                  ("[foo/bar-0.1.600] sandbox\0/path/to/ebuild.sh\0unpack\0", "1 ebuild.sh unpack"),
-                 ("[foo/bar-0.1.600] sandbox\0blah\0", "1 [foo/bar-0.1.600] sandbox blah"),];
+                 ("[foo/bar-0.1.600] sandbox\0blah\0", "1 [foo/bar-0.1.600] sandbox blah"),
+                 ("/bin/foo\0\0", "1 foo")];
         for (cmd, out) in t.into_iter() {
             let mut buf = vec![];
             let p = Proc { kind: ProcKind::Other, pid: 1, ppid: 1, cmdline: cmd.into(), start: 0 };
