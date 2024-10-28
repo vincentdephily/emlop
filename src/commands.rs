@@ -596,7 +596,7 @@ mod tests {
     /// Check indentation and skipping
     #[test]
     fn procs_hierarchy() {
-        let (gc, sc) = ConfPred::from_str("emlop p --pdepth 3 --color=n");
+        let (gc, sc) = ConfPred::from_str("emlop p --pdepth 3 --color=n --output=c");
         let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
         let procs = procs(&[(ProcKind::Other, "a", 1, 0),
                             (ProcKind::Other, "a.a", 2, 1),
