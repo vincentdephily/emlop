@@ -74,7 +74,7 @@ impl<'a, const N: usize> Table<'a, N> {
     }
 
     /// Add a section header
-    pub fn header(&mut self, row: [&str; N]) {
+    pub fn header(mut self, row: [&str; N]) -> Self {
         if self.conf.header {
             let mut idxrow = [(0, 0, 0); N];
             for i in 0..N {
@@ -84,6 +84,7 @@ impl<'a, const N: usize> Table<'a, N> {
             }
             self.header = Some(idxrow);
         }
+        self
     }
 
     /// Is there actual data to flush ?
@@ -205,8 +206,7 @@ mod test {
         assert_eq!(t.to_string(), "5\n6\n7\n8\n9\n");
 
         // 5 max ignoring header
-        let mut t = Table::new(&conf).last(5);
-        t.header(["h"]);
+        let mut t = Table::new(&conf).last(5).header(["h"]);
         for i in 1..10 {
             t.row([&[&format!("{i}")]]);
         }
@@ -229,8 +229,7 @@ mod test {
     #[test]
     fn align_longheader() {
         let conf = Conf::from_str("emlop log --color=n --output=c -H");
-        let mut t = Table::<2>::new(&conf).align_left(0);
-        t.header(["heeeeeeeader", "d"]);
+        let mut t = Table::<2>::new(&conf).align_left(0).header(["heeeeeeeader", "d"]);
         t.row([&[&"short"], &[&1]]);
         t.row([&[&"high"], &[&9999]]);
         let res = "heeeeeeeader     d\n\

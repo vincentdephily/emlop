@@ -12,8 +12,9 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
-    let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last);
-    tbl.header(["Date", "Duration", "Package/Repo"]);
+    let h = ["Date", "Duration", "Package/Repo"];
+    let mut tbl =
+        Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last).header(h);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -136,25 +137,25 @@ impl Times {
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let mut tbls = Table::new(&gc).align_left(0).align_left(1).margin(1, " ");
-    tbls.header([sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"]);
-    let mut tblp = Table::new(&gc).align_left(0).align_left(1).margin(1, " ");
-    tblp.header([sc.group.name(),
-                 "Package",
-                 "Merges",
-                 "Total time",
-                 "Predict time",
-                 "Unmerges",
-                 "Total time",
-                 "Predict time"]);
-    let mut tblt = Table::new(&gc).align_left(0).margin(1, " ");
-    tblt.header([sc.group.name(),
-                 "Merges",
-                 "Total time",
-                 "Average time",
-                 "Unmerges",
-                 "Total time",
-                 "Average time"]);
+    let h = [sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"];
+    let mut tbls = Table::new(&gc).align_left(0).align_left(1).margin(1, " ").header(h);
+    let h = [sc.group.name(),
+             "Package",
+             "Merges",
+             "Total time",
+             "Predict time",
+             "Unmerges",
+             "Total time",
+             "Predict time"];
+    let mut tblp = Table::new(&gc).align_left(0).align_left(1).margin(1, " ").header(h);
+    let h = [sc.group.name(),
+             "Merges",
+             "Total time",
+             "Average time",
+             "Unmerges",
+             "Total time",
+             "Average time"];
+    let mut tblt = Table::new(&gc).align_left(0).margin(1, " ").header(h);
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
@@ -473,8 +474,8 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last);
-    tbl.header(["Date", "Package", "Real", "Predicted", "Error"]);
+    let h = ["Date", "Package", "Real", "Predicted", "Error"];
+    let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last).header(h);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -517,8 +518,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     }
     drop(tbl);
     if sc.show.tot {
-        let mut tbl = Table::new(&gc).align_left(0);
-        tbl.header(["Package", "Error"]);
+        let mut tbl = Table::new(&gc).align_left(0).header(["Package", "Error"]);
         for (p, e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
             tbl.row([&[&gc.pkg, &p], &[&gc.cnt, &format!("{avg:.1}%")]]);
