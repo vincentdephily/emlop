@@ -32,6 +32,8 @@ pub struct Table<'a, const N: usize> {
     rows: VecDeque<[(usize, usize, usize); N]>,
     /// Table header
     header: Option<[(usize, usize, usize); N]>,
+    /// Number of rows skipped to print only the last N
+    skip: usize,
 
     /// Main config
     conf: &'a Conf,
@@ -48,6 +50,7 @@ impl<'a, const N: usize> Table<'a, N> {
     pub fn new(conf: &'a Conf) -> Table<'a, N> {
         Self { rows: VecDeque::with_capacity(32),
                buf: Vec::with_capacity(1024),
+               skip: 0,
                conf,
                header: None,
                aligns: [Align::Right; N],
@@ -105,6 +108,7 @@ impl<'a, const N: usize> Table<'a, N> {
         }
         self.rows.push_back(idxrow);
         if self.rows.len() > self.last {
+            self.skip += 1;
             self.rows.pop_front();
         }
     }
@@ -113,13 +117,21 @@ impl<'a, const N: usize> Table<'a, N> {
         if self.is_empty() {
             return;
         }
-        // Check the max len of each column, for the rows we have
+        // Check the max len of each column, for the header+rows we have
         let widths: [usize; N] = std::array::from_fn(|i| {
             self.rows.iter().chain(self.header.iter()).fold(0, |m, r| usize::max(m, r[i].0))
         });
+        // Show header
         if let Some(h) = self.header {
             self.flush_one(&mut out, widths, &h);
         }
+        // Show skip row. Note that it doesn't participate to column alignment.
+        if self.conf.elipsis && self.skip > 0 {
+            writeln!(out,
+                     "{}(skipping {} due to --last){}",
+                     self.conf.skip.val, self.skip, self.conf.clr.val).unwrap_or(());
+        }
+        // Show remaining rows
         for row in &self.rows {
             self.flush_one(&mut out, widths, row);
         }
@@ -189,28 +201,47 @@ mod test {
 
     #[test]
     fn last() {
-        let conf = Conf::from_str("emlop log --color=n -H");
+        let conf = Conf::from_str("emlop log --color=n -H --elipsis=n");
 
         // No limit
         let mut t = Table::<1>::new(&conf);
-        for i in 1..10 {
+        for i in 0..10 {
             t.row([&[&format!("{i}")]]);
         }
-        assert_eq!(t.to_string(), "1\n2\n3\n4\n5\n6\n7\n8\n9\n");
+        assert_eq!(t.to_string(), "0\n1\n2\n3\n4\n5\n6\n7\n8\n9\n");
 
         // 5 max
         let mut t = Table::<1>::new(&conf).last(5);
-        for i in 1..10 {
+        for i in 0..10 {
             t.row([&[&format!("{i}")]]);
         }
         assert_eq!(t.to_string(), "5\n6\n7\n8\n9\n");
 
         // 5 max ignoring header
         let mut t = Table::new(&conf).last(5).header(["h"]);
-        for i in 1..10 {
+        for i in 0..10 {
             t.row([&[&format!("{i}")]]);
         }
         assert_eq!(t.to_string(), "h\n5\n6\n7\n8\n9\n");
+    }
+
+    #[test]
+    fn last_elipsis() {
+        let conf = Conf::from_str("emlop log --color=n -H --elipsis=y");
+
+        // 5 max
+        let mut t = Table::<1>::new(&conf).last(5);
+        for i in 0..10 {
+            t.row([&[&format!("{i}")]]);
+        }
+        assert_eq!(t.to_string(), "(skipping 5 due to --last)\n5\n6\n7\n8\n9\n");
+
+        // 5 max ignoring header
+        let mut t = Table::new(&conf).last(5).header(["h"]);
+        for i in 0..10 {
+            t.row([&[&format!("{i}")]]);
+        }
+        assert_eq!(t.to_string(), "h\n(skipping 5 due to --last)\n5\n6\n7\n8\n9\n");
     }
 
     #[test]
@@ -240,7 +271,7 @@ mod test {
 
     #[test]
     fn align_cols_last() {
-        let conf = Conf::from_str("emlop log --color=n --output=c");
+        let conf = Conf::from_str("emlop log --color=n --output=c --elipsis=n");
         let mut t = Table::<2>::new(&conf).align_left(0).last(1);
         t.row([&[&"looooooooooooong"], &[&1]]);
         t.row([&[&"short"], &[&1]]);
