@@ -137,7 +137,7 @@ impl<'a, const N: usize> Table<'a, N> {
             self.flush_one(&mut out, widths, &h);
         }
         // Show skip row. Note that it doesn't participate to column alignment.
-        if self.conf.elipsis && self.skip > 0 {
+        if self.conf.showskip && self.skip > 0 {
             writeln!(out,
                      "{}(skip first {}){}",
                      self.conf.skip.val, self.skip, self.conf.clr.val).unwrap_or(());
@@ -212,7 +212,7 @@ mod test {
 
     #[test]
     fn last() {
-        let conf = Conf::from_str("emlop log --color=n -H --elipsis=n");
+        let conf = Conf::from_str("emlop log --color=n -H --showskip=n");
 
         // No limit
         let mut t = Table::<1>::new(&conf);
@@ -237,8 +237,8 @@ mod test {
     }
 
     #[test]
-    fn last_elipsis() {
-        let conf = Conf::from_str("emlop log --color=n -H --elipsis=y");
+    fn last_showskip() {
+        let conf = Conf::from_str("emlop log --color=n -H --showskip=y");
 
         // 5 max
         let mut t = Table::<1>::new(&conf).last(5);
@@ -282,7 +282,7 @@ mod test {
 
     #[test]
     fn align_cols_last() {
-        let conf = Conf::from_str("emlop log --color=n --output=c --elipsis=n");
+        let conf = Conf::from_str("emlop log --color=n --output=c --showskip=n");
         let mut t = Table::<2>::new(&conf).align_left(0).last(1);
         t.row([&[&"looooooooooooong"], &[&1]]);
         t.row([&[&"short"], &[&1]]);

@@ -36,7 +36,7 @@ pub struct Toml {
     pub date: Option<String>,
     pub duration: Option<String>,
     pub header: Option<bool>,
-    pub elipsis: Option<bool>,
+    pub showskip: Option<bool>,
     pub utc: Option<bool>,
     pub color: Option<String>,
     pub output: Option<String>,

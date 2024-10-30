@@ -12,7 +12,7 @@
 # header = true
 # color = "yes"
 # output = "columns"
-# elipsis = true
+# showskip = true
 [log]
 # show = "mus"
 # starttime = true

@@ -57,11 +57,11 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                 }
             },
         }
-        if !gc.elipsis && found >= sc.first {
+        if !gc.showskip && found >= sc.first {
             break;
         }
     }
-    if gc.elipsis && found >= sc.first {
+    if gc.showskip && found >= sc.first {
         tbl.skiprow(&[&gc.skip, &"(skip last ", &(found - sc.first), &")"]);
     }
     Ok(found > 0)
@@ -328,7 +328,7 @@ fn proc_rows(now: i64,
         }
     }
     // ...or print skipped rows
-    else if gc.elipsis {
+    else if gc.showskip {
         let count = proc_count(procs, pid) - 1;
         if count > 0 {
             tbl.skiprow(&[&"  ".repeat(depth + 1), &gc.skip, &"(skip ", &count, &" below)"]);

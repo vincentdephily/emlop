@@ -124,7 +124,7 @@ fn log() {
                2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
                (skip last 7)              \n"),
              // Skip silently
-             ("%F10000.log l client -oc --first 4 --last 2 --elipsis=n",
+             ("%F10000.log l client -oc --first 4 --last 2 --showskip=n",
               "2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
                2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n")];
     for (a, o) in t {

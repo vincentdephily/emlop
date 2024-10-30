@@ -3,8 +3,9 @@
 ## New features
 
 * `predict` now displays emerge proces tree instead of just top proces
-  - Bevahior configurable with `--pdepth`, `--pwidth`, `--elipsis`
+  - Bevahvior configurable with `--pdepth`, `--pwidth`
   - Format is a bit nicer and more colorful
+* Display a placeholder for skipped rows, configurable with `--showskip`
 
 ## Bug fixes
 

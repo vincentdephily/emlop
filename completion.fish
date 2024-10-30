@@ -3,7 +3,7 @@ complete -c emlop -f
 complete -c emlop -s f -l from -d 'Only parse log entries after <date>' -x -a "{1y	'One year ago',1m	'One month ago',1w	'One week ago',1d	'One day ago',1h	'One hour ago',(date -Is)	'Exact date'}"
 complete -c emlop -s t -l to -d 'Only parse log entries before <date>' -x -a "{1y	'One year ago',1m	'One month ago',1w	'One week ago',1d	'One day ago',1h	'One hour ago',(date -Is)	'Exact date'}"
 complete -c emlop -s H -l header -d 'Show table header' -f -a "yes no"
-complete -c emlop -l elipsis -d 'Show skipped rows' -f -a "yes no"
+complete -c emlop -l showskip -d 'Show skipped rows' -f -a "yes no"
 complete -c emlop -l duration -d 'Output durations in different formats' -x -a "hms hmsfixed human secs"
 complete -c emlop -l date -d 'Output dates in different formats' -x -a "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix"
 complete -c emlop -l utc -d 'Parse/display dates in UTC instead of local time' -f -a "yes no"
