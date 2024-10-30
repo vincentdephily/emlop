@@ -323,11 +323,9 @@ fn proc_rows(now: i64,
     }
     // ...or print skipped rows
     else if gc.elipsis {
-        let children = proc_count(procs, pid) - 1;
-        if children > 0 {
-            tbl.row([&[&"  ".repeat(depth + 1), &gc.skip, &"(", &children, &" skipped)"],
-                     &[],
-                     &[]]);
+        let count = proc_count(procs, pid) - 1;
+        if count > 0 {
+            tbl.skiprow(&[&"  ".repeat(depth + 1), &gc.skip, &"(skip ", &count, &" below)"]);
         }
     }
 }
@@ -610,14 +608,14 @@ mod tests {
                             (ProcKind::Other, "a.a.b.a", 8, 5),
                             (ProcKind::Other, "a.a.b.a.a", 9, 8),
                             (ProcKind::Other, "a.a.b.b", 10, 5)]);
-        let out = r#"1 a                9
-  2 a.a            8
-    4 a.a.a        6
-      (1 skipped)   
-    5 a.a.b        5
-      (3 skipped)   
-  3 a.b            7
-    6 a.b.a        4
+        let out = r#"1 a                   9
+  2 a.a               8
+    4 a.a.a           6
+      (skip 1 below)   
+    5 a.a.b           5
+      (skip 3 below)   
+  3 a.b               7
+    6 a.b.a           4
 "#;
         proc_rows(10, &mut tbl, &procs, 1, 0, &gc, &sc);
         assert_eq!(tbl.to_string(), out);

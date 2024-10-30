@@ -113,6 +113,17 @@ impl<'a, const N: usize> Table<'a, N> {
         }
     }
 
+    /// Add one skip row
+    ///
+    /// Like row(), but only one cell and doesn't count toward skipped rows
+    pub fn skiprow(&mut self, row: &[&dyn Disp]) {
+        let mut idxrow = [(0, 0, 0); N];
+        let start = self.buf.len();
+        let len = row.iter().map(|c| c.out(&mut self.buf, self.conf)).sum();
+        idxrow[0] = (len, start, self.buf.len());
+        self.rows.push_back(idxrow);
+    }
+
     fn flush(&self, mut out: impl std::io::Write) {
         if self.is_empty() {
             return;
@@ -128,7 +139,7 @@ impl<'a, const N: usize> Table<'a, N> {
         // Show skip row. Note that it doesn't participate to column alignment.
         if self.conf.elipsis && self.skip > 0 {
             writeln!(out,
-                     "{}(skipping {} due to --last){}",
+                     "{}(skip first {}){}",
                      self.conf.skip.val, self.skip, self.conf.clr.val).unwrap_or(());
         }
         // Show remaining rows
@@ -234,14 +245,14 @@ mod test {
         for i in 0..10 {
             t.row([&[&format!("{i}")]]);
         }
-        assert_eq!(t.to_string(), "(skipping 5 due to --last)\n5\n6\n7\n8\n9\n");
+        assert_eq!(t.to_string(), "(skip first 5)\n5\n6\n7\n8\n9\n");
 
         // 5 max ignoring header
         let mut t = Table::new(&conf).last(5).header(["h"]);
         for i in 0..10 {
             t.row([&[&format!("{i}")]]);
         }
-        assert_eq!(t.to_string(), "h\n(skipping 5 due to --last)\n5\n6\n7\n8\n9\n");
+        assert_eq!(t.to_string(), "h\n(skip first 5)\n5\n6\n7\n8\n9\n");
     }
 
     #[test]
