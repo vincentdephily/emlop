@@ -24,9 +24,11 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
             Hist::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = merges.remove(key).unwrap_or(ts + 1);
-                tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
-                         &[&FmtDur(ts - started)],
-                         &[&gc.merge, &p.ebuild_version()]]);
+                if found <= sc.first {
+                    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                             &[&FmtDur(ts - started)],
+                             &[&gc.merge, &p.ebuild_version()]]);
+                }
             },
             Hist::UnmergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if an unmerge started but never finished
@@ -35,28 +37,32 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
             Hist::UnmergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
-                tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
-                         &[&FmtDur(ts - started)],
-                         &[&gc.unmerge, &p.ebuild_version()]]);
+                if found <= sc.first {
+                    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                             &[&FmtDur(ts - started)],
+                             &[&gc.unmerge, &p.ebuild_version()]]);
+                }
             },
             Hist::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
                 sync_start = Some(ts);
             },
             Hist::SyncStop { ts, repo } => {
-                if let Some(started) = sync_start.take() {
-                    found += 1;
+                found += 1;
+                let started = sync_start.take().unwrap_or(ts + 1);
+                if found <= sc.first {
                     tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
                              &[&FmtDur(ts - started)],
                              &[&gc.clr, &"Sync ", &repo]]);
-                } else {
-                    warn!("Sync stop without a start at {ts}");
                 }
             },
         }
-        if found >= sc.first {
+        if !gc.elipsis && found >= sc.first {
             break;
         }
+    }
+    if gc.elipsis && found >= sc.first {
+        tbl.skiprow(&[&gc.skip, &"(skip last ", &(found - sc.first), &")"]);
     }
     Ok(found > 0)
 }

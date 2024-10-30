@@ -106,7 +106,27 @@ fn log() {
                2018-03-07 12:49:13  1:01 >>> sys-apps/util-linux-2.30.2-r1\n\
                2018-03-07 13:56:09    40 Sync gentoo\n\
                2018-03-07 13:59:38     2 <<< dev-libs/nspr-4.17\n\
-               2018-03-07 13:59:41    24 >>> dev-libs/nspr-4.18\n")];
+               2018-03-07 13:59:41    24 >>> dev-libs/nspr-4.18\n"),
+             // skip first
+             ("%F10000.log l client -oc --first 2",
+              "2018-02-04 04:55:19  35:46 >>> mail-client/thunderbird-52.6.0\n\
+               2018-02-04 05:42:48  47:29 >>> www-client/firefox-58.0.1\n\
+               (skip last 9)              \n"),
+             // skip first
+             ("%F10000.log l client -oc --last 2",
+              "(skip first 9)\n\
+               2018-03-12 10:35:22  14 >>> x11-apps/xlsclients-1.1.4\n\
+               2018-03-12 11:03:53  16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
+             // Skip first and last
+             ("%F10000.log l client -oc --first 4 --last 2",
+              "(skip first 2)\n\
+               2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
+               2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
+               (skip last 7)              \n"),
+             // Skip silently
+             ("%F10000.log l client -oc --first 4 --last 2 --elipsis=n",
+              "2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
+               2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n")];
     for (a, o) in t {
         emlop(a).assert().stdout(o);
     }
