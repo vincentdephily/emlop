@@ -121,8 +121,8 @@ pub fn build_cli() -> Command {
                                .help_heading("Filter")
                                .help("Show only the last <num> entries")
                                .long_help("Show only the last <num> entries\n  \
-                                             (empty)|1: last entry\n  \
-                                             5:         last 5 entries\n");
+                                           (empty)|1: last entry\n  \
+                                           5:         last 5 entries\n");
     let h = "Use main, backup, either, or no portage resume list\n\
              This is ignored if STDIN is a piped `emerge -p` output\n  \
              (default)|auto|a: Use main or backup resume list, if currently emerging\n  \

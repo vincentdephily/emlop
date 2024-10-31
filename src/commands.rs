@@ -444,6 +444,11 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
             }
         }
     }
+    let lastskip = totcount.saturating_sub(sc.first);
+    if sc.show.merge && gc.showskip && lastskip > 0 {
+        tbl.skiprow(&[&gc.skip, &"(skip last ", &lastskip, &")"]);
+    }
+    // Print summary line
     if totcount > 0 {
         if sc.show.tot {
             let mut s: Vec<&dyn Disp> = vec![&"Estimate for ",
@@ -453,10 +458,6 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
                                              if totcount > 1 { &" ebuilds" } else { &" ebuild" }];
             if totunknown > 0 {
                 s.extend::<[&dyn Disp; 5]>([&", ", &gc.cnt, &totunknown, &gc.clr, &" unknown"]);
-            }
-            let tothidden = totcount.saturating_sub(sc.first.min(last - 1));
-            if tothidden > 0 {
-                s.extend::<[&dyn Disp; 5]>([&", ", &gc.cnt, &tothidden, &gc.clr, &" hidden"]);
             }
             let e = FmtDur(totelapsed);
             if totelapsed > 0 {
