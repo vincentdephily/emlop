@@ -1,3 +1,18 @@
+# unreleased
+
+## New features
+
+* `predict` now displays emerge proces tree instead of just top proces
+  - Bevahvior configurable with `--pdepth`, `--pwidth`
+  - Format is a bit nicer and more colorful
+* Display a placeholder for skipped rows, configurable with `--showskip`
+
+## Bug fixes
+
+* Don't display child emerge processes as root ones
+* Fix off by one upper bound for some cli args
+* Allow alignment of wider columns
+
 # 0.7.1 2024-09-30
 
 Maintenance release.

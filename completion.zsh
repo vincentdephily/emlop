@@ -11,6 +11,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
@@ -47,6 +48,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
@@ -81,12 +83,15 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '-o+[Ouput format (columns/tab/auto)]:format: ' \
 '--output=[Ouput format (columns/tab/auto)]:format: ' \
+'--pwidth=[Maximum width of emerge proces comandline]'
+'--pdepth=[Maximum depth of emerge proces tree]'
 '-F+[Location of emerge log file]:file: ' \
 '--logfile=[Location of emerge log file]:file: ' \
 '*-v[Increase verbosity (can be given multiple times)]' \
@@ -107,6 +112,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
@@ -136,6 +142,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \

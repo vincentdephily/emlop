@@ -106,7 +106,27 @@ fn log() {
                2018-03-07 12:49:13  1:01 >>> sys-apps/util-linux-2.30.2-r1\n\
                2018-03-07 13:56:09    40 Sync gentoo\n\
                2018-03-07 13:59:38     2 <<< dev-libs/nspr-4.17\n\
-               2018-03-07 13:59:41    24 >>> dev-libs/nspr-4.18\n")];
+               2018-03-07 13:59:41    24 >>> dev-libs/nspr-4.18\n"),
+             // skip first
+             ("%F10000.log l client -oc --first 2",
+              "2018-02-04 04:55:19  35:46 >>> mail-client/thunderbird-52.6.0\n\
+               2018-02-04 05:42:48  47:29 >>> www-client/firefox-58.0.1\n\
+               (skip last 9)              \n"),
+             // skip first
+             ("%F10000.log l client -oc --last 2",
+              "(skip first 9)\n\
+               2018-03-12 10:35:22  14 >>> x11-apps/xlsclients-1.1.4\n\
+               2018-03-12 11:03:53  16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
+             // Skip first and last
+             ("%F10000.log l client -oc --first 4 --last 2",
+              "(skip first 2)\n\
+               2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
+               2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
+               (skip last 7)              \n"),
+             // Skip silently
+             ("%F10000.log l client -oc --first 4 --last 2 --showskip=n",
+              "2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
+               2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n")];
     for (a, o) in t {
         emlop(a).assert().stdout(o);
     }
@@ -191,26 +211,55 @@ fn predict_tty() {
 #[ignore]
 #[test]
 fn predict_emerge_p() {
-    let t = [// Check garbage input
-             ("blah blah\n", format!("No pretended merge found\n"), 1),
-             // Check all-unknowns
-             ("[ebuild   R   ~] dev-lang/unknown-1.42\n",
-              format!("dev-lang/unknown-1.42              ? \n\
-                       Estimate for 1 ebuild, 1 unknown  10 @ {}\n",
-                      ts(10)),
-              0),
-             // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
-             ("[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
+    let t =
+        [// Check garbage input
+         ("%F10000.log p --date unix -oc",
+          "blah blah\n",
+          format!("No pretended merge found\n"),
+          1),
+         // Check all-unknowns
+         ("%F10000.log p --date unix -oc",
+          "[ebuild   R   ~] dev-lang/unknown-1.42\n",
+          format!("dev-lang/unknown-1.42              ? \n\
+                   Estimate for 1 ebuild, 1 unknown  10 @ {}\n",
+                  ts(10)),
+          0),
+         // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
+         ("%F10000.log p --date unix -oc",
+          "[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
                [ebuild   R   ~] dev-lang/unknown-1.42\n\
                [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
-              format!("dev-qt/qtcore-5.9.4-r2             3:45 \n\
-                       dev-lang/unknown-1.42                 ? \n\
-                       dev-qt/qtgui-5.9.4-r3              4:24 \n\
-                       Estimate for 3 ebuilds, 1 unknown  8:19 @ {}\n",
-                      ts(8 * 60 + 9 + 10)),
-              0)];
-    for (i, o, e) in t {
-        emlop("%F10000.log p --date unix -oc").write_stdin(i).assert().code(e).stdout(o);
+          format!("dev-qt/qtcore-5.9.4-r2             3:45 \n\
+                   dev-lang/unknown-1.42                 ? \n\
+                   dev-qt/qtgui-5.9.4-r3              4:24 \n\
+                   Estimate for 3 ebuilds, 1 unknown  8:19 @ {}\n",
+                  ts(8 * 60 + 9 + 10)),
+          0),
+         // Check skip rows
+         ("%F10000.log p --date unix -oc --show m --first 2",
+          "[ebuild   R   ~] dev-qt/qtcore-1\n\
+           [ebuild   R   ~] dev-qt/qtcore-2\n\
+           [ebuild   R   ~] dev-qt/qtcore-3\n\
+           [ebuild   R   ~] dev-qt/qtcore-4\n\
+           [ebuild   R   ~] dev-qt/qtcore-5\n",
+          "dev-qt/qtcore-1  3:45\n\
+           dev-qt/qtcore-2  3:45\n\
+           (skip last 3)        \n"
+                                   .into(),
+          0),
+         ("%F10000.log p --date unix -oc --show m --first 2 --last 1",
+          "[ebuild   R   ~] dev-qt/qtcore-1\n\
+           [ebuild   R   ~] dev-qt/qtcore-2\n\
+           [ebuild   R   ~] dev-qt/qtcore-3\n\
+           [ebuild   R   ~] dev-qt/qtcore-4\n\
+           [ebuild   R   ~] dev-qt/qtcore-5\n",
+          "(skip first 1)\n\
+           dev-qt/qtcore-2  3:45\n\
+           (skip last 3)        \n"
+                                   .into(),
+          0)];
+    for (a, i, o, e) in t {
+        emlop(a).write_stdin(i).assert().code(e).stdout(o);
     }
 }
 

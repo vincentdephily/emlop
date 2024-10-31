@@ -14,6 +14,8 @@ pub struct TomlPred {
     pub limit: Option<i64>,
     pub unknown: Option<i64>,
     pub tmpdir: Option<Vec<PathBuf>>,
+    pub pwidth: Option<i64>,
+    pub pdepth: Option<i64>,
 }
 #[derive(Deserialize, Debug)]
 pub struct TomlStats {
@@ -34,6 +36,7 @@ pub struct Toml {
     pub date: Option<String>,
     pub duration: Option<String>,
     pub header: Option<bool>,
+    pub showskip: Option<bool>,
     pub utc: Option<bool>,
     pub color: Option<String>,
     pub output: Option<String>,

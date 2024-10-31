@@ -1,18 +1,20 @@
 use crate::{datetime::*, parse::*, table::*, *};
+use libc::pid_t;
 use std::{collections::{BTreeMap, HashMap, HashSet},
           io::{stdin, IsTerminal}};
 
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_log(gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
+pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
     let mut sync_start: Option<i64> = None;
-    let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(sc.last);
-    tbl.header(["Date", "Duration", "Package/Repo"]);
+    let h = ["Date", "Duration", "Package/Repo"];
+    let mut tbl =
+        Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last).header(h);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -22,9 +24,11 @@ pub fn cmd_log(gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
             Hist::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = merges.remove(key).unwrap_or(ts + 1);
-                tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
-                         &[&FmtDur(ts - started)],
-                         &[&gc.merge, &p.ebuild_version()]]);
+                if found <= sc.first {
+                    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                             &[&FmtDur(ts - started)],
+                             &[&gc.merge, &p.ebuild_version()]]);
+                }
             },
             Hist::UnmergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if an unmerge started but never finished
@@ -33,28 +37,32 @@ pub fn cmd_log(gc: &Conf, sc: &ConfLog) -> Result<bool, Error> {
             Hist::UnmergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
-                tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
-                         &[&FmtDur(ts - started)],
-                         &[&gc.unmerge, &p.ebuild_version()]]);
+                if found <= sc.first {
+                    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                             &[&FmtDur(ts - started)],
+                             &[&gc.unmerge, &p.ebuild_version()]]);
+                }
             },
             Hist::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
                 sync_start = Some(ts);
             },
             Hist::SyncStop { ts, repo } => {
-                if let Some(started) = sync_start.take() {
-                    found += 1;
+                found += 1;
+                let started = sync_start.take().unwrap_or(ts + 1);
+                if found <= sc.first {
                     tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
                              &[&FmtDur(ts - started)],
                              &[&gc.clr, &"Sync ", &repo]]);
-                } else {
-                    warn!("Sync stop without a start at {ts}");
                 }
             },
         }
-        if found >= sc.first {
+        if !gc.showskip && found >= sc.first {
             break;
         }
+    }
+    if gc.showskip && found >= sc.first {
+        tbl.skiprow(&[&gc.skip, &"(skip last ", &(found - sc.first), &")"]);
     }
     Ok(found > 0)
 }
@@ -133,27 +141,27 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
+pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let mut tbls = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
-    tbls.header([sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"]);
-    let mut tblp = Table::new(gc).align_left(0).align_left(1).margin(1, " ");
-    tblp.header([sc.group.name(),
-                 "Package",
-                 "Merges",
-                 "Total time",
-                 "Predict time",
-                 "Unmerges",
-                 "Total time",
-                 "Predict time"]);
-    let mut tblt = Table::new(gc).align_left(0).margin(1, " ");
-    tblt.header([sc.group.name(),
-                 "Merges",
-                 "Total time",
-                 "Average time",
-                 "Unmerges",
-                 "Total time",
-                 "Average time"]);
+    let h = [sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"];
+    let mut tbls = Table::new(&gc).align_left(0).align_left(1).margin(1, " ").header(h);
+    let h = [sc.group.name(),
+             "Package",
+             "Merges",
+             "Total time",
+             "Predict time",
+             "Unmerges",
+             "Total time",
+             "Predict time"];
+    let mut tblp = Table::new(&gc).align_left(0).align_left(1).margin(1, " ").header(h);
+    let h = [sc.group.name(),
+             "Merges",
+             "Total time",
+             "Average time",
+             "Unmerges",
+             "Total time",
+             "Average time"];
+    let mut tblt = Table::new(&gc).align_left(0).margin(1, " ").header(h);
     let mut merge_start: HashMap<String, i64> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
@@ -169,7 +177,7 @@ pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
                 curts = t;
             } else if t > nextts {
                 let group = sc.group.at(curts, gc.date_offset);
-                cmd_stats_group(gc, sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time,
+                cmd_stats_group(&gc, &sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time,
                                 &pkg_time);
                 sync_time.clear();
                 pkg_time.clear();
@@ -213,7 +221,7 @@ pub fn cmd_stats(gc: &Conf, sc: &ConfStats) -> Result<bool, Error> {
         }
     }
     let group = sc.group.at(curts, gc.date_offset);
-    cmd_stats_group(gc, sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time, &pkg_time);
+    cmd_stats_group(&gc, &sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time, &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
     let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
     drop(tbls);
@@ -283,19 +291,63 @@ fn cmd_stats_group(gc: &Conf,
     }
 }
 
+/// Count processes in tree, including given proces
+fn proc_count(procs: &ProcList, pid: pid_t) -> usize {
+    let mut count = 1;
+    for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
+        count += proc_count(procs, *child);
+    }
+    count
+}
+
+/// Display proces tree
+fn proc_rows(now: i64,
+             tbl: &mut Table<3>,
+             procs: &ProcList,
+             pid: pid_t,
+             depth: usize,
+             gc: &Conf,
+             sc: &ConfPred) {
+    // This should always succeed because we're getting pid from procs, but to allow experiments we
+    // warn instead of panic/ignore.
+    let proc = match procs.get(&pid) {
+        Some(p) => p,
+        None => {
+            error!("Could not find proces {pid}");
+            return;
+        },
+    };
+    // Print current level
+    if depth < sc.pdepth {
+        tbl.row([&[&FmtProc(proc, depth, sc.pwidth)], &[&FmtDur(now - proc.start)], &[]]);
+    }
+    // Either recurse with children...
+    if depth + 1 < sc.pdepth {
+        for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
+            proc_rows(now, tbl, procs, *child, depth + 1, gc, sc);
+        }
+    }
+    // ...or print skipped rows
+    else if gc.showskip {
+        let count = proc_count(procs, pid) - 1;
+        if count > 0 {
+            tbl.skiprow(&[&"  ".repeat(depth + 1), &gc.skip, &"(skip ", &count, &" below)"]);
+        }
+    }
+}
+
 /// Predict future merge time
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
-pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
+pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     let now = epoch_now();
     let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
-    let mut tbl = Table::new(gc).align_left(0).align_left(2).margin(2, " ").last(last);
-    // TODO: should be able to extend inside sc
-    let mut tmpdirs = sc.tmpdirs.clone();
+    let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(last);
 
     // Gather and print info about current merge process.
-    let einfo = get_emerge(&mut tmpdirs);
-    if einfo.cmds.is_empty()
+    let procs = get_all_proc(&mut sc.tmpdirs);
+    let einfo = get_emerge(&procs);
+    if einfo.roots.is_empty()
        && std::io::stdin().is_terminal()
        && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
     {
@@ -303,8 +355,8 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
         return Ok(false);
     }
     if sc.show.emerge {
-        for proc in &einfo.cmds {
-            tbl.row([&[&proc], &[&FmtDur(now - proc.start)], &[]]);
+        for p in einfo.roots {
+            proc_rows(now, &mut tbl, &procs, p, 0, &gc, &sc);
         }
     }
 
@@ -383,7 +435,7 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
         // Done
         if sc.show.merge && totcount <= sc.first {
             if elapsed > 0 {
-                let stage = get_buildlog(&p, &tmpdirs).unwrap_or_default();
+                let stage = get_buildlog(&p, &sc.tmpdirs).unwrap_or_default();
                 tbl.row([&[&gc.pkg, &p.ebuild_version()],
                          &[&FmtDur(fmtpred)],
                          &[&gc.clr, &"- ", &FmtDur(elapsed), &gc.clr, &stage]]);
@@ -392,6 +444,11 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
             }
         }
     }
+    let lastskip = totcount.saturating_sub(sc.first);
+    if sc.show.merge && gc.showskip && lastskip > 0 {
+        tbl.skiprow(&[&gc.skip, &"(skip last ", &lastskip, &")"]);
+    }
+    // Print summary line
     if totcount > 0 {
         if sc.show.tot {
             let mut s: Vec<&dyn Disp> = vec![&"Estimate for ",
@@ -401,10 +458,6 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
                                              if totcount > 1 { &" ebuilds" } else { &" ebuild" }];
             if totunknown > 0 {
                 s.extend::<[&dyn Disp; 5]>([&", ", &gc.cnt, &totunknown, &gc.clr, &" unknown"]);
-            }
-            let tothidden = totcount.saturating_sub(sc.first.min(last - 1));
-            if tothidden > 0 {
-                s.extend::<[&dyn Disp; 5]>([&", ", &gc.cnt, &tothidden, &gc.clr, &" hidden"]);
             }
             let e = FmtDur(totelapsed);
             if totelapsed > 0 {
@@ -420,14 +473,14 @@ pub fn cmd_predict(gc: &Conf, sc: &ConfPred) -> Result<bool, Error> {
     Ok(totcount > 0)
 }
 
-pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
+pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &sc.search, sc.exact)?;
     let mut pkg_starts: HashMap<String, i64> = HashMap::new();
     let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let mut tbl = Table::new(gc).align_left(0).align_left(1).last(sc.last);
-    tbl.header(["Date", "Package", "Real", "Predicted", "Error"]);
+    let h = ["Date", "Package", "Real", "Predicted", "Error"];
+    let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last).header(h);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
@@ -470,8 +523,7 @@ pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
     }
     drop(tbl);
     if sc.show.tot {
-        let mut tbl = Table::new(gc).align_left(0);
-        tbl.header(["Package", "Error"]);
+        let mut tbl = Table::new(&gc).align_left(0).header(["Package", "Error"]);
         for (p, e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
             tbl.row([&[&gc.pkg, &p], &[&gc.cnt, &format!("{avg:.1}%")]]);
@@ -480,7 +532,7 @@ pub fn cmd_accuracy(gc: &Conf, sc: &ConfAccuracy) -> Result<bool, Error> {
     Ok(found)
 }
 
-pub fn cmd_complete(gc: &Conf, sc: &ConfComplete) -> Result<bool, Error> {
+pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
     // Generate standard clap completions
     #[cfg(feature = "clap_complete")]
     if let Some(s) = &sc.shell {
@@ -508,9 +560,11 @@ pub fn cmd_complete(gc: &Conf, sc: &ConfComplete) -> Result<bool, Error> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::parse::procs;
+
     #[test]
     fn averages() {
-        use super::Times;
         use crate::Average::*;
         for (a, m, wa, wm, lim, vals) in
             [(-1, -1, -1, -1, 10, vec![]),
@@ -530,5 +584,47 @@ mod tests {
             assert_eq!(wa, t.pred(lim, WeightedArith), "weighted arith {lim} {vals:?}");
             assert_eq!(wm, t.pred(lim, WeightedMedian), "weighted median {lim} {vals:?}");
         }
+    }
+
+    /// Shows the whole system's processes.
+    /// Mainly useful as an interactive test, use `cargo test -- --nocapture procs_pid1`.
+    #[test]
+    fn procs_pid1() {
+        let (gc, mut sc) = ConfPred::from_str("emlop p --pdepth 4");
+        let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
+        let now = epoch_now();
+        let procs = get_all_proc(&mut sc.tmpdirs);
+        proc_rows(now, &mut tbl, &procs, 1, 0, &gc, &sc);
+        println!("{}", tbl.to_string());
+    }
+
+    /// Check indentation and skipping
+    #[test]
+    fn procs_hierarchy() {
+        let (gc, sc) = ConfPred::from_str("emlop p --pdepth 3 --color=n --output=c");
+        let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
+        let procs = procs(&[(ProcKind::Other, "a", 1, 0),
+                            (ProcKind::Other, "a.a", 2, 1),
+                            (ProcKind::Other, "a.b", 3, 1),
+                            (ProcKind::Other, "a.a.a", 4, 2),
+                            (ProcKind::Other, "a.a.b", 5, 2),
+                            (ProcKind::Other, "a.b.a", 6, 3),
+                            // basic skip
+                            (ProcKind::Other, "a.a.a.a", 7, 4),
+                            // nested/sibling skip
+                            (ProcKind::Other, "a.a.b.a", 8, 5),
+                            (ProcKind::Other, "a.a.b.a.a", 9, 8),
+                            (ProcKind::Other, "a.a.b.b", 10, 5)]);
+        let out = r#"1 a                   9
+  2 a.a               8
+    4 a.a.a           6
+      (skip 1 below)   
+    5 a.a.b           5
+      (skip 3 below)   
+  3 a.b               7
+    6 a.b.a           4
+"#;
+        proc_rows(10, &mut tbl, &procs, 1, 0, &gc, &sc);
+        assert_eq!(tbl.to_string(), out);
     }
 }

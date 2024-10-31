@@ -1,4 +1,4 @@
-use std::{ops::Range, str::FromStr};
+use std::{ops::RangeInclusive, str::FromStr};
 
 /// Parsing trait for args
 ///
@@ -26,18 +26,20 @@ impl ArgParse<String, ()> for bool {
         }
     }
 }
-impl ArgParse<String, Range<i64>> for i64 {
-    fn parse(s: &String, r: Range<i64>, src: &'static str) -> Result<Self, ArgError> {
+impl ArgParse<String, RangeInclusive<i64>> for i64 {
+    fn parse(s: &String, r: RangeInclusive<i64>, src: &'static str) -> Result<Self, ArgError> {
         let i = i64::from_str(s).map_err(|_| ArgError::new(s, src).msg("Not an integer"))?;
         Self::parse(&i, r, src)
     }
 }
-impl ArgParse<i64, Range<i64>> for i64 {
-    fn parse(i: &i64, r: Range<i64>, src: &'static str) -> Result<Self, ArgError> {
+impl ArgParse<i64, RangeInclusive<i64>> for i64 {
+    fn parse(i: &i64, r: RangeInclusive<i64>, src: &'static str) -> Result<Self, ArgError> {
         if r.contains(i) {
             Ok(*i)
         } else {
-            Err(ArgError::new(i, src).msg(format!("Should be between {} and {}", r.start, r.end)))
+            Err(ArgError::new(i, src).msg(format!("Should be between {} and {}",
+                                                  r.start(),
+                                                  r.end())))
         }
     }
 }

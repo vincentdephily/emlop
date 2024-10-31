@@ -121,8 +121,8 @@ pub fn build_cli() -> Command {
                                .help_heading("Filter")
                                .help("Show only the last <num> entries")
                                .long_help("Show only the last <num> entries\n  \
-                                             (empty)|1: last entry\n  \
-                                             5:         last 5 entries\n");
+                                           (empty)|1: last entry\n  \
+                                           5:         last 5 entries\n");
     let h = "Use main, backup, either, or no portage resume list\n\
              This is ignored if STDIN is a piped `emerge -p` output\n  \
              (default)|auto|a: Use main or backup resume list, if currently emerging\n  \
@@ -160,17 +160,17 @@ pub fn build_cli() -> Command {
                                  .display_order(11)
                                  .help_heading("Stats")
                                  .help("Use the last <num> merge times to predict durations");
-    let avg =
-        Arg::new("avg").long("avg")
-                       .value_name("fn")
-                       .display_order(12)
-                       .help_heading("Stats")
-                       .help("Select function used to predict durations")
-                       .long_help("Select function used to predict durations\n  \
-                                   arith|a:            simple 'sum/count' average\n  \
-                                   (defaut)|median|m:  middle value, mitigates outliers\n  \
-                                   weighted-arith|wa:  'sum/count' with more weight for recent values\n  \
-                                   weighted-median|wm: \"middle\" value shifted toward recent values");
+    let h = "Select function used to predict durations\n  \
+             arith|a:            simple 'sum/count' average\n  \
+             (defaut)|median|m:  middle value, mitigates outliers\n  \
+             weighted-arith|wa:  'sum/count' with more weight for recent values\n  \
+             weighted-median|wm: \"middle\" value shifted toward recent values";
+    let avg = Arg::new("avg").long("avg")
+                             .value_name("fn")
+                             .display_order(12)
+                             .help_heading("Stats")
+                             .help(h.split_once('\n').unwrap().0)
+                             .long_help(h);
     let unknown = Arg::new("unknown").long("unknown")
                                      .num_args(1)
                                      .value_name("secs")
@@ -201,21 +201,21 @@ pub fn build_cli() -> Command {
                                                    hmsfixed:      0:10:30\n  \
                                                    secs|s:        630\n  \
                                                    human|h:       10 minutes, 30 seconds");
-    let date =
-        Arg::new("date").long("date")
-                        .value_name("format")
-                        .global(true)
-                        .display_order(22)
-                        .help_heading("Format")
-                        .help("Output dates in different formats")
-                        .long_help("Output dates in different formats\n  \
-                                    ymd|d:               2022-01-31\n  \
-                                    (default)|ymdhms|dt: 2022-01-31 08:59:46\n  \
-                                    ymdhmso|dto:         2022-01-31 08:59:46 +00:00\n  \
-                                    rfc3339|3339:        2022-01-31T08:59:46+00:00\n  \
-                                    rfc2822|2822:        Mon, 31 Jan 2022 08:59:46 +00:00\n  \
-                                    compact:             20220131085946\n  \
-                                    unix:                1643619586");
+    let h = "Output dates in different formats\n  \
+             ymd|d:               2022-01-31\n  \
+             (default)|ymdhms|dt: 2022-01-31 08:59:46\n  \
+             ymdhmso|dto:         2022-01-31 08:59:46 +00:00\n  \
+             rfc3339|3339:        2022-01-31T08:59:46+00:00\n  \
+             rfc2822|2822:        Mon, 31 Jan 2022 08:59:46 +00:00\n  \
+             compact:             20220131085946\n  \
+             unix:                1643619586";
+    let date = Arg::new("date").long("date")
+                               .value_name("format")
+                               .global(true)
+                               .display_order(22)
+                               .help_heading("Format")
+                               .help(h.split_once('\n').unwrap().0)
+                               .long_help(h);
     let utc = Arg::new("utc").long("utc")
                              .value_name("bool")
                              .global(true)
@@ -231,12 +231,24 @@ pub fn build_cli() -> Command {
                                          .display_order(24)
                                          .help_heading("Format")
                                          .help("Display start time instead of end time");
+    let pwidth = Arg::new("pwidth").long("pwidth")
+                                   .value_name("num")
+                                   .num_args(1)
+                                   .display_order(25)
+                                   .help_heading("Format")
+                                   .help("Maximum width of emerge proces commandline (default 60)");
+    let pdepth = Arg::new("pdepth").long("pdepth")
+                                   .value_name("num")
+                                   .num_args(1)
+                                   .display_order(26)
+                                   .help_heading("Format")
+                                   .help("Maximum depth of emerge proces tree (default 3)");
     let color = Arg::new("color").long("color")
                                  .value_name("bool")
                                  .global(true)
                                  .num_args(..=1)
                                  .default_missing_value("y")
-                                 .display_order(25)
+                                 .display_order(27)
                                  .help_heading("Format")
                                  .help("Enable color (yes/no/auto)")
                                  .long_help("Enable color (yes/no/auto)\n  \
@@ -247,13 +259,25 @@ pub fn build_cli() -> Command {
                                    .long("output")
                                    .value_name("format")
                                    .global(true)
-                                   .display_order(26)
+                                   .display_order(28)
                                    .help_heading("Format")
                                    .help("Ouput format (columns/tab/auto)")
                                    .long_help("Ouput format (columns/tab/auto)\n  \
                                                (default)|auto|a: columns on tty, tab otherwise\n  \
                                                columns|c:        space-aligned columns\n  \
                                                tab|t:            tab-separated values");
+    let h = "Show placeholder for skipped rows (yes/no)\n  \
+             (empty)|yes|y: Show 'skip <num>' placeholder\n  \
+             no|n:          Skip rows silently";
+    let showskip = Arg::new("showskip").long("showskip")
+                                       .value_name("bool")
+                                       .global(true)
+                                       .num_args(..=1)
+                                       .default_missing_value("y")
+                                       .display_order(29)
+                                       .help_heading("Format")
+                                       .help(h.split_once('\n').unwrap().0)
+                                       .long_help(h);
 
     ////////////////////////////////////////////////////////////
     // Misc arguments
@@ -324,6 +348,8 @@ pub fn build_cli() -> Command {
                                           .arg(tmpdir)
                                           .arg(resume)
                                           .arg(unknown)
+                                          .arg(pwidth)
+                                          .arg(pdepth)
                                           .arg(&avg)
                                           .arg(&limit);
     let h = "Show statistics about syncs, per-package (un)merges, and total (un)merges\n\
@@ -392,6 +418,7 @@ pub fn build_cli() -> Command {
                          .arg(output)
                          .arg(logfile)
                          .arg(verbose)
+                         .arg(showskip)
                          .subcommand(cmd_log)
                          .subcommand(cmd_pred)
                          .subcommand(cmd_stats)

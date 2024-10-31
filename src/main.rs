@@ -13,11 +13,11 @@ use std::str::FromStr;
 
 fn main() {
     let res = match Configs::load() {
-        Ok(Configs::Log(gc, sc)) => commands::cmd_log(&gc, &sc),
-        Ok(Configs::Stats(gc, sc)) => commands::cmd_stats(&gc, &sc),
-        Ok(Configs::Predict(gc, sc)) => commands::cmd_predict(&gc, &sc),
-        Ok(Configs::Accuracy(gc, sc)) => commands::cmd_accuracy(&gc, &sc),
-        Ok(Configs::Complete(gc, sc)) => commands::cmd_complete(&gc, &sc),
+        Ok(Configs::Log(gc, sc)) => commands::cmd_log(gc, sc),
+        Ok(Configs::Stats(gc, sc)) => commands::cmd_stats(gc, sc),
+        Ok(Configs::Predict(gc, sc)) => commands::cmd_predict(gc, sc),
+        Ok(Configs::Accuracy(gc, sc)) => commands::cmd_accuracy(gc, sc),
+        Ok(Configs::Complete(gc, sc)) => commands::cmd_complete(gc, sc),
         Err(e) => Err(e),
     };
     match res {

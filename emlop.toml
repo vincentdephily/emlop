@@ -12,6 +12,7 @@
 # header = true
 # color = "yes"
 # output = "columns"
+# showskip = true
 [log]
 # show = "mus"
 # starttime = true
@@ -21,6 +22,8 @@
 # limit = 20
 # unknown = 300
 # tmpdir = ["/foo", "/bar"]
+# pwidth = 60
+# pdepth = 3
 [stats]
 # show = "pts"
 # avg = "arith"

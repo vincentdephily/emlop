@@ -1,8 +1,8 @@
 //! Handles parsing of current emerge state.
 
-use super::{proces::{get_all_info, Proc},
-            Ansi};
+use super::{Ansi, ProcKind, ProcList};
 use crate::ResumeKind;
+use libc::pid_t;
 use log::*;
 use regex::Regex;
 use serde::Deserialize;
@@ -136,7 +136,7 @@ fn read_buildlog(file: File, max: usize) -> String {
 #[derive(Debug)]
 pub struct EmergeInfo {
     pub start: i64,
-    pub cmds: Vec<Proc>,
+    pub roots: Vec<pid_t>,
     pub pkgs: Vec<Pkg>,
 }
 
@@ -148,21 +148,40 @@ pub struct EmergeInfo {
 ///   [app-portage/dummybuild-0.1.600] sandbox /usr/lib/portage/python3.11/ebuild.sh unpack
 ///   gives us the actually emerging ebuild and stage (depends on portage FEATURES=sandbox, which
 ///   should be the case for almost all users)
-pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
-    let mut res = EmergeInfo { start: i64::MAX, cmds: vec![], pkgs: vec![] };
-    let re_python = Regex::new("^[a-z/-]+python[0-9.]* [a-z/-]+python[0-9.]*/").unwrap();
-    for mut proc in get_all_info(&["emerge", "python"], tmpdirs) {
-        res.start = std::cmp::min(res.start, proc.start);
-        if proc.idx == 0 {
-            proc.cmdline = re_python.replace(&proc.cmdline, "").to_string();
-            res.cmds.push(proc);
-        } else if let Some(a) = proc.cmdline.find("sandbox [") {
-            if let Some(b) = proc.cmdline.find("] sandbox") {
-                if let Some(p) = Pkg::try_new(&proc.cmdline[(a + 9)..b]) {
-                    res.pkgs.push(p);
+pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
+    let mut res = EmergeInfo { start: i64::MAX, roots: vec![], pkgs: vec![] };
+    for (pid, proc) in procs {
+        match proc.kind {
+            ProcKind::Emerge => {
+                res.start = std::cmp::min(res.start, proc.start);
+                res.roots.push(*pid);
+            },
+            ProcKind::Python => {
+                if let Some(a) = proc.cmdline.find("sandbox [") {
+                    if let Some(b) = proc.cmdline.find("] sandbox") {
+                        if let Some(p) = Pkg::try_new(&proc.cmdline[(a + 9)..b]) {
+                            res.pkgs.push(p);
+                        }
+                    }
                 }
-            }
+            },
+            ProcKind::Other => (),
         }
+    }
+    // Remove roots that are (grand)children of another root
+    if res.roots.len() > 1 {
+        let origroots = res.roots.clone();
+        res.roots.retain(|&r| {
+                     let mut proc = procs.get(&r).expect("Root not in ProcList");
+                     while let Some(p) = procs.get(&proc.ppid) {
+                         if origroots.contains(&p.pid) {
+                             debug!("Skipping proces {}: grandchild of {}", r, p.pid);
+                             return false;
+                         }
+                         proc = p;
+                     }
+                     true
+                 });
     }
     trace!("{:?}", res);
     res
@@ -171,6 +190,7 @@ pub fn get_emerge(tmpdirs: &mut Vec<PathBuf>) -> EmergeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parse::procs;
 
     /// Check that `get_pretend()` has the expected output
     fn check_pretend(file: &str, expect: &[(&str, &str)]) {
@@ -242,5 +262,19 @@ mod tests {
             let f = File::open(&format!("tests/{file}")).expect(&format!("can't open {file:?}"));
             assert_eq!(format!(" ({res})"), read_buildlog(f, lim));
         }
+    }
+
+    /// Check that get_emerge() finds the expected roots
+    #[test]
+    fn get_emerge_roots() {
+        let _ = env_logger::try_init();
+        let procs = procs(&[(ProcKind::Emerge, "a", 1, 0),
+                            (ProcKind::Other, "a.a", 2, 1),
+                            (ProcKind::Emerge, "a.a.b", 3, 2),
+                            (ProcKind::Other, "b", 4, 0),
+                            (ProcKind::Emerge, "b.a", 5, 4),
+                            (ProcKind::Other, "b.a.a", 6, 5)]);
+        let einfo = get_emerge(&procs);
+        assert_eq!(einfo.roots, vec![1, 5]);
     }
 }
