@@ -30,17 +30,19 @@ pub fn build_cli() -> Command {
                                              virtual/rust: Matches only `virtual/rust`\n  \
                                              RuSt:         Matches nothing (case-sensitive)\n  \
                                              ru:           Matches nothing (whole name only)");
-    let show_l = Arg::new("show").short('s')
-                                 .long("show")
-                                 .value_name("m,u,s,a")
-                                 .display_order(3)
-                                 .help_heading("Filter")
-                                 .help("Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll")
-                                 .long_help("Show (any combination of)\n  \
-                                             m: Package merges\n  \
-                                             u: Package unmerges\n  \
-                                             s: Repository syncs\n  \
-                                             a: All of the above");
+    let show_l =
+        Arg::new("show").short('s')
+                        .long("show")
+                        .value_name("c,m,u,s,a")
+                        .display_order(3)
+                        .help_heading("Filter")
+                        .help("Show (c)commands, (m)erges, (u)nmerges, (s)yncs, and/or (a)ll")
+                        .long_help("Show (any combination of)\n  \
+                                    c: Emerge command\n  \
+                                    m: Package merges\n  \
+                                    u: Package unmerges\n  \
+                                    s: Repository syncs\n  \
+                                    a: All of the above");
     let show_s = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("p,t,s,a")

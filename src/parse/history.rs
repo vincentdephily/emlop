@@ -16,6 +16,9 @@ use std::{fs::File,
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
 pub enum Hist {
+    /// Command started (might never complete).
+    // There's no CmdStop, because matching a Stop to the correct Start is too unreliable
+    CmdStart { ts: i64, args: String },
     /// Merge started (might never complete).
     MergeStart { ts: i64, key: String, pos: usize },
     /// Merge completed.
@@ -59,6 +62,7 @@ impl Hist {
     }
     pub const fn ts(&self) -> i64 {
         match self {
+            Self::CmdStart { ts, .. } => *ts,
             Self::MergeStart { ts, .. } => *ts,
             Self::MergeStop { ts, .. } => *ts,
             Self::UnmergeStart { ts, .. } => *ts,
@@ -137,6 +141,10 @@ pub fn get_hist(file: &str,
                                 break;
                             }
                         } else if let Some(found) = parse_syncstop(show.sync, t, s, &filter) {
+                            if tx.send(found).is_err() {
+                                break;
+                            }
+                        } else if let Some(found) = parse_cmdstart(show.cmd, t, s) {
                             if tx.send(found).is_err() {
                                 break;
                             }
@@ -244,6 +252,13 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     }
 }
 
+fn parse_cmdstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
+    if !enabled || !line.starts_with(b"*** emerge") {
+        return None;
+    }
+    Some(Hist::CmdStart { ts, args: from_utf8(&line[11..]).ok()?.trim().to_owned() })
+}
+
 fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> emer") {
         return None;
@@ -347,7 +362,8 @@ mod tests {
         let hist = get_hist(&format!("tests/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
-                            Show { pkg: false,
+                            Show { cmd: false,
+                                   pkg: false,
                                    tot: false,
                                    sync: parse_sync,
                                    merge: parse_merge,
@@ -361,6 +377,7 @@ mod tests {
         // Check that all items look valid
         for p in hist {
             let (kind, ts, ebuild, version) = match p {
+                Hist::CmdStart { ts, .. } => ("CStart", ts, "c/e", "1"),
                 Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
                 Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
                 Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),

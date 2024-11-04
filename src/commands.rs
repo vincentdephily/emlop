@@ -10,13 +10,19 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
-    let mut found = 0;
     let mut sync_start: Option<i64> = None;
+    let mut found = 0;
     let h = ["Date", "Duration", "Package/Repo"];
     let mut tbl =
         Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last).header(h);
     for p in hist {
         match p {
+            Hist::CmdStart { ts, args, .. } => {
+                found += 1;
+                if found <= sc.first {
+                    tbl.row([&[&FmtDate(ts)], &[], &[&"Emerge ", &args]]);
+                }
+            },
             Hist::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 merges.insert(key, ts);
@@ -186,6 +192,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             }
         }
         match p {
+            Hist::CmdStart { .. } => todo!("CmdStart"),
             Hist::MergeStart { ts, key, .. } => {
                 merge_start.insert(key, ts);
             },
