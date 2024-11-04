@@ -181,7 +181,7 @@ impl Conf {
 
 impl ConfLog {
     fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel!(cli, toml, log, show, "musa", Show::m())?,
+        Ok(Self { show: sel!(cli, toml, log, show, "cmusa", Show::m())?,
                   search: cli.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: cli.get_flag("exact"),
                   starttime: sel!(cli, toml, log, starttime, (), false)?,

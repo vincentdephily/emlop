@@ -8,6 +8,7 @@ use std::{collections::{BTreeMap, HashMap, HashSet},
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
+    let mut cmd_start: Option<(i64, String)> = None;
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut found = 0;
@@ -17,6 +18,19 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
         Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last).header(h);
     for p in hist {
         match p {
+            Hist::CmdStart { ts, args, .. } => {
+                // This'll overwrite any previous entry, if a cmd stops abruptly or multiple cmds run in parallel
+                cmd_start = Some((ts, args));
+            },
+            Hist::CmdStop { ts, .. } => {
+                found += 1;
+                let (started, args) = cmd_start.take().unwrap_or((ts + 1, String::from("?")));
+                if found <= sc.first {
+                    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                             &[&FmtDur(ts - started), &gc.clr],
+                             &[&"Emerge ", &args]]);
+                }
+            },
             Hist::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 merges.insert(key, ts);
@@ -218,6 +232,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                     warn!("Sync stop without a start at {ts}")
                 }
             },
+            _ => todo!("cmdevent"),
         }
     }
     let group = sc.group.at(curts, gc.date_offset);

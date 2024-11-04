@@ -16,18 +16,46 @@ use std::{fs::File,
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
 pub enum Hist {
+    CmdStart {
+        ts: i64,
+        args: String,
+    },
+    CmdStop {
+        ts: i64,
+    },
     /// Merge started (might never complete).
-    MergeStart { ts: i64, key: String, pos: usize },
+    MergeStart {
+        ts: i64,
+        key: String,
+        pos: usize,
+    },
     /// Merge completed.
-    MergeStop { ts: i64, key: String, pos: usize },
+    MergeStop {
+        ts: i64,
+        key: String,
+        pos: usize,
+    },
     /// Unmerge started (might never complete).
-    UnmergeStart { ts: i64, key: String, pos: usize },
+    UnmergeStart {
+        ts: i64,
+        key: String,
+        pos: usize,
+    },
     /// Unmerge completed.
-    UnmergeStop { ts: i64, key: String, pos: usize },
+    UnmergeStop {
+        ts: i64,
+        key: String,
+        pos: usize,
+    },
     /// Sync started (might never complete).
-    SyncStart { ts: i64 },
+    SyncStart {
+        ts: i64,
+    },
     /// Sync completed.
-    SyncStop { ts: i64, repo: String },
+    SyncStop {
+        ts: i64,
+        repo: String,
+    },
 }
 impl Hist {
     pub fn ebuild(&self) -> &str {
@@ -59,6 +87,8 @@ impl Hist {
     }
     pub const fn ts(&self) -> i64 {
         match self {
+            Self::CmdStart { ts, .. } => *ts,
+            Self::CmdStop { ts, .. } => *ts,
             Self::MergeStart { ts, .. } => *ts,
             Self::MergeStop { ts, .. } => *ts,
             Self::UnmergeStart { ts, .. } => *ts,
@@ -137,6 +167,14 @@ pub fn get_hist(file: &str,
                                 break;
                             }
                         } else if let Some(found) = parse_syncstop(show.sync, t, s, &filter) {
+                            if tx.send(found).is_err() {
+                                break;
+                            }
+                        } else if let Some(found) = parse_cmdstart(show.cmd, t, s) {
+                            if tx.send(found).is_err() {
+                                break;
+                            }
+                        } else if let Some(found) = parse_cmdstop(show.cmd, t, s) {
                             if tx.send(found).is_err() {
                                 break;
                             }
@@ -242,6 +280,17 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
         },
         _ => None,
     }
+}
+
+fn parse_cmdstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
+    if !enabled || !line.starts_with(b"*** emerge") {
+        return None;
+    }
+    Some(Hist::CmdStart { ts, args: from_utf8(&line[11..]).ok()?.trim().to_owned() })
+}
+
+fn parse_cmdstop(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
+    (enabled && line.starts_with(b"*** terminating")).then_some(Hist::CmdStop { ts })
 }
 
 fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
