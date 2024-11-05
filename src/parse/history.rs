@@ -103,7 +103,7 @@ pub fn get_hist(file: &str,
     let filter = FilterStr::try_new(search_terms, search_exact)?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
     thread::spawn(move || {
-        let show_merge = show.merge || show.pkg || show.tot;
+        let show_merge = show.merge || show.pkg || show.tot || show.cmd;
         let show_unmerge = show.unmerge || show.pkg || show.tot;
         let mut prev_t = 0;
         let mut curline = 1;

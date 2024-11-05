@@ -70,17 +70,21 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                 }
             },
             Hist::MergeStart { ts, key, nth, of, .. } => {
-                // This'll overwrite any previous entry, if a merge started but never finished
-                merges.insert(key, ts);
+                if sc.show.merge {
+                    // This'll overwrite any previous entry, if a merge started but never finished
+                    merges.insert(key, ts);
+                }
                 update_cmd(&mut cmds, nth, of);
             },
             Hist::MergeStop { ts, ref key, .. } => {
-                found += 1;
-                let started = merges.remove(key).unwrap_or(ts + 1);
-                if found <= sc.first {
-                    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
-                             &[&FmtDur(ts - started)],
-                             &[&gc.merge, &p.ebuild_version()]]);
+                if sc.show.merge {
+                    found += 1;
+                    let started = merges.remove(key).unwrap_or(ts + 1);
+                    if found <= sc.first {
+                        tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                                 &[&FmtDur(ts - started)],
+                                 &[&gc.merge, &p.ebuild_version()]]);
+                    }
                 }
             },
             Hist::UnmergeStart { ts, key, .. } => {
