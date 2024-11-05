@@ -16,46 +16,22 @@ use std::{fs::File,
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
 pub enum Hist {
-    CmdStart {
-        ts: i64,
-        args: String,
-    },
-    CmdStop {
-        ts: i64,
-    },
+    /// Command started (might never complete).
+    CmdStart { ts: i64, args: String },
+    /// Command completed
+    CmdStop { ts: i64 },
     /// Merge started (might never complete).
-    MergeStart {
-        ts: i64,
-        key: String,
-        pos: usize,
-    },
+    MergeStart { ts: i64, key: String, pos: usize, nth: u32, of: u32 },
     /// Merge completed.
-    MergeStop {
-        ts: i64,
-        key: String,
-        pos: usize,
-    },
+    MergeStop { ts: i64, key: String, pos: usize },
     /// Unmerge started (might never complete).
-    UnmergeStart {
-        ts: i64,
-        key: String,
-        pos: usize,
-    },
+    UnmergeStart { ts: i64, key: String, pos: usize },
     /// Unmerge completed.
-    UnmergeStop {
-        ts: i64,
-        key: String,
-        pos: usize,
-    },
+    UnmergeStop { ts: i64, key: String, pos: usize },
     /// Sync started (might never complete).
-    SyncStart {
-        ts: i64,
-    },
+    SyncStart { ts: i64 },
     /// Sync completed.
-    SyncStop {
-        ts: i64,
-        repo: String,
-    },
+    SyncStop { ts: i64, repo: String },
 }
 impl Hist {
     pub fn ebuild(&self) -> &str {
@@ -267,7 +243,7 @@ fn find_version(atom: &str, filter: &FilterStr) -> Option<usize> {
 }
 
 /// Parse and filter timestamp
-// TODO from_utf8(s.trim_ascii_start()) https://github.com/rust-lang/rust/issues/94035
+// TODO MSRV 1.80: from_utf8(s.trim_ascii_start())
 fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     use atoi::FromRadix10;
     match i64::from_radix_10(line) {
@@ -290,6 +266,9 @@ fn parse_cmdstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
 }
 
 fn parse_cmdstop(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
+    // It would be nice to match "exiting (un)successfully" lines instead (to give more
+    // information), but sometimes we only have the "terminating" line, so we'd need a stateful
+    // parser to handle this.
     (enabled && line.starts_with(b"*** terminating")).then_some(Hist::CmdStop { ts })
 }
 
@@ -298,9 +277,11 @@ fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> 
         return None;
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
-    let t6 = tokens.nth(5)?;
-    let pos = find_version(t6, filter)?;
-    Some(Hist::MergeStart { ts, key: t6.to_owned(), pos })
+    let nth = atoi::atoi(tokens.nth(2)?.trim_start_matches('(').as_bytes())?;
+    let of = atoi::atoi(tokens.nth(1)?.trim_end_matches(')').as_bytes())?;
+    let key = tokens.next()?;
+    let pos = find_version(key, filter)?;
+    Some(Hist::MergeStart { ts, key: key.to_owned(), pos, nth, of })
 }
 
 fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
@@ -396,7 +377,8 @@ mod tests {
         let hist = get_hist(&format!("tests/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
-                            Show { pkg: false,
+                            Show { cmd: false,
+                                   pkg: false,
                                    tot: false,
                                    sync: parse_sync,
                                    merge: parse_merge,
@@ -410,6 +392,8 @@ mod tests {
         // Check that all items look valid
         for p in hist {
             let (kind, ts, ebuild, version) = match p {
+                Hist::CmdStart { ts, .. } => ("CStart", ts, "c/e", "1"),
+                Hist::CmdStop { ts, .. } => ("CStop", ts, "c/e", "1"),
                 Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
                 Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
                 Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),

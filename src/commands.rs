@@ -3,37 +3,76 @@ use libc::pid_t;
 use std::{collections::{BTreeMap, HashMap, HashSet},
           io::{stdin, IsTerminal}};
 
+/// Find the most likely terminated cmd
+fn find_cmd(cmds: &mut Vec<(i64, String, u32, u32)>, ts: i64) -> (i64, String, u32, u32) {
+    if let Some(p) = cmds.iter().position(|&(_, _, nth, of)| of != 0 && nth == of) {
+        // Finished cmd
+        cmds.remove(p)
+    } else if let Some(p) = cmds.iter().position(|&(_, _, _, of)| of == 0) {
+        // Cmd without associated merge
+        cmds.remove(p)
+    } else if let Some(p) = cmds.iter().position(|_| true) {
+        // oldest cmd
+        cmds.remove(p)
+    } else {
+        // No cmd (should not happen unless --from)
+        warn!("No matching cmd at {ts} in {:?}", cmds);
+        (ts + 1, String::from("?"), 0, 0)
+    }
+}
+
+/// Update cmd with latest "(<N> of <M>)" merge state
+fn update_cmd(cmds: &mut Vec<(i64, String, u32, u32)>, nth: u32, of: u32) {
+    if let Some(p) = cmds.iter().position(|&(_, _, _, cof)| nth == 1 && cof == 0) {
+        // Assign nth/of to new cmd
+        cmds[p].2 = nth;
+        cmds[p].3 = of;
+    } else if let Some(p) = cmds.iter().position(|&(_, _, _, cof)| of == cof) {
+        // update nth in previously amended cmd
+        cmds[p].2 = nth;
+    } else {
+        // TODO: there's probably other cases to handle, with --keep-going or --jobs
+        warn!("No matching cmd for {nth}/{of} in {:?}", cmds);
+    }
+}
+
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let mut cmd_start: Option<(i64, String)> = None;
+    let mut cmds: Vec<(i64, String, u32, u32)> = vec![];
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
+    let mut syncs: Option<i64> = None;
     let mut found = 0;
-    let mut sync_start: Option<i64> = None;
     let h = ["Date", "Duration", "Package/Repo"];
     let mut tbl =
         Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last).header(h);
     for p in hist {
         match p {
             Hist::CmdStart { ts, args, .. } => {
-                // This'll overwrite any previous entry, if a cmd stops abruptly or multiple cmds run in parallel
-                cmd_start = Some((ts, args));
+                cmds.push((ts, args, 0, 0));
             },
             Hist::CmdStop { ts, .. } => {
                 found += 1;
-                let (started, args) = cmd_start.take().unwrap_or((ts + 1, String::from("?")));
+                let (started, args, nth, of) = find_cmd(&mut cmds, ts);
                 if found <= sc.first {
-                    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
-                             &[&FmtDur(ts - started), &gc.clr],
-                             &[&"Emerge ", &args]]);
+                    if nth > 0 {
+                        tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                                 &[&FmtDur(ts - started), &gc.clr],
+                                 &[&"Emerge ", &args, &" ", &gc.cnt, &nth, &"/", &of]]);
+                    } else {
+                        tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                                 &[&FmtDur(ts - started), &gc.clr],
+                                 &[&"Emerge ", &args]]);
+                    }
                 }
             },
-            Hist::MergeStart { ts, key, .. } => {
+            Hist::MergeStart { ts, key, nth, of, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 merges.insert(key, ts);
+                update_cmd(&mut cmds, nth, of);
             },
             Hist::MergeStop { ts, ref key, .. } => {
                 found += 1;
@@ -59,11 +98,11 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
             },
             Hist::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
-                sync_start = Some(ts);
+                syncs = Some(ts);
             },
             Hist::SyncStop { ts, repo } => {
                 found += 1;
-                let started = sync_start.take().unwrap_or(ts + 1);
+                let started = syncs.take().unwrap_or(ts + 1);
                 if found <= sc.first {
                     tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
                              &[&FmtDur(ts - started)],
@@ -155,7 +194,8 @@ impl Times {
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
-pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
+pub fn cmd_stats(gc: Conf, mut sc: ConfStats) -> Result<bool, Error> {
+    sc.show.cmd = false;
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
     let h = [sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"];
     let mut tbls = Table::new(&gc).align_left(0).align_left(1).margin(1, " ").header(h);
