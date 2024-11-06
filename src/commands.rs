@@ -3,33 +3,57 @@ use libc::pid_t;
 use std::{collections::{BTreeMap, HashMap, HashSet},
           io::{stdin, IsTerminal}};
 
+#[derive(Debug)]
+struct CmdState {
+    ts: i64,
+    args: String,
+    pkgs: bool,
+    nth: u32,
+    of: u32,
+}
+impl CmdState {
+    fn new(ts: i64, args: String) -> Self {
+        let pkgs = args.split_ascii_whitespace().any(|s| !s.starts_with('-') || s == "--clean");
+        Self { ts, args, pkgs, nth: 0, of: 0 }
+    }
+}
+
 /// Find the most likely terminated cmd
-fn find_cmd(cmds: &mut Vec<(i64, String, u32, u32)>, ts: i64) -> (i64, String, u32, u32) {
-    if let Some(p) = cmds.iter().position(|&(_, _, nth, of)| of != 0 && nth == of) {
-        // Finished cmd
-        cmds.remove(p)
-    } else if let Some(p) = cmds.iter().position(|&(_, _, _, of)| of == 0) {
-        // Cmd without associated merge
-        cmds.remove(p)
-    } else if let Some(p) = cmds.iter().position(|_| true) {
-        // oldest cmd
-        cmds.remove(p)
+fn find_cmd(cmds: &mut Vec<CmdState>, ts: i64) -> (i64, String, String) {
+    if let Some(p) = cmds.iter().rev().position(|s| s.of != 0 && s.nth == s.of) {
+        // Newest finished cmd
+        let s = cmds.remove(p);
+        (s.ts, s.args, format!("finished cmd {p}/{} at {}/{}", cmds.len() + 1, s.nth, s.of))
+    } else if let Some(p) = cmds.iter().rev().position(|s| s.of > 0) {
+        // Newest cmd without associated merge
+        let s = cmds.remove(p);
+        (s.ts, s.args, format!("associated cmd {p}/{}", cmds.len() + 1))
+    } else if let Some(s) = cmds.pop() {//iter().rev().position(|s| s.of == 0) {
+        // Newest cmd without associated merge
+        //let s = cmds.remove(p);
+        (s.ts, s.args, format!("unassociated cmd {0}/{0}", cmds.len() + 1))
+    //} else if let Some(p) = cmds.iter().position(|&(_, _, nth, of)| of != 0 && nth != of) {
+    // newest cmd (oldest might be missing its "terminating" log) not matched by other cases
+    //    cmds.remove(p)
+    //} else if !cmds.is_empty() {//let Some(p) = cmds.iter().position(|_| true) {
+    // newest cmd (oldest might be missing its "terminating" log)
+    //  cmds.pop().unwrap()
     } else {
         // No cmd (should not happen unless --from)
         warn!("No matching cmd at {ts} in {:?}", cmds);
-        (ts + 1, String::from("?"), 0, 0)
+        (ts + 1, String::from("?"), format!("fallback out of {} cmds", cmds.len()))
     }
 }
 
 /// Update cmd with latest "(<N> of <M>)" merge state
-fn update_cmd(cmds: &mut Vec<(i64, String, u32, u32)>, nth: u32, of: u32) {
-    if let Some(p) = cmds.iter().position(|&(_, _, _, cof)| nth == 1 && cof == 0) {
+fn update_cmd(cmds: &mut Vec<CmdState>, nth: u32, of: u32) {
+    if let Some(p) = cmds.iter().rev().position(|s| nth == 1 && s.of == 0) {
         // Assign nth/of to new cmd
-        cmds[p].2 = nth;
-        cmds[p].3 = of;
-    } else if let Some(p) = cmds.iter().position(|&(_, _, _, cof)| of == cof) {
+        cmds[p].nth = nth;
+        cmds[p].of = of;
+    } else if let Some(p) = cmds.iter().rev().position(|s| of == s.of) {
         // update nth in previously amended cmd
-        cmds[p].2 = nth;
+        cmds[p].nth = nth;
     } else {
         // TODO: there's probably other cases to handle, with --keep-going or --jobs
         warn!("No matching cmd for {nth}/{of} in {:?}", cmds);
@@ -41,7 +65,7 @@ fn update_cmd(cmds: &mut Vec<(i64, String, u32, u32)>, nth: u32, of: u32) {
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let mut cmds: Vec<(i64, String, u32, u32)> = vec![];
+    let mut cmds: Vec<CmdState> = vec![];
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut syncs: Option<i64> = None;
@@ -52,27 +76,34 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     for p in hist {
         match p {
             Hist::CmdStart { ts, args, .. } => {
-                cmds.push((ts, args, 0, 0));
+                found += 1;
+                if found <= sc.first {
+                    tbl.row([&[&FmtDate(ts)], &[], &[&"Emerge ", &args]]);
+                }
+                cmds.push(CmdState::new(ts, args));
             },
             Hist::CmdStop { ts, .. } => {
                 found += 1;
-                let (started, args, nth, of) = find_cmd(&mut cmds, ts);
+                let (started, args, reason) = find_cmd(&mut cmds, ts);
                 if found <= sc.first {
-                    if nth > 0 {
-                        tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
-                                 &[&FmtDur(ts - started), &gc.clr],
-                                 &[&"Emerge ", &args, &" ", &gc.cnt, &nth, &"/", &of]]);
-                    } else {
-                        tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
-                                 &[&FmtDur(ts - started), &gc.clr],
-                                 &[&"Emerge ", &args]]);
-                    }
+                    //if nth > 0 {
+                    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                             &[&FmtDur(ts - started), &gc.clr],
+                             &[&"Emerge ", &args, &" ", &gc.cnt, &reason]]);
+                    //} else {
+                    //    tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
+                    //             &[&FmtDur(ts - started), &gc.clr],
+                    //             &[&"Emerge ", &args]]);
+                    //}
                 }
             },
-            Hist::MergeStart { ts, key, nth, of, .. } => {
+            Hist::MergeStart { ts, ref key, nth, of, .. } => {
                 if sc.show.merge {
                     // This'll overwrite any previous entry, if a merge started but never finished
-                    merges.insert(key, ts);
+                    merges.insert(key.clone(), ts);
+                    //tbl.row([&[&FmtDate(ts)],
+                    //           &[],
+                    //         &[&gc.cnt, &nth, &"/", &of, &" ", &cmds.len()]]);
                 }
                 update_cmd(&mut cmds, nth, of);
             },
