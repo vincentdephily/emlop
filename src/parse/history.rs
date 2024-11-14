@@ -337,13 +337,12 @@ fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Op
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ArgParse;
     use std::collections::HashMap;
 
     /// This checks parsing the given emerge.log.
     fn chk_hist(file: &str,
-                parse_merge: bool,
-                parse_unmerge: bool,
-                parse_sync: bool,
+                show: &str,
                 filter_mints: Option<i64>,
                 filter_maxts: Option<i64>,
                 filter_terms: Vec<String>,
@@ -362,13 +361,7 @@ mod tests {
         let hist = get_hist(&format!("tests/emerge.{}.log", file),
                             filter_mints,
                             filter_maxts,
-                            Show { cmd: false,
-                                   pkg: false,
-                                   tot: false,
-                                   sync: parse_sync,
-                                   merge: parse_merge,
-                                   unmerge: parse_unmerge,
-                                   emerge: false },
+                            Show::parse(&String::from(show), "cptsmue", "test").unwrap(),
                             &filter_terms,
                             exact).unwrap();
         let re_atom = Regex::new("^[a-zA-Z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
@@ -406,14 +399,14 @@ mod tests {
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
         let t = vec![("MStart", 31467)];
-        chk_hist("all", true, false, false, None, None, vec![], false, t);
+        chk_hist("all", "m", None, None, vec![], false, t);
     }
 
     #[test]
     /// Emerge log with various invalid data
     fn parse_hist_nullbytes() {
         let t = vec![("MStart", 14), ("MStop", 14)];
-        chk_hist("nullbytes", true, false, false, None, None, vec![], false, t);
+        chk_hist("nullbytes", "m", None, None, vec![], false, t);
     }
 
     #[test]
@@ -424,7 +417,7 @@ mod tests {
                      ("media-libs/jpeg", 1), //letter in timestamp
                      ("dev-libs/libical", 2),
                      ("media-libs/libpng", 2)];
-        chk_hist("badtimestamp", true, false, false, None, None, vec![], false, t);
+        chk_hist("badtimestamp", "m", None, None, vec![], false, t);
     }
 
     #[test]
@@ -435,7 +428,7 @@ mod tests {
                      ("media-libs/jpeg", 2),
                      ("dev-libs/libical", 2),
                      ("media-libs/libpng", 1)]; //missing version
-        chk_hist("badversion", true, false, false, None, None, vec![], false, t);
+        chk_hist("badversion", "m", None, None, vec![], false, t);
     }
 
     #[test]
@@ -446,7 +439,7 @@ mod tests {
                      ("media-libs/jpeg", 2),
                      ("dev-libs/libical", 1), //missing end of line and spaces in iter
                      ("media-libs/libpng", 2)];
-        chk_hist("shortline", true, false, false, None, None, vec![], false, t);
+        chk_hist("shortline", "m", None, None, vec![], false, t);
     }
 
     #[test]
@@ -456,13 +449,17 @@ mod tests {
             let m = (i & 0b001) == 0;
             let u = (i & 0b010) == 0;
             let s = (i & 0b100) == 0;
+            let show = format!("{}{}{}",
+                               if m { "m" } else { "" },
+                               if u { "u" } else { "" },
+                               if s { "s" } else { "" });
             let t = vec![("MStart", if m { 889 } else { 0 }),
                          ("MStop", if m { 832 } else { 0 }),
                          ("UStart", if u { 832 } else { 0 }),
                          ("UStop", if u { 832 } else { 0 }),
                          ("SStart", if s { 326 } else { 0 }),
                          ("SStop", if s { 150 } else { 0 })];
-            chk_hist("10000", m, u, s, None, None, vec![], false, t);
+            chk_hist("10000", &show, None, None, vec![], false, t);
         }
     }
 
@@ -494,7 +491,7 @@ mod tests {
                          ("SStart", 326),
                          ("SStop", s2)];
             let terms = f.split_whitespace().map(str::to_string).collect();
-            chk_hist("10000", true, true, true, None, None, terms, e, c);
+            chk_hist("10000", "mus", None, None, terms, e, c);
         }
     }
 
@@ -522,7 +519,7 @@ mod tests {
                          ("UStop", u2),
                          ("SStart", s1),
                          ("SStop", s2)];
-            chk_hist("10000", true, true, true, min, max, vec![], true, c);
+            chk_hist("10000", "mus", min, max, vec![], true, c);
         }
     }
 
