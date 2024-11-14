@@ -220,7 +220,7 @@ impl ConfPred {
 
 impl ConfStats {
     fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel!(cli, toml, stats, show, "ptsa", Show::p())?,
+        Ok(Self { show: sel!(cli, toml, stats, show, "cptsa", Show::p())?,
                   search: cli.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: cli.get_flag("exact"),
                   lim: sel!(cli, toml, stats, limit, 1..=65000, 10)? as u16,

@@ -292,7 +292,9 @@ fn stats() {
               0),
              ("%F10000.log s client -sst -oc", "11  24:00:24  2:10:56  10  27  2\n", 0),
              ("%F10000.log s client -sa -oc",
-              "kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
+              "450  267  20  163\n\
+               \n\
+               kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
                mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
                www-client/chromium           3  21:41:24  7:42:07  3  12  3\n\
                www-client/falkon             1      6:02     6:02  0   0  ?\n\
@@ -494,7 +496,7 @@ fn negative_merge_time() {
                        2019-06-05 10:21:02     ? >>> kde-plasma/kwin-5.15.5\n\
                        2019-06-08 21:33:36  3:10 >>> kde-plasma/kwin-5.15.5\n")),
              // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
-             ("%Fnegtime.log s -sa -oc",
+             ("%Fnegtime.log s -sstp -oc",
               format!("gentoo  2  1:06  1:06\n\
                        \n\
                        kde-apps/libktnef  1    26    26  0  0  ?\n\

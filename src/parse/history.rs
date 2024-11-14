@@ -443,17 +443,20 @@ mod tests {
     }
 
     #[test]
-    /// Basic counts, with every combination of merge/unmerge/sync
+    /// Basic counts, with every combination of command/merge/unmerge/sync
     fn parse_hist_nofilter() {
-        for i in 0..8 {
-            let m = (i & 0b001) == 0;
-            let u = (i & 0b010) == 0;
-            let s = (i & 0b100) == 0;
-            let show = format!("{}{}{}",
+        for i in 0..16 {
+            let c = (i & 0b0001) == 0;
+            let m = (i & 0b0010) == 0;
+            let u = (i & 0b0100) == 0;
+            let s = (i & 0b1000) == 0;
+            let show = format!("{}{}{}{}",
+                               if c { "c" } else { "" },
                                if m { "m" } else { "" },
                                if u { "u" } else { "" },
                                if s { "s" } else { "" });
-            let t = vec![("MStart", if m { 889 } else { 0 }),
+            let t = vec![("CStart", if c { 450 } else { 0 }),
+                         ("MStart", if m { 889 } else { 0 }),
                          ("MStop", if m { 832 } else { 0 }),
                          ("UStart", if u { 832 } else { 0 }),
                          ("UStop", if u { 832 } else { 0 }),

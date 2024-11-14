@@ -43,17 +43,19 @@ pub fn build_cli() -> Command {
                                     u: Package unmerges\n  \
                                     s: Repository syncs\n  \
                                     a: All of the above");
-    let show_s = Arg::new("show").short('s')
-                                 .long("show")
-                                 .value_name("p,t,s,a")
-                                 .display_order(3)
-                                 .help_heading("Filter")
-                                 .help("Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll")
-                                 .long_help("Show (any combination of)\n  \
-                                             p: Individual package merges/unmerges\n  \
-                                             t: Total package merges/unmerges\n  \
-                                             s: Repository syncs\n  \
-                                             a: All of the above");
+    let show_s =
+        Arg::new("show").short('s')
+                        .long("show")
+                        .value_name("c,p,t,s,a")
+                        .display_order(3)
+                        .help_heading("Filter")
+                        .help("Show (c)commands, (p)ackages, (t)otals, (s)yncs, and/or (a)ll")
+                        .long_help("Show (any combination of)\n  \
+                                    c: Emerge commands\n  \
+                                    p: Individual package merges/unmerges\n  \
+                                    t: Total package merges/unmerges\n  \
+                                    s: Repository syncs\n  \
+                                    a: All of the above");
     let show_p = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("e,m,t,a")

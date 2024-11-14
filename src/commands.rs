@@ -143,12 +143,37 @@ impl Times {
     }
 }
 
+/// Classify emerge commands by looking at their args.
+///
+/// Note that some commands don't get logged at all, so this enum is quite limited.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum ArgKind {
+    All,
+    Merge,
+    Clean,
+    Sync,
+}
+impl ArgKind {
+    fn new(args: &str) -> Self {
+        for arg in args.split_ascii_whitespace() {
+            match arg {
+                "--deselect" | "--unmerge" | "--clean" | "--depclean" => return Self::Clean,
+                "--sync" => return Self::Sync,
+                _ => (),
+            }
+        }
+        Self::Merge
+    }
+}
+
 /// Summary display of merge events
 ///
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
+    let h = [sc.group.name(), "Logged emerges", "Install/Update", "Unmerge/Clean", "Sync"];
+    let mut tblc = Table::new(&gc).margin(1, " ").header(h);
     let h = [sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"];
     let mut tbls = Table::new(&gc).align_left(0).align_left(1).margin(1, " ").header(h);
     let h = [sc.group.name(),
@@ -173,6 +198,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
     let mut sync_start: Option<i64> = None;
     let mut sync_time: BTreeMap<String, Times> = BTreeMap::new();
+    let mut cmd_args: BTreeMap<ArgKind, usize> = BTreeMap::new();
     let mut nextts = 0;
     let mut curts = 0;
     for p in hist {
@@ -183,16 +209,20 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                 curts = t;
             } else if t > nextts {
                 let group = sc.group.at(curts, gc.date_offset);
-                cmd_stats_group(&gc, &sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time,
-                                &pkg_time);
+                cmd_stats_group(&gc, &sc, &mut tblc, &mut tbls, &mut tblp, &mut tblt, group,
+                                &cmd_args, &sync_time, &pkg_time);
                 sync_time.clear();
                 pkg_time.clear();
+                cmd_args.clear();
                 nextts = sc.group.next(t, gc.date_offset);
                 curts = t;
             }
         }
         match p {
-            Hist::CmdStart { .. } => todo!("CmdStart"),
+            Hist::CmdStart { args, .. } => {
+                *cmd_args.entry(ArgKind::All).or_insert(0) += 1;
+                *cmd_args.entry(ArgKind::new(&args)).or_insert(0) += 1;
+            },
             Hist::MergeStart { ts, key, .. } => {
                 merge_start.insert(key, ts);
             },
@@ -228,15 +258,20 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
         }
     }
     let group = sc.group.at(curts, gc.date_offset);
-    cmd_stats_group(&gc, &sc, &mut tbls, &mut tblp, &mut tblt, group, &sync_time, &pkg_time);
+    cmd_stats_group(&gc, &sc, &mut tblc, &mut tbls, &mut tblp, &mut tblt, group, &cmd_args,
+                    &sync_time, &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
-    let (es, ep, et) = (!tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
+    let (ec, es, ep, et) = (!tblc.is_empty(), !tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
+    drop(tblc);
+    if ec && es {
+        println!();
+    }
     drop(tbls);
-    if es && ep {
+    if (ec || es) && ep {
         println!();
     }
     drop(tblp);
-    if (es || ep) && et {
+    if (ec || es || ep) && et {
         println!();
     }
     drop(tblt);
@@ -247,12 +282,22 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
 #[allow(clippy::too_many_arguments)]
 fn cmd_stats_group(gc: &Conf,
                    sc: &ConfStats,
+                   tblc: &mut Table<5>,
                    tbls: &mut Table<5>,
                    tblp: &mut Table<8>,
                    tblt: &mut Table<7>,
                    group: String,
+                   cmd_args: &BTreeMap<ArgKind, usize>,
                    sync_time: &BTreeMap<String, Times>,
                    pkg_time: &BTreeMap<String, (Times, Times)>) {
+    // Commands
+    if sc.show.cmd && !cmd_args.is_empty() {
+        tblc.row([&[&group],
+                  &[&gc.cnt, cmd_args.get(&ArgKind::All).unwrap_or(&0)],
+                  &[&gc.cnt, cmd_args.get(&ArgKind::Merge).unwrap_or(&0)],
+                  &[&gc.cnt, cmd_args.get(&ArgKind::Clean).unwrap_or(&0)],
+                  &[&gc.cnt, cmd_args.get(&ArgKind::Sync).unwrap_or(&0)]]);
+    }
     // Syncs
     if sc.show.sync && !sync_time.is_empty() {
         for (repo, time) in sync_time {
