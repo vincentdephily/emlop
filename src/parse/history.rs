@@ -161,6 +161,37 @@ pub fn get_hist(file: &str,
     Ok(rx)
 }
 
+/// Parse emerge log into a Vec of emerge command starts
+///
+/// This is a specialized version of get_hist(), about 20% faster for this usecase
+pub fn get_cmd_times(file: &str,
+                     min_ts: Option<i64>,
+                     max_ts: Option<i64>)
+                     -> Result<Vec<i64>, Error> {
+    let mut buf = open_any_buffered(file)?;
+    let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
+    let mut line = Vec::with_capacity(255);
+    let mut res = vec![];
+    loop {
+        match buf.read_until(b'\n', &mut line) {
+            // End of file
+            Ok(0) => break,
+            // Got a line, see if one of the funs match it
+            Ok(_) => {
+                if let Some((t, s)) = parse_ts(&line, ts_min, ts_max) {
+                    if s.starts_with(b"*** emerge") {
+                        res.push(t)
+                    }
+                }
+            },
+            // Could be invalid UTF8, system read error...
+            Err(_) => (),
+        }
+        line.clear();
+    }
+    Ok(res)
+}
+
 /// Return min/max timestamp depending on options.
 fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
     match (min, max) {

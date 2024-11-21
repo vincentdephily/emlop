@@ -127,6 +127,11 @@ pub fn build_cli() -> Command {
                                .long_help("Show only the last <num> entries\n  \
                                            (empty)|1: last entry\n  \
                                            5:         last 5 entries\n");
+    let lastmerge = Arg::new("lastmerge").long("lastmerge")
+                                         .action(SetTrue)
+                                         .display_order(8)
+                                         .help_heading("Filter")
+                                         .help("Show only the last merge");
     let h = "Use main, backup, either, or no portage resume list\n\
              This is ignored if STDIN is a piped `emerge -p` output\n  \
              (default)|auto|a: Use main or backup resume list, if currently emerging\n  \
@@ -140,7 +145,7 @@ pub fn build_cli() -> Command {
                                    .hide_possible_values(true)
                                    .num_args(..=1)
                                    .default_missing_value("either")
-                                   .display_order(8)
+                                   .display_order(9)
                                    .help_heading("Filter")
                                    .help(h.split_once('\n').unwrap().0)
                                    .long_help(h);
@@ -337,6 +342,7 @@ pub fn build_cli() -> Command {
                                      .arg(starttime)
                                      .arg(&first)
                                      .arg(&last)
+                                     .arg(lastmerge)
                                      .arg(show_l)
                                      .arg(&exact)
                                      .arg(&pkg);

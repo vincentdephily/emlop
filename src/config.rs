@@ -47,6 +47,7 @@ pub struct ConfLog {
     pub starttime: bool,
     pub first: usize,
     pub last: usize,
+    pub lastmerge: bool,
 }
 pub struct ConfPred {
     pub show: Show,
@@ -186,7 +187,8 @@ impl ConfLog {
                   exact: cli.get_flag("exact"),
                   starttime: sel!(cli, toml, log, starttime, (), false)?,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),
-                  last: *cli.get_one("last").unwrap_or(&usize::MAX) })
+                  last: *cli.get_one("last").unwrap_or(&usize::MAX),
+                  lastmerge: cli.get_flag("lastmerge") })
     }
 }
 
