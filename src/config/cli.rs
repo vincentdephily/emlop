@@ -77,10 +77,11 @@ pub fn build_cli() -> Command {
                                              m: Package merges\n  \
                                              t: Totals\n  \
                                              a: All of the above");
-    let h = "Only parse log entries after <date>\n  \
+    let h = "Only parse log entries after <date/command>\n  \
              2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
              123456789:                                       Absolute unix timestamp\n  \
-             1 year, 2 months|10d:                            Relative date";
+             1 year, 2 months|10d:                            Relative date\n  \
+             1c|2 commands                                    Emerge command";
     let from = Arg::new("from").short('f')
                                .long("from")
                                .value_name("date")
@@ -90,10 +91,11 @@ pub fn build_cli() -> Command {
                                .help_heading("Filter")
                                .help(h.split_once('\n').unwrap().0)
                                .long_help(h);
-    let h = "Only parse log entries before <date>\n  \
+    let h = "Only parse log entries before <date/command>\n  \
              2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
              123456789:                                       Absolute unix timestamp\n  \
-             1 year, 2 months|10d:                            Relative date";
+             1 year, 2 months|10d:                            Relative date\n  \
+             1c|2 commands                                    Emerge command";
     let to = Arg::new("to").short('t')
                            .long("to")
                            .value_name("date")
@@ -127,11 +129,6 @@ pub fn build_cli() -> Command {
                                .long_help("Show only the last <num> entries\n  \
                                            (empty)|1: last entry\n  \
                                            5:         last 5 entries\n");
-    let lastmerge = Arg::new("lastmerge").long("lastmerge")
-                                         .action(SetTrue)
-                                         .display_order(8)
-                                         .help_heading("Filter")
-                                         .help("Show only the last merge");
     let h = "Use main, backup, either, or no portage resume list\n\
              This is ignored if STDIN is a piped `emerge -p` output\n  \
              (default)|auto|a: Use main or backup resume list, if currently emerging\n  \
@@ -342,7 +339,6 @@ pub fn build_cli() -> Command {
                                      .arg(starttime)
                                      .arg(&first)
                                      .arg(&last)
-                                     .arg(lastmerge)
                                      .arg(show_l)
                                      .arg(&exact)
                                      .arg(&pkg);

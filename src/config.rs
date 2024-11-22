@@ -37,8 +37,8 @@ pub struct Conf {
     pub date_fmt: DateStyle,
     pub out: OutStyle,
     pub logfile: String,
-    pub from: Option<i64>,
-    pub to: Option<i64>,
+    pub from: TimeBound,
+    pub to: TimeBound,
 }
 pub struct ConfLog {
     pub show: Show,
@@ -47,7 +47,6 @@ pub struct ConfLog {
     pub starttime: bool,
     pub first: usize,
     pub last: usize,
-    pub lastmerge: bool,
 }
 pub struct ConfPred {
     pub show: Show,
@@ -154,10 +153,11 @@ impl Conf {
         let outdef = if isterm { OutStyle::Columns } else { OutStyle::Tab };
         let offset = get_offset(sel!(cli, toml, utc, (), false)?);
         Ok(Self { logfile: sel!(cli, toml, logfile, (), String::from("/var/log/emerge.log"))?,
-                  from: cli.get_one("from")
-                           .map(|d| i64::parse(d, offset, "--from"))
-                           .transpose()?,
-                  to: cli.get_one("to").map(|d| i64::parse(d, offset, "--to")).transpose()?,
+                  from:
+                      cli.get_one("from")
+                         .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--from"))?,
+                  to: cli.get_one("to")
+                         .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--to"))?,
                   pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
                   merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
                   unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
@@ -187,8 +187,7 @@ impl ConfLog {
                   exact: cli.get_flag("exact"),
                   starttime: sel!(cli, toml, log, starttime, (), false)?,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),
-                  last: *cli.get_one("last").unwrap_or(&usize::MAX),
-                  lastmerge: cli.get_flag("lastmerge") })
+                  last: *cli.get_one("last").unwrap_or(&usize::MAX) })
     }
 }
 

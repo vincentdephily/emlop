@@ -6,12 +6,7 @@ use std::{collections::{BTreeMap, HashMap, HashSet},
 /// Straightforward display of merge events
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
-pub fn cmd_log(mut gc: Conf, sc: ConfLog) -> Result<bool, Error> {
-    if sc.lastmerge {
-        if let Some(t) = parse::get_cmd_times(&gc.logfile, gc.from, gc.to)?.last() {
-            gc.from = Some(*t);
-        }
-    }
+pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
     let mut merges: HashMap<String, i64> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
