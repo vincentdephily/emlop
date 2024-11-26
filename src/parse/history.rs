@@ -2,7 +2,7 @@
 //!
 //! Use `new_hist()` to start parsing and retrieve `Hist` enums.
 
-use crate::{datetime::fmt_utctime, Show};
+use crate::{datetime::fmt_utctime, Show, TimeBound};
 use anyhow::{bail, ensure, Context, Error};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use flate2::read::GzDecoder;
@@ -16,6 +16,9 @@ use std::{fs::File,
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
 pub enum Hist {
+    /// Command started (might never complete).
+    // There's no CmdStop, because matching a Stop to the correct Start is too unreliable
+    CmdStart { ts: i64, args: String },
     /// Merge started (might never complete).
     MergeStart { ts: i64, key: String, pos: usize },
     /// Merge completed.
@@ -59,6 +62,7 @@ impl Hist {
     }
     pub const fn ts(&self) -> i64 {
         match self {
+            Self::CmdStart { ts, .. } => *ts,
             Self::MergeStart { ts, .. } => *ts,
             Self::MergeStop { ts, .. } => *ts,
             Self::UnmergeStart { ts, .. } => *ts,
@@ -84,17 +88,17 @@ fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Sen
 
 /// Parse emerge log into a channel of `Parsed` enums.
 pub fn get_hist(file: &str,
-                min_ts: Option<i64>,
-                max_ts: Option<i64>,
+                min: TimeBound,
+                max: TimeBound,
                 show: Show,
                 search_terms: &Vec<String>,
                 search_exact: bool)
                 -> Result<Receiver<Hist>, Error> {
     debug!("File: {file}");
     debug!("Show: {show}");
-    let mut buf = open_any_buffered(file)?;
-    let (ts_min, ts_max) = filter_ts(min_ts, max_ts)?;
+    let (ts_min, ts_max) = filter_ts(file, min, max)?;
     let filter = FilterStr::try_new(search_terms, search_exact)?;
+    let mut buf = open_any_buffered(file)?;
     let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
     thread::spawn(move || {
         let show_merge = show.merge || show.pkg || show.tot;
@@ -140,6 +144,10 @@ pub fn get_hist(file: &str,
                             if tx.send(found).is_err() {
                                 break;
                             }
+                        } else if let Some(found) = parse_cmdstart(show.cmd, t, s) {
+                            if tx.send(found).is_err() {
+                                break;
+                            }
                         }
                     }
                 },
@@ -154,7 +162,40 @@ pub fn get_hist(file: &str,
 }
 
 /// Return min/max timestamp depending on options.
-fn filter_ts(min: Option<i64>, max: Option<i64>) -> Result<(i64, i64), Error> {
+fn filter_ts(file: &str, min: TimeBound, max: TimeBound) -> Result<(i64, i64), Error> {
+    // Parse emerge log into a Vec of emerge command starts
+    // This is a specialized version of get_hist(), about 20% faster for this usecase
+    let mut cmds = vec![];
+    if matches!(min, TimeBound::Cmd(_)) || matches!(max, TimeBound::Cmd(_)) {
+        let mut buf = open_any_buffered(file)?;
+        let mut line = Vec::with_capacity(255);
+        loop {
+            match buf.read_until(b'\n', &mut line) {
+                Ok(0) => break,
+                Ok(_) => {
+                    if let Some((t, s)) = parse_ts(&line, i64::MIN, i64::MAX) {
+                        if s.starts_with(b"*** emerge") {
+                            cmds.push(t)
+                        }
+                    }
+                },
+                Err(_) => (),
+            }
+            line.clear();
+        }
+    }
+    // Convert to Option<int>
+    let min = match min {
+        TimeBound::Cmd(n) => cmds.iter().rev().nth(n).copied(),
+        TimeBound::Unix(n) => Some(n),
+        TimeBound::None => None,
+    };
+    let max = match max {
+        TimeBound::Cmd(n) => cmds.get(n).copied(),
+        TimeBound::Unix(n) => Some(n),
+        TimeBound::None => None,
+    };
+    // Check and log bounds, return result
     match (min, max) {
         (None, None) => debug!("Date: None"),
         (Some(a), None) => debug!("Date: after {}", fmt_utctime(a)),
@@ -244,6 +285,13 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     }
 }
 
+fn parse_cmdstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
+    if !enabled || !line.starts_with(b"*** emerge") {
+        return None;
+    }
+    Some(Hist::CmdStart { ts, args: from_utf8(&line[11..]).ok()?.trim().to_owned() })
+}
+
 fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> emer") {
         return None;
@@ -322,13 +370,12 @@ fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Op
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ArgParse;
     use std::collections::HashMap;
 
     /// This checks parsing the given emerge.log.
     fn chk_hist(file: &str,
-                parse_merge: bool,
-                parse_unmerge: bool,
-                parse_sync: bool,
+                show: &str,
                 filter_mints: Option<i64>,
                 filter_maxts: Option<i64>,
                 filter_terms: Vec<String>,
@@ -345,14 +392,9 @@ mod tests {
             o => unimplemented!("Unknown test log file {:?}", o),
         };
         let hist = get_hist(&format!("tests/emerge.{}.log", file),
-                            filter_mints,
-                            filter_maxts,
-                            Show { pkg: false,
-                                   tot: false,
-                                   sync: parse_sync,
-                                   merge: parse_merge,
-                                   unmerge: parse_unmerge,
-                                   emerge: false },
+                            filter_mints.map_or(TimeBound::None, |n| TimeBound::Unix(n)),
+                            filter_maxts.map_or(TimeBound::None, |n| TimeBound::Unix(n)),
+                            Show::parse(&String::from(show), "cptsmue", "test").unwrap(),
                             &filter_terms,
                             exact).unwrap();
         let re_atom = Regex::new("^[a-zA-Z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
@@ -361,6 +403,7 @@ mod tests {
         // Check that all items look valid
         for p in hist {
             let (kind, ts, ebuild, version) = match p {
+                Hist::CmdStart { ts, .. } => ("CStart", ts, "c/e", "1"),
                 Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
                 Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
                 Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
@@ -389,14 +432,14 @@ mod tests {
     /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
     fn parse_hist_all() {
         let t = vec![("MStart", 31467)];
-        chk_hist("all", true, false, false, None, None, vec![], false, t);
+        chk_hist("all", "m", None, None, vec![], false, t);
     }
 
     #[test]
     /// Emerge log with various invalid data
     fn parse_hist_nullbytes() {
         let t = vec![("MStart", 14), ("MStop", 14)];
-        chk_hist("nullbytes", true, false, false, None, None, vec![], false, t);
+        chk_hist("nullbytes", "m", None, None, vec![], false, t);
     }
 
     #[test]
@@ -407,7 +450,7 @@ mod tests {
                      ("media-libs/jpeg", 1), //letter in timestamp
                      ("dev-libs/libical", 2),
                      ("media-libs/libpng", 2)];
-        chk_hist("badtimestamp", true, false, false, None, None, vec![], false, t);
+        chk_hist("badtimestamp", "m", None, None, vec![], false, t);
     }
 
     #[test]
@@ -418,7 +461,7 @@ mod tests {
                      ("media-libs/jpeg", 2),
                      ("dev-libs/libical", 2),
                      ("media-libs/libpng", 1)]; //missing version
-        chk_hist("badversion", true, false, false, None, None, vec![], false, t);
+        chk_hist("badversion", "m", None, None, vec![], false, t);
     }
 
     #[test]
@@ -429,23 +472,30 @@ mod tests {
                      ("media-libs/jpeg", 2),
                      ("dev-libs/libical", 1), //missing end of line and spaces in iter
                      ("media-libs/libpng", 2)];
-        chk_hist("shortline", true, false, false, None, None, vec![], false, t);
+        chk_hist("shortline", "m", None, None, vec![], false, t);
     }
 
     #[test]
-    /// Basic counts, with every combination of merge/unmerge/sync
+    /// Basic counts, with every combination of command/merge/unmerge/sync
     fn parse_hist_nofilter() {
-        for i in 0..8 {
-            let m = (i & 0b001) == 0;
-            let u = (i & 0b010) == 0;
-            let s = (i & 0b100) == 0;
-            let t = vec![("MStart", if m { 889 } else { 0 }),
+        for i in 0..16 {
+            let c = (i & 0b0001) == 0;
+            let m = (i & 0b0010) == 0;
+            let u = (i & 0b0100) == 0;
+            let s = (i & 0b1000) == 0;
+            let show = format!("{}{}{}{}",
+                               if c { "c" } else { "" },
+                               if m { "m" } else { "" },
+                               if u { "u" } else { "" },
+                               if s { "s" } else { "" });
+            let t = vec![("CStart", if c { 450 } else { 0 }),
+                         ("MStart", if m { 889 } else { 0 }),
                          ("MStop", if m { 832 } else { 0 }),
                          ("UStart", if u { 832 } else { 0 }),
                          ("UStop", if u { 832 } else { 0 }),
                          ("SStart", if s { 326 } else { 0 }),
                          ("SStop", if s { 150 } else { 0 })];
-            chk_hist("10000", m, u, s, None, None, vec![], false, t);
+            chk_hist("10000", &show, None, None, vec![], false, t);
         }
     }
 
@@ -477,7 +527,7 @@ mod tests {
                          ("SStart", 326),
                          ("SStop", s2)];
             let terms = f.split_whitespace().map(str::to_string).collect();
-            chk_hist("10000", true, true, true, None, None, terms, e, c);
+            chk_hist("10000", "mus", None, None, terms, e, c);
         }
     }
 
@@ -505,7 +555,7 @@ mod tests {
                          ("UStop", u2),
                          ("SStart", s1),
                          ("SStop", s2)];
-            chk_hist("10000", true, true, true, min, max, vec![], true, c);
+            chk_hist("10000", "mus", min, max, vec![], true, c);
         }
     }
 

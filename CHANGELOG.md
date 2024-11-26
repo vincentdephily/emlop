@@ -2,6 +2,10 @@
 
 ## New features
 
+* `log` and `stat` can now show emerge command start events
+  - Not end events, as `emerge.log` doesn't provide enough info to make this reliable
+* `--from` and `--to` now accept a command index as argument
+  - `--from=1command` or `-fc` is roughly equivalent to qlop's `--lastmerge`
 * `predict` now displays emerge proces tree instead of just top proces
   - Bevahvior configurable with `--pdepth`, `--pwidth`
   - Format is a bit nicer and more colorful

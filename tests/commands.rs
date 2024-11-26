@@ -100,11 +100,17 @@ fn log() {
                2020-06-18 16:21:56        1 Sync moltonel\n"),
              // Check output of all events
              ("%F10000.log l --show a --from 2018-03-07T10:42:00 --to 2018-03-07T14:00:00 -oc",
-              "2018-03-07 10:43:10    14 >>> sys-apps/the_silver_searcher-2.0.0\n\
+              "2018-03-07 10:42:51       Emerge --backtrack=100 --quiet-build=y sys-apps/the_silver_searcher\n\
+               2018-03-07 10:43:10    14 >>> sys-apps/the_silver_searcher-2.0.0\n\
+               2018-03-07 11:36:27       Emerge --quiet-build=y --sync\n\
                2018-03-07 11:37:05    38 Sync gentoo\n\
+               2018-03-07 11:38:29       Emerge --deep --backtrack=100 --quiet-build=y --ask --update --jobs=2 --newuse --verbose world\n\
                2018-03-07 12:49:09     2 <<< sys-apps/util-linux-2.30.2\n\
                2018-03-07 12:49:13  1:01 >>> sys-apps/util-linux-2.30.2-r1\n\
+               2018-03-07 13:55:29       Emerge --quiet-build=y --sync\n\
                2018-03-07 13:56:09    40 Sync gentoo\n\
+               2018-03-07 13:57:31       Emerge --update --jobs=2 --backtrack=100 --ask --quiet-build=y --verbose --deep --newuse world\n\
+               2018-03-07 13:58:04       Emerge --update --verbose --newuse --quiet-build=y --deep --backtrack=100 world\n\
                2018-03-07 13:59:38     2 <<< dev-libs/nspr-4.17\n\
                2018-03-07 13:59:41    24 >>> dev-libs/nspr-4.18\n"),
              // skip first
@@ -286,7 +292,9 @@ fn stats() {
               0),
              ("%F10000.log s client -sst -oc", "11  24:00:24  2:10:56  10  27  2\n", 0),
              ("%F10000.log s client -sa -oc",
-              "kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
+              "450  267  20  163\n\
+               \n\
+               kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
                mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
                www-client/chromium           3  21:41:24  7:42:07  3  12  3\n\
                www-client/falkon             1      6:02     6:02  0   0  ?\n\
@@ -488,7 +496,7 @@ fn negative_merge_time() {
                        2019-06-05 10:21:02     ? >>> kde-plasma/kwin-5.15.5\n\
                        2019-06-08 21:33:36  3:10 >>> kde-plasma/kwin-5.15.5\n")),
              // For `stats` the negative merge time is used for count but ignored for tottime/predtime.
-             ("%Fnegtime.log s -sa -oc",
+             ("%Fnegtime.log s -sstp -oc",
               format!("gentoo  2  1:06  1:06\n\
                        \n\
                        kde-apps/libktnef  1    26    26  0  0  ?\n\

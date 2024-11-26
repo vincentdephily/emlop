@@ -30,28 +30,32 @@ pub fn build_cli() -> Command {
                                              virtual/rust: Matches only `virtual/rust`\n  \
                                              RuSt:         Matches nothing (case-sensitive)\n  \
                                              ru:           Matches nothing (whole name only)");
-    let show_l = Arg::new("show").short('s')
-                                 .long("show")
-                                 .value_name("m,u,s,a")
-                                 .display_order(3)
-                                 .help_heading("Filter")
-                                 .help("Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll")
-                                 .long_help("Show (any combination of)\n  \
-                                             m: Package merges\n  \
-                                             u: Package unmerges\n  \
-                                             s: Repository syncs\n  \
-                                             a: All of the above");
-    let show_s = Arg::new("show").short('s')
-                                 .long("show")
-                                 .value_name("p,t,s,a")
-                                 .display_order(3)
-                                 .help_heading("Filter")
-                                 .help("Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll")
-                                 .long_help("Show (any combination of)\n  \
-                                             p: Individual package merges/unmerges\n  \
-                                             t: Total package merges/unmerges\n  \
-                                             s: Repository syncs\n  \
-                                             a: All of the above");
+    let show_l =
+        Arg::new("show").short('s')
+                        .long("show")
+                        .value_name("c,m,u,s,a")
+                        .display_order(3)
+                        .help_heading("Filter")
+                        .help("Show (c)commands, (m)erges, (u)nmerges, (s)yncs, and/or (a)ll")
+                        .long_help("Show (any combination of)\n  \
+                                    c: Emerge command\n  \
+                                    m: Package merges\n  \
+                                    u: Package unmerges\n  \
+                                    s: Repository syncs\n  \
+                                    a: All of the above");
+    let show_s =
+        Arg::new("show").short('s')
+                        .long("show")
+                        .value_name("c,p,t,s,a")
+                        .display_order(3)
+                        .help_heading("Filter")
+                        .help("Show (c)commands, (p)ackages, (t)otals, (s)yncs, and/or (a)ll")
+                        .long_help("Show (any combination of)\n  \
+                                    c: Emerge commands\n  \
+                                    p: Individual package merges/unmerges\n  \
+                                    t: Total package merges/unmerges\n  \
+                                    s: Repository syncs\n  \
+                                    a: All of the above");
     let show_p = Arg::new("show").short('s')
                                  .long("show")
                                  .value_name("e,m,t,a")
@@ -73,10 +77,11 @@ pub fn build_cli() -> Command {
                                              m: Package merges\n  \
                                              t: Totals\n  \
                                              a: All of the above");
-    let h = "Only parse log entries after <date>\n  \
+    let h = "Only parse log entries after <date/command>\n  \
              2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
              123456789:                                       Absolute unix timestamp\n  \
-             1 year, 2 months|10d:                            Relative date";
+             1 year, 2 months|10d:                            Relative date\n  \
+             1c|2 commands|c                                  Nth emerge command";
     let from = Arg::new("from").short('f')
                                .long("from")
                                .value_name("date")
@@ -86,10 +91,11 @@ pub fn build_cli() -> Command {
                                .help_heading("Filter")
                                .help(h.split_once('\n').unwrap().0)
                                .long_help(h);
-    let h = "Only parse log entries before <date>\n  \
+    let h = "Only parse log entries before <date/command>\n  \
              2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
              123456789:                                       Absolute unix timestamp\n  \
-             1 year, 2 months|10d:                            Relative date";
+             1 year, 2 months|10d:                            Relative date\n  \
+             1c|2 commands|c                                  Nth-last emerge command";
     let to = Arg::new("to").short('t')
                            .long("to")
                            .value_name("date")
@@ -136,7 +142,7 @@ pub fn build_cli() -> Command {
                                    .hide_possible_values(true)
                                    .num_args(..=1)
                                    .default_missing_value("either")
-                                   .display_order(8)
+                                   .display_order(9)
                                    .help_heading("Filter")
                                    .help(h.split_once('\n').unwrap().0)
                                    .long_help(h);

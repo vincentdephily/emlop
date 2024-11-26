@@ -74,32 +74,58 @@ pub fn epoch_now() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
+#[cfg_attr(test, derive(PartialEq, Debug))]
+#[derive(Clone, Copy)]
+pub enum TimeBound {
+    /// Unbounded
+    None,
+    /// Bound by unix timestamp
+    Unix(i64),
+    /// Bound by time of nth fist/last emerge command
+    Cmd(usize),
+}
+
 /// Parse datetime in various formats, returning unix timestamp
-impl ArgParse<String, UtcOffset> for i64 {
+impl ArgParse<String, UtcOffset> for TimeBound {
     fn parse(val: &String, offset: UtcOffset, src: &'static str) -> Result<Self, ArgError> {
         let s = val.trim();
         let et = match i64::from_str(s) {
-            Ok(i) => return Ok(i),
+            Ok(i) => return Ok(Self::Unix(i)),
             Err(et) => et,
         };
         let ea = match parse_date_yyyymmdd(s, offset) {
-            Ok(i) => return Ok(i),
+            Ok(i) => return Ok(Self::Unix(i)),
+            Err(ea) => ea,
+        };
+        let ec = match parse_command_num(s) {
+            Ok(i) => return Ok(Self::Cmd(i)),
             Err(ea) => ea,
         };
         match parse_date_ago(s) {
-            Ok(i) => Ok(i),
+            Ok(i) => Ok(Self::Unix(i)),
             Err(er) => {
-                let m = format!("Not a unix timestamp ({et}), absolute date ({ea}), or relative date ({er})");
+                let m = format!("Not a unix timestamp ({et}), absolute date ({ea}), relative date ({er}), or command ({ec})");
                 Err(ArgError::new(val, src).msg(m))
             },
         }
     }
 }
 
+/// Parse a command index (parse as 1-based, return as 0-based)
+fn parse_command_num(s: &str) -> Result<usize, Error> {
+    use atoi::FromRadix10;
+    let (num, pos) = usize::from_radix_10(s.as_bytes());
+    match s[pos..].trim() {
+        "c" | "command" | "commands" if num > 0 => Ok(num - 1),
+        "c" | "command" if pos == 0 => Ok(0),
+        _ => bail!("bad span {:?}", &s[pos..]),
+    }
+}
+
 /// Parse a number of day/years/hours/etc in the past, relative to current time
 fn parse_date_ago(s: &str) -> Result<i64, Error> {
     if !s.chars().all(|c| c.is_alphanumeric() || c == ' ' || c == ',') {
-        bail!("Illegal char");
+        bail!("illegal char");
     }
     let mut now = OffsetDateTime::now_utc();
     let re = Regex::new("([0-9]+|[a-z]+)").expect("Bad date span regex");
@@ -138,7 +164,7 @@ fn parse_date_ago(s: &str) -> Result<i64, Error> {
     }
 
     if !at_least_one {
-        bail!("No token found");
+        bail!("no token found");
     }
     Ok(now.unix_timestamp())
 }
@@ -180,7 +206,7 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
         ]))
     ])?;
     if !rest.is_empty() {
-        bail!("Junk at end")
+        bail!("junk at end")
     }
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())
 }
@@ -299,8 +325,8 @@ mod test {
     fn parse_3339(s: &str) -> OffsetDateTime {
         OffsetDateTime::parse(s, &Rfc3339).expect(s)
     }
-    fn parse_date(s: &str, o: UtcOffset) -> Result<i64, ArgError> {
-        i64::parse(&String::from(s), o, "")
+    fn parse_date(s: &str, o: UtcOffset) -> Result<TimeBound, ArgError> {
+        TimeBound::parse(&String::from(s), o, "")
     }
     fn ts(t: OffsetDateTime) -> i64 {
         t.unix_timestamp()
@@ -315,22 +341,25 @@ mod test {
         let tz_utc = UtcOffset::UTC;
 
         // Absolute dates
-        assert_eq!(Ok(then), parse_date(" 1522713600 ", tz_utc));
-        assert_eq!(Ok(then), parse_date(" 2018-04-03 ", tz_utc));
-        assert_eq!(Ok(then + hour + min), parse_date("2018-04-03 01:01", tz_utc));
-        assert_eq!(Ok(then + hour + min + 1), parse_date("2018-04-03 01:01:01", tz_utc));
-        assert_eq!(Ok(then + hour + min + 1), parse_date("2018-04-03T01:01:01", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(then)), parse_date(" 1522713600 ", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(then)), parse_date(" 2018-04-03 ", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(then + hour + min)), parse_date("2018-04-03 01:01", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(then + hour + min + 1)),
+                   parse_date("2018-04-03 01:01:01", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(then + hour + min + 1)),
+                   parse_date("2018-04-03T01:01:01", tz_utc));
 
         // Different timezone (not calling `get_utcoffset()` because tests are threaded, which makes
         // `UtcOffset::current_local_offset()` error out)
         for secs in [hour, -1 * hour, 90 * min, -90 * min] {
             let offset = dbg!(UtcOffset::from_whole_seconds(secs.try_into().unwrap()).unwrap());
-            assert_eq!(Ok(then - secs), parse_date("2018-04-03T00:00", offset));
+            assert_eq!(Ok(TimeBound::Unix(then - secs)), parse_date("2018-04-03T00:00", offset));
         }
 
         // Relative dates
-        assert_eq!(Ok(now - hour - 3 * day - 45), parse_date("1 hour, 3 days  45sec", tz_utc));
-        assert_eq!(Ok(now - 5 * 7 * day), parse_date("5 weeks", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(now - hour - 3 * day - 45)),
+                   parse_date("1 hour, 3 days  45sec", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(now - 5 * 7 * day)), parse_date("5 weeks", tz_utc));
 
         // Failure cases
         assert!(parse_date("", tz_utc).is_err());
@@ -339,6 +368,19 @@ mod test {
         assert!(parse_date("152271000o", tz_utc).is_err());
         assert!(parse_date("1 day 3 centuries", tz_utc).is_err());
         assert!(parse_date("a while ago", tz_utc).is_err());
+    }
+
+    #[test]
+    fn command_num() {
+        assert_eq!(parse_command_num("1c").unwrap(), 0);
+        assert_eq!(parse_command_num("5c").unwrap(), 4);
+        assert_eq!(parse_command_num("c").unwrap(), 0);
+        assert_eq!(parse_command_num("1 commands ").unwrap(), 0);
+        assert!(parse_command_num("").is_err());
+        assert!(parse_command_num("0c").is_err());
+        assert!(parse_command_num("0").is_err());
+        assert!(parse_command_num("1cool").is_err());
+        assert!(parse_command_num("-1c").is_err());
     }
 
     #[test]
