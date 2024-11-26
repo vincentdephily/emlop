@@ -61,6 +61,8 @@ fn main() {
         ("ld2", "genlop", &["-f","{emerge.log}","-l", "--date","2020-10-01","--date","2020-10-31"], None),
         ("ld2", "qlop",   &["-f","{emerge.log}","-mv","--date","2020-10-01","--date","2020-10-31"], None),
         ("ld2", "emlop",  &["-F","{emerge.log}","l",  "--from","2020-10-01","--to",  "2020-10-31"], None),
+        ("ldl", "qlop",   &["-f","{emerge.log}","-mv","--lastmerge"], None),
+        ("ldl", "emlop",  &["-F","{emerge.log}","l","--from=1c"],   None),
         // Force/prevent color output
         ("lc", "qlop",   &["-f","{emerge.log}","-mv","--color"],   None),
         ("lc", "emlop",  &["-F","{emerge.log}","l","--color=y"],   None),

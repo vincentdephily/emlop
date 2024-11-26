@@ -89,16 +89,16 @@ For relative dates, genlop accepts fancy strings like "last month" or "2 weeks a
 less flexible but less verbose (no "ago" needed), and emlop only accepts a number of days/weeks/etc
 which can be abbreviated (for example "1 week, 3 days" -> "1w3d").
 
-|                                          | genlop      | qlop  | emlop       |
-|:-----------------------------------------|:-----------:|:-----:|:-----------:|
-| Limit log parsing by date                | yes         | yes   | yes         |
-| Limit log to number fisrt/last n entries | no          | no    | yes         |
-| Limit log to last emerge operation       | no          | yes   | no          |
-| Filter by package categ/name             | yes         | yes   | yes         |
-| Filter by sync repo                      | no          | no    | yes         |
-| Read filter list from file               | no          | yes   | no          |
-| Search modes                             | plain/regex | plain | plain/regex |
-| Default search mode                      | plain       | plain | regex       |
+|                                          | genlop      | qlop      | emlop       |
+|:-----------------------------------------|:-----------:|:---------:|:-----------:|
+| Limit log parsing by date                | yes         | yes       | yes         |
+| Limit log to number fisrt/last n entries | no          | no        | yes         |
+| Limit log to nth emerge operation        | no          | last only | yes         |
+| Filter by package categ/name             | yes         | yes       | yes         |
+| Filter by sync repo                      | no          | no        | yes         |
+| Read filter list from file               | no          | yes       | no          |
+| Search modes                             | plain/regex | plain     | plain/regex |
+| Default search mode                      | plain       | plain     | regex       |
 
 ## Merge time prediction
 
