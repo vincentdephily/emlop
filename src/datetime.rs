@@ -111,15 +111,14 @@ impl ArgParse<String, UtcOffset> for TimeBound {
     }
 }
 
-/// Parse a command index
+/// Parse a command index (parse as 1-based, return as 0-based)
 fn parse_command_num(s: &str) -> Result<usize, Error> {
     use atoi::FromRadix10;
-    match usize::from_radix_10(s.as_bytes()) {
-        (num, pos) if pos != 0 => match s[pos..].trim() {
-            "c" | "command" | "commands" => Ok(num),
-            _ => bail!("bad span {:?}", &s[pos..]),
-        },
-        _ => bail!("not a number"),
+    let (num, pos) = usize::from_radix_10(s.as_bytes());
+    match s[pos..].trim() {
+        "c" | "command" | "commands" if num > 0 => Ok(num - 1),
+        "c" | "command" if pos == 0 => Ok(0),
+        _ => bail!("bad span {:?}", &s[pos..]),
     }
 }
 
@@ -369,6 +368,19 @@ mod test {
         assert!(parse_date("152271000o", tz_utc).is_err());
         assert!(parse_date("1 day 3 centuries", tz_utc).is_err());
         assert!(parse_date("a while ago", tz_utc).is_err());
+    }
+
+    #[test]
+    fn command_num() {
+        assert_eq!(parse_command_num("1c").unwrap(), 0);
+        assert_eq!(parse_command_num("5c").unwrap(), 4);
+        assert_eq!(parse_command_num("c").unwrap(), 0);
+        assert_eq!(parse_command_num("1 commands ").unwrap(), 0);
+        assert!(parse_command_num("").is_err());
+        assert!(parse_command_num("0c").is_err());
+        assert!(parse_command_num("0").is_err());
+        assert!(parse_command_num("1cool").is_err());
+        assert!(parse_command_num("-1c").is_err());
     }
 
     #[test]
