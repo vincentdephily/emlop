@@ -1,7 +1,7 @@
 use crate::{config::{ArgError, ArgParse},
             table::Disp,
             wtb, Conf, DurationStyle};
-use anyhow::{bail, Error};
+use anyhow::{bail, ensure, Error};
 use log::{debug, warn};
 use regex::Regex;
 use std::{io::Write as _,
@@ -124,49 +124,51 @@ fn parse_command_num(s: &str) -> Result<usize, Error> {
 
 /// Parse a number of day/years/hours/etc in the past, relative to current time
 fn parse_date_ago(s: &str) -> Result<i64, Error> {
-    if !s.chars().all(|c| c.is_alphanumeric() || c == ' ' || c == ',') {
-        bail!("illegal char");
-    }
+    ensure!(s.chars().all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == ','), "bad char");
+    ensure!(s.chars().any(|c| c.is_ascii_alphabetic()), "empty");
     let mut now = OffsetDateTime::now_utc();
-    let re = Regex::new("([0-9]+|[a-z]+)").expect("Bad date span regex");
-    let mut tokens = re.find_iter(s);
-    let mut at_least_one = false;
+
+    // Handle case where only a span is given
+    if let Ok(now) = parse_date_span(1, s.trim(), now) {
+        return Ok(now.unix_timestamp());
+    }
 
     // The regex gives us a list of positive integers and strings. We expect to always have a
     // number, followed by a known string.
+    let re = Regex::new("([0-9]+|[a-z]+)").expect("Bad date span regex");
+    let mut tokens = re.find_iter(s);
     while let Some(t) = tokens.next() {
-        at_least_one = true;
-        let num: i32 = t.as_str().parse()?;
-        match tokens.next().map(|m| m.as_str()).unwrap_or("") {
-            "y" | "year" | "years" => {
-                let d = Date::from_calendar_date(now.year() - num, now.month(), now.day())?;
-                now = now.replace_date(d);
-            },
-            "m" | "month" | "months" => {
-                let mut month = now.month();
-                let mut year = now.year();
-                for _ in 0..num {
-                    month = month.previous();
-                    if month == time::Month::December {
-                        year -= 1;
-                    }
-                }
-                let d = Date::from_calendar_date(year, month, now.day())?;
-                now = now.replace_date(d);
-            },
-            "w" | "week" | "weeks" => now -= num * Duration::WEEK,
-            "d" | "day" | "days" => now -= num * Duration::DAY,
-            "h" | "hour" | "hours" => now -= num * Duration::HOUR,
-            "min" | "mins" | "minute" | "minutes" => now -= num * Duration::MINUTE,
-            "s" | "sec" | "secs" | "second" | "seconds" => now -= num * Duration::SECOND,
-            o => bail!("bad span {:?}", o),
-        };
-    }
-
-    if !at_least_one {
-        bail!("no token found");
+        let num: i32 = t.as_str().parse().map_err(|_| Error::msg("not a number"))?;
+        now = parse_date_span(num, tokens.next().map(|m| m.as_str()).unwrap_or(""), now)?;
     }
     Ok(now.unix_timestamp())
+}
+
+fn parse_date_span(num: i32, span: &str, now: OffsetDateTime) -> Result<OffsetDateTime, Error> {
+    Ok(match span {
+        "y" | "year" | "years" => {
+            let d = Date::from_calendar_date(now.year() - num, now.month(), now.day())?;
+            now.replace_date(d)
+        },
+        "m" | "month" | "months" => {
+            let mut month = now.month();
+            let mut year = now.year();
+            for _ in 0..num {
+                month = month.previous();
+                if month == time::Month::December {
+                    year -= 1;
+                }
+            }
+            let d = Date::from_calendar_date(year, month, now.day())?;
+            now.replace_date(d)
+        },
+        "w" | "week" | "weeks" => now - num * Duration::WEEK,
+        "d" | "day" | "days" => now - num * Duration::DAY,
+        "h" | "hour" | "hours" => now - num * Duration::HOUR,
+        "min" | "mins" | "minute" | "minutes" => now - num * Duration::MINUTE,
+        "s" | "sec" | "secs" | "second" | "seconds" => now - num * Duration::SECOND,
+        o => bail!("bad span {:?}", o),
+    })
 }
 
 /// Parse rfc3339-like format with added flexibility
@@ -360,9 +362,13 @@ mod test {
         assert_eq!(Ok(TimeBound::Unix(now - hour - 3 * day - 45)),
                    parse_date("1 hour, 3 days  45sec", tz_utc));
         assert_eq!(Ok(TimeBound::Unix(now - 5 * 7 * day)), parse_date("5 weeks", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(now - hour - 2 * day)), parse_date("2d1h", tz_utc));
+        assert_eq!(Ok(TimeBound::Unix(now - 7 * day)), parse_date("w", tz_utc));
 
         // Failure cases
         assert!(parse_date("", tz_utc).is_err());
+        assert!(parse_date(" ", tz_utc).is_err());
+        assert!(parse_date(",", tz_utc).is_err());
         assert!(parse_date("junk2018-04-03T01:01:01", tz_utc).is_err());
         assert!(parse_date("2018-04-03T01:01:01junk", tz_utc).is_err());
         assert!(parse_date("152271000o", tz_utc).is_err());
