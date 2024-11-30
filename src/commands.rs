@@ -17,7 +17,7 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
         Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last).header(h);
     for p in hist {
         match p {
-            Hist::CmdStart { ts, args, .. } => {
+            Hist::RunStart { ts, args, .. } => {
                 found += 1;
                 if found <= sc.first {
                     tbl.row([&[&FmtDate(ts)], &[], &[&"Emerge ", &args]]);
@@ -198,7 +198,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
     let mut sync_start: Option<i64> = None;
     let mut sync_time: BTreeMap<String, Times> = BTreeMap::new();
-    let mut cmd_args: BTreeMap<ArgKind, usize> = BTreeMap::new();
+    let mut run_args: BTreeMap<ArgKind, usize> = BTreeMap::new();
     let mut nextts = 0;
     let mut curts = 0;
     for p in hist {
@@ -210,18 +210,18 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             } else if t > nextts {
                 let group = sc.group.at(curts, gc.date_offset);
                 cmd_stats_group(&gc, &sc, &mut tblc, &mut tbls, &mut tblp, &mut tblt, group,
-                                &cmd_args, &sync_time, &pkg_time);
+                                &run_args, &sync_time, &pkg_time);
                 sync_time.clear();
                 pkg_time.clear();
-                cmd_args.clear();
+                run_args.clear();
                 nextts = sc.group.next(t, gc.date_offset);
                 curts = t;
             }
         }
         match p {
-            Hist::CmdStart { args, .. } => {
-                *cmd_args.entry(ArgKind::All).or_insert(0) += 1;
-                *cmd_args.entry(ArgKind::new(&args)).or_insert(0) += 1;
+            Hist::RunStart { args, .. } => {
+                *run_args.entry(ArgKind::All).or_insert(0) += 1;
+                *run_args.entry(ArgKind::new(&args)).or_insert(0) += 1;
             },
             Hist::MergeStart { ts, key, .. } => {
                 merge_start.insert(key, ts);
@@ -258,7 +258,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
         }
     }
     let group = sc.group.at(curts, gc.date_offset);
-    cmd_stats_group(&gc, &sc, &mut tblc, &mut tbls, &mut tblp, &mut tblt, group, &cmd_args,
+    cmd_stats_group(&gc, &sc, &mut tblc, &mut tbls, &mut tblp, &mut tblt, group, &run_args,
                     &sync_time, &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
     let (ec, es, ep, et) = (!tblc.is_empty(), !tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
@@ -287,16 +287,16 @@ fn cmd_stats_group(gc: &Conf,
                    tblp: &mut Table<8>,
                    tblt: &mut Table<7>,
                    group: String,
-                   cmd_args: &BTreeMap<ArgKind, usize>,
+                   run_args: &BTreeMap<ArgKind, usize>,
                    sync_time: &BTreeMap<String, Times>,
                    pkg_time: &BTreeMap<String, (Times, Times)>) {
     // Commands
-    if sc.show.cmd && !cmd_args.is_empty() {
+    if sc.show.run && !run_args.is_empty() {
         tblc.row([&[&group],
-                  &[&gc.cnt, cmd_args.get(&ArgKind::All).unwrap_or(&0)],
-                  &[&gc.cnt, cmd_args.get(&ArgKind::Merge).unwrap_or(&0)],
-                  &[&gc.cnt, cmd_args.get(&ArgKind::Clean).unwrap_or(&0)],
-                  &[&gc.cnt, cmd_args.get(&ArgKind::Sync).unwrap_or(&0)]]);
+                  &[&gc.cnt, run_args.get(&ArgKind::All).unwrap_or(&0)],
+                  &[&gc.cnt, run_args.get(&ArgKind::Merge).unwrap_or(&0)],
+                  &[&gc.cnt, run_args.get(&ArgKind::Clean).unwrap_or(&0)],
+                  &[&gc.cnt, run_args.get(&ArgKind::Sync).unwrap_or(&0)]]);
     }
     // Syncs
     if sc.show.sync && !sync_time.is_empty() {
@@ -406,7 +406,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
         return Ok(false);
     }
-    if sc.show.emerge {
+    if sc.show.run {
         for p in einfo.roots {
             proc_rows(now, &mut tbl, &procs, p, 0, &gc, &sc);
         }

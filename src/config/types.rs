@@ -184,63 +184,37 @@ impl ArgParse<String, bool> for OutStyle {
 
 #[derive(Clone, Copy)]
 pub struct Show {
-    pub cmd: bool,
+    pub run: bool,
     pub pkg: bool,
     pub tot: bool,
     pub sync: bool,
     pub merge: bool,
     pub unmerge: bool,
-    pub emerge: bool,
 }
 impl Show {
     pub const fn m() -> Self {
-        Self { cmd: false,
-               pkg: false,
-               tot: false,
-               sync: false,
-               merge: true,
-               unmerge: false,
-               emerge: false }
+        Self { run: false, pkg: false, tot: false, sync: false, merge: true, unmerge: false }
     }
-    pub const fn emt() -> Self {
-        Self { cmd: false,
-               pkg: false,
-               tot: true,
-               sync: false,
-               merge: true,
-               unmerge: false,
-               emerge: true }
+    pub const fn rmt() -> Self {
+        Self { run: true, pkg: false, tot: true, sync: false, merge: true, unmerge: false }
     }
     pub const fn p() -> Self {
-        Self { cmd: false,
-               pkg: true,
-               tot: false,
-               sync: false,
-               merge: false,
-               unmerge: false,
-               emerge: false }
+        Self { run: false, pkg: true, tot: false, sync: false, merge: false, unmerge: false }
     }
     pub const fn mt() -> Self {
-        Self { cmd: false,
-               pkg: false,
-               tot: true,
-               sync: false,
-               merge: true,
-               unmerge: false,
-               emerge: false }
+        Self { run: false, pkg: false, tot: true, sync: false, merge: true, unmerge: false }
     }
 }
 impl ArgParse<String, &'static str> for Show {
     fn parse(show: &String, valid: &'static str, src: &'static str) -> Result<Self, ArgError> {
         debug_assert!(valid.is_ascii()); // Because we use `chars()` we need to stick to ascii for `valid`.
         if show.chars().all(|c| valid.contains(c)) {
-            Ok(Self { cmd: show.contains('c') || show.contains('a'),
+            Ok(Self { run: show.contains('r') || show.contains('a'),
                       pkg: show.contains('p') || show.contains('a'),
                       tot: show.contains('t') || show.contains('a'),
                       sync: show.contains('s') || show.contains('a'),
                       merge: show.contains('m') || show.contains('a'),
-                      unmerge: show.contains('u') || show.contains('a'),
-                      emerge: show.contains('e') || show.contains('a') })
+                      unmerge: show.contains('u') || show.contains('a') })
         } else {
             Err(ArgError::new(show, src).msg("Invalid letter").pos(valid))
         }
@@ -249,13 +223,12 @@ impl ArgParse<String, &'static str> for Show {
 impl std::fmt::Display for Show {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut sep = "";
-        for (b, s) in [(self.cmd, "command"),
+        for (b, s) in [(self.run, "run"),
                        (self.pkg, "pkg"),
                        (self.tot, "total"),
                        (self.sync, "sync"),
                        (self.merge, "merge"),
-                       (self.unmerge, "unmerge"),
-                       (self.emerge, "emerge")]
+                       (self.unmerge, "unmerge")]
         {
             if b {
                 write!(f, "{sep}{s}")?;

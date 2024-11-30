@@ -182,7 +182,7 @@ impl Conf {
 
 impl ConfLog {
     fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel!(cli, toml, log, show, "cmusa", Show::m())?,
+        Ok(Self { show: sel!(cli, toml, log, show, "rmusa", Show::m())?,
                   search: cli.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: cli.get_flag("exact"),
                   starttime: sel!(cli, toml, log, starttime, (), false)?,
@@ -200,7 +200,7 @@ impl ConfPred {
         } else {
             vec![PathBuf::from("/var/tmp")]
         };
-        Ok(Self { show: sel!(cli, toml, predict, show, "emta", Show::emt())?,
+        Ok(Self { show: sel!(cli, toml, predict, show, "rmta", Show::rmt())?,
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,
                   unknown: sel!(cli, toml, predict, unknown, 0..=3600, 10)?,
@@ -221,7 +221,7 @@ impl ConfPred {
 
 impl ConfStats {
     fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel!(cli, toml, stats, show, "cptsa", Show::p())?,
+        Ok(Self { show: sel!(cli, toml, stats, show, "rptsa", Show::p())?,
                   search: cli.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: cli.get_flag("exact"),
                   lim: sel!(cli, toml, stats, limit, 1..=65000, 10)? as u16,

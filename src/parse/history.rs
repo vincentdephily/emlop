@@ -16,9 +16,9 @@ use std::{fs::File,
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
 pub enum Hist {
-    /// Command started (might never complete).
-    // There's no CmdStop, because matching a Stop to the correct Start is too unreliable
-    CmdStart { ts: i64, args: String },
+    /// Emerge run started (might never complete).
+    // There's no RunStop, because matching a Stop to the correct Start is too unreliable
+    RunStart { ts: i64, args: String },
     /// Merge started (might never complete).
     MergeStart { ts: i64, key: String, pos: usize },
     /// Merge completed.
@@ -62,7 +62,7 @@ impl Hist {
     }
     pub const fn ts(&self) -> i64 {
         match self {
-            Self::CmdStart { ts, .. } => *ts,
+            Self::RunStart { ts, .. } => *ts,
             Self::MergeStart { ts, .. } => *ts,
             Self::MergeStop { ts, .. } => *ts,
             Self::UnmergeStart { ts, .. } => *ts,
@@ -144,7 +144,7 @@ pub fn get_hist(file: &str,
                             if tx.send(found).is_err() {
                                 break;
                             }
-                        } else if let Some(found) = parse_cmdstart(show.cmd, t, s) {
+                        } else if let Some(found) = parse_runstart(show.run, t, s) {
                             if tx.send(found).is_err() {
                                 break;
                             }
@@ -165,8 +165,8 @@ pub fn get_hist(file: &str,
 fn filter_ts(file: &str, min: TimeBound, max: TimeBound) -> Result<(i64, i64), Error> {
     // Parse emerge log into a Vec of emerge command starts
     // This is a specialized version of get_hist(), about 20% faster for this usecase
-    let mut cmds = vec![];
-    if matches!(min, TimeBound::Cmd(_)) || matches!(max, TimeBound::Cmd(_)) {
+    let mut runs = vec![];
+    if matches!(min, TimeBound::Run(_)) || matches!(max, TimeBound::Run(_)) {
         let mut buf = open_any_buffered(file)?;
         let mut line = Vec::with_capacity(255);
         loop {
@@ -175,7 +175,7 @@ fn filter_ts(file: &str, min: TimeBound, max: TimeBound) -> Result<(i64, i64), E
                 Ok(_) => {
                     if let Some((t, s)) = parse_ts(&line, i64::MIN, i64::MAX) {
                         if s.starts_with(b"*** emerge") {
-                            cmds.push(t)
+                            runs.push(t)
                         }
                     }
                 },
@@ -186,12 +186,12 @@ fn filter_ts(file: &str, min: TimeBound, max: TimeBound) -> Result<(i64, i64), E
     }
     // Convert to Option<int>
     let min = match min {
-        TimeBound::Cmd(n) => cmds.iter().rev().nth(n).copied(),
+        TimeBound::Run(n) => runs.iter().rev().nth(n).copied(),
         TimeBound::Unix(n) => Some(n),
         TimeBound::None => None,
     };
     let max = match max {
-        TimeBound::Cmd(n) => cmds.get(n).copied(),
+        TimeBound::Run(n) => runs.get(n).copied(),
         TimeBound::Unix(n) => Some(n),
         TimeBound::None => None,
     };
@@ -285,11 +285,11 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     }
 }
 
-fn parse_cmdstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
+fn parse_runstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
     if !enabled || !line.starts_with(b"*** emerge") {
         return None;
     }
-    Some(Hist::CmdStart { ts, args: from_utf8(&line[11..]).ok()?.trim().to_owned() })
+    Some(Hist::RunStart { ts, args: from_utf8(&line[11..]).ok()?.trim().to_owned() })
 }
 
 fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
@@ -394,7 +394,7 @@ mod tests {
         let hist = get_hist(&format!("tests/emerge.{}.log", file),
                             filter_mints.map_or(TimeBound::None, |n| TimeBound::Unix(n)),
                             filter_maxts.map_or(TimeBound::None, |n| TimeBound::Unix(n)),
-                            Show::parse(&String::from(show), "cptsmue", "test").unwrap(),
+                            Show::parse(&String::from(show), "rptsmua", "test").unwrap(),
                             &filter_terms,
                             exact).unwrap();
         let re_atom = Regex::new("^[a-zA-Z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
@@ -403,7 +403,7 @@ mod tests {
         // Check that all items look valid
         for p in hist {
             let (kind, ts, ebuild, version) = match p {
-                Hist::CmdStart { ts, .. } => ("CStart", ts, "c/e", "1"),
+                Hist::RunStart { ts, .. } => ("RStart", ts, "c/e", "1"),
                 Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
                 Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
                 Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
@@ -479,16 +479,16 @@ mod tests {
     /// Basic counts, with every combination of command/merge/unmerge/sync
     fn parse_hist_nofilter() {
         for i in 0..16 {
-            let c = (i & 0b0001) == 0;
+            let r = (i & 0b0001) == 0;
             let m = (i & 0b0010) == 0;
             let u = (i & 0b0100) == 0;
             let s = (i & 0b1000) == 0;
             let show = format!("{}{}{}{}",
-                               if c { "c" } else { "" },
+                               if r { "r" } else { "" },
                                if m { "m" } else { "" },
                                if u { "u" } else { "" },
                                if s { "s" } else { "" });
-            let t = vec![("CStart", if c { 450 } else { 0 }),
+            let t = vec![("RStart", if r { 450 } else { 0 }),
                          ("MStart", if m { 889 } else { 0 }),
                          ("MStop", if m { 832 } else { 0 }),
                          ("UStart", if u { 832 } else { 0 }),

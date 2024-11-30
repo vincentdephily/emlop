@@ -81,8 +81,8 @@ pub enum TimeBound {
     None,
     /// Bound by unix timestamp
     Unix(i64),
-    /// Bound by time of nth fist/last emerge command
-    Cmd(usize),
+    /// Bound by time of nth fist/last emerge run
+    Run(usize),
 }
 
 /// Parse datetime in various formats, returning unix timestamp
@@ -98,7 +98,7 @@ impl ArgParse<String, UtcOffset> for TimeBound {
             Err(ea) => ea,
         };
         let ec = match parse_command_num(s) {
-            Ok(i) => return Ok(Self::Cmd(i)),
+            Ok(i) => return Ok(Self::Run(i)),
             Err(ea) => ea,
         };
         match parse_date_ago(s) {

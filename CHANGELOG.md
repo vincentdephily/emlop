@@ -2,16 +2,17 @@
 
 ## New features
 
-* `log` and `stat` can now show emerge command start events
-  - Use `--show=c`/`-sc`/`-sa` to enable it
+* `log` and `stat` can now show emerge (r)runs
+  - Use `--show=r`/`-sr`/`-sa` to enable it
   - No duration given, as `emerge.log` doesn't provide enough info to make this reliable
 * `--from` and `--to` now accept more values
-  - New `command` keyword resolves to te time of the nth emerge command
+  - New `command` keyword resolves to the time of the nth emerge command
     (`-fc` is roughly equivalent to qlop's `--lastmerge`)
   - A single span (`day`/`y`/`command`/etc) without a count now means that span with a count of 1
 * `predict` now displays emerge proces tree instead of just top proces
   - Bevahvior configurable with `--pdepth`, `--pwidth`
   - Format is a bit nicer and more colorful
+  - `--show=e` renamed `--show=r` (running emerge processes) for consistency
 * Display a placeholder for skipped rows, configurable with `--showskip`
 
 ## Bug fixes
