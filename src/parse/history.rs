@@ -620,11 +620,14 @@ mod bench {
             Hist::SyncStop { repo, .. } => repo,
             _ => String::from("other"),
         };
-        let show = Show::parse(&String::from("ms"), "ms", "ut").unwrap();
+        let show = Show::parse(&String::from("ms"), "rptsmua", "test").unwrap();
         let file = String::from("benches/emerge.log");
         let pkgs: Vec<_> =
-            get_hist(&file, None, None, show, &vec![], true).unwrap().iter().map(f).collect();
-        assert_eq!(pkgs.len(), 21969);
+            get_hist(&file, TimeBound::None, TimeBound::None, show, &vec![], true).unwrap()
+                                                                                  .iter()
+                                                                                  .map(f)
+                                                                                  .collect();
+        assert_eq!(pkgs.len(), 21971);
         pkgs
     }
 
@@ -649,4 +652,48 @@ mod bench {
     bench_filterstr!(filterstr_many_str, "gcc llvm clang rust emacs", true);
     bench_filterstr!(filterstr_one_reg, "gcc", false);
     bench_filterstr!(filterstr_many_reg, "gcc llvm clang rust emacs", false);
+
+    #[bench]
+    fn get_hist_murs(b: &mut test::Bencher) {
+        get_hist_with(b, "murs")
+    }
+    #[bench]
+    fn get_hist_m(b: &mut test::Bencher) {
+        get_hist_with(b, "m")
+    }
+    #[bench]
+    fn get_hist_u(b: &mut test::Bencher) {
+        get_hist_with(b, "u")
+    }
+    #[bench]
+    fn get_hist_r(b: &mut test::Bencher) {
+        get_hist_with(b, "r")
+    }
+    #[bench]
+    fn get_hist_s(b: &mut test::Bencher) {
+        get_hist_with(b, "s")
+    }
+    /// Bench parsing a whole log file without filter or postprocessing
+    fn get_hist_with(b: &mut test::Bencher, s: &str) {
+        let show = Show::parse(&String::from(s), "rptsmua", "test").unwrap();
+        let count: usize = s.chars()
+                            .map(|c| match c {
+                                'm' => 21310,
+                                'u' => 20847,
+                                's' => 661,
+                                'r' => 971,
+                                o => panic!("unhandled show {o}"),
+                            })
+                            .sum();
+        let file = String::from("benches/emerge.log");
+        b.iter(move || {
+             let mut n = 0;
+             let hist =
+                 get_hist(&file, TimeBound::None, TimeBound::None, show, &vec![], true).unwrap();
+             for _ in hist {
+                 n += 1;
+             }
+             assert_eq!(n, count);
+         });
+    }
 }
