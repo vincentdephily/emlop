@@ -11,10 +11,9 @@
 //!    content: |
 //!     package = { name = "exec_compare", version = "0.1.0", edition = "2021"}
 //!     [dependencies]
-//!     clap = {version = "<4.4.0", features = ["string"]}
+//!     clap = {version = "4.5.23", features = ["string"]}
 //!     stats-cli = "3.0.1"
-//!     # tabwriter 1.3.0 has MSRV 1.67
-//!     tabwriter = "1.2.1"
+//!     tabwriter = "1.4.0"
 //!     rand = "0.8.5"
 //! scriptisto-end
 
