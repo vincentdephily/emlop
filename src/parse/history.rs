@@ -270,7 +270,7 @@ fn find_version(atom: &str, filter: &FilterStr) -> Option<usize> {
 }
 
 /// Parse and filter timestamp
-// TODO from_utf8(s.trim_ascii_start()) https://github.com/rust-lang/rust/issues/94035
+// TODO MSRV 1.80: from_utf8(s.trim_ascii_start())
 fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     use atoi::FromRadix10;
     match i64::from_radix_10(line) {

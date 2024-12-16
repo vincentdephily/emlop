@@ -12,7 +12,7 @@ authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Illia Shestakov <ishestakov@airmail.cc>",
            "Alexis <flexibeast@gmail.com>"]
 edition = "2021"
-rust-version = "1.71.0"
+rust-version = "1.74.1"
 exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
 [lints.clippy]

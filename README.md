@@ -116,7 +116,7 @@ Install Rust and using [portage](https://wiki.gentoo.org/wiki/Rust) or
 [rustup](https://www.rust-lang.org/en-US/install.html). Make sure `~/.cargo/bin/`, is in your
 `$PATH`.
 
-The current Minimum Supported Rust Version is 1.71. When building `emlop` with an old rustc version,
+The current Minimum Supported Rust Version is 1.74. When building `emlop` with an old rustc version,
 you might need to pass `--locked` to `cargo install`, to use explicitly tested dependency versions.
 
 #### From crates.io
