@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        toolchain: [1.71.0, stable]
+        toolchain: [1.74.1, stable]
         include:
           - timezone: UTC
           - timezone: Europe/Dublin
