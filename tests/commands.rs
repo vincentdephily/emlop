@@ -47,7 +47,8 @@ fn log() {
                2018-02-28 09:14:37     6:02 >>> www-client/falkon-3.0.0\n\
                2018-03-06 04:19:52  7:42:07 >>> www-client/chromium-64.0.3282.186\n\
                2018-03-12 10:35:22       14 >>> x11-apps/xlsclients-1.1.4\n\
-               2018-03-12 11:03:53       16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
+               2018-03-12 11:03:53       16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n\
+               2018-03-14 01:36:42       10 >>> www-client/falkon-24.08.3\n"),
              // Check output when duration isn't known
              ("%F10000.log l -s m mlt -e --from 2018-02-18T12:37:00 -oc",
               "2018-02-18 12:37:09   ? >>> media-libs/mlt-6.4.1-r6\n\
@@ -117,18 +118,18 @@ fn log() {
              ("%F10000.log l client -oc --first 2",
               "2018-02-04 04:55:19  35:46 >>> mail-client/thunderbird-52.6.0\n\
                2018-02-04 05:42:48  47:29 >>> www-client/firefox-58.0.1\n\
-               (skip last 9)              \n"),
+               (skip last 10)             \n"),
              // skip first
              ("%F10000.log l client -oc --last 2",
-              "(skip first 9)\n\
-               2018-03-12 10:35:22  14 >>> x11-apps/xlsclients-1.1.4\n\
-               2018-03-12 11:03:53  16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
+              "(skip first 10)\n\
+               2018-03-12 11:03:53  16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n\
+               2018-03-14 01:36:42  10 >>> www-client/falkon-24.08.3\n"),
              // Skip first and last
              ("%F10000.log l client -oc --first 4 --last 2",
               "(skip first 2)\n\
                2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
                2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
-               (skip last 7)              \n"),
+               (skip last 8)              \n"),
              // Skip silently
              ("%F10000.log l client -oc --first 4 --last 2 --showskip=n",
               "2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\

@@ -414,7 +414,7 @@ mod tests {
                 expect_counts: Vec<(&str, usize)>) {
         // Setup
         let (mints, maxts) = match file {
-            "10000" => (1517609348, 1520891098),
+            "10000" => (1517609348, 1520991402),
             "all" => (1483228800, 1483747200),
             "badtimestamp" => (1327867709, 1327871057),
             "badversion" => (1327867709, 1327871057),
@@ -520,11 +520,12 @@ mod tests {
                                if m { "m" } else { "" },
                                if u { "u" } else { "" },
                                if s { "s" } else { "" });
-            let t = vec![("RStart", if r { 450 } else { 0 }),
-                         ("MStart", if m { 889 } else { 0 }),
-                         ("MStop", if m { 832 } else { 0 }),
-                         ("UStart", if u { 832 } else { 0 }),
-                         ("UStop", if u { 832 } else { 0 }),
+            let t = vec![("RStart", if r { 451 } else { 0 }),
+                         ("MStart", if m { 890 } else { 0 }),
+                         ("MStep", if m { 3443 } else { 0 }),
+                         ("MStop", if m { 833 } else { 0 }),
+                         ("UStart", if u { 833 } else { 0 }),
+                         ("UStop", if u { 833 } else { 0 }),
                          ("SStart", if s { 326 } else { 0 }),
                          ("SStop", if s { 150 } else { 0 })];
             chk_hist("10000", &show, None, None, vec![], false, t);
@@ -536,7 +537,7 @@ mod tests {
     fn parse_hist_filter_term() {
         #[rustfmt::skip]
         let t = vec![
-            ("",                           false, 889, 3441, 832, 832, 832, 150), // Everything
+            ("",                           false, 890, 3443, 833, 833, 833, 150), // Everything
             ("kactivities",                false,   4,   16,   4,   4,   4,   0), // regexp matches 4
             ("kactivities",                true,    2,    8,   2,   2,   2,   0), // string matches 2
             ("kde-frameworks/kactivities", true,    2,    8,   2,   2,   2,   0), // string matches 2
@@ -568,23 +569,24 @@ mod tests {
     #[test]
     /// Filtering by timestamp
     fn parse_hist_filter_ts() {
-        let (umin, umax, fmin, fmax) = (i64::MIN, i64::MAX, 1517609348, 1520891098);
+        let (umin, umax, fmin, fmax) = (i64::MIN, i64::MAX, 1517609348, 1520991402);
         #[rustfmt::skip]
-        let t = vec![(Some(umin),       None,           889, 832, 832, 832, 326, 150),
-                     (Some(fmin),       None,           889, 832, 832, 832, 326, 150),
-                     (None,             Some(umax),     889, 832, 832, 832, 326, 150),
-                     (None,             Some(fmax),     889, 832, 832, 832, 326, 150),
-                     (Some(fmin),       Some(fmax),     889, 832, 832, 832, 326, 150),
-                     (Some(fmax),       None,             0,   0,   0,   0,   0,   0),
-                     (None,             Some(fmin),       0,   1,   0,   0,   0,   0), //fist line of this file happens to be a stop
-                     (None,             Some(umin),       0,   0,   0,   0,   0,   0),
-                     (Some(umax),       None,             0,   0,   0,   0,   0,   0),
-                     (Some(1517917751), Some(1517931835), 6,   6,   5,   5,   4,   2),
-                     (Some(1517959010), Some(1518176159), 24, 21,  23,  23,  32,  16),
+        let t = vec![(Some(umin),       None,           890,  3443, 833, 833, 833, 326, 150),
+                     (Some(fmin),       None,           890,  3443, 833, 833, 833, 326, 150),
+                     (None,             Some(umax),     890,  3443, 833, 833, 833, 326, 150),
+                     (None,             Some(fmax),     890,  3443, 833, 833, 833, 326, 150),
+                     (Some(fmin),       Some(fmax),     890,  3443, 833, 833, 833, 326, 150),
+                     (Some(fmax),       None,             0,     1,   1,   0,   0,   0,   0), //last ts contains a stop and a "Post-Build Cleaning" step
+                     (None,             Some(fmin),       0,     0,   1,   0,   0,   0,   0), //fist ts contains a stop
+                     (None,             Some(umin),       0,     0,   0,   0,   0,   0,   0),
+                     (Some(umax),       None,             0,     0,   0,   0,   0,   0,   0),
+                     (Some(1517917751), Some(1517931835), 6,    24,   6,   5,   5,   4,   2),
+                     (Some(1517959010), Some(1518176159), 24,   91,  21,  23,  23,  32,  16),
         ];
-        for (min, max, m1, m2, u1, u2, s1, s2) in t {
+        for (min, max, m1, m2, m3, u1, u2, s1, s2) in t {
             let c = vec![("MStart", m1),
-                         ("MStop", m2),
+                         ("MStep", m2),
+                         ("MStop", m3),
                          ("UStart", u1),
                          ("UStop", u2),
                          ("SStart", s1),
