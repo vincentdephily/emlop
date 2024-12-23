@@ -29,8 +29,8 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
             },
             Hist::MergeStep { key, kind, .. } => {
                 if matches!(kind, MergeStep::MergeBinary) {
-                    if let Some(e) = merges.get_mut(&key) {
-                        (*e).1 = true;
+                    if let Some((_, bin)) = merges.get_mut(&key) {
+                        *bin = true;
                     }
                 }
             },
@@ -241,8 +241,8 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             },
             Hist::MergeStep { kind, key, .. } => {
                 if matches!(kind, MergeStep::MergeBinary) {
-                    if let Some(e) = merge_start.get_mut(&key) {
-                        (*e).1 = true;
+                    if let Some((_, bin)) = merge_start.get_mut(&key) {
+                        *bin = true;
                     }
                 }
             },
