@@ -188,6 +188,9 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
              "Merges",
              "Total time",
              "Predict time",
+             "Binmerges",
+             "Total time",
+             "Predict time",
              "Unmerges",
              "Total time",
              "Predict time"];
@@ -196,13 +199,16 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
              "Merges",
              "Total time",
              "Average time",
+             "Binmerges",
+             "Total time",
+             "Average time",
              "Unmerges",
              "Total time",
              "Average time"];
     let mut tblt = Table::new(&gc).align_left(0).margin(1, " ").header(h);
-    let mut merge_start: HashMap<String, i64> = HashMap::new();
+    let mut merge_start: HashMap<String, (i64, bool)> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
-    let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
+    let mut pkg_time: BTreeMap<String, (Times, Times, Times)> = BTreeMap::new();
     let mut sync_start: Option<i64> = None;
     let mut sync_time: BTreeMap<String, Times> = BTreeMap::new();
     let mut run_args: BTreeMap<ArgKind, usize> = BTreeMap::new();
@@ -231,16 +237,25 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                 *run_args.entry(ArgKind::new(&args)).or_insert(0) += 1;
             },
             Hist::MergeStart { ts, key, .. } => {
-                merge_start.insert(key, ts);
+                merge_start.insert(key, (ts, false));
             },
-            Hist::MergeStep { .. } => {
-                //todo!();
+            Hist::MergeStep { kind, key, .. } => {
+                if matches!(kind, MergeStep::MergeBinary) {
+                    if let Some(e) = merge_start.get_mut(&key) {
+                        (*e).1 = true;
+                    }
+                }
             },
             Hist::MergeStop { ts, ref key, .. } => {
-                if let Some(start_ts) = merge_start.remove(key) {
-                    let (times, _) = pkg_time.entry(p.ebuild().to_owned())
-                                             .or_insert((Times::new(), Times::new()));
-                    times.insert(ts - start_ts);
+                if let Some((start_ts, bin)) = merge_start.remove(key) {
+                    let (tc, tb, _) =
+                        pkg_time.entry(p.ebuild().to_owned())
+                                .or_insert((Times::new(), Times::new(), Times::new()));
+                    if bin {
+                        tb.insert(ts - start_ts);
+                    } else {
+                        tc.insert(ts - start_ts);
+                    }
                 }
             },
             Hist::UnmergeStart { ts, key, .. } => {
@@ -248,8 +263,9 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             },
             Hist::UnmergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = unmerge_start.remove(key) {
-                    let (_, times) = pkg_time.entry(p.ebuild().to_owned())
-                                             .or_insert((Times::new(), Times::new()));
+                    let (_, _, times) =
+                        pkg_time.entry(p.ebuild().to_owned())
+                                .or_insert((Times::new(), Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
@@ -294,12 +310,12 @@ fn cmd_stats_group(gc: &Conf,
                    sc: &ConfStats,
                    tblc: &mut Table<5>,
                    tbls: &mut Table<5>,
-                   tblp: &mut Table<8>,
-                   tblt: &mut Table<7>,
+                   tblp: &mut Table<11>,
+                   tblt: &mut Table<10>,
                    group: String,
                    run_args: &BTreeMap<ArgKind, usize>,
                    sync_time: &BTreeMap<String, Times>,
-                   pkg_time: &BTreeMap<String, (Times, Times)>) {
+                   pkg_time: &BTreeMap<String, (Times, Times, Times)>) {
     // Commands
     if sc.show.run && !run_args.is_empty() {
         tblc.row([&[&group],
@@ -320,12 +336,15 @@ fn cmd_stats_group(gc: &Conf,
     }
     // Packages
     if sc.show.pkg && !pkg_time.is_empty() {
-        for (pkg, (merge, unmerge)) in pkg_time {
+        for (pkg, (merge, binmerge, unmerge)) in pkg_time {
             tblp.row([&[&group],
                       &[&gc.pkg, pkg],
                       &[&gc.cnt, &merge.count],
                       &[&FmtDur(merge.tot)],
                       &[&FmtDur(merge.pred(sc.lim, sc.avg))],
+                      &[&gc.cnt, &binmerge.count],
+                      &[&FmtDur(binmerge.tot)],
+                      &[&FmtDur(binmerge.pred(sc.lim, sc.avg))],
                       &[&gc.cnt, &unmerge.count],
                       &[&FmtDur(unmerge.tot)],
                       &[&FmtDur(unmerge.pred(sc.lim, sc.avg))]]);
@@ -335,11 +354,15 @@ fn cmd_stats_group(gc: &Conf,
     if sc.show.tot && !pkg_time.is_empty() {
         let mut merge_time = 0;
         let mut merge_count = 0;
+        let mut binmerge_time = 0;
+        let mut binmerge_count = 0;
         let mut unmerge_time = 0;
         let mut unmerge_count = 0;
-        for (merge, unmerge) in pkg_time.values() {
+        for (merge, binmerge, unmerge) in pkg_time.values() {
             merge_time += merge.tot;
             merge_count += merge.count;
+            binmerge_time += binmerge.tot;
+            binmerge_count += binmerge.count;
             unmerge_time += unmerge.tot;
             unmerge_count += unmerge.count;
         }
@@ -347,6 +370,9 @@ fn cmd_stats_group(gc: &Conf,
                   &[&gc.cnt, &merge_count],
                   &[&FmtDur(merge_time)],
                   &[&FmtDur(merge_time.checked_div(merge_count).unwrap_or(-1))],
+                  &[&gc.cnt, &binmerge_count],
+                  &[&FmtDur(binmerge_time)],
+                  &[&FmtDur(binmerge_time.checked_div(binmerge_count).unwrap_or(-1))],
                   &[&gc.cnt, &unmerge_count],
                   &[&FmtDur(unmerge_time)],
                   &[&FmtDur(unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
