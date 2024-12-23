@@ -8,7 +8,7 @@ use std::{collections::{BTreeMap, HashMap, HashSet},
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let mut merges: HashMap<String, i64> = HashMap::new();
+    let mut merges: HashMap<String, (i64, bool)> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut sync_start: Option<i64> = None;
     let mut found = 0;
@@ -25,15 +25,22 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
             },
             Hist::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
-                merges.insert(key, ts);
+                merges.insert(key, (ts, false));
+            },
+            Hist::MergeStep { key, kind, .. } => {
+                if matches!(kind, MergeStep::MergeBinary) {
+                    if let Some(e) = merges.get_mut(&key) {
+                        (*e).1 = true;
+                    }
+                }
             },
             Hist::MergeStop { ts, ref key, .. } => {
                 found += 1;
-                let started = merges.remove(key).unwrap_or(ts + 1);
+                let (started, bin) = merges.remove(key).unwrap_or((ts + 1, false));
                 if found <= sc.first {
                     tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
                              &[&FmtDur(ts - started)],
-                             &[&gc.merge, &p.ebuild_version()]]);
+                             &[if bin { &gc.binmerge } else { &gc.merge }, &p.ebuild_version()]]);
                 }
             },
             Hist::UnmergeStart { ts, key, .. } => {
@@ -225,6 +232,9 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             },
             Hist::MergeStart { ts, key, .. } => {
                 merge_start.insert(key, ts);
+            },
+            Hist::MergeStep { .. } => {
+                //todo!();
             },
             Hist::MergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = merge_start.remove(key) {
@@ -421,13 +431,16 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
             Hist::MergeStart { ts, .. } => {
                 started.insert(Pkg::new(p.ebuild(), p.version()), ts);
             },
+            Hist::MergeStep { .. } => {
+                //todo!();
+            },
             Hist::MergeStop { ts, .. } => {
                 if let Some(start_ts) = started.remove(&Pkg::new(p.ebuild(), p.version())) {
                     let timevec = times.entry(p.ebuild().to_string()).or_insert(Times::new());
                     timevec.insert(ts - start_ts);
                 }
             },
-            _ => unreachable!("Should only receive Hist::{{Start,Stop}}"),
+            _ => unreachable!("Should only receive Hist::{{Start,Step,Stop}}"),
         }
     }
 

@@ -24,6 +24,7 @@ pub enum Configs {
 pub struct Conf {
     pub pkg: AnsiStr,
     pub merge: AnsiStr,
+    pub binmerge: AnsiStr,
     pub unmerge: AnsiStr,
     pub dur: AnsiStr,
     pub cnt: AnsiStr,
@@ -159,7 +160,9 @@ impl Conf {
                   to: cli.get_one("to")
                          .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--to"))?,
                   pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
+                  // TODO: devise a coherent color/ascii scheme for bin merges, update/new, clean/remove
                   merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
+                  binmerge: AnsiStr::from(if color { "\x1B[0;32m" } else { ">>> " }),
                   unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
                   dur: AnsiStr::from(if color { "\x1B[1;35m" } else { "" }),
                   skip: AnsiStr::from(if color { "\x1B[37m" } else { "" }),
