@@ -23,6 +23,7 @@ pub enum Configs {
 /// Using raw `set/clear` ANSI colors instead of some `paint()` method to simplify alignment.
 pub struct Conf {
     pub pkg: AnsiStr,
+    pub binpkg: AnsiStr,
     pub merge: AnsiStr,
     pub binmerge: AnsiStr,
     pub unmerge: AnsiStr,
@@ -159,8 +160,9 @@ impl Conf {
                          .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--from"))?,
                   to: cli.get_one("to")
                          .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--to"))?,
-                  pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
                   // TODO: devise a coherent color/ascii scheme for bin merges, update/new, clean/remove
+                  pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
+                  binpkg: AnsiStr::from(if color { "\x1B[0;32m" } else { "" }),
                   merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
                   binmerge: AnsiStr::from(if color { "\x1B[0;32m" } else { ">>> " }),
                   unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),

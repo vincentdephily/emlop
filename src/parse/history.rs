@@ -45,6 +45,7 @@ impl Hist {
             _ => unreachable!("No ebuild for {:?}", self),
         }
     }
+    #[cfg(test)]
     pub fn version(&self) -> &str {
         match self {
             Self::MergeStart { key, pos, .. }

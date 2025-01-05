@@ -1,0 +1,98 @@
+{
+	"info": {
+		"/usr/share/autoconf-2.13/info": 1711584109,
+		"/usr/share/autoconf-2.71/info": 1732887293,
+		"/usr/share/autoconf-2.72/info": 1729861289,
+		"/usr/share/automake-1.16.5/info": 1717974527,
+		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.37_p1/info": 1658487500,
+		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.38/info": 1662451394,
+		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.39/info": 1682316762,
+		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.40/info": 1688463023,
+		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.41/info": 1708333427,
+		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.42/info": 1715771252,
+		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.43/info": 1733137135,
+		"/usr/share/gcc-data/x86_64-pc-linux-gnu/11.2.0/info": 1637752156,
+		"/usr/share/gcc-data/x86_64-pc-linux-gnu/11.3.0/info": 1658756964,
+		"/usr/share/gcc-data/x86_64-pc-linux-gnu/11/info": 1671901874,
+		"/usr/share/gcc-data/x86_64-pc-linux-gnu/12/info": 1687867663,
+		"/usr/share/gcc-data/x86_64-pc-linux-gnu/13/info": 1730576295,
+		"/usr/share/gcc-data/x86_64-pc-linux-gnu/14/info": 1732271126,
+		"/usr/share/info": 1733137029
+	},
+	"ldpath": {
+		"/lib": 1733312574,
+		"/lib64": 1733744049,
+		"/usr/lib": 1733312574,
+		"/usr/lib/llvm/12/lib64": 1637344472,
+		"/usr/lib/llvm/13/lib64": 1664957498,
+		"/usr/lib/llvm/14/lib64": 1669241452,
+		"/usr/lib/llvm/15/lib64": 1689949021,
+		"/usr/lib/llvm/16/lib64": 1709744201,
+		"/usr/lib/llvm/17/lib64": 1722418882,
+		"/usr/lib/llvm/18/lib64": 1722990112,
+		"/usr/lib/llvm/19/lib64": 1733314354,
+		"/usr/lib/rust/lib": 1729278690,
+		"/usr/lib/rust/lib-1.82.0": 1731322766,
+		"/usr/lib/rust/lib-1.83.0": 1733136502,
+		"/usr/lib/rust/lib-bin-1.81.0": 1731326959,
+		"/usr/lib64": 1733744049,
+		"/usr/local/lib": 1635810354,
+		"/usr/local/lib64": 1635810354
+	},
+	"resume": {
+		"binpkgs": [
+			{
+				"BUILD_ID": 2,
+				"BUILD_TIME": 1733571889,
+				"CPV": "www-client/falkon-24.08.3",
+				"EROOT": "/",
+				"MTIME": 1733617381,
+				"SIZE": 3665920
+			}
+		],
+		"favorites": [
+			"@world"
+		],
+		"mergelist": [
+			[
+				"ebuild",
+				"/",
+				"sys-devel/clang-19",
+				"merge"
+			],
+			[
+				"binary",
+				"/",
+				"www-client/falkon-24.08.3",
+				"merge"
+			]
+		],
+		"myopts": {
+			"--deep": true,
+			"--getbinpkg": true,
+			"--newuse": true,
+			"--quiet-build": "y",
+			"--regex-search-auto": "y",
+			"--reinstall": "changed-use",
+			"--update": true,
+			"--usepkg": true,
+			"--verbose": true
+		}
+	},
+	"starttime": 0,
+	"updates": {
+		"/home/work/c/gentoo/profiles/updates/1Q-2022": 1679657239,
+		"/home/work/c/gentoo/profiles/updates/1Q-2023": 1709634010,
+		"/home/work/c/gentoo/profiles/updates/1Q-2024": 1727709630,
+		"/home/work/c/gentoo/profiles/updates/2Q-2022": 1679657239,
+		"/home/work/c/gentoo/profiles/updates/2Q-2023": 1709634010,
+		"/home/work/c/gentoo/profiles/updates/2Q-2024": 1724440673,
+		"/home/work/c/gentoo/profiles/updates/3Q-2022": 1724440673,
+		"/home/work/c/gentoo/profiles/updates/3Q-2023": 1724440673,
+		"/home/work/c/gentoo/profiles/updates/3Q-2024": 1730984021,
+		"/home/work/c/gentoo/profiles/updates/4Q-2022": 1709634010,
+		"/home/work/c/gentoo/profiles/updates/4Q-2023": 1724440673,
+		"/home/work/c/gentoo/profiles/updates/4Q-2024": 1730984021
+	},
+	"version": "3.0.66.1"
+}

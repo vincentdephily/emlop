@@ -450,19 +450,24 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
     // Parse emerge log.
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &vec![], false)?;
-    let mut started: BTreeMap<Pkg, i64> = BTreeMap::new();
-    let mut times: HashMap<String, Times> = HashMap::new();
+    let mut started: BTreeMap<String, (i64, bool)> = BTreeMap::new();
+    let mut times: HashMap<(String, bool), Times> = HashMap::new();
     for p in hist {
         match p {
-            Hist::MergeStart { ts, .. } => {
-                started.insert(Pkg::new(p.ebuild(), p.version()), ts);
+            Hist::MergeStart { ts, key, .. } => {
+                started.insert(key, (ts, false));
             },
-            Hist::MergeStep { .. } => {
-                //todo!();
+            Hist::MergeStep { kind, key, .. } => {
+                if matches!(kind, MergeStep::MergeBinary) {
+                    if let Some((_, bin)) = started.get_mut(&key) {
+                        *bin = true;
+                    }
+                }
             },
-            Hist::MergeStop { ts, .. } => {
-                if let Some(start_ts) = started.remove(&Pkg::new(p.ebuild(), p.version())) {
-                    let timevec = times.entry(p.ebuild().to_string()).or_insert(Times::new());
+            Hist::MergeStop { ts, ref key, .. } => {
+                if let Some((start_ts, bin)) = started.remove(key.as_str()) {
+                    let timevec =
+                        times.entry((p.ebuild().to_string(), bin)).or_insert(Times::new());
                     timevec.insert(ts - start_ts);
                 }
             },
@@ -482,9 +487,9 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         }
         // Plus emerge.log after main process start time, if we didn't see specific processes
         if einfo.pkgs.is_empty() {
-            for (p, t) in started.iter() {
-                if *t > einfo.start && !r.contains(p) {
-                    r.push(p.clone())
+            for (p, (t, b)) in started.iter() {
+                if *t > einfo.start && r.iter().all(|r| r.ebuild_version() != p) {
+                    r.push(Pkg::try_new(p, *b).expect("started key should parse as Pkg"))
                 }
             }
         }
@@ -503,14 +508,14 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     for p in pkgs {
         totcount += 1;
         // Find the elapsed time, if currently running
-        let elapsed = match started.remove(&p) {
-            Some(s) if einfo.pkgs.contains(&p) => now - s,
-            Some(s) if einfo.pkgs.is_empty() && s > einfo.start => now - s,
+        let elapsed = match started.remove(p.ebuild_version()) {
+            Some((s, _)) if einfo.pkgs.contains(&p) => now - s,
+            Some((s, _)) if einfo.pkgs.is_empty() && s > einfo.start => now - s,
             _ => 0,
         };
 
         // Find the predicted time and adjust counters
-        let (fmtpred, pred) = match times.get(p.ebuild()) {
+        let (fmtpred, pred) = match times.get(&(p.ebuild().to_string(), p.bin)) {
             Some(tv) => {
                 let pred = tv.pred(sc.lim, sc.avg);
                 (pred, pred)
@@ -527,11 +532,13 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         if sc.show.merge && totcount <= sc.first {
             if elapsed > 0 {
                 let stage = get_buildlog(&p, &sc.tmpdirs).unwrap_or_default();
-                tbl.row([&[&gc.pkg, &p.ebuild_version()],
+                tbl.row([&[if p.bin { &gc.binpkg } else { &gc.pkg }, &p.ebuild_version()],
                          &[&FmtDur(fmtpred)],
                          &[&gc.clr, &"- ", &FmtDur(elapsed), &gc.clr, &stage]]);
             } else {
-                tbl.row([&[&gc.pkg, &p.ebuild_version()], &[&FmtDur(fmtpred)], &[]]);
+                tbl.row([&[if p.bin { &gc.binpkg } else { &gc.pkg }, &p.ebuild_version()],
+                         &[&FmtDur(fmtpred)],
+                         &[]]);
             }
         }
     }
