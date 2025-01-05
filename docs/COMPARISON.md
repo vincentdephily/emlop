@@ -122,15 +122,17 @@ All tools give pessimistic prediction when packages are merged in parallel, beca
 sequential merging. Even if they detected an ongoing parallel merge, it's not clear how they would
 estimate the resulting speedup factor.
 
-|                                                    | genlop        | qlop          | emlop                |
-| :------------------------------------------------- | :----:        | :--:          | :---:                |
-| Show ongoing merge ETA                             | current build | current build | whole list           |
-| Show `emerge -p` merges ETA                        | yes           | no            | yes                  |
-| Show individual merge ETAs                         | no            | no            | yes                  |
-| Show current merge stage                           | no            | no            | yes                  |
-| Global ETA format                                  | total time    | total time    | total time, end date |
-| Estimation accuracy                                | ok            | better        | best, configurable   |
-| Query gentoo.linuxhowtos.org for unknown packages  | yes           | no            | no                   |
+|                                                   | genlop        | qlop          | emlop                |
+|:--------------------------------------------------|:-------------:|:-------------:|:--------------------:|
+| Show ongoing merge ETA                            | current build | current build | whole list           |
+| Show `emerge -p` merges ETA                       | yes           | no            | yes                  |
+| Show individual merge ETAs                        | no            | no            | yes                  |
+| Show current merge stage                          | no            | no            | yes                  |
+| Global ETA format                                 | total time    | total time    | total time, end date |
+| Estimation accuracy                               | ok            | better        | best, configurable   |
+| Recognize binary emerges                          | no            | no            | yes                  |
+| Follow package renames                            | yes           | no            | no                   |
+| Query gentoo.linuxhowtos.org for unknown packages | yes           | no            | no                   |
 
 ## Speed
 

@@ -2,6 +2,9 @@
 
 ## New features
 
+* `log`, `stats` and `predict` now take binary merges into account
+  - Track merge time stats separately
+  - Display bin merges in a different color
 * `log` and `stat` can now show emerge (r)runs
   - Use `--show=r`/`-sr`/`-sa` to enable it
   - No duration given, as `emerge.log` doesn't provide enough info to make this reliable
