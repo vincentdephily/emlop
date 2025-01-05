@@ -45,6 +45,19 @@ impl Hist {
             _ => unreachable!("No ebuild for {:?}", self),
         }
     }
+    pub fn take_ebuild(self) -> String {
+        match self {
+            Self::MergeStart { mut key, pos, .. }
+            | Self::MergeStep { mut key, pos, .. }
+            | Self::MergeStop { mut key, pos, .. }
+            | Self::UnmergeStart { mut key, pos, .. }
+            | Self::UnmergeStop { mut key, pos, .. } => {
+                key.truncate(pos - 1);
+                key
+            },
+            _ => unreachable!("No ebuild for {:?}", self),
+        }
+    }
     #[cfg(test)]
     pub fn version(&self) -> &str {
         match self {

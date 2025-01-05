@@ -98,6 +98,8 @@ fn main() {
         ("igcc", "emlop",  &["-F","{emerge.log}","s","gcc","-e"], None),
         // Show overall stats
         ("st", "emlop",  &["-F","{emerge.log}","s","-sa"], None),
+        // Run ebuild completion
+        ("comp", "emlop",  &["-F","{emerge.log}","c","kdesu"], None)
     ];
 
     // CLI definition

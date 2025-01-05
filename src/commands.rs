@@ -249,7 +249,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             Hist::MergeStop { ts, ref key, .. } => {
                 if let Some((start_ts, bin)) = merge_start.remove(key) {
                     let (tc, tb, _) =
-                        pkg_time.entry(p.ebuild().to_owned())
+                        pkg_time.entry(p.take_ebuild())
                                 .or_insert((Times::new(), Times::new(), Times::new()));
                     if bin {
                         tb.insert(ts - start_ts);
@@ -264,7 +264,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             Hist::UnmergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = unmerge_start.remove(key) {
                     let (_, _, times) =
-                        pkg_time.entry(p.ebuild().to_owned())
+                        pkg_time.entry(p.take_ebuild())
                                 .or_insert((Times::new(), Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
@@ -466,8 +466,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
             },
             Hist::MergeStop { ts, ref key, .. } => {
                 if let Some((start_ts, bin)) = started.remove(key.as_str()) {
-                    let timevec =
-                        times.entry((p.ebuild().to_string(), bin)).or_insert(Times::new());
+                    let timevec = times.entry((p.take_ebuild(), bin)).or_insert(Times::new());
                     timevec.insert(ts - start_ts);
                 }
             },
@@ -640,15 +639,15 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
         return Ok(true);
     }
     // Look for (un)merged matching packages in the log and print each once
-    let term: Vec<_> = sc.pkg.iter().cloned().collect();
+    let term: Vec<_> = sc.pkg.map_or(vec![], |p| vec![p]);
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &term, false)?;
     let mut pkgs: HashSet<String> = HashSet::new();
     for p in hist {
         if let Hist::MergeStart { .. } = p {
-            let e = p.ebuild();
-            if !pkgs.contains(e) {
+            let e = p.take_ebuild();
+            if !pkgs.contains(&e) {
                 println!("{}", e);
-                pkgs.insert(e.to_string());
+                pkgs.insert(e);
             }
         }
     }
