@@ -286,6 +286,9 @@ impl Timespan {
 }
 
 /// Wrapper around a duration (seconds) to implement `table::Disp`
+///
+/// Normal negatives (> -2^62) are rendered as `?`
+/// Far negatives (< -2^62) are rendered as `{value + 1 + 2^63}?`
 pub struct FmtDur(pub i64);
 impl crate::table::Disp for FmtDur {
     fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
@@ -293,9 +296,14 @@ impl crate::table::Disp for FmtDur {
         use DurationStyle::*;
         let sec = self.0;
         let dur = conf.dur.val;
+        let qmark = conf.qmark.val;
         let start = buf.len();
         match conf.dur_t {
-            _ if sec < 0 => wtb!(buf, "{dur}?"),
+            _ if sec < i64::MIN / 2 => {
+                FmtDur(i64::MAX + sec + 1).out(buf, conf);
+                wtb!(buf, "{qmark}")
+            },
+            _ if sec < 0 => wtb!(buf, "{qmark}"),
             Hms if sec >= 3600 => {
                 wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60)
             },
@@ -315,7 +323,7 @@ impl crate::table::Disp for FmtDur {
                 }
             },
         }
-        buf.len() - start - conf.dur.val.len()
+        crate::parse::Ansi::len(&buf[start..])
     }
 }
 
@@ -443,7 +451,8 @@ mod test {
              ("99:59:59", "99:59:59", "359999", "4 days, 3 hours, 59 minutes, 59 seconds", 359999),
              ("100:00:00", "100:00:00", "360000", "4 days, 4 hours", 360000),
              ("?", "?", "?", "?", -1),
-             ("?", "?", "?", "?", -123456)]
+             ("?", "?", "?", "?", -123456),
+             ("42?", "0:00:42?", "42?", "42 seconds?", i64::MIN + 42)]
         {
             for (st, exp) in [("hms", hms), ("hmsfixed", fixed), ("secs", secs), ("human", human)] {
                 let mut buf = vec![];

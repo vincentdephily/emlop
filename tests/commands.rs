@@ -227,17 +227,17 @@ fn predict_emerge_p() {
          // Check all-unknowns
          ("%F10000.log p --date unix -oc",
           "[ebuild   R   ~] dev-lang/unknown-1.42\n",
-          format!("dev-lang/unknown-1.42              ? \n\
-                   Estimate for 1 ebuild, 1 unknown  10 @ {}\n",
+          format!("dev-lang/unknown-1.42             10? \n\
+                   Estimate for 1 ebuild, 1 unknown   10 @ {}\n",
                   ts(10)),
           0),
          // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
          ("%F10000.log p --date unix -oc",
           "[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
-               [ebuild   R   ~] dev-lang/unknown-1.42\n\
-               [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
+           [ebuild   R   ~] dev-lang/unknown-1.42\n\
+           [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
           format!("dev-qt/qtcore-5.9.4-r2             3:45 \n\
-                   dev-lang/unknown-1.42                 ? \n\
+                   dev-lang/unknown-1.42               10? \n\
                    dev-qt/qtgui-5.9.4-r3              4:24 \n\
                    Estimate for 3 ebuilds, 1 unknown  8:19 @ {}\n",
                   ts(8 * 60 + 9 + 10)),

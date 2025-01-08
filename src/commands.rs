@@ -521,7 +521,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
             },
             None => {
                 totunknown += 1;
-                (-1, sc.unknown)
+                (i64::MIN + sc.unknown, sc.unknown)
             },
         };
         totpredict += std::cmp::max(0, pred - elapsed);
