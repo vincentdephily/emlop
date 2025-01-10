@@ -177,12 +177,21 @@ pub fn build_cli() -> Command {
                              .help_heading("Stats")
                              .help(h.split_once('\n').unwrap().0)
                              .long_help(h);
-    let unknown = Arg::new("unknown").long("unknown")
-                                     .num_args(1)
-                                     .value_name("secs")
-                                     .display_order(13)
-                                     .help_heading("Stats")
-                                     .help("Assume unkown packages take <secs> seconds to merge");
+    let unknownc =
+        Arg::new("unknownc").long("unknownc")
+                            .alias("unknown")
+                            .num_args(1)
+                            .value_name("secs")
+                            .display_order(13)
+                            .help_heading("Stats")
+                            .help("Assume unkown compiled packages take <secs> seconds to merge");
+    let unknownb =
+        Arg::new("unknownb").long("unknownb")
+                            .num_args(1)
+                            .value_name("secs")
+                            .display_order(14)
+                            .help_heading("Stats")
+                            .help("Assume unkown binary packages take <secs> seconds to merge");
 
     ////////////////////////////////////////////////////////////
     // Format arguments
@@ -353,7 +362,8 @@ pub fn build_cli() -> Command {
                                           .arg(&last)
                                           .arg(tmpdir)
                                           .arg(resume)
-                                          .arg(unknown)
+                                          .arg(unknownc)
+                                          .arg(unknownb)
                                           .arg(pwidth)
                                           .arg(pdepth)
                                           .arg(&avg)

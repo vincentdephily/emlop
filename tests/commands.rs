@@ -226,10 +226,13 @@ fn predict_emerge_p() {
           1),
          // Check all-unknowns
          ("%F10000.log p --date unix -oc",
-          "[ebuild   R   ~] dev-lang/unknown-1.42\n",
-          format!("dev-lang/unknown-1.42             10? \n\
-                   Estimate for 1 ebuild, 1 unknown   10 @ {}\n",
-                  ts(10)),
+          "[ebuild   R   ~] dev-lang/unknown-1.42\n\
+           [binary   R   ~] dev-lang/bunknown-2.42\n\
+           [uninstall     ] dev-libs/eventlog-0.2.1\n",
+          format!("dev-lang/unknown-1.42              10? \n\
+                   dev-lang/bunknown-2.42             20? \n\
+                   Estimate for 2 ebuilds, 2 unknown   30 @ {}\n",
+                  ts(30)),
           0),
          // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
          ("%F10000.log p --date unix -oc",

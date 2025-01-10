@@ -58,7 +58,8 @@ pub struct ConfPred {
     pub last: usize,
     pub lim: u16,
     pub resume: ResumeKind,
-    pub unknown: i64,
+    pub unknownb: i64,
+    pub unknownc: i64,
     pub tmpdirs: Vec<PathBuf>,
     pub pwidth: usize,
     pub pdepth: usize,
@@ -121,10 +122,10 @@ fn sel<T, A, R>(cli: Option<&String>,
                 -> Result<R, ArgError>
     where R: ArgParse<String, A> + ArgParse<T, A>
 {
-    if let Some(a) = cli {
-        R::parse(a, arg, clisrc)
-    } else if let Some(a) = toml {
-        R::parse(a, arg, tomlsrc)
+    if let Some(val) = cli {
+        R::parse(val, arg, clisrc)
+    } else if let Some(val) = toml {
+        R::parse(val, arg, tomlsrc)
     } else {
         Ok(def)
     }
@@ -210,7 +211,8 @@ impl ConfPred {
         Ok(Self { show: sel!(cli, toml, predict, show, "rmta", Show::rmt())?,
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,
-                  unknown: sel!(cli, toml, predict, unknown, 0..=3600, 10)?,
+                  unknownb: sel!(cli, toml, predict, unknownb, 0..=3600, 10)?,
+                  unknownc: sel!(cli, toml, predict, unknownc, 0..=3600, 30)?,
                   resume: *cli.get_one("resume").unwrap_or(&ResumeKind::Auto),
                   tmpdirs,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),

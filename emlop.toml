@@ -20,7 +20,8 @@
 # show = "emt"
 # avg = "arith"
 # limit = 20
-# unknown = 300
+# unknownb = 30
+# unknownc = 10
 # tmpdir = ["/foo", "/bar"]
 # pwidth = 60
 # pdepth = 3
