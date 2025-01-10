@@ -66,7 +66,7 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                 if found <= sc.first {
                     tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
                              &[&FmtDur(ts - started)],
-                             &[&gc.clr, &"Sync ", &repo]]);
+                             &[&gc.sync, &"Sync ", &repo]]);
                 }
             },
         }
@@ -328,7 +328,7 @@ fn cmd_stats_group(gc: &Conf,
     if sc.show.sync && !sync_time.is_empty() {
         for (repo, time) in sync_time {
             tbls.row([&[&group],
-                      &[repo],
+                      &[&gc.sync, repo],
                       &[&gc.cnt, &time.count],
                       &[&FmtDur(time.tot)],
                       &[&FmtDur(time.pred(sc.lim, sc.avg))]]);
