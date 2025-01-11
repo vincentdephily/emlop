@@ -47,7 +47,8 @@ fn log() {
                2018-02-28 09:14:37     6:02 >>> www-client/falkon-3.0.0\n\
                2018-03-06 04:19:52  7:42:07 >>> www-client/chromium-64.0.3282.186\n\
                2018-03-12 10:35:22       14 >>> x11-apps/xlsclients-1.1.4\n\
-               2018-03-12 11:03:53       16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
+               2018-03-12 11:03:53       16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n\
+               2018-03-14 01:36:42       10 >>> www-client/falkon-24.08.3\n"),
              // Check output when duration isn't known
              ("%F10000.log l -s m mlt -e --from 2018-02-18T12:37:00 -oc",
               "2018-02-18 12:37:09   ? >>> media-libs/mlt-6.4.1-r6\n\
@@ -117,18 +118,18 @@ fn log() {
              ("%F10000.log l client -oc --first 2",
               "2018-02-04 04:55:19  35:46 >>> mail-client/thunderbird-52.6.0\n\
                2018-02-04 05:42:48  47:29 >>> www-client/firefox-58.0.1\n\
-               (skip last 9)              \n"),
+               (skip last 10)             \n"),
              // skip first
              ("%F10000.log l client -oc --last 2",
-              "(skip first 9)\n\
-               2018-03-12 10:35:22  14 >>> x11-apps/xlsclients-1.1.4\n\
-               2018-03-12 11:03:53  16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n"),
+              "(skip first 10)\n\
+               2018-03-12 11:03:53  16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n\
+               2018-03-14 01:36:42  10 >>> www-client/falkon-24.08.3\n"),
              // Skip first and last
              ("%F10000.log l client -oc --first 4 --last 2",
               "(skip first 2)\n\
                2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
                2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
-               (skip last 7)              \n"),
+               (skip last 8)              \n"),
              // Skip silently
              ("%F10000.log l client -oc --first 4 --last 2 --showskip=n",
               "2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
@@ -141,7 +142,7 @@ fn log() {
 #[test]
 fn compressed() {
     // The important part here is that we're reading the gzip file
-    let o = "831\t60:07:06\t4:20\t832\t38:31\t2\n";
+    let o = "831\t60:07:06\t4:20\t0\t0\t?\t832\t38:31\t2\n";
     emlop("%Flog.gz s -st -ot").assert().stdout(o);
 }
 
@@ -225,21 +226,24 @@ fn predict_emerge_p() {
           1),
          // Check all-unknowns
          ("%F10000.log p --date unix -oc",
-          "[ebuild   R   ~] dev-lang/unknown-1.42\n",
-          format!("dev-lang/unknown-1.42              ? \n\
-                   Estimate for 1 ebuild, 1 unknown  10 @ {}\n",
-                  ts(10)),
+          "[ebuild   R   ~] dev-lang/unknown-1.42\n\
+           [binary   R   ~] dev-lang/bunknown-2.42\n\
+           [uninstall     ] dev-libs/eventlog-0.2.1\n",
+          format!("dev-lang/unknown-1.42              30? \n\
+                   dev-lang/bunknown-2.42             10? \n\
+                   Estimate for 2 ebuilds, 2 unknown   40 @ {}\n",
+                  ts(40)),
           0),
          // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
          ("%F10000.log p --date unix -oc",
           "[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
-               [ebuild   R   ~] dev-lang/unknown-1.42\n\
-               [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
+           [ebuild   R   ~] dev-lang/unknown-1.42\n\
+           [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
           format!("dev-qt/qtcore-5.9.4-r2             3:45 \n\
-                   dev-lang/unknown-1.42                 ? \n\
+                   dev-lang/unknown-1.42               30? \n\
                    dev-qt/qtgui-5.9.4-r3              4:24 \n\
-                   Estimate for 3 ebuilds, 1 unknown  8:19 @ {}\n",
-                  ts(8 * 60 + 9 + 10)),
+                   Estimate for 3 ebuilds, 1 unknown  8:39 @ {}\n",
+                  ts(8 * 60 + 9 + 30)),
           0),
          // Check skip rows
          ("%F10000.log p --date unix -oc --show m --first 2",
@@ -272,13 +276,13 @@ fn predict_emerge_p() {
 #[test]
 fn stats() {
     let t = [("%F10000.log s client -oc",
-              "kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
-               mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
-               www-client/chromium           3  21:41:24  7:42:07  3  12  3\n\
-               www-client/falkon             1      6:02     6:02  0   0  ?\n\
-               www-client/firefox            1     47:29    47:29  1   3  3\n\
-               www-client/links              1        44       44  1   1  1\n\
-               x11-apps/xlsclients           1        14       14  1   1  1\n",
+              "kde-frameworks/kxmlrpcclient  2        47       23  0   0   ?  2   4  2\n\
+               mail-client/thunderbird       2   1:23:44    41:52  0   0   ?  2   6  3\n\
+               www-client/chromium           3  21:41:24  7:42:07  0   0   ?  3  12  3\n\
+               www-client/falkon             1      6:02     6:02  1  10  10  1   3  3\n\
+               www-client/firefox            1     47:29    47:29  0   0   ?  1   3  3\n\
+               www-client/links              1        44       44  0   0   ?  1   1  1\n\
+               x11-apps/xlsclients           1        14       14  0   0   ?  1   1  1\n",
               0),
              ("%Fsync.log s -ss -oc",
               "gentoo          22  1:43:13     10\n\
@@ -290,31 +294,31 @@ fn stats() {
               "gentoo          22  1:43:13     10\n\
                gentoo-portage   5  4:32:42  31:53\n",
               0),
-             ("%F10000.log s client -sst -oc", "11  24:00:24  2:10:56  10  27  2\n", 0),
+             ("%F10000.log s client -sst -oc", "11  24:00:24  2:10:56  1  10  10  11  30  2\n", 0),
              ("%F10000.log s client -sa -oc",
-              "450  267  20  163\n\
+              "451  268  20  163\n\
                \n\
-               kde-frameworks/kxmlrpcclient  2        47       23  2   4  2\n\
-               mail-client/thunderbird       2   1:23:44    41:52  2   6  3\n\
-               www-client/chromium           3  21:41:24  7:42:07  3  12  3\n\
-               www-client/falkon             1      6:02     6:02  0   0  ?\n\
-               www-client/firefox            1     47:29    47:29  1   3  3\n\
-               www-client/links              1        44       44  1   1  1\n\
-               x11-apps/xlsclients           1        14       14  1   1  1\n\
+               kde-frameworks/kxmlrpcclient  2        47       23  0   0   ?  2   4  2\n\
+               mail-client/thunderbird       2   1:23:44    41:52  0   0   ?  2   6  3\n\
+               www-client/chromium           3  21:41:24  7:42:07  0   0   ?  3  12  3\n\
+               www-client/falkon             1      6:02     6:02  1  10  10  1   3  3\n\
+               www-client/firefox            1     47:29    47:29  0   0   ?  1   3  3\n\
+               www-client/links              1        44       44  0   0   ?  1   1  1\n\
+               x11-apps/xlsclients           1        14       14  0   0   ?  1   1  1\n\
                \n\
-               11  24:00:24  2:10:56  10  27  2\n",
+               11  24:00:24  2:10:56  1  10  10  11  30  2\n",
               0),
              ("%F10000.log s gentoo-sources --avg arith -oc",
-              "sys-kernel/gentoo-sources  10  15:04  1:30  11  3:20  16\n",
+              "sys-kernel/gentoo-sources  10  15:04  1:30  0  0  ?  11  3:20  16\n",
               0),
              ("%F10000.log s gentoo-sources --avg median -oc",
-              "sys-kernel/gentoo-sources  10  15:04  1:21  11  3:20  13\n",
+              "sys-kernel/gentoo-sources  10  15:04  1:21  0  0  ?  11  3:20  13\n",
               0),
              ("%F10000.log s gentoo-sources --avg weighted-arith -oc",
-              "sys-kernel/gentoo-sources  10  15:04  1:31  11  3:20  17\n",
+              "sys-kernel/gentoo-sources  10  15:04  1:31  0  0  ?  11  3:20  17\n",
               0),
              ("%F10000.log s gentoo-sources --avg weighted-median -oc",
-              "sys-kernel/gentoo-sources  10  15:04  1:22  11  3:20  15\n",
+              "sys-kernel/gentoo-sources  10  15:04  1:22  0  0  ?  11  3:20  15\n",
               0),
              ("%F10000.log s --from 2018-02-03T23:11:47 --to 2018-02-04 notfound -sa -oc", "", 1)];
     for (a, o, e) in t {
@@ -328,77 +332,79 @@ fn stats() {
 #[test]
 fn stats_grouped() {
     let t = [("%F10000.log s --duration s -sp gentoo-sources -oc -gy",
-              "2018 sys-kernel/gentoo-sources  10  904  81  11  200  13\n"),
+              "2018 sys-kernel/gentoo-sources  10  904  81  0  0  ?  11  200  13\n"),
              ("%F10000.log s --duration s -sp gentoo-sources -oc -gm",
-              "2018-02 sys-kernel/gentoo-sources  8  702   80  8  149  13\n\
-               2018-03 sys-kernel/gentoo-sources  2  202  101  3   51  15\n"),
+              "2018-02 sys-kernel/gentoo-sources  8  702   80  0  0  ?  8  149  13\n\
+               2018-03 sys-kernel/gentoo-sources  2  202  101  0  0  ?  3   51  15\n"),
              ("%F10000.log s --duration s -sp gentoo-sources -oc -gw",
-              "2018-05 sys-kernel/gentoo-sources  1   81   81  0   0   ?\n\
-               2018-06 sys-kernel/gentoo-sources  2  192   96  3  66  14\n\
-               2018-07 sys-kernel/gentoo-sources  2  198   99  0   0   ?\n\
-               2018-08 sys-kernel/gentoo-sources  1   77   77  3  37  12\n\
-               2018-09 sys-kernel/gentoo-sources  3  236   79  3  61  22\n\
-               2018-10 sys-kernel/gentoo-sources  0    0    ?  1  23  23\n\
-               2018-11 sys-kernel/gentoo-sources  1  120  120  1  13  13\n"),
+              "2018-05 sys-kernel/gentoo-sources  1   81   81  0  0  ?  0   0   ?\n\
+               2018-06 sys-kernel/gentoo-sources  2  192   96  0  0  ?  3  66  14\n\
+               2018-07 sys-kernel/gentoo-sources  2  198   99  0  0  ?  0   0   ?\n\
+               2018-08 sys-kernel/gentoo-sources  1   77   77  0  0  ?  3  37  12\n\
+               2018-09 sys-kernel/gentoo-sources  3  236   79  0  0  ?  3  61  22\n\
+               2018-10 sys-kernel/gentoo-sources  0    0    ?  0  0  ?  1  23  23\n\
+               2018-11 sys-kernel/gentoo-sources  1  120  120  0  0  ?  1  13  13\n"),
              ("%F10000.log s --duration s -sp gentoo-sources -oc -gd",
-              "2018-02-04 sys-kernel/gentoo-sources  1   81   81  0   0   ?\n\
-               2018-02-05 sys-kernel/gentoo-sources  1   95   95  0   0   ?\n\
-               2018-02-06 sys-kernel/gentoo-sources  0    0    ?  3  66  14\n\
-               2018-02-08 sys-kernel/gentoo-sources  1   97   97  0   0   ?\n\
-               2018-02-12 sys-kernel/gentoo-sources  1   80   80  0   0   ?\n\
-               2018-02-18 sys-kernel/gentoo-sources  1  118  118  0   0   ?\n\
-               2018-02-22 sys-kernel/gentoo-sources  0    0    ?  3  37  12\n\
-               2018-02-23 sys-kernel/gentoo-sources  1   77   77  0   0   ?\n\
-               2018-02-26 sys-kernel/gentoo-sources  1   79   79  0   0   ?\n\
-               2018-02-27 sys-kernel/gentoo-sources  0    0    ?  2  46  23\n\
-               2018-02-28 sys-kernel/gentoo-sources  1   75   75  0   0   ?\n\
-               2018-03-01 sys-kernel/gentoo-sources  1   82   82  1  15  15\n\
-               2018-03-05 sys-kernel/gentoo-sources  0    0    ?  1  23  23\n\
-               2018-03-12 sys-kernel/gentoo-sources  1  120  120  1  13  13\n"),
-             ("%F10000.log s --duration s -st -oc -gy", "2018 831  216426  260  832  2311  2\n"),
+              "2018-02-04 sys-kernel/gentoo-sources  1   81   81  0  0  ?  0   0   ?\n\
+               2018-02-05 sys-kernel/gentoo-sources  1   95   95  0  0  ?  0   0   ?\n\
+               2018-02-06 sys-kernel/gentoo-sources  0    0    ?  0  0  ?  3  66  14\n\
+               2018-02-08 sys-kernel/gentoo-sources  1   97   97  0  0  ?  0   0   ?\n\
+               2018-02-12 sys-kernel/gentoo-sources  1   80   80  0  0  ?  0   0   ?\n\
+               2018-02-18 sys-kernel/gentoo-sources  1  118  118  0  0  ?  0   0   ?\n\
+               2018-02-22 sys-kernel/gentoo-sources  0    0    ?  0  0  ?  3  37  12\n\
+               2018-02-23 sys-kernel/gentoo-sources  1   77   77  0  0  ?  0   0   ?\n\
+               2018-02-26 sys-kernel/gentoo-sources  1   79   79  0  0  ?  0   0   ?\n\
+               2018-02-27 sys-kernel/gentoo-sources  0    0    ?  0  0  ?  2  46  23\n\
+               2018-02-28 sys-kernel/gentoo-sources  1   75   75  0  0  ?  0   0   ?\n\
+               2018-03-01 sys-kernel/gentoo-sources  1   82   82  0  0  ?  1  15  15\n\
+               2018-03-05 sys-kernel/gentoo-sources  0    0    ?  0  0  ?  1  23  23\n\
+               2018-03-12 sys-kernel/gentoo-sources  1  120  120  0  0  ?  1  13  13\n"),
+             ("%F10000.log s --duration s -st -oc -gy",
+              "2018 831  216426  260  1  10  10  833  2314  2\n"),
              ("%F10000.log s --duration s -st -oc -gm",
-              "2018-02 533  158312  297  529  1497  2\n\
-               2018-03 298   58114  195  303   814  2\n"),
+              "2018-02 533  158312  297  0   0   ?  529  1497  2\n\
+               2018-03 298   58114  195  1  10  10  304   817  2\n"),
              ("%F10000.log s --duration s -st -oc -gw",
-              "2018-05  63  33577  532   60  132  2\n\
-               2018-06  74  10070  136   68  225  3\n\
-               2018-07 281  58604  208  258  709  2\n\
-               2018-08  65  51276  788   69  197  2\n\
-               2018-09  71  14737  207   95  316  3\n\
-               2018-10 182  43782  240  187  519  2\n\
-               2018-11  95   4380   46   95  213  2\n"),
+              "2018-05  63  33577  532  0   0   ?   60  132  2\n\
+               2018-06  74  10070  136  0   0   ?   68  225  3\n\
+               2018-07 281  58604  208  0   0   ?  258  709  2\n\
+               2018-08  65  51276  788  0   0   ?   69  197  2\n\
+               2018-09  71  14737  207  0   0   ?   95  316  3\n\
+               2018-10 182  43782  240  0   0   ?  187  519  2\n\
+               2018-11  95   4380   46  1  10  10   96  216  2\n"),
              ("%F10000.log s --duration s -st -oc -gd",
-              "2018-02-03  32   2741     85   32   70  2\n\
-               2018-02-04  31  30836    994   28   62  2\n\
-               2018-02-05   4    158     39    3    5  1\n\
-               2018-02-06  44   4288     97   44  174  3\n\
-               2018-02-07  15    857     57   13   28  2\n\
-               2018-02-08   5    983    196    4    8  2\n\
-               2018-02-09   6   3784    630    4   10  2\n\
-               2018-02-12 208  29239    140  206  587  2\n\
-               2018-02-13   1     19     19    0    0  ?\n\
-               2018-02-14  44   4795    108   44   92  2\n\
-               2018-02-15   3    137     45    3    6  2\n\
-               2018-02-16  21  23914   1138    3   14  4\n\
-               2018-02-18   4    500    125    2   10  5\n\
-               2018-02-19   2  28977  14488    2    6  3\n\
-               2018-02-20   2    488    244    1    2  2\n\
-               2018-02-21  37   5522    149   36   93  2\n\
-               2018-02-22  16  15396    962   23   82  3\n\
-               2018-02-23   6    854    142    5   11  2\n\
-               2018-02-24   2     39     19    2    3  1\n\
-               2018-02-26  10   2730    273    9   18  2\n\
-               2018-02-27  35   1403     40   49  175  3\n\
-               2018-02-28   5    652    130   16   41  2\n\
-               2018-03-01  13   9355    719   13   40  3\n\
-               2018-03-02   5    510    102    5   37  7\n\
-               2018-03-03   3     87     29    3    5  1\n\
-               2018-03-05   9    168     18   21   84  4\n\
-               2018-03-06   3  27746   9248    1    3  3\n\
-               2018-03-07  46   2969     64   43   90  2\n\
-               2018-03-08  74   5441     73   73  202  2\n\
-               2018-03-09  50   7458    149   49  140  2\n\
-               2018-03-12  95   4380     46   95  213  2\n"),
+              "2018-02-03  32   2741     85  0   0   ?   32   70  2\n\
+               2018-02-04  31  30836    994  0   0   ?   28   62  2\n\
+               2018-02-05   4    158     39  0   0   ?    3    5  1\n\
+               2018-02-06  44   4288     97  0   0   ?   44  174  3\n\
+               2018-02-07  15    857     57  0   0   ?   13   28  2\n\
+               2018-02-08   5    983    196  0   0   ?    4    8  2\n\
+               2018-02-09   6   3784    630  0   0   ?    4   10  2\n\
+               2018-02-12 208  29239    140  0   0   ?  206  587  2\n\
+               2018-02-13   1     19     19  0   0   ?    0    0  ?\n\
+               2018-02-14  44   4795    108  0   0   ?   44   92  2\n\
+               2018-02-15   3    137     45  0   0   ?    3    6  2\n\
+               2018-02-16  21  23914   1138  0   0   ?    3   14  4\n\
+               2018-02-18   4    500    125  0   0   ?    2   10  5\n\
+               2018-02-19   2  28977  14488  0   0   ?    2    6  3\n\
+               2018-02-20   2    488    244  0   0   ?    1    2  2\n\
+               2018-02-21  37   5522    149  0   0   ?   36   93  2\n\
+               2018-02-22  16  15396    962  0   0   ?   23   82  3\n\
+               2018-02-23   6    854    142  0   0   ?    5   11  2\n\
+               2018-02-24   2     39     19  0   0   ?    2    3  1\n\
+               2018-02-26  10   2730    273  0   0   ?    9   18  2\n\
+               2018-02-27  35   1403     40  0   0   ?   49  175  3\n\
+               2018-02-28   5    652    130  0   0   ?   16   41  2\n\
+               2018-03-01  13   9355    719  0   0   ?   13   40  3\n\
+               2018-03-02   5    510    102  0   0   ?    5   37  7\n\
+               2018-03-03   3     87     29  0   0   ?    3    5  1\n\
+               2018-03-05   9    168     18  0   0   ?   21   84  4\n\
+               2018-03-06   3  27746   9248  0   0   ?    1    3  3\n\
+               2018-03-07  46   2969     64  0   0   ?   43   90  2\n\
+               2018-03-08  74   5441     73  0   0   ?   73  202  2\n\
+               2018-03-09  50   7458    149  0   0   ?   49  140  2\n\
+               2018-03-12  95   4380     46  0   0   ?   95  213  2\n\
+               2018-03-14   0      0      ?  1  10  10    1    3  3\n"),
              ("%F10000.log s --duration s -ss -oc -gy", "2018 gentoo  150  4747  28\n"),
              ("%F10000.log s --duration s -ss -oc -gm",
               "2018-02 gentoo  90  2411  15\n\
@@ -443,7 +449,7 @@ fn stats_grouped() {
                2018-03-08 gentoo   8  157   20\n\
                2018-03-09 gentoo   7  222   31\n\
                2018-03-12 gentoo   4  121   32\n")];
-    let mut tots: HashMap<&str, (u64, u64, u64, u64)> = HashMap::new();
+    let mut tots: HashMap<&str, (u64, u64, u64, u64, u64, u64)> = HashMap::new();
     let to_u64 = |v: &Vec<&str>, i: usize| v.get(i).unwrap().parse::<u64>().unwrap();
     for (a, o) in t {
         // Usual output matching
@@ -451,7 +457,8 @@ fn stats_grouped() {
         // Add up the "count" and "time" columns, grouped by timespan (year/month/week/day)
         for l in o.lines() {
             let cols: Vec<&str> = l.split_ascii_whitespace().collect();
-            let tot = tots.entry(a.split_whitespace().last().unwrap()).or_insert((0, 0, 0, 0));
+            let tot =
+                tots.entry(a.split_whitespace().last().unwrap()).or_insert((0, 0, 0, 0, 0, 0));
             match cols.len() {
                 // Sync
                 5 => {
@@ -459,18 +466,22 @@ fn stats_grouped() {
                     (*tot).1 += to_u64(&cols, 3);
                 },
                 // merge
-                8 => {
+                11 => {
                     (*tot).0 += to_u64(&cols, 2);
                     (*tot).1 += to_u64(&cols, 3);
                     (*tot).2 += to_u64(&cols, 5);
                     (*tot).3 += to_u64(&cols, 6);
+                    (*tot).4 += to_u64(&cols, 8);
+                    (*tot).5 += to_u64(&cols, 9);
                 },
                 // Total
-                7 => {
+                10 => {
                     (*tot).0 += to_u64(&cols, 1);
                     (*tot).1 += to_u64(&cols, 2);
                     (*tot).2 += to_u64(&cols, 4);
                     (*tot).3 += to_u64(&cols, 5);
+                    (*tot).4 += to_u64(&cols, 7);
+                    (*tot).5 += to_u64(&cols, 8);
                 },
                 _ => panic!("Unexpected col count {l}"),
             }
@@ -499,11 +510,11 @@ fn negative_merge_time() {
              ("%Fnegtime.log s -sstp -oc",
               format!("gentoo  2  1:06  1:06\n\
                        \n\
-                       kde-apps/libktnef  1    26    26  0  0  ?\n\
-                       kde-plasma/kwin    3  9:06  4:33  2  3  1\n\
-                       net-misc/chrony    1    34    34  0  0  ?\n\
+                       kde-apps/libktnef  1    26    26  0  0  ?  0  0  ?\n\
+                       kde-plasma/kwin    3  9:06  4:33  0  0  ?  2  3  1\n\
+                       net-misc/chrony    1    34    34  0  0  ?  0  0  ?\n\
                        \n\
-                       5  10:06  2:01  2  3  1\n"))];
+                       5  10:06  2:01  0  0  ?  2  3  1\n"))];
     for (a, o) in t {
         emlop(a).assert().success().stdout(o);
     }

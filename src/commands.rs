@@ -8,7 +8,7 @@ use std::{collections::{BTreeMap, HashMap, HashSet},
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let mut merges: HashMap<String, i64> = HashMap::new();
+    let mut merges: HashMap<String, (i64, bool)> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut sync_start: Option<i64> = None;
     let mut found = 0;
@@ -25,15 +25,22 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
             },
             Hist::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
-                merges.insert(key, ts);
+                merges.insert(key, (ts, false));
+            },
+            Hist::MergeStep { key, kind, .. } => {
+                if matches!(kind, MergeStep::MergeBinary) {
+                    if let Some((_, bin)) = merges.get_mut(&key) {
+                        *bin = true;
+                    }
+                }
             },
             Hist::MergeStop { ts, ref key, .. } => {
                 found += 1;
-                let started = merges.remove(key).unwrap_or(ts + 1);
+                let (started, bin) = merges.remove(key).unwrap_or((ts + 1, false));
                 if found <= sc.first {
                     tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
                              &[&FmtDur(ts - started)],
-                             &[&gc.merge, &p.ebuild_version()]]);
+                             &[if bin { &gc.binmerge } else { &gc.merge }, &p.ebuild_version()]]);
                 }
             },
             Hist::UnmergeStart { ts, key, .. } => {
@@ -59,7 +66,7 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                 if found <= sc.first {
                     tbl.row([&[&FmtDate(if sc.starttime { started } else { ts })],
                              &[&FmtDur(ts - started)],
-                             &[&gc.clr, &"Sync ", &repo]]);
+                             &[&gc.sync, &"Sync ", &repo]]);
                 }
             },
         }
@@ -181,6 +188,9 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
              "Merges",
              "Total time",
              "Predict time",
+             "Binmerges",
+             "Total time",
+             "Predict time",
              "Unmerges",
              "Total time",
              "Predict time"];
@@ -189,13 +199,16 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
              "Merges",
              "Total time",
              "Average time",
+             "Binmerges",
+             "Total time",
+             "Average time",
              "Unmerges",
              "Total time",
              "Average time"];
     let mut tblt = Table::new(&gc).align_left(0).margin(1, " ").header(h);
-    let mut merge_start: HashMap<String, i64> = HashMap::new();
+    let mut merge_start: HashMap<String, (i64, bool)> = HashMap::new();
     let mut unmerge_start: HashMap<String, i64> = HashMap::new();
-    let mut pkg_time: BTreeMap<String, (Times, Times)> = BTreeMap::new();
+    let mut pkg_time: BTreeMap<String, (Times, Times, Times)> = BTreeMap::new();
     let mut sync_start: Option<i64> = None;
     let mut sync_time: BTreeMap<String, Times> = BTreeMap::new();
     let mut run_args: BTreeMap<ArgKind, usize> = BTreeMap::new();
@@ -224,13 +237,25 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                 *run_args.entry(ArgKind::new(&args)).or_insert(0) += 1;
             },
             Hist::MergeStart { ts, key, .. } => {
-                merge_start.insert(key, ts);
+                merge_start.insert(key, (ts, false));
+            },
+            Hist::MergeStep { kind, key, .. } => {
+                if matches!(kind, MergeStep::MergeBinary) {
+                    if let Some((_, bin)) = merge_start.get_mut(&key) {
+                        *bin = true;
+                    }
+                }
             },
             Hist::MergeStop { ts, ref key, .. } => {
-                if let Some(start_ts) = merge_start.remove(key) {
-                    let (times, _) = pkg_time.entry(p.ebuild().to_owned())
-                                             .or_insert((Times::new(), Times::new()));
-                    times.insert(ts - start_ts);
+                if let Some((start_ts, bin)) = merge_start.remove(key) {
+                    let (tc, tb, _) =
+                        pkg_time.entry(p.take_ebuild())
+                                .or_insert((Times::new(), Times::new(), Times::new()));
+                    if bin {
+                        tb.insert(ts - start_ts);
+                    } else {
+                        tc.insert(ts - start_ts);
+                    }
                 }
             },
             Hist::UnmergeStart { ts, key, .. } => {
@@ -238,8 +263,9 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             },
             Hist::UnmergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = unmerge_start.remove(key) {
-                    let (_, times) = pkg_time.entry(p.ebuild().to_owned())
-                                             .or_insert((Times::new(), Times::new()));
+                    let (_, _, times) =
+                        pkg_time.entry(p.take_ebuild())
+                                .or_insert((Times::new(), Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
             },
@@ -284,12 +310,12 @@ fn cmd_stats_group(gc: &Conf,
                    sc: &ConfStats,
                    tblc: &mut Table<5>,
                    tbls: &mut Table<5>,
-                   tblp: &mut Table<8>,
-                   tblt: &mut Table<7>,
+                   tblp: &mut Table<11>,
+                   tblt: &mut Table<10>,
                    group: String,
                    run_args: &BTreeMap<ArgKind, usize>,
                    sync_time: &BTreeMap<String, Times>,
-                   pkg_time: &BTreeMap<String, (Times, Times)>) {
+                   pkg_time: &BTreeMap<String, (Times, Times, Times)>) {
     // Commands
     if sc.show.run && !run_args.is_empty() {
         tblc.row([&[&group],
@@ -302,7 +328,7 @@ fn cmd_stats_group(gc: &Conf,
     if sc.show.sync && !sync_time.is_empty() {
         for (repo, time) in sync_time {
             tbls.row([&[&group],
-                      &[repo],
+                      &[&gc.sync, repo],
                       &[&gc.cnt, &time.count],
                       &[&FmtDur(time.tot)],
                       &[&FmtDur(time.pred(sc.lim, sc.avg))]]);
@@ -310,12 +336,15 @@ fn cmd_stats_group(gc: &Conf,
     }
     // Packages
     if sc.show.pkg && !pkg_time.is_empty() {
-        for (pkg, (merge, unmerge)) in pkg_time {
+        for (pkg, (merge, binmerge, unmerge)) in pkg_time {
             tblp.row([&[&group],
                       &[&gc.pkg, pkg],
                       &[&gc.cnt, &merge.count],
                       &[&FmtDur(merge.tot)],
                       &[&FmtDur(merge.pred(sc.lim, sc.avg))],
+                      &[&gc.cnt, &binmerge.count],
+                      &[&FmtDur(binmerge.tot)],
+                      &[&FmtDur(binmerge.pred(sc.lim, sc.avg))],
                       &[&gc.cnt, &unmerge.count],
                       &[&FmtDur(unmerge.tot)],
                       &[&FmtDur(unmerge.pred(sc.lim, sc.avg))]]);
@@ -325,11 +354,15 @@ fn cmd_stats_group(gc: &Conf,
     if sc.show.tot && !pkg_time.is_empty() {
         let mut merge_time = 0;
         let mut merge_count = 0;
+        let mut binmerge_time = 0;
+        let mut binmerge_count = 0;
         let mut unmerge_time = 0;
         let mut unmerge_count = 0;
-        for (merge, unmerge) in pkg_time.values() {
+        for (merge, binmerge, unmerge) in pkg_time.values() {
             merge_time += merge.tot;
             merge_count += merge.count;
+            binmerge_time += binmerge.tot;
+            binmerge_count += binmerge.count;
             unmerge_time += unmerge.tot;
             unmerge_count += unmerge.count;
         }
@@ -337,6 +370,9 @@ fn cmd_stats_group(gc: &Conf,
                   &[&gc.cnt, &merge_count],
                   &[&FmtDur(merge_time)],
                   &[&FmtDur(merge_time.checked_div(merge_count).unwrap_or(-1))],
+                  &[&gc.cnt, &binmerge_count],
+                  &[&FmtDur(binmerge_time)],
+                  &[&FmtDur(binmerge_time.checked_div(binmerge_count).unwrap_or(-1))],
                   &[&gc.cnt, &unmerge_count],
                   &[&FmtDur(unmerge_time)],
                   &[&FmtDur(unmerge_time.checked_div(unmerge_count).unwrap_or(-1))]]);
@@ -414,20 +450,27 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
     // Parse emerge log.
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &vec![], false)?;
-    let mut started: BTreeMap<Pkg, i64> = BTreeMap::new();
-    let mut times: HashMap<String, Times> = HashMap::new();
+    let mut started: BTreeMap<String, (i64, bool)> = BTreeMap::new();
+    let mut times: HashMap<(String, bool), Times> = HashMap::new();
     for p in hist {
         match p {
-            Hist::MergeStart { ts, .. } => {
-                started.insert(Pkg::new(p.ebuild(), p.version()), ts);
+            Hist::MergeStart { ts, key, .. } => {
+                started.insert(key, (ts, false));
             },
-            Hist::MergeStop { ts, .. } => {
-                if let Some(start_ts) = started.remove(&Pkg::new(p.ebuild(), p.version())) {
-                    let timevec = times.entry(p.ebuild().to_string()).or_insert(Times::new());
+            Hist::MergeStep { kind, key, .. } => {
+                if matches!(kind, MergeStep::MergeBinary) {
+                    if let Some((_, bin)) = started.get_mut(&key) {
+                        *bin = true;
+                    }
+                }
+            },
+            Hist::MergeStop { ts, ref key, .. } => {
+                if let Some((start_ts, bin)) = started.remove(key.as_str()) {
+                    let timevec = times.entry((p.take_ebuild(), bin)).or_insert(Times::new());
                     timevec.insert(ts - start_ts);
                 }
             },
-            _ => unreachable!("Should only receive Hist::{{Start,Stop}}"),
+            _ => unreachable!("Should only receive Hist::{{Start,Step,Stop}}"),
         }
     }
 
@@ -443,9 +486,9 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         }
         // Plus emerge.log after main process start time, if we didn't see specific processes
         if einfo.pkgs.is_empty() {
-            for (p, t) in started.iter() {
-                if *t > einfo.start && !r.contains(p) {
-                    r.push(p.clone())
+            for (p, (t, b)) in started.iter() {
+                if *t > einfo.start && r.iter().all(|r| r.ebuild_version() != p) {
+                    r.push(Pkg::try_new(p, *b).expect("started key should parse as Pkg"))
                 }
             }
         }
@@ -464,21 +507,22 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     for p in pkgs {
         totcount += 1;
         // Find the elapsed time, if currently running
-        let elapsed = match started.remove(&p) {
-            Some(s) if einfo.pkgs.contains(&p) => now - s,
-            Some(s) if einfo.pkgs.is_empty() && s > einfo.start => now - s,
+        let elapsed = match started.remove(p.ebuild_version()) {
+            Some((s, _)) if einfo.pkgs.contains(&p) => now - s,
+            Some((s, _)) if einfo.pkgs.is_empty() && s > einfo.start => now - s,
             _ => 0,
         };
 
         // Find the predicted time and adjust counters
-        let (fmtpred, pred) = match times.get(p.ebuild()) {
+        let (fmtpred, pred) = match times.get(&(p.ebuild().to_string(), p.bin)) {
             Some(tv) => {
                 let pred = tv.pred(sc.lim, sc.avg);
                 (pred, pred)
             },
             None => {
                 totunknown += 1;
-                (-1, sc.unknown)
+                let u = if p.bin { sc.unknownb } else { sc.unknownc };
+                (i64::MIN + u, u)
             },
         };
         totpredict += std::cmp::max(0, pred - elapsed);
@@ -488,11 +532,13 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         if sc.show.merge && totcount <= sc.first {
             if elapsed > 0 {
                 let stage = get_buildlog(&p, &sc.tmpdirs).unwrap_or_default();
-                tbl.row([&[&gc.pkg, &p.ebuild_version()],
+                tbl.row([&[if p.bin { &gc.binpkg } else { &gc.pkg }, &p.ebuild_version()],
                          &[&FmtDur(fmtpred)],
                          &[&gc.clr, &"- ", &FmtDur(elapsed), &gc.clr, &stage]]);
             } else {
-                tbl.row([&[&gc.pkg, &p.ebuild_version()], &[&FmtDur(fmtpred)], &[]]);
+                tbl.row([&[if p.bin { &gc.binpkg } else { &gc.pkg }, &p.ebuild_version()],
+                         &[&FmtDur(fmtpred)],
+                         &[]]);
             }
         }
     }
@@ -594,15 +640,15 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
         return Ok(true);
     }
     // Look for (un)merged matching packages in the log and print each once
-    let term: Vec<_> = sc.pkg.iter().cloned().collect();
+    let term: Vec<_> = sc.pkg.map_or(vec![], |p| vec![p]);
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &term, false)?;
     let mut pkgs: HashSet<String> = HashSet::new();
     for p in hist {
         if let Hist::MergeStart { .. } = p {
-            let e = p.ebuild();
-            if !pkgs.contains(e) {
+            let e = p.take_ebuild();
+            if !pkgs.contains(&e) {
                 println!("{}", e);
-                pkgs.insert(e.to_string());
+                pkgs.insert(e);
             }
         }
     }

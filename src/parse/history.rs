@@ -21,6 +21,8 @@ pub enum Hist {
     RunStart { ts: i64, args: String },
     /// Merge started (might never complete).
     MergeStart { ts: i64, key: String, pos: usize },
+    /// Merge step.
+    MergeStep { ts: i64, key: String, pos: usize, kind: MergeStep },
     /// Merge completed.
     MergeStop { ts: i64, key: String, pos: usize },
     /// Unmerge started (might never complete).
@@ -35,44 +37,67 @@ pub enum Hist {
 impl Hist {
     pub fn ebuild(&self) -> &str {
         match self {
-            Self::MergeStart { key, pos, .. } => &key[..(*pos - 1)],
-            Self::MergeStop { key, pos, .. } => &key[..(*pos - 1)],
-            Self::UnmergeStart { key, pos, .. } => &key[..(*pos - 1)],
-            Self::UnmergeStop { key, pos, .. } => &key[..(*pos - 1)],
+            Self::MergeStart { key, pos, .. }
+            | Self::MergeStep { key, pos, .. }
+            | Self::MergeStop { key, pos, .. }
+            | Self::UnmergeStart { key, pos, .. }
+            | Self::UnmergeStop { key, pos, .. } => &key[..(*pos - 1)],
             _ => unreachable!("No ebuild for {:?}", self),
         }
     }
+    pub fn take_ebuild(self) -> String {
+        match self {
+            Self::MergeStart { mut key, pos, .. }
+            | Self::MergeStep { mut key, pos, .. }
+            | Self::MergeStop { mut key, pos, .. }
+            | Self::UnmergeStart { mut key, pos, .. }
+            | Self::UnmergeStop { mut key, pos, .. } => {
+                key.truncate(pos - 1);
+                key
+            },
+            _ => unreachable!("No ebuild for {:?}", self),
+        }
+    }
+    #[cfg(test)]
     pub fn version(&self) -> &str {
         match self {
-            Self::MergeStart { key, pos, .. } => &key[*pos..],
-            Self::MergeStop { key, pos, .. } => &key[*pos..],
-            Self::UnmergeStart { key, pos, .. } => &key[*pos..],
-            Self::UnmergeStop { key, pos, .. } => &key[*pos..],
+            Self::MergeStart { key, pos, .. }
+            | Self::MergeStep { key, pos, .. }
+            | Self::MergeStop { key, pos, .. }
+            | Self::UnmergeStart { key, pos, .. }
+            | Self::UnmergeStop { key, pos, .. } => &key[*pos..],
             _ => unreachable!("No version for {:?}", self),
         }
     }
     pub fn ebuild_version(&self) -> &str {
         match self {
-            Self::MergeStart { key, .. } => key,
-            Self::MergeStop { key, .. } => key,
-            Self::UnmergeStart { key, .. } => key,
-            Self::UnmergeStop { key, .. } => key,
+            Self::MergeStart { key, .. }
+            | Self::MergeStep { key, .. }
+            | Self::MergeStop { key, .. }
+            | Self::UnmergeStart { key, .. }
+            | Self::UnmergeStop { key, .. } => key,
             _ => unreachable!("No ebuild/version for {:?}", self),
         }
     }
     pub const fn ts(&self) -> i64 {
         match self {
-            Self::RunStart { ts, .. } => *ts,
-            Self::MergeStart { ts, .. } => *ts,
-            Self::MergeStop { ts, .. } => *ts,
-            Self::UnmergeStart { ts, .. } => *ts,
-            Self::UnmergeStop { ts, .. } => *ts,
-            Self::SyncStart { ts, .. } => *ts,
-            Self::SyncStop { ts, .. } => *ts,
+            Self::RunStart { ts, .. }
+            | Self::MergeStart { ts, .. }
+            | Self::MergeStep { ts, .. }
+            | Self::MergeStop { ts, .. }
+            | Self::UnmergeStart { ts, .. }
+            | Self::UnmergeStop { ts, .. }
+            | Self::SyncStart { ts, .. }
+            | Self::SyncStop { ts, .. } => *ts,
         }
     }
 }
 
+#[derive(Debug)]
+pub enum MergeStep {
+    MergeBinary,
+    Other,
+}
 
 /// Open maybe-compressed file, returning a BufReader
 fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Send>>, Error> {
@@ -120,6 +145,10 @@ pub fn get_hist(file: &str,
                         }
                         prev_t = t;
                         if let Some(found) = parse_mergestart(show_merge, t, s, &filter) {
+                            if tx.send(found).is_err() {
+                                break;
+                            }
+                        } else if let Some(found) = parse_mergestep(show_merge, t, s, &filter) {
                             if tx.send(found).is_err() {
                                 break;
                             }
@@ -302,6 +331,22 @@ fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> 
     Some(Hist::MergeStart { ts, key: t6.to_owned(), pos })
 }
 
+fn parse_mergestep(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
+    if !enabled || !line.starts_with(b"=== (") {
+        return None;
+    }
+    let line = from_utf8(line).ok()?;
+    let p1 = line.find(')')?;
+    let p2 = line[p1..].find('(')? + p1 + 1;
+    let p3 = line[p2..].find("::")? + p2;
+    let pos = find_version(&line[p2..p3], filter)?;
+    let kind = match line[(p1 + 1)..(p2 - 2)].trim() {
+        "Merging Binary" => MergeStep::MergeBinary,
+        _ => MergeStep::Other,
+    };
+    Some(Hist::MergeStep { ts, key: line[p2..p3].to_owned(), pos, kind })
+}
+
 fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b"::: comp") {
         return None;
@@ -383,7 +428,7 @@ mod tests {
                 expect_counts: Vec<(&str, usize)>) {
         // Setup
         let (mints, maxts) = match file {
-            "10000" => (1517609348, 1520891098),
+            "10000" => (1517609348, 1520991402),
             "all" => (1483228800, 1483747200),
             "badtimestamp" => (1327867709, 1327871057),
             "badversion" => (1327867709, 1327871057),
@@ -405,6 +450,7 @@ mod tests {
             let (kind, ts, ebuild, version) = match p {
                 Hist::RunStart { ts, .. } => ("RStart", ts, "c/e", "1"),
                 Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
+                Hist::MergeStep { ts, .. } => ("MStep", ts, p.ebuild(), p.version()),
                 Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
                 Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
                 Hist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version()),
@@ -414,10 +460,10 @@ mod tests {
             *counts.entry(kind.to_string()).or_insert(0) += 1;
             *counts.entry(ebuild.to_string()).or_insert(0) += 1;
             assert!(ts >= filter_mints.unwrap_or(mints) && ts <= filter_maxts.unwrap_or(maxts),
-                    "Out of bound date {}",
+                    "Out of bound date {} in  in {p:?}",
                     fmt_utctime(ts));
-            assert!(re_atom.is_match(ebuild), "Invalid ebuild atom {}", ebuild);
-            assert!(re_version.is_match(version), "Invalid version {}", version);
+            assert!(re_atom.is_match(ebuild), "Invalid ebuild atom {} in {p:?}", ebuild);
+            assert!(re_version.is_match(version), "Invalid version {} in {p:?}", version);
         }
         // Check that we got the right number of each kind
         for (t, ref c) in expect_counts {
@@ -488,11 +534,12 @@ mod tests {
                                if m { "m" } else { "" },
                                if u { "u" } else { "" },
                                if s { "s" } else { "" });
-            let t = vec![("RStart", if r { 450 } else { 0 }),
-                         ("MStart", if m { 889 } else { 0 }),
-                         ("MStop", if m { 832 } else { 0 }),
-                         ("UStart", if u { 832 } else { 0 }),
-                         ("UStop", if u { 832 } else { 0 }),
+            let t = vec![("RStart", if r { 451 } else { 0 }),
+                         ("MStart", if m { 890 } else { 0 }),
+                         ("MStep", if m { 3443 } else { 0 }),
+                         ("MStop", if m { 833 } else { 0 }),
+                         ("UStart", if u { 833 } else { 0 }),
+                         ("UStop", if u { 833 } else { 0 }),
                          ("SStart", if s { 326 } else { 0 }),
                          ("SStop", if s { 150 } else { 0 })];
             chk_hist("10000", &show, None, None, vec![], false, t);
@@ -503,24 +550,26 @@ mod tests {
     /// Filtering by search term
     fn parse_hist_filter_term() {
         #[rustfmt::skip]
-        let t = vec![("",                           false, 889, 832, 832, 832, 150), // Everything
-                     ("kactivities",                false, 4, 4, 4, 4, 0), // regexp matches 4
-                     ("kactivities",                true,  2, 2, 2, 2, 0), // string matches 2
-                     ("kde-frameworks/kactivities", true,  2, 2, 2, 2, 0), // string matches 2
-                     ("frameworks/kactivities",     true,  0, 0, 0, 0, 0), // string matches nothing
-                     ("ks/kw",                      false, 9, 8, 8, 8, 0), // regexp matches 16 (+1 failed)
-                     ("file",                       false, 7, 7, 6, 6, 0), // case-insensitive
-                     ("FILE",                       false, 7, 7, 6, 6, 0), // case-insensitive
-                     ("file-next",                  true,  0, 0, 0, 0, 0), // case-sensitive
-                     ("File-Next",                  true,  1, 1, 0, 0, 0), // case-sensitive
-                     ("gentoo",                     true,  0, 0, 0, 0, 150), // repo sync only
-                     ("gentoo",                     false, 11, 11, 12, 12, 150), // repo and ebuilds
-                     ("ark oxygen",                 false, 15, 15, 15, 15, 0), // multiple regex terms
-                     ("ark oxygen",                 true,  8, 8, 8, 8, 0), // multiple string terms
+        let t = vec![
+            ("",                           false, 890, 3443, 833, 833, 833, 150), // Everything
+            ("kactivities",                false,   4,   16,   4,   4,   4,   0), // regexp matches 4
+            ("kactivities",                true,    2,    8,   2,   2,   2,   0), // string matches 2
+            ("kde-frameworks/kactivities", true,    2,    8,   2,   2,   2,   0), // string matches 2
+            ("frameworks/kactivities",     true,    0,    0,   0,   0,   0,   0), // string matches nothing
+            ("ks/kw",                      false,   9,   34,   8,   8,   8,   0), // regexp matches 16 (+1 failed)
+            ("file",                       false,   7,   28,   7,   6,   6,   0), // case-insensitive
+            ("FILE",                       false,   7,   28,   7,   6,   6,   0), // case-insensitive
+            ("file-next",                  true,    0,    0,   0,   0,   0,   0), // case-sensitive
+            ("File-Next",                  true,    1,    4,   1,   0,   0,   0), // case-sensitive
+            ("gentoo",                     true,    0,    0,   0,   0,   0, 150), // repo sync only
+            ("gentoo",                     false,  11,   44,  11,  12,  12, 150), // repo and ebuilds
+            ("ark oxygen",                 false,  15,   60,  15,  15,  15,   0), // multiple regex terms
+            ("ark oxygen",                 true,    8,   32,   8,   8,   8,   0), // multiple string terms
         ];
-        for (f, e, m1, m2, u1, u2, s2) in t {
+        for (f, e, m1, m2, m3, u1, u2, s2) in t {
             let c = vec![("MStart", m1),
-                         ("MStop", m2),
+                         ("MStep", m2),
+                         ("MStop", m3),
                          ("UStart", u1),
                          ("UStop", u2),
                          // SStart is always the same because Sync filtering is only done for SStop
@@ -534,23 +583,24 @@ mod tests {
     #[test]
     /// Filtering by timestamp
     fn parse_hist_filter_ts() {
-        let (umin, umax, fmin, fmax) = (i64::MIN, i64::MAX, 1517609348, 1520891098);
+        let (umin, umax, fmin, fmax) = (i64::MIN, i64::MAX, 1517609348, 1520991402);
         #[rustfmt::skip]
-        let t = vec![(Some(umin),       None,           889, 832, 832, 832, 326, 150),
-                     (Some(fmin),       None,           889, 832, 832, 832, 326, 150),
-                     (None,             Some(umax),     889, 832, 832, 832, 326, 150),
-                     (None,             Some(fmax),     889, 832, 832, 832, 326, 150),
-                     (Some(fmin),       Some(fmax),     889, 832, 832, 832, 326, 150),
-                     (Some(fmax),       None,             0,   0,   0,   0,   0,   0),
-                     (None,             Some(fmin),       0,   1,   0,   0,   0,   0), //fist line of this file happens to be a stop
-                     (None,             Some(umin),       0,   0,   0,   0,   0,   0),
-                     (Some(umax),       None,             0,   0,   0,   0,   0,   0),
-                     (Some(1517917751), Some(1517931835), 6,   6,   5,   5,   4,   2),
-                     (Some(1517959010), Some(1518176159), 24, 21,  23,  23,  32,  16),
+        let t = vec![(Some(umin),       None,           890,  3443, 833, 833, 833, 326, 150),
+                     (Some(fmin),       None,           890,  3443, 833, 833, 833, 326, 150),
+                     (None,             Some(umax),     890,  3443, 833, 833, 833, 326, 150),
+                     (None,             Some(fmax),     890,  3443, 833, 833, 833, 326, 150),
+                     (Some(fmin),       Some(fmax),     890,  3443, 833, 833, 833, 326, 150),
+                     (Some(fmax),       None,             0,     1,   1,   0,   0,   0,   0), //last ts contains a stop and a "Post-Build Cleaning" step
+                     (None,             Some(fmin),       0,     0,   1,   0,   0,   0,   0), //fist ts contains a stop
+                     (None,             Some(umin),       0,     0,   0,   0,   0,   0,   0),
+                     (Some(umax),       None,             0,     0,   0,   0,   0,   0,   0),
+                     (Some(1517917751), Some(1517931835), 6,    24,   6,   5,   5,   4,   2),
+                     (Some(1517959010), Some(1518176159), 24,   91,  21,  23,  23,  32,  16),
         ];
-        for (min, max, m1, m2, u1, u2, s1, s2) in t {
+        for (min, max, m1, m2, m3, u1, u2, s1, s2) in t {
             let c = vec![("MStart", m1),
-                         ("MStop", m2),
+                         ("MStep", m2),
+                         ("MStop", m3),
                          ("UStart", u1),
                          ("UStop", u2),
                          ("SStart", s1),

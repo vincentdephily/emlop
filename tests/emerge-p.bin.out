@@ -1,0 +1,11 @@
+
+Local copy of remote index is up-to-date and will be used.
+
+Local copy of remote index is up-to-date and will be used.
+
+These are the packages that would be merged, in order:
+
+[binary     U  ] dev-libs/glib-2.80.5-r1-4:2::gentoo [2.78.6:2::gentoo] USE="dbus elf introspection%* (mime) xattr -debug -doc% (-selinux) -static-libs -sysprof -systemtap -test -utils (-gtk-doc%)" ABI_X86="(64) -32 (-x32)" 0 KiB
+[ebuild     U  ] dev-libs/glib-2.80.5-r1-4:2::gentoo [2.78.6:2::gentoo] USE="dbus elf introspection%* (mime) xattr -debug -doc% (-selinux) -static-libs -sysprof -systemtap -test -utils (-gtk-doc%)" ABI_X86="(64) -32 (-x32)" 0 KiB
+
+Total: 2 packages (2 upgrades, 1 binaries), Size of downloads: 0 KiB

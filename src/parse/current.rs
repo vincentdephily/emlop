@@ -16,18 +16,16 @@ use std::{fs::File,
 pub struct Pkg {
     key: String,
     pos: usize,
+    pub bin: bool,
 }
 impl Pkg {
-    pub fn new(ebuild: &str, version: &str) -> Self {
-        Self { key: format!("{ebuild}-{version}"), pos: ebuild.len() + 1 }
-    }
     // Algorithm is taken from history.rs and more thoroughly tested there
-    fn try_new(key: &str) -> Option<Self> {
+    pub fn try_new(key: &str, bin: bool) -> Option<Self> {
         let mut pos = 0;
         loop {
             pos += key[pos..].find('-')?;
             if pos > 0 && key.as_bytes().get(pos + 1)?.is_ascii_digit() {
-                return Some(Self { key: key.to_string(), pos: pos + 1 });
+                return Some(Self { key: key.to_string(), pos: pos + 1, bin });
             }
             pos += 1;
         }
@@ -48,7 +46,7 @@ impl Pkg {
 pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
     debug!("get_pretend input={}", filename);
     let mut out = vec![];
-    let re = Regex::new("^\\[ebuild[^]]*\\] +([^ :\\n]+)").unwrap();
+    let re = Regex::new("^\\[([a-z]+)[^]]*\\] +([^ :\\n]+)").unwrap();
     let mut buf = BufReader::new(reader);
     let mut line = String::new();
     loop {
@@ -58,7 +56,15 @@ pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
             // Got a line, see if it's a pkg merge
             Ok(_) => {
                 if let Some(c) = re.captures(&line) {
-                    out.push(Pkg::try_new(c.get(1).unwrap().as_str()).unwrap())
+                    let bin = match &c[1] {
+                        "ebuild" => false,
+                        "binary" => true,
+                        _ => continue,
+                    };
+                    match Pkg::try_new(&c[2], bin) {
+                        Some(p) => out.push(p),
+                        None => warn!("Cannot parse {line}"),
+                    }
                 }
             },
         }
@@ -97,7 +103,12 @@ fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
         ResumeKind::Backup => db.resume_backup?,
         ResumeKind::No => unreachable!(),
     };
-    Some(r.mergelist.iter().filter_map(|v| v.get(2).and_then(|s| Pkg::try_new(s))).collect())
+    Some(r.mergelist
+          .iter()
+          .filter_map(|v| {
+              v.get(2).and_then(|s| Pkg::try_new(s, v.first().is_some_and(|b| b == "binary")))
+          })
+          .collect())
 }
 
 
@@ -159,7 +170,7 @@ pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
             ProcKind::Python => {
                 if let Some(a) = proc.cmdline.find("sandbox [") {
                     if let Some(b) = proc.cmdline.find("] sandbox") {
-                        if let Some(p) = Pkg::try_new(&proc.cmdline[(a + 9)..b]) {
+                        if let Some(p) = Pkg::try_new(&proc.cmdline[(a + 9)..b], false) {
                             res.pkgs.push(p);
                         }
                     }
@@ -219,16 +230,19 @@ mod tests {
     }
 
     /// Check that `get_resume()` has the expected output
-    fn check_resume(kind: ResumeKind, file: &str, expect: Option<&[&str]>) {
-        let expect_pkg = expect.map(|o| o.into_iter().map(|s| Pkg::try_new(s).unwrap()).collect());
+    fn check_resume(kind: ResumeKind, file: &str, expect: Option<&[(&str, bool)]>) {
+        let expect_pkg =
+            expect.map(|o| o.into_iter().map(|(s, b)| Pkg::try_new(s, *b).unwrap()).collect());
         let res = get_resume_priv(kind, &format!("tests/{file}"));
         assert_eq!(expect_pkg, res, "Mismatch for {file}");
     }
 
     #[test]
     fn resume() {
-        let main = &["dev-lang/rust-1.65.0", "app-portage/emlop-0.5.0"];
-        let bkp = &["app-portage/dummybuild-0.1.600", "app-portage/dummybuild-0.1.60"];
+        let main = &[("dev-lang/rust-1.65.0", false), ("app-portage/emlop-0.5.0", false)];
+        let bkp =
+            &[("app-portage/dummybuild-0.1.600", false), ("app-portage/dummybuild-0.1.60", false)];
+        let bin = &[("sys-devel/clang-19", false), ("www-client/falkon-24.08.3", true)];
         check_resume(ResumeKind::Main, "mtimedb.ok", Some(main));
         check_resume(ResumeKind::Backup, "mtimedb.ok", Some(bkp));
         check_resume(ResumeKind::No, "mtimedb.ok", Some(&[]));
@@ -238,14 +252,14 @@ mod tests {
         check_resume(ResumeKind::Either, "mtimedb.mainempty", Some(bkp));
         check_resume(ResumeKind::Either, "mtimedb.noresume", None);
         check_resume(ResumeKind::Either, "mtimedb.badjson", None);
+        check_resume(ResumeKind::Either, "mtimedb.binaries", Some(bin));
     }
 
     #[test]
     fn pkg_new() {
-        assert_eq!(Some(Pkg::new("foo", "1.2")), Pkg::try_new("foo-1.2"));
-        assert_eq!("foo", Pkg::new("foo", "1.2").ebuild());
-        assert_eq!("1.2", Pkg::new("foo", "1.2").version());
-        assert_eq!("foo-1.2", Pkg::new("foo", "1.2").ebuild_version());
+        assert_eq!(Some(Pkg { key: String::from("foo-1.2"), pos: 4, bin: true }),
+                   Pkg::try_new("foo-1.2", true));
+        assert_eq!(None, Pkg::try_new("foo1.2", true));
     }
 
     #[test]

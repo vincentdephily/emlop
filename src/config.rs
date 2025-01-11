@@ -23,10 +23,14 @@ pub enum Configs {
 /// Using raw `set/clear` ANSI colors instead of some `paint()` method to simplify alignment.
 pub struct Conf {
     pub pkg: AnsiStr,
+    pub binpkg: AnsiStr,
     pub merge: AnsiStr,
+    pub binmerge: AnsiStr,
     pub unmerge: AnsiStr,
     pub dur: AnsiStr,
+    pub qmark: AnsiStr,
     pub cnt: AnsiStr,
+    pub sync: AnsiStr,
     pub skip: AnsiStr,
     pub clr: AnsiStr,
     pub lineend: &'static [u8],
@@ -55,7 +59,8 @@ pub struct ConfPred {
     pub last: usize,
     pub lim: u16,
     pub resume: ResumeKind,
-    pub unknown: i64,
+    pub unknownb: i64,
+    pub unknownc: i64,
     pub tmpdirs: Vec<PathBuf>,
     pub pwidth: usize,
     pub pdepth: usize,
@@ -118,10 +123,10 @@ fn sel<T, A, R>(cli: Option<&String>,
                 -> Result<R, ArgError>
     where R: ArgParse<String, A> + ArgParse<T, A>
 {
-    if let Some(a) = cli {
-        R::parse(a, arg, clisrc)
-    } else if let Some(a) = toml {
-        R::parse(a, arg, tomlsrc)
+    if let Some(val) = cli {
+        R::parse(val, arg, clisrc)
+    } else if let Some(val) = toml {
+        R::parse(val, arg, tomlsrc)
     } else {
         Ok(def)
     }
@@ -159,11 +164,15 @@ impl Conf {
                   to: cli.get_one("to")
                          .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--to"))?,
                   pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
+                  binpkg: AnsiStr::from(if color { "\x1B[0;32m" } else { "" }),
                   merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
+                  binmerge: AnsiStr::from(if color { "\x1B[0;32m" } else { ">>> " }),
                   unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
                   dur: AnsiStr::from(if color { "\x1B[1;35m" } else { "" }),
-                  skip: AnsiStr::from(if color { "\x1B[37m" } else { "" }),
-                  cnt: AnsiStr::from(if color { "\x1B[33m" } else { "" }),
+                  qmark: AnsiStr::from(if color { "\x1B[0m?" } else { "?" }),
+                  sync: AnsiStr::from(if color { "\x1B[1;36m" } else { "" }),
+                  skip: AnsiStr::from(if color { "\x1B[3;37m" } else { "" }),
+                  cnt: AnsiStr::from(if color { "\x1B[0;33m" } else { "" }),
                   clr: AnsiStr::from(if color { "\x1B[m" } else { "" }),
                   lineend: if color { b"\x1B[m\n" } else { b"\n" },
                   header: sel!(cli, toml, header, (), false)?,
@@ -203,7 +212,8 @@ impl ConfPred {
         Ok(Self { show: sel!(cli, toml, predict, show, "rmta", Show::rmt())?,
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,
-                  unknown: sel!(cli, toml, predict, unknown, 0..=3600, 10)?,
+                  unknownb: sel!(cli, toml, predict, unknownb, 0..=3600, 10)?,
+                  unknownc: sel!(cli, toml, predict, unknownc, 0..=3600, 30)?,
                   resume: *cli.get_one("resume").unwrap_or(&ResumeKind::Auto),
                   tmpdirs,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),
