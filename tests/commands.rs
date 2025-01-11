@@ -229,10 +229,10 @@ fn predict_emerge_p() {
           "[ebuild   R   ~] dev-lang/unknown-1.42\n\
            [binary   R   ~] dev-lang/bunknown-2.42\n\
            [uninstall     ] dev-libs/eventlog-0.2.1\n",
-          format!("dev-lang/unknown-1.42              10? \n\
-                   dev-lang/bunknown-2.42             20? \n\
-                   Estimate for 2 ebuilds, 2 unknown   30 @ {}\n",
-                  ts(30)),
+          format!("dev-lang/unknown-1.42              30? \n\
+                   dev-lang/bunknown-2.42             10? \n\
+                   Estimate for 2 ebuilds, 2 unknown   40 @ {}\n",
+                  ts(40)),
           0),
          // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
          ("%F10000.log p --date unix -oc",
@@ -240,10 +240,10 @@ fn predict_emerge_p() {
            [ebuild   R   ~] dev-lang/unknown-1.42\n\
            [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
           format!("dev-qt/qtcore-5.9.4-r2             3:45 \n\
-                   dev-lang/unknown-1.42               10? \n\
+                   dev-lang/unknown-1.42               30? \n\
                    dev-qt/qtgui-5.9.4-r3              4:24 \n\
-                   Estimate for 3 ebuilds, 1 unknown  8:19 @ {}\n",
-                  ts(8 * 60 + 9 + 10)),
+                   Estimate for 3 ebuilds, 1 unknown  8:39 @ {}\n",
+                  ts(8 * 60 + 9 + 30)),
           0),
          // Check skip rows
          ("%F10000.log p --date unix -oc --show m --first 2",
