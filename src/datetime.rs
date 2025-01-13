@@ -301,9 +301,9 @@ impl crate::table::Disp for FmtDur {
         match conf.dur_t {
             _ if sec < i64::MIN / 2 => {
                 FmtDur(i64::MAX + sec + 1).out(buf, conf);
-                wtb!(buf, "{qmark}")
+                wtb!(buf, "{qmark}?")
             },
-            _ if sec < 0 => wtb!(buf, "{qmark}"),
+            _ if sec < 0 => wtb!(buf, "{qmark}?"),
             Hms if sec >= 3600 => {
                 wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60)
             },

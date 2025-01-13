@@ -6,7 +6,9 @@ mod toml;
 mod types;
 
 pub use crate::config::{cli::*, types::*};
-use crate::{config::toml::Toml, parse::AnsiStr, *};
+use crate::{config::toml::Toml,
+            parse::{AnsiStr, Theme},
+            *};
 use clap::ArgMatches;
 use std::{io::IsTerminal, path::PathBuf};
 
@@ -27,10 +29,10 @@ pub struct Conf {
     pub merge: AnsiStr,
     pub binmerge: AnsiStr,
     pub unmerge: AnsiStr,
-    pub dur: AnsiStr,
-    pub qmark: AnsiStr,
-    pub cnt: AnsiStr,
     pub sync: AnsiStr,
+    pub dur: AnsiStr,
+    pub cnt: AnsiStr,
+    pub qmark: AnsiStr,
     pub skip: AnsiStr,
     pub clr: AnsiStr,
     pub lineend: &'static [u8],
@@ -157,22 +159,24 @@ impl Conf {
         let color = sel!(cli, toml, color, isterm, isterm)?;
         let outdef = if isterm { OutStyle::Columns } else { OutStyle::Tab };
         let offset = get_offset(sel!(cli, toml, utc, (), false)?);
+        let theme = Theme::new().update(toml.theme.as_ref(), "theme")?
+                                .update(cli.get_one("theme"), "--theme")?;
         Ok(Self { logfile: sel!(cli, toml, logfile, (), String::from("/var/log/emerge.log"))?,
                   from:
                       cli.get_one("from")
                          .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--from"))?,
                   to: cli.get_one("to")
                          .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--to"))?,
-                  pkg: AnsiStr::from(if color { "\x1B[1;32m" } else { "" }),
-                  binpkg: AnsiStr::from(if color { "\x1B[0;32m" } else { "" }),
-                  merge: AnsiStr::from(if color { "\x1B[1;32m" } else { ">>> " }),
-                  binmerge: AnsiStr::from(if color { "\x1B[0;32m" } else { ">>> " }),
-                  unmerge: AnsiStr::from(if color { "\x1B[1;31m" } else { "<<< " }),
-                  dur: AnsiStr::from(if color { "\x1B[1;35m" } else { "" }),
-                  qmark: AnsiStr::from(if color { "\x1B[0m?" } else { "?" }),
-                  sync: AnsiStr::from(if color { "\x1B[1;36m" } else { "" }),
-                  skip: AnsiStr::from(if color { "\x1B[3;37m" } else { "" }),
-                  cnt: AnsiStr::from(if color { "\x1B[0;33m" } else { "" }),
+                  pkg: AnsiStr::from(if color { theme.merge } else { "" }),
+                  binpkg: AnsiStr::from(if color { theme.binmerge } else { "" }),
+                  merge: AnsiStr::from(if color { theme.merge } else { ">>> " }),
+                  binmerge: AnsiStr::from(if color { theme.binmerge } else { ">>> " }),
+                  unmerge: AnsiStr::from(if color { theme.unmerge } else { "<<< " }),
+                  sync: AnsiStr::from(if color { theme.sync } else { "" }),
+                  dur: AnsiStr::from(if color { theme.duration } else { "" }),
+                  cnt: AnsiStr::from(if color { theme.count } else { "" }),
+                  qmark: AnsiStr::from(if color { theme.qmark } else { "" }),
+                  skip: AnsiStr::from(if color { theme.skip } else { "" }),
                   clr: AnsiStr::from(if color { "\x1B[m" } else { "" }),
                   lineend: if color { b"\x1B[m\n" } else { b"\n" },
                   header: sel!(cli, toml, header, (), false)?,

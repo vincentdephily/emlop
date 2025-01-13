@@ -142,7 +142,7 @@ pub fn build_cli() -> Command {
                                    .hide_possible_values(true)
                                    .num_args(..=1)
                                    .default_missing_value("either")
-                                   .display_order(9)
+                                   .display_order(8)
                                    .help_heading("Filter")
                                    .help(h.split_once('\n').unwrap().0)
                                    .long_help(h);
@@ -270,11 +270,25 @@ pub fn build_cli() -> Command {
                                              (default)|auto|a: colored if on tty\n  \
                                              (empty)|yes|y:    colored\n  \
                                              no|n:             not colored");
+    let h = "Set terminal colors\n\
+             Argument should be a space-separated list of <key>:<SGR> strings, where\n  \
+             <key> is one of merge, binmerge, unmerge, sync, duration, qmark, or skip\n  \
+             <SGR> is an Ansi SGR code (\
+             https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters)\n\
+             Eg: \"count:0 duration:1;3;37\" sets counts to unstyled and durations to bright italic white";
+    let theme = Arg::new("theme").long("theme")
+                                 .value_name("key:SGR")
+                                 .global(true)
+                                 .num_args(1)
+                                 .display_order(28)
+                                 .help_heading("Format")
+                                 .help("Set terminal colors")
+                                 .long_help(h);
     let output = Arg::new("output").short('o')
                                    .long("output")
                                    .value_name("format")
                                    .global(true)
-                                   .display_order(28)
+                                   .display_order(29)
                                    .help_heading("Format")
                                    .help("Ouput format (columns/tab/auto)")
                                    .long_help("Ouput format (columns/tab/auto)\n  \
@@ -289,7 +303,7 @@ pub fn build_cli() -> Command {
                                        .global(true)
                                        .num_args(..=1)
                                        .default_missing_value("y")
-                                       .display_order(29)
+                                       .display_order(30)
                                        .help_heading("Format")
                                        .help(h.split_once('\n').unwrap().0)
                                        .long_help(h);
@@ -302,14 +316,14 @@ pub fn build_cli() -> Command {
                                      .value_name("file")
                                      .global(true)
                                      .num_args(1)
-                                     .display_order(30)
+                                     .display_order(40)
                                      .help("Location of emerge log file");
     let tmpdir = Arg::new("tmpdir").long("tmpdir")
                                    .value_name("dir")
                                    .num_args(1)
                                    .action(Append)
                                    .value_parser(value_parser!(PathBuf))
-                                   .display_order(31)
+                                   .display_order(41)
                                    .help("Location of portage tmpdir")
                                    .long_help("Location of portage tmpdir\n\
                                                Multiple folders can be provided\n\
@@ -317,7 +331,7 @@ pub fn build_cli() -> Command {
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
                                      .action(Count)
-                                     .display_order(33)
+                                     .display_order(43)
                                      .help("Increase verbosity (can be given multiple times)")
                                      .long_help("Increase verbosity (defaults to errors only)\n  \
                                                  -v:   show warnings\n  \
@@ -328,14 +342,14 @@ pub fn build_cli() -> Command {
         Arg::new("shell").long("shell")
                          .help("Write generated (development) <shell> completion script to stdout")
                          .num_args(1)
-                         .display_order(34);
+                         .display_order(44);
     let h = "List matching packages from emerge.log\n\
              Uses the same semantics as `log <search>` filtering. \
              An empty search lists everything.";
     let onepkg = Arg::new("pkg").help(h.split_once('\n').unwrap().0)
                                 .long_help(h)
                                 .num_args(1)
-                                .display_order(35);
+                                .display_order(45);
 
     ////////////////////////////////////////////////////////////
     // Subcommands
@@ -435,6 +449,7 @@ pub fn build_cli() -> Command {
                          .arg(logfile)
                          .arg(verbose)
                          .arg(showskip)
+                         .arg(theme)
                          .subcommand(cmd_log)
                          .subcommand(cmd_pred)
                          .subcommand(cmd_stats)

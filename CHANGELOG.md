@@ -18,6 +18,13 @@
   - Format is a bit nicer and more colorful
   - `--show=e` renamed `--show=r` (running emerge processes) for consistency
 * Display a placeholder for skipped rows, configurable with `--showskip`
+* Colors are now configurable, to match your terminal's theme
+  - Eg `theme = "count:0 duration:1;3;37"` in `emlop.toml` displays counts unstyled and durations in
+    bright italic white.
+  - Possible keys are `merge`, `binmerge`, `unmerge`, `sync`, `duration`, `qmark`, and `skip`
+  - Cli `--theme` flag also available
+  - Only [Ansi SGR sequences](https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters)
+    are supported
 
 ## Bug fixes
 

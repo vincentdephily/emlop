@@ -41,6 +41,7 @@ pub struct Toml {
     pub utc: Option<bool>,
     pub color: Option<String>,
     pub output: Option<String>,
+    pub theme: Option<String>,
     pub log: Option<TomlLog>,
     pub predict: Option<TomlPred>,
     pub stats: Option<TomlStats>,

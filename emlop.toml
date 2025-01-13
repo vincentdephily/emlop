@@ -11,6 +11,7 @@
 # utc = true
 # header = true
 # color = "yes"
+# theme = "merge:1;32 binmerge:0;32 unmerge:1;31 sync:1;36 duration:1;35 count:0;33 qmark:0 skip:3;37"
 # output = "columns"
 # showskip = true
 [log]
