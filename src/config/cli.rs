@@ -247,12 +247,14 @@ pub fn build_cli() -> Command {
                                          .help_heading("Format")
                                          .help("Display start time instead of end time");
     let pwidth = Arg::new("pwidth").long("pwidth")
+                                   .short('W')
                                    .value_name("num")
                                    .num_args(1)
                                    .display_order(25)
                                    .help_heading("Format")
                                    .help("Maximum width of emerge proces commandline (default 60)");
     let pdepth = Arg::new("pdepth").long("pdepth")
+                                   .short('D')
                                    .value_name("num")
                                    .num_args(1)
                                    .display_order(26)
@@ -284,8 +286,8 @@ pub fn build_cli() -> Command {
                                  .help_heading("Format")
                                  .help("Set terminal colors")
                                  .long_help(h);
-    let output = Arg::new("output").short('o')
-                                   .long("output")
+    let output = Arg::new("output").long("output")
+                                   .short('o')
                                    .value_name("format")
                                    .global(true)
                                    .display_order(29)
