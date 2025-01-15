@@ -179,6 +179,7 @@ impl ArgKind {
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
+    let moves = PkgMoves::new();
     let h = [sc.group.name(), "Logged emerges", "Install/Update", "Unmerge/Clean", "Sync"];
     let mut tblc = Table::new(&gc).margin(1, " ").header(h);
     let h = [sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"];
@@ -237,7 +238,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                 *run_args.entry(ArgKind::new(&args)).or_insert(0) += 1;
             },
             Hist::MergeStart { ts, key, .. } => {
-                merge_start.insert(key, (ts, false));
+                merge_start.insert(moves.get(key), (ts, false));
             },
             Hist::MergeStep { kind, key, .. } => {
                 if matches!(kind, MergeStep::MergeBinary) {
@@ -247,9 +248,9 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                 }
             },
             Hist::MergeStop { ts, ref key, .. } => {
-                if let Some((start_ts, bin)) = merge_start.remove(key) {
+                if let Some((start_ts, bin)) = merge_start.remove(moves.get_ref(key)) {
                     let (tc, tb, _) =
-                        pkg_time.entry(p.take_ebuild())
+                        pkg_time.entry(moves.get(p.take_ebuild()))
                                 .or_insert((Times::new(), Times::new(), Times::new()));
                     if bin {
                         tb.insert(ts - start_ts);
@@ -259,12 +260,12 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                 }
             },
             Hist::UnmergeStart { ts, key, .. } => {
-                unmerge_start.insert(key, ts);
+                unmerge_start.insert(moves.get(key), ts);
             },
             Hist::UnmergeStop { ts, ref key, .. } => {
-                if let Some(start_ts) = unmerge_start.remove(key) {
+                if let Some(start_ts) = unmerge_start.remove(moves.get_ref(key)) {
                     let (_, _, times) =
-                        pkg_time.entry(p.take_ebuild())
+                        pkg_time.entry(moves.get(p.take_ebuild()))
                                 .or_insert((Times::new(), Times::new(), Times::new()));
                     times.insert(ts - start_ts);
                 }
@@ -450,23 +451,25 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
     // Parse emerge log.
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &vec![], false)?;
+    let moves = PkgMoves::new();
     let mut started: BTreeMap<String, (i64, bool)> = BTreeMap::new();
     let mut times: HashMap<(String, bool), Times> = HashMap::new();
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
-                started.insert(key, (ts, false));
+                started.insert(moves.get(key), (ts, false));
             },
             Hist::MergeStep { kind, key, .. } => {
                 if matches!(kind, MergeStep::MergeBinary) {
-                    if let Some((_, bin)) = started.get_mut(&key) {
+                    if let Some((_, bin)) = started.get_mut(moves.get_ref(&key)) {
                         *bin = true;
                     }
                 }
             },
             Hist::MergeStop { ts, ref key, .. } => {
-                if let Some((start_ts, bin)) = started.remove(key.as_str()) {
-                    let timevec = times.entry((p.take_ebuild(), bin)).or_insert(Times::new());
+                if let Some((start_ts, bin)) = started.remove(moves.get_ref(key)) {
+                    let timevec =
+                        times.entry((moves.get(p.take_ebuild()), bin)).or_insert(Times::new());
                     timevec.insert(ts - start_ts);
                 }
             },

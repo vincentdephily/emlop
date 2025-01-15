@@ -7,7 +7,8 @@ use log::*;
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::from_reader;
-use std::{fs::File,
+use std::{collections::HashMap,
+          fs::File,
           io::{BufRead, BufReader, Read},
           path::PathBuf};
 
@@ -81,6 +82,7 @@ struct Resume {
 struct Mtimedb {
     resume: Option<Resume>,
     resume_backup: Option<Resume>,
+    updates: Option<HashMap<String, i64>>,
 }
 
 /// Parse resume list from portage mtimedb
@@ -109,6 +111,80 @@ fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
               v.get(2).and_then(|s| Pkg::try_new(s, v.first().is_some_and(|b| b == "binary")))
           })
           .collect())
+}
+
+pub struct PkgMoves(HashMap<String, String>);
+impl PkgMoves {
+    /// Parse package moves using file list from portagedb
+    pub fn new() -> Self {
+        let r = Self::load("/var/cache/edb/mtimedb").unwrap_or_default();
+        trace!("Package moves: {r:?}");
+        Self(r)
+    }
+
+    pub fn get(&self, key: String) -> String {
+        self.0.get(&key).cloned().unwrap_or(key)
+    }
+
+    pub fn get_ref<'a>(&'a self, key: &'a String) -> &'a String {
+        self.0.get(key).unwrap_or(key)
+    }
+
+    fn load(file: &str) -> Option<HashMap<String, String>> {
+        let now = std::time::Instant::now();
+        let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
+        let db: Mtimedb =
+            from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
+        let mut moves = HashMap::new();
+        if let Some(updates) = db.updates {
+            // Sort the files in reverse chronological order (compare year, then quarter)
+            let mut files: Vec<_> = updates.keys().collect();
+            files.sort_by(|a, b| match (a.rsplit_once('/'), b.rsplit_once('/')) {
+                     (Some((_, a)), Some((_, b))) if a.len() == 7 && b.len() == 7 => {
+                         match a[3..].cmp(&b[3..]) {
+                             std::cmp::Ordering::Equal => a[..3].cmp(&b[..3]),
+                             o => o,
+                         }.reverse()
+                     },
+                     _ => {
+                         warn!("Unexpected update file name {a}");
+                         a.cmp(b)
+                     },
+                 });
+            //
+            for f in files {
+                Self::parse(&mut moves, f);
+            }
+            debug!("Loaded {} package moves from {} files in {:?}",
+                   moves.len(),
+                   updates.len(),
+                   now.elapsed());
+        }
+        Some(moves)
+    }
+
+    fn parse(moves: &mut HashMap<String, String>, file: &str) -> Option<()> {
+        trace!("Parsing {file}");
+        let f = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
+        for line in
+            BufReader::new(f).lines().map_while(Result::ok).filter(|l| l.starts_with("move "))
+        {
+            if let Some((from, to)) = line[5..].split_once(' ') {
+                // Portage rewrites each repo's update files so that entries point directly to the final
+                // name, but there can still be cross-repo chains, which we untangle here. Assumes the
+                // first name seen is the latest one.
+                if let Some(to_final) = moves.get(to) {
+                    if from != to_final {
+                        trace!("Pointing {from} to {to_final} instead of {to}");
+                        moves.insert(from.to_owned(), to_final.clone());
+                    }
+                } else {
+                    moves.insert(from.to_owned(), to.to_owned());
+                }
+            }
+        }
+        Some(())
+    }
 }
 
 

@@ -4,7 +4,7 @@ mod history;
 mod proces;
 
 pub use ansi::{Ansi, AnsiStr, Theme};
-pub use current::{get_buildlog, get_emerge, get_pretend, get_resume, Pkg};
+pub use current::{get_buildlog, get_emerge, get_pretend, get_resume, Pkg, PkgMoves};
 pub use history::{get_hist, Hist, MergeStep};
 #[cfg(test)]
 pub use proces::tests::procs;

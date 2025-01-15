@@ -131,7 +131,7 @@ estimate the resulting speedup factor.
 | Global ETA format                                 | total time    | total time    | total time, end date |
 | Estimation accuracy                               | ok            | better        | best, configurable   |
 | Recognize binary emerges                          | no            | no            | yes                  |
-| Follow package renames                            | yes           | no            | no                   |
+| Follow package moves                              | no            | no            | yes                  |
 | Query gentoo.linuxhowtos.org for unknown packages | yes           | no            | no                   |
 
 ## Speed
