@@ -1,0 +1,7 @@
+move app-doc/doxygen app-text/doxygen
+slotmove dev-build/autoconf-dickey 2.52_p20210509 2.52
+move dev-debug/lldb llvm-core/lldb
+move conflict/foo foo/2024
+move duplicate/bar foo/bar
+move chain/v2 chain/v3
+move loop/from loop/final

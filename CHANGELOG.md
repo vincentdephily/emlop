@@ -1,11 +1,17 @@
 # unreleased
 
+Feature release: Binary merges, package moves, emerge arguments, process tree, configurable colors,
+and other goodies.
+
 ## New features
 
 * `log`, `stats` and `predict` now take binary merges into account
   - Track merge time stats separately
   - Display bin merges in a different color
   - The `unknown` config has been split into `unknownc` (compiled) and `unknownb` (binary)
+* `stats` and `predict` now follow package moves
+  - Merge time predictions remain correct after a rename like `sys-devel/llvm` -> `llvm-core/llvm`
+  - `Stats` are aggregated using the latest name
 * `log` and `stat` can now show emerge (r)runs
   - Use `--show=r`/`-sr`/`-sa` to enable it
   - No duration given, as `emerge.log` doesn't provide enough info to make this reliable
@@ -13,11 +19,12 @@
   - New `command` keyword resolves to the time of the nth emerge command
     (`-fc` is roughly equivalent to qlop's `--lastmerge`)
   - A single span (`day`/`y`/`command`/etc) without a count now means that span with a count of 1
+    (so `-fd` is equivalent to `-1d`)
 * `predict` now displays emerge proces tree instead of just top proces
-  - Bevahvior configurable with `--pdepth`, `--pwidth`
+  - Behavior configurable with `--pdepth`/`-D`/`--pwidth`/`-W`
   - Format is a bit nicer and more colorful
   - `--show=e` renamed `--show=r` (running emerge processes) for consistency
-* Display a placeholder for skipped rows, configurable with `--showskip`
+* Display a placeholder for skipped rows (`--first`/`--last`/`--pdepth`), configurable with `--showskip`
 * Colors are now configurable, to match your terminal's theme
   - Eg `theme = "count:0 duration:1;3;37"` in `emlop.toml` displays counts unstyled and durations in
     bright italic white.
@@ -31,6 +38,7 @@
 * Don't display child emerge processes as root ones
 * Fix off by one upper bound for some cli args
 * Allow alignment of wider columns
+* Fix bright/dim terminal colors for stats counts
 
 # 0.7.1 2024-09-30
 
