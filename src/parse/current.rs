@@ -10,7 +10,8 @@ use serde_json::from_reader;
 use std::{collections::HashMap,
           fs::File,
           io::{BufRead, BufReader, Read},
-          path::PathBuf};
+          path::PathBuf,
+          time::Instant};
 
 /// Package name and version
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -90,8 +91,11 @@ impl Mtimedb {
         Self::try_new("/var/cache/edb/mtimedb").unwrap_or_default()
     }
     fn try_new(file: &str) -> Option<Self> {
+        let now = Instant::now();
         let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
-        from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()
+        let r = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok();
+        debug!("Loaded {file} in {:?}", now.elapsed());
+        r
     }
 }
 
@@ -138,7 +142,7 @@ impl PkgMoves {
     }
 
     fn try_new(db: &Mtimedb) -> Option<HashMap<String, String>> {
-        let now = std::time::Instant::now();
+        let now = Instant::now();
         // Sort the files in reverse chronological order (compare year, then quarter)
         let mut files: Vec<_> = db.updates.as_ref()?.keys().collect();
         files.sort_by(|a, b| match (a.rsplit_once('/'), b.rsplit_once('/')) {

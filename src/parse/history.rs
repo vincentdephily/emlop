@@ -11,7 +11,8 @@ use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use std::{fs::File,
           io::{BufRead, BufReader},
           str::from_utf8,
-          thread};
+          thread,
+          time::Instant};
 
 /// Items sent on the channel returned by `new_hist()`.
 #[derive(Debug)]
@@ -119,8 +120,9 @@ pub fn get_hist(file: &str,
                 search_terms: &Vec<String>,
                 search_exact: bool)
                 -> Result<Receiver<Hist>, Error> {
-    debug!("File: {file}");
-    debug!("Show: {show}");
+    trace!("Show: {show}");
+    let now = Instant::now();
+    let logfile = file.to_owned();
     let (ts_min, ts_max) = filter_ts(file, min, max)?;
     let filter = FilterStr::try_new(search_terms, search_exact)?;
     let mut buf = open_any_buffered(file)?;
@@ -139,7 +141,7 @@ pub fn get_hist(file: &str,
                 Ok(_) => {
                     if let Some((t, s)) = parse_ts(&line, ts_min, ts_max) {
                         if prev_t > t {
-                            warn!("logfile:{curline}: System clock jump: {} -> {}",
+                            warn!("{logfile}:{curline}: System clock jump: {} -> {}",
                                   fmt_utctime(prev_t),
                                   fmt_utctime(t));
                         }
@@ -181,11 +183,12 @@ pub fn get_hist(file: &str,
                     }
                 },
                 // Could be invalid UTF8, system read error...
-                Err(e) => warn!("logfile:{curline}: {e}"),
+                Err(e) => warn!("{logfile}:{curline}: {e}"),
             }
             line.clear();
             curline += 1;
         }
+        debug!("Parsed {curline} {logfile} lines in {:?}", now.elapsed());
     });
     Ok(rx)
 }
@@ -226,11 +229,11 @@ fn filter_ts(file: &str, min: TimeBound, max: TimeBound) -> Result<(i64, i64), E
     };
     // Check and log bounds, return result
     match (min, max) {
-        (None, None) => debug!("Date: None"),
-        (Some(a), None) => debug!("Date: after {}", fmt_utctime(a)),
-        (None, Some(b)) => debug!("Date: before {}", fmt_utctime(b)),
+        (None, None) => trace!("Date: None"),
+        (Some(a), None) => trace!("Date: after {}", fmt_utctime(a)),
+        (None, Some(b)) => trace!("Date: before {}", fmt_utctime(b)),
         (Some(a), Some(b)) if a < b => {
-            debug!("Date: between {} and {}", fmt_utctime(a), fmt_utctime(b))
+            trace!("Date: between {} and {}", fmt_utctime(a), fmt_utctime(b))
         },
         (Some(a), Some(b)) => {
             bail!("Invalid date filter: {} <= {}, did you swap --to and --from ?",
@@ -250,7 +253,7 @@ enum FilterStr {
 }
 impl FilterStr {
     fn try_new(terms: &Vec<String>, exact: bool) -> Result<Self, regex::Error> {
-        debug!("Search: {terms:?} {exact}");
+        trace!("Search: {terms:?} {exact}");
         Ok(match (terms.len(), exact) {
             (0, _) => Self::True,
             (_, true) => {
