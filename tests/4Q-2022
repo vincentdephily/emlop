@@ -1,0 +1,6 @@
+move x11-libs/libva media-libs/libva
+move dev-util/lldb llvm-core/lldb
+move conflict/foo foo/2022
+move duplicate/bar foo/bar
+move chain/v1 chain/v2
+move loop/final loop/from

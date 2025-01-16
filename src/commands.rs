@@ -179,7 +179,7 @@ impl ArgKind {
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let moves = PkgMoves::new();
+    let moves = PkgMoves::new(&Mtimedb::new());
     let h = [sc.group.name(), "Logged emerges", "Install/Update", "Unmerge/Clean", "Sync"];
     let mut tblc = Table::new(&gc).margin(1, " ").header(h);
     let h = [sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"];
@@ -451,7 +451,8 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
     // Parse emerge log.
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &vec![], false)?;
-    let moves = PkgMoves::new();
+    let mdb = Mtimedb::new();
+    let moves = PkgMoves::new(&mdb);
     let mut started: BTreeMap<String, (i64, bool)> = BTreeMap::new();
     let mut times: HashMap<(String, bool), Times> = HashMap::new();
     for p in hist {
@@ -480,7 +481,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     // Build list of pending merges
     let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
         // From resume list
-        let mut r = get_resume(sc.resume);
+        let mut r = get_resume(sc.resume, &mdb);
         // Plus specific emerge processes
         for p in einfo.pkgs.iter() {
             if !r.contains(p) {

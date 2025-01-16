@@ -74,36 +74,42 @@ pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
     out
 }
 
+
 #[derive(Deserialize)]
 struct Resume {
     mergelist: Vec<Vec<String>>,
 }
-#[derive(Deserialize)]
-struct Mtimedb {
+#[derive(Deserialize, Default)]
+pub struct Mtimedb {
     resume: Option<Resume>,
     resume_backup: Option<Resume>,
     updates: Option<HashMap<String, i64>>,
 }
+impl Mtimedb {
+    pub fn new() -> Self {
+        Self::try_new("/var/cache/edb/mtimedb").unwrap_or_default()
+    }
+    fn try_new(file: &str) -> Option<Self> {
+        let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
+        from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()
+    }
+}
+
 
 /// Parse resume list from portage mtimedb
-pub fn get_resume(kind: ResumeKind) -> Vec<Pkg> {
-    let r = get_resume_priv(kind, "/var/cache/edb/mtimedb").unwrap_or_default();
+pub fn get_resume(kind: ResumeKind, db: &Mtimedb) -> Vec<Pkg> {
+    let r = try_get_resume(kind, db).unwrap_or_default();
     debug!("Loaded {kind:?} resume list: {r:?}");
     r
 }
-fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
-    if matches!(kind, ResumeKind::No) {
-        return Some(vec![]);
-    }
-    let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
-    let db: Mtimedb = from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
+fn try_get_resume(kind: ResumeKind, db: &Mtimedb) -> Option<Vec<Pkg>> {
     let r = match kind {
         ResumeKind::Either | ResumeKind::Auto => {
-            db.resume.filter(|o| !o.mergelist.is_empty()).or(db.resume_backup)?
+            db.resume.as_ref().filter(|o| !o.mergelist.is_empty()).or(db.resume_backup.as_ref())?
         },
-        ResumeKind::Main => db.resume?,
-        ResumeKind::Backup => db.resume_backup?,
-        ResumeKind::No => unreachable!(),
+        ResumeKind::Main => db.resume.as_ref()?,
+        ResumeKind::Backup => db.resume_backup.as_ref()?,
+        ResumeKind::No => return Some(vec![]),
     };
     Some(r.mergelist
           .iter()
@@ -113,11 +119,12 @@ fn get_resume_priv(kind: ResumeKind, file: &str) -> Option<Vec<Pkg>> {
           .collect())
 }
 
+
 pub struct PkgMoves(HashMap<String, String>);
 impl PkgMoves {
     /// Parse package moves using file list from portagedb
-    pub fn new() -> Self {
-        let r = Self::load("/var/cache/edb/mtimedb").unwrap_or_default();
+    pub fn new(db: &Mtimedb) -> Self {
+        let r = Self::try_new(db).unwrap_or_default();
         trace!("Package moves: {r:?}");
         Self(r)
     }
@@ -130,36 +137,31 @@ impl PkgMoves {
         self.0.get(key).unwrap_or(key)
     }
 
-    fn load(file: &str) -> Option<HashMap<String, String>> {
+    fn try_new(db: &Mtimedb) -> Option<HashMap<String, String>> {
         let now = std::time::Instant::now();
-        let reader = File::open(file).map_err(|e| warn!("Cannot open {file:?}: {e}")).ok()?;
-        let db: Mtimedb =
-            from_reader(reader).map_err(|e| warn!("Cannot parse {file:?}: {e}")).ok()?;
+        // Sort the files in reverse chronological order (compare year, then quarter)
+        let mut files: Vec<_> = db.updates.as_ref()?.keys().collect();
+        files.sort_by(|a, b| match (a.rsplit_once('/'), b.rsplit_once('/')) {
+                 (Some((_, a)), Some((_, b))) if a.len() == 7 && b.len() == 7 => {
+                     match a[3..].cmp(&b[3..]) {
+                         std::cmp::Ordering::Equal => a[..3].cmp(&b[..3]),
+                         o => o,
+                     }.reverse()
+                 },
+                 _ => {
+                     warn!("Using default sort for {a} <> {b}");
+                     a.cmp(b)
+                 },
+             });
+        // Read each file to populate the result map
         let mut moves = HashMap::new();
-        if let Some(updates) = db.updates {
-            // Sort the files in reverse chronological order (compare year, then quarter)
-            let mut files: Vec<_> = updates.keys().collect();
-            files.sort_by(|a, b| match (a.rsplit_once('/'), b.rsplit_once('/')) {
-                     (Some((_, a)), Some((_, b))) if a.len() == 7 && b.len() == 7 => {
-                         match a[3..].cmp(&b[3..]) {
-                             std::cmp::Ordering::Equal => a[..3].cmp(&b[..3]),
-                             o => o,
-                         }.reverse()
-                     },
-                     _ => {
-                         warn!("Unexpected update file name {a}");
-                         a.cmp(b)
-                     },
-                 });
-            //
-            for f in files {
-                Self::parse(&mut moves, f);
-            }
-            debug!("Loaded {} package moves from {} files in {:?}",
-                   moves.len(),
-                   updates.len(),
-                   now.elapsed());
+        for f in &files {
+            Self::parse(&mut moves, f);
         }
+        debug!("Loaded {} package moves from {} files in {:?}",
+               moves.len(),
+               files.len(),
+               now.elapsed());
         Some(moves)
     }
 
@@ -170,16 +172,19 @@ impl PkgMoves {
             BufReader::new(f).lines().map_while(Result::ok).filter(|l| l.starts_with("move "))
         {
             if let Some((from, to)) = line[5..].split_once(' ') {
-                // Portage rewrites each repo's update files so that entries point directly to the final
-                // name, but there can still be cross-repo chains, which we untangle here. Assumes the
-                // first name seen is the latest one.
+                // Portage rewrites each repo's update files so that entries point directly to the
+                // final name, but there can still be cross-repo chains, which we untangle
+                // here. Assumes we're parsing files newest-first.
                 if let Some(to_final) = moves.get(to) {
                     if from != to_final {
-                        trace!("Pointing {from} to {to_final} instead of {to}");
+                        trace!("Using move {from} -> {to_final} instead -> {to} in {file}");
                         moves.insert(from.to_owned(), to_final.clone());
+                    } else {
+                        trace!("Ignoring move {from} -> {to} in {file}");
                     }
                 } else {
-                    moves.insert(from.to_owned(), to.to_owned());
+                    // TODO: MSRV 1.?? try_insert https://github.com/rust-lang/rust/issues/82766
+                    moves.entry(from.to_owned()).or_insert_with(|| to.to_owned());
                 }
             }
         }
@@ -307,9 +312,9 @@ mod tests {
 
     /// Check that `get_resume()` has the expected output
     fn check_resume(kind: ResumeKind, file: &str, expect: Option<&[(&str, bool)]>) {
-        let expect_pkg =
+        let expect_pkg: Option<Vec<Pkg>> =
             expect.map(|o| o.into_iter().map(|(s, b)| Pkg::try_new(s, *b).unwrap()).collect());
-        let res = get_resume_priv(kind, &format!("tests/{file}"));
+        let res = Mtimedb::try_new(&format!("tests/{file}")).and_then(|m| try_get_resume(kind, &m));
         assert_eq!(expect_pkg, res, "Mismatch for {file}");
     }
 
@@ -366,5 +371,36 @@ mod tests {
                             (ProcKind::Other, "b.a.a", 6, 5)]);
         let einfo = get_emerge(&procs);
         assert_eq!(einfo.roots, vec![1, 5]);
+    }
+
+    #[test]
+    fn pkgmoves() {
+        // It's interesting to run this test with RUST_LOG=trace. Expect:
+        // * "Cannot open tests/notfound: No such file or directory"
+        // * "Using default sort ..." (depending on random hashmap seed)
+        // * "Using move chain/v1 -> chain/v3 instead -> chain/v2 in tests/4Q-2022"
+        // * "Ignoring move loop/final -> loop/from in tests/4Q-2022"
+        let _ = env_logger::try_init();
+        let moves = PkgMoves::new(&Mtimedb::try_new("tests/mtimedb.updates").unwrap());
+        for (have, want, why) in
+            [// Basic cases
+             ("app-doc/doxygen", "app-text/doxygen", "simple move in 2024"),
+             ("x11-libs/libva", "media-libs/libva", "simple move in 2022"),
+             ("notmoved", "notmoved", "unknown string should return original string"),
+             ("dev-haskell/extra", "dev-haskell/extra", "slotmoves should be ignored"),
+             // Multi-moves where portage updated the old file
+             ("dev-util/lldb", "llvm-core/lldb", "1st lldb rename"),
+             ("dev-debug/lldb", "llvm-core/lldb", "2nd lldb rename"),
+             // Weird cases
+             ("duplicate/bar", "foo/bar", "duplicate update should prefer newest (no trace)"),
+             ("conflict/foo", "foo/2024", "conflicting update should prefer newest (no trace)"),
+             ("loop/from", "loop/final", "loops should prefer newest (trace \"ignore move...\")"),
+             ("chain/v2", "chain/v3", "chain from new should be taken as-is (no trace)"),
+             ("chain/v1",
+              "chain/v3",
+              "chain from old should point to new (trace \"using move...\")")]
+        {
+            assert_eq!(moves.get(String::from(have)), String::from(want), "{why}");
+        }
     }
 }
