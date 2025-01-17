@@ -16,6 +16,7 @@ _emlop() {
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
+'--theme=[Set terminal colors]' \
 '-o+[Ouput format (columns/tab/auto)]:format: ' \
 '--output=[Ouput format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
@@ -53,6 +54,7 @@ _emlop() {
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
+'--theme=[Set terminal colors]' \
 '-o+[Ouput format (columns/tab/auto)]:format: ' \
 '--output=[Ouput format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
@@ -74,7 +76,8 @@ _emlop() {
 '--last=[Show only the last <num> entries]' \
 '*--tmpdir=[Location of portage tmpdir]:dir:_files' \
 '--resume=[Use main, backup, either, or no portage resume list]' \
-'--unknown=[Assume unkown packages take <secs> seconds to merge]:secs: ' \
+'--unknownb=[Assume unkown binary packages take <secs> seconds to merge]:secs: ' \
+'--unknownc=[Assume unkown compiled packages take <secs> seconds to merge]:secs: ' \
 '--avg=[Select function used to predict durations]:fn: ' \
 '--limit=[Use the last <num> merge times to predict durations]:num: ' \
 '-f+[Only parse log entries after <date>]:date: ' \
@@ -88,9 +91,12 @@ _emlop() {
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
+'--theme=[Set terminal colors]' \
 '-o+[Ouput format (columns/tab/auto)]:format: ' \
 '--output=[Ouput format (columns/tab/auto)]:format: ' \
+'-W+[Maximum width of emerge proces comandline]'
 '--pwidth=[Maximum width of emerge proces comandline]'
+'-D+[Maximum depth of emerge proces tree]'
 '--pdepth=[Maximum depth of emerge proces tree]'
 '-F+[Location of emerge log file]:file: ' \
 '--logfile=[Location of emerge log file]:file: ' \
@@ -117,6 +123,7 @@ _emlop() {
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
+'--theme=[Set terminal colors]' \
 '-o+[Ouput format (columns/tab/auto)]:format: ' \
 '--output=[Ouput format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
@@ -147,6 +154,7 @@ _emlop() {
 '--date=[Output dates in different formats]:format: ' \
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
+'--theme=[Set terminal colors]' \
 '-o+[Ouput format (columns/tab/auto)]:format: ' \
 '--output=[Ouput format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \

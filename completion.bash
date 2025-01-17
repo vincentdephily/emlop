@@ -27,7 +27,7 @@ _emlop() {
 
     case "${cmd}" in
         emlop)
-            opts="log predict stats accuracy -f -t -H -o -F -v -h -V --from --to --header --showskip --duration --date --utc --color --output --logfile --help --version"
+            opts="log predict stats accuracy -f -t -H -o -F -v -h -V --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help --version"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -50,6 +50,9 @@ _emlop() {
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
+                    ;;
+                --theme)
+                    COMPREPLY=($(compgen -W "merge: binmerge: unmerge: sync: duration: qmark: skip:" "${cur}"))
                     ;;
                 --output|-o)
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
@@ -64,7 +67,7 @@ _emlop() {
             return 0
             ;;
         emlop__accuracy)
-            opts="[search]... -e -s -n -f -t -H -o -F -v -h --exact --show --last --avg --limit --from --to --header --showskip --duration --date --utc --color --output --logfile --help"
+            opts="[search]... -e -s -n -f -t -H -o -F -v -h --exact --show --last --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -87,6 +90,9 @@ _emlop() {
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
+                    ;;
+                --theme)
+                    COMPREPLY=($(compgen -W "merge: binmerge: unmerge: sync: duration: qmark: skip:" "${cur}"))
                     ;;
                 --output|-o)
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
@@ -117,7 +123,7 @@ _emlop() {
             return 0
             ;;
         emlop__log)
-            opts=" [search]... -N -n -s -e -f -t -H -o -F -v -h --starttime --first --last --show --exact --from --to --header --showskip --duration --date --utc --color --output --logfile --help"
+            opts="[search]... -N -n -s -e -f -t -H -o -F -v -h --starttime --first --last --show --exact --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -140,6 +146,9 @@ _emlop() {
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
+                    ;;
+                --theme)
+                    COMPREPLY=($(compgen -W "merge: binmerge: unmerge: sync: duration: qmark: skip:" "${cur}"))
                     ;;
                 --output|-o)
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
@@ -167,7 +176,7 @@ _emlop() {
             return 0
             ;;
         emlop__predict)
-            opts="-s -N -n -f -t -H -o -F -v -h --show --first --last --tmpdir --resume --unknown --avg --limit --from --to --header --showskip --duration --date --utc --color --output --pdepth --pwidth --logfile --help"
+            opts="-s -N -n -W -D -f -t -H -o -F -v -h --show --first --last --tmpdir --resume --unknownc --unknownb --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --pdepth --pwidth --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -191,10 +200,13 @@ _emlop() {
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
                     ;;
-                --pwidth)
+                --theme)
+                    COMPREPLY=($(compgen -W "merge: binmerge: unmerge: sync: duration: qmark: skip:" "${cur}"))
+                    ;;
+                --pwidth|-W)
                     COMPREPLY=($(compgen -W "10 20 40 80 160" "${cur}"))
                     ;;
-                --pdepth)
+                --pdepth|-D)
                     COMPREPLY=($(compgen -W "0 1 3 5 7 99" "${cur}"))
                     ;;
                 --output|-o)
@@ -215,7 +227,7 @@ _emlop() {
                 --resume)
                     COMPREPLY=($(compgen -W "auto either main backup no" -- "${cur}"))
                     ;;
-                --unknown)
+                --unknownc|--unknownb)
                     COMPREPLY=($(compgen -W "0 5 10 20 60" "${cur}"))
                     ;;
                 --avg)
@@ -231,7 +243,7 @@ _emlop() {
             return 0
             ;;
         emlop__stats)
-            opts="[search]... -s -g -e -f -t -H -o -F -v -h --show --groupby --exact --avg --limit --from --to --header --showskip --duration --date --utc --color --output --logfile --help"
+            opts="[search]... -s -g -e -f -t -H -o -F -v -h --show --groupby --exact --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -254,6 +266,9 @@ _emlop() {
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
+                    ;;
+                --theme)
+                    COMPREPLY=($(compgen -W "merge: binmerge: unmerge: sync: duration: qmark: skip:" "${cur}"))
                     ;;
                 --output|-o)
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
