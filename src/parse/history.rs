@@ -22,8 +22,8 @@ pub enum Hist {
     RunStart { ts: i64, args: String },
     /// Merge started (might never complete).
     MergeStart { ts: i64, key: String, pos: usize },
-    /// Merge step.
-    MergeStep { ts: i64, key: String, pos: usize, kind: MergeStep },
+    /// Merge is a binary merge.
+    MergeBin { ts: i64, key: String, pos: usize },
     /// Merge completed.
     MergeStop { ts: i64, key: String, pos: usize },
     /// Unmerge started (might never complete).
@@ -39,7 +39,7 @@ impl Hist {
     pub fn ebuild(&self) -> &str {
         match self {
             Self::MergeStart { key, pos, .. }
-            | Self::MergeStep { key, pos, .. }
+            | Self::MergeBin { key, pos, .. }
             | Self::MergeStop { key, pos, .. }
             | Self::UnmergeStart { key, pos, .. }
             | Self::UnmergeStop { key, pos, .. } => &key[..(*pos - 1)],
@@ -49,7 +49,7 @@ impl Hist {
     pub fn take_ebuild(self) -> String {
         match self {
             Self::MergeStart { mut key, pos, .. }
-            | Self::MergeStep { mut key, pos, .. }
+            | Self::MergeBin { mut key, pos, .. }
             | Self::MergeStop { mut key, pos, .. }
             | Self::UnmergeStart { mut key, pos, .. }
             | Self::UnmergeStop { mut key, pos, .. } => {
@@ -63,7 +63,7 @@ impl Hist {
     pub fn version(&self) -> &str {
         match self {
             Self::MergeStart { key, pos, .. }
-            | Self::MergeStep { key, pos, .. }
+            | Self::MergeBin { key, pos, .. }
             | Self::MergeStop { key, pos, .. }
             | Self::UnmergeStart { key, pos, .. }
             | Self::UnmergeStop { key, pos, .. } => &key[*pos..],
@@ -73,7 +73,7 @@ impl Hist {
     pub fn ebuild_version(&self) -> &str {
         match self {
             Self::MergeStart { key, .. }
-            | Self::MergeStep { key, .. }
+            | Self::MergeBin { key, .. }
             | Self::MergeStop { key, .. }
             | Self::UnmergeStart { key, .. }
             | Self::UnmergeStop { key, .. } => key,
@@ -84,7 +84,7 @@ impl Hist {
         match self {
             Self::RunStart { ts, .. }
             | Self::MergeStart { ts, .. }
-            | Self::MergeStep { ts, .. }
+            | Self::MergeBin { ts, .. }
             | Self::MergeStop { ts, .. }
             | Self::UnmergeStart { ts, .. }
             | Self::UnmergeStop { ts, .. }
@@ -92,12 +92,6 @@ impl Hist {
             | Self::SyncStop { ts, .. } => *ts,
         }
     }
-}
-
-#[derive(Debug)]
-pub enum MergeStep {
-    MergeBinary,
-    Other,
 }
 
 /// Open maybe-compressed file, returning a BufReader
@@ -150,7 +144,7 @@ pub fn get_hist(file: &str,
                             if tx.send(found).is_err() {
                                 break;
                             }
-                        } else if let Some(found) = parse_mergestep(show_merge, t, s, &filter) {
+                        } else if let Some(found) = parse_mergebin(show_merge, t, s, &filter) {
                             if tx.send(found).is_err() {
                                 break;
                             }
@@ -334,7 +328,7 @@ fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> 
     Some(Hist::MergeStart { ts, key: t6.to_owned(), pos })
 }
 
-fn parse_mergestep(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
+fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b"=== (") {
         return None;
     }
@@ -343,11 +337,10 @@ fn parse_mergestep(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> O
     let p2 = line[p1..].find('(')? + p1 + 1;
     let p3 = line[p2..].find("::")? + p2;
     let pos = find_version(&line[p2..p3], filter)?;
-    let kind = match line[(p1 + 1)..(p2 - 2)].trim() {
-        "Merging Binary" => MergeStep::MergeBinary,
-        _ => MergeStep::Other,
-    };
-    Some(Hist::MergeStep { ts, key: line[p2..p3].to_owned(), pos, kind })
+    match line[(p1 + 1)..(p2 - 2)].trim() {
+        "Merging Binary" => Some(Hist::MergeBin { ts, key: line[p2..p3].to_owned(), pos }),
+        _ => None,
+    }
 }
 
 fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
@@ -453,7 +446,7 @@ mod tests {
             let (kind, ts, ebuild, version) = match p {
                 Hist::RunStart { ts, .. } => ("RStart", ts, "c/e", "1"),
                 Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
-                Hist::MergeStep { ts, .. } => ("MStep", ts, p.ebuild(), p.version()),
+                Hist::MergeBin { ts, .. } => ("MBin", ts, p.ebuild(), p.version()),
                 Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
                 Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
                 Hist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version()),
@@ -539,7 +532,7 @@ mod tests {
                                if s { "s" } else { "" });
             let t = vec![("RStart", if r { 451 } else { 0 }),
                          ("MStart", if m { 890 } else { 0 }),
-                         ("MStep", if m { 3443 } else { 0 }),
+                         ("MBin", if m { 1 } else { 0 }),
                          ("MStop", if m { 833 } else { 0 }),
                          ("UStart", if u { 833 } else { 0 }),
                          ("UStop", if u { 833 } else { 0 }),
@@ -554,24 +547,24 @@ mod tests {
     fn parse_hist_filter_term() {
         #[rustfmt::skip]
         let t = vec![
-            ("",                           false, 890, 3443, 833, 833, 833, 150), // Everything
-            ("kactivities",                false,   4,   16,   4,   4,   4,   0), // regexp matches 4
-            ("kactivities",                true,    2,    8,   2,   2,   2,   0), // string matches 2
-            ("kde-frameworks/kactivities", true,    2,    8,   2,   2,   2,   0), // string matches 2
-            ("frameworks/kactivities",     true,    0,    0,   0,   0,   0,   0), // string matches nothing
-            ("ks/kw",                      false,   9,   34,   8,   8,   8,   0), // regexp matches 16 (+1 failed)
-            ("file",                       false,   7,   28,   7,   6,   6,   0), // case-insensitive
-            ("FILE",                       false,   7,   28,   7,   6,   6,   0), // case-insensitive
-            ("file-next",                  true,    0,    0,   0,   0,   0,   0), // case-sensitive
-            ("File-Next",                  true,    1,    4,   1,   0,   0,   0), // case-sensitive
-            ("gentoo",                     true,    0,    0,   0,   0,   0, 150), // repo sync only
-            ("gentoo",                     false,  11,   44,  11,  12,  12, 150), // repo and ebuilds
-            ("ark oxygen",                 false,  15,   60,  15,  15,  15,   0), // multiple regex terms
-            ("ark oxygen",                 true,    8,   32,   8,   8,   8,   0), // multiple string terms
+            ("",                           false, 890,  1, 833, 833, 833, 150), // Everything
+            ("kactivities",                false,   4,  0,   4,   4,   4,   0), // regexp matches 4
+            ("kactivities",                true,    2,  0,   2,   2,   2,   0), // string matches 2
+            ("kde-frameworks/kactivities", true,    2,  0,   2,   2,   2,   0), // string matches 2
+            ("frameworks/kactivities",     true,    0,  0,   0,   0,   0,   0), // string matches nothing
+            ("ks/kw",                      false,   9,  0,   8,   8,   8,   0), // regexp matches 16 (+1 failed)
+            ("file",                       false,   7,  0,   7,   6,   6,   0), // case-insensitive
+            ("FILE",                       false,   7,  0,   7,   6,   6,   0), // case-insensitive
+            ("file-next",                  true,    0,  0,   0,   0,   0,   0), // case-sensitive
+            ("File-Next",                  true,    1,  0,   1,   0,   0,   0), // case-sensitive
+            ("gentoo",                     true,    0,  0,   0,   0,   0, 150), // repo sync only
+            ("gentoo",                     false,  11,  0,  11,  12,  12, 150), // repo and ebuilds
+            ("ark oxygen",                 false,  15,  0,  15,  15,  15,   0), // multiple regex terms
+            ("ark oxygen",                 true,    8,  0,   8,   8,   8,   0), // multiple string terms
         ];
         for (f, e, m1, m2, m3, u1, u2, s2) in t {
             let c = vec![("MStart", m1),
-                         ("MStep", m2),
+                         ("MBin", m2),
                          ("MStop", m3),
                          ("UStart", u1),
                          ("UStop", u2),
@@ -588,21 +581,21 @@ mod tests {
     fn parse_hist_filter_ts() {
         let (umin, umax, fmin, fmax) = (i64::MIN, i64::MAX, 1517609348, 1520991402);
         #[rustfmt::skip]
-        let t = vec![(Some(umin),       None,           890,  3443, 833, 833, 833, 326, 150),
-                     (Some(fmin),       None,           890,  3443, 833, 833, 833, 326, 150),
-                     (None,             Some(umax),     890,  3443, 833, 833, 833, 326, 150),
-                     (None,             Some(fmax),     890,  3443, 833, 833, 833, 326, 150),
-                     (Some(fmin),       Some(fmax),     890,  3443, 833, 833, 833, 326, 150),
-                     (Some(fmax),       None,             0,     1,   1,   0,   0,   0,   0), //last ts contains a stop and a "Post-Build Cleaning" step
-                     (None,             Some(fmin),       0,     0,   1,   0,   0,   0,   0), //fist ts contains a stop
-                     (None,             Some(umin),       0,     0,   0,   0,   0,   0,   0),
-                     (Some(umax),       None,             0,     0,   0,   0,   0,   0,   0),
-                     (Some(1517917751), Some(1517931835), 6,    24,   6,   5,   5,   4,   2),
-                     (Some(1517959010), Some(1518176159), 24,   91,  21,  23,  23,  32,  16),
+        let t = vec![(Some(umin),       None,           890,   1, 833, 833, 833, 326, 150),
+                     (Some(fmin),       None,           890,   1, 833, 833, 833, 326, 150),
+                     (None,             Some(umax),     890,   1, 833, 833, 833, 326, 150),
+                     (None,             Some(fmax),     890,   1, 833, 833, 833, 326, 150),
+                     (Some(fmin),       Some(fmax),     890,   1, 833, 833, 833, 326, 150),
+                     (Some(fmax),       None,             0,   0,   1,   0,   0,   0,   0), //last ts contains a stop and a "Post-Build Cleaning" step
+                     (None,             Some(fmin),       0,   0,   1,   0,   0,   0,   0), //fist ts contains a stop
+                     (None,             Some(umin),       0,   0,   0,   0,   0,   0,   0),
+                     (Some(umax),       None,             0,   0,   0,   0,   0,   0,   0),
+                     (Some(1517917751), Some(1517931835), 6,   0,   6,   5,   5,   4,   2),
+                     (Some(1517959010), Some(1518176159), 24,  0,  21,  23,  23,  32,  16),
         ];
         for (min, max, m1, m2, m3, u1, u2, s1, s2) in t {
             let c = vec![("MStart", m1),
-                         ("MStep", m2),
+                         ("MBin", m2),
                          ("MStop", m3),
                          ("UStart", u1),
                          ("UStop", u2),

@@ -27,11 +27,9 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 merges.insert(key, (ts, false));
             },
-            Hist::MergeStep { key, kind, .. } => {
-                if matches!(kind, MergeStep::MergeBinary) {
-                    if let Some((_, bin)) = merges.get_mut(&key) {
-                        *bin = true;
-                    }
+            Hist::MergeBin { key, .. } => {
+                if let Some((_, bin)) = merges.get_mut(&key) {
+                    *bin = true;
                 }
             },
             Hist::MergeStop { ts, ref key, .. } => {
@@ -240,11 +238,9 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             Hist::MergeStart { ts, key, .. } => {
                 merge_start.insert(moves.get(key), (ts, false));
             },
-            Hist::MergeStep { kind, key, .. } => {
-                if matches!(kind, MergeStep::MergeBinary) {
-                    if let Some((_, bin)) = merge_start.get_mut(&key) {
-                        *bin = true;
-                    }
+            Hist::MergeBin { key, .. } => {
+                if let Some((_, bin)) = merge_start.get_mut(&key) {
+                    *bin = true;
                 }
             },
             Hist::MergeStop { ts, ref key, .. } => {
@@ -460,11 +456,9 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
             Hist::MergeStart { ts, key, .. } => {
                 started.insert(moves.get(key), (ts, false));
             },
-            Hist::MergeStep { kind, key, .. } => {
-                if matches!(kind, MergeStep::MergeBinary) {
-                    if let Some((_, bin)) = started.get_mut(moves.get_ref(&key)) {
-                        *bin = true;
-                    }
+            Hist::MergeBin { key, .. } => {
+                if let Some((_, bin)) = started.get_mut(moves.get_ref(&key)) {
+                    *bin = true;
                 }
             },
             Hist::MergeStop { ts, ref key, .. } => {
