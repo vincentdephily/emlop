@@ -144,10 +144,6 @@ pub fn get_hist(file: &str,
                             if tx.send(found).is_err() {
                                 break;
                             }
-                        } else if let Some(found) = parse_mergebin(show_merge, t, s, &filter) {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
                         } else if let Some(found) = parse_mergestop(show_merge, t, s, &filter) {
                             if tx.send(found).is_err() {
                                 break;
@@ -161,6 +157,10 @@ pub fn get_hist(file: &str,
                             if tx.send(found).is_err() {
                                 break;
                             }
+                        } else if let Some(found) = parse_runstart(show.run, t, s) {
+                            if tx.send(found).is_err() {
+                                break;
+                            }
                         } else if let Some(found) = parse_syncstart(show.sync, t, s) {
                             if tx.send(found).is_err() {
                                 break;
@@ -169,7 +169,7 @@ pub fn get_hist(file: &str,
                             if tx.send(found).is_err() {
                                 break;
                             }
-                        } else if let Some(found) = parse_runstart(show.run, t, s) {
+                        } else if let Some(found) = parse_mergebin(show_merge, t, s, &filter) {
                             if tx.send(found).is_err() {
                                 break;
                             }
@@ -334,13 +334,13 @@ fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Op
     }
     let line = from_utf8(line).ok()?;
     let p1 = line.find(')')?;
+    if !&line[(p1 + 2)..].starts_with("Merging Bin") {
+        return None;
+    }
     let p2 = line[p1..].find('(')? + p1 + 1;
     let p3 = line[p2..].find("::")? + p2;
     let pos = find_version(&line[p2..p3], filter)?;
-    match line[(p1 + 1)..(p2 - 2)].trim() {
-        "Merging Binary" => Some(Hist::MergeBin { ts, key: line[p2..p3].to_owned(), pos }),
-        _ => None,
-    }
+    Some(Hist::MergeBin { ts, key: line[p2..p3].to_owned(), pos })
 }
 
 fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
