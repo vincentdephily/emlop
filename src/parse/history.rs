@@ -4,13 +4,13 @@
 
 use crate::{datetime::fmt_utctime, Show, TimeBound};
 use anyhow::{bail, ensure, Context, Error};
-use crossbeam_channel::{bounded, Receiver, Sender};
 use flate2::read::GzDecoder;
 use log::*;
 use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use std::{fs::File,
           io::{BufRead, BufReader},
           str::from_utf8,
+          sync::mpsc::{sync_channel, Receiver, SyncSender},
           thread,
           time::Instant};
 
@@ -120,7 +120,7 @@ pub fn get_hist(file: &str,
     let (ts_min, ts_max) = filter_ts(file, min, max)?;
     let filter = FilterStr::try_new(search_terms, search_exact)?;
     let mut buf = open_any_buffered(file)?;
-    let (tx, rx): (Sender<Hist>, Receiver<Hist>) = bounded(256);
+    let (tx, rx): (SyncSender<Hist>, Receiver<Hist>) = sync_channel(256);
     thread::spawn(move || {
         let show_merge = show.merge || show.pkg || show.tot;
         let show_unmerge = show.unmerge || show.pkg || show.tot;
