@@ -27,6 +27,7 @@ env_logger = { version = "0.11.0", default-features = false, features = ["auto-c
 flate2 = "1.0.28"
 libc = { version = "0.2.126", default-features = false }
 log = "0.4.11"
+memchr = "2.7.4"
 regex = { version = "1.10.0", default-features = false, features = ["std", "perf-inline", "perf-literal", "unicode-case"] }
 rev_lines = "0.3.0"
 serde = { version = "1.0.184", features = ["derive"] }

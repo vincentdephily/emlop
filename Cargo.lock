@@ -219,6 +219,7 @@ dependencies = [
  "flate2",
  "libc",
  "log",
+ "memchr",
  "regex",
  "rev_lines",
  "serde",

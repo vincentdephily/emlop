@@ -6,6 +6,7 @@ use crate::{datetime::fmt_utctime, Show, TimeBound};
 use anyhow::{bail, ensure, Context, Error};
 use flate2::read::GzDecoder;
 use log::*;
+use memchr::memchr;
 use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use std::{fs::File,
           io::{BufRead, BufReader},
@@ -284,14 +285,14 @@ impl FilterStr {
 
 
 /// Find position of "version" in "categ/name-version" and filter on pkg name
-fn find_version(atom: &str, filter: &FilterStr) -> Option<usize> {
+fn parse_version(atom: &str, filter: &FilterStr) -> Option<usize> {
+    let batom = atom.as_bytes();
     let mut pos = 0;
     loop {
-        pos += atom[pos..].find('-')?;
-        if pos > 0 && atom.as_bytes().get(pos + 1)?.is_ascii_digit() {
-            return filter.match_pkg(&atom[..pos]).then_some(pos + 1);
+        pos += memchr(b'-', &batom[pos..])? + 1;
+        if pos > 1 && batom.get(pos)?.is_ascii_digit() {
+            return filter.match_pkg(&atom[..(pos - 1)]).then_some(pos);
         }
-        pos += 1;
     }
 }
 
@@ -324,7 +325,7 @@ fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> 
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t6 = tokens.nth(5)?;
-    let pos = find_version(t6, filter)?;
+    let pos = parse_version(t6, filter)?;
     Some(Hist::MergeStart { ts, key: t6.to_owned(), pos })
 }
 
@@ -339,7 +340,7 @@ fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Op
     }
     let p2 = line[p1..].find('(')? + p1 + 1;
     let p3 = line[p2..].find("::")? + p2;
-    let pos = find_version(&line[p2..p3], filter)?;
+    let pos = parse_version(&line[p2..p3], filter)?;
     Some(Hist::MergeBin { ts, key: line[p2..p3].to_owned(), pos })
 }
 
@@ -349,7 +350,7 @@ fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> O
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t7 = tokens.nth(6)?;
-    let pos = find_version(t7, filter)?;
+    let pos = parse_version(t7, filter)?;
     Some(Hist::MergeStop { ts, key: t7.to_owned(), pos })
 }
 
@@ -360,7 +361,7 @@ fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(2)?;
     let ebuild_version = &t3[1..t3.len() - 1];
-    let pos = find_version(ebuild_version, filter)?;
+    let pos = parse_version(ebuild_version, filter)?;
     Some(Hist::UnmergeStart { ts, key: ebuild_version.to_owned(), pos })
 }
 
@@ -370,7 +371,7 @@ fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) ->
     }
     let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
     let t3 = tokens.nth(3)?;
-    let pos = find_version(t3, filter)?;
+    let pos = parse_version(t3, filter)?;
     Some(Hist::UnmergeStop { ts, key: t3.to_owned(), pos })
 }
 
@@ -624,8 +625,7 @@ mod tests {
 
     #[test]
     fn split_atom() {
-        let f = FilterStr::try_new(&vec![], false).unwrap();
-        let g = |s| find_version(s, &f).map(|n| (&s[..n - 1], &s[n..]));
+        let g = |s| parse_version(s, &FilterStr::True).map(|n| (&s[..n - 1], &s[n..]));
         assert_eq!(None, g(""));
         assert_eq!(None, g("a"));
         assert_eq!(None, g("-"));
@@ -712,12 +712,11 @@ mod bench {
     bench_filterstr!(filterstr_many_reg, "gcc llvm clang rust emacs", false);
 
     #[bench]
-    fn find_version_(b: &mut test::Bencher) {
-        let f = FilterStr::try_new(&vec![], true).unwrap();
+    fn parse_version_(b: &mut test::Bencher) {
         b.iter(move || {
-             (*PKGS).iter().for_each(|p| {
-                               find_version(&p, &f);
-                           });
+             for p in &*PKGS {
+                 parse_version(&p, &FilterStr::True);
+             }
          });
     }
 
