@@ -658,40 +658,52 @@ mod tests {
 mod bench {
     use super::*;
     use crate::config::*;
+    use std::sync::LazyLock;
     extern crate test;
 
-    fn pkgs() -> Vec<String> {
+    static EMERGE_LOG: &str = include_str!("../../benches/emerge.log");
+
+    /// Vec<(full, no_ts)> of emerge.log lines
+    static EMERGE_LINES: LazyLock<Vec<(&[u8], &[u8])>> = LazyLock::new(|| {
+        EMERGE_LOG.lines()
+                  .map(|l| {
+                      let mut p = l.find(' ').unwrap();
+                      while l.as_bytes().get(p) == Some(&b' ') {
+                          p += 1;
+                      }
+                      (l.as_bytes(), l[p..].as_bytes())
+                  })
+                  .collect()
+    });
+
+    /// Vec<String> of package categ/name-version
+    static PKGS: LazyLock<Vec<String>> = LazyLock::new(|| {
         let f = |p| match p {
-            Hist::MergeStart { key, .. } => key,
-            Hist::SyncStop { repo, .. } => repo,
-            _ => String::from("other"),
+            Hist::MergeStart { key, .. } => Some(key),
+            _ => None,
         };
         let show = Show::parse(&String::from("ms"), "rptsmua", "test").unwrap();
         let file = String::from("benches/emerge.log");
+        let tb = TimeBound::None;
         let pkgs: Vec<_> =
-            get_hist(&file, TimeBound::None, TimeBound::None, show, &vec![], true).unwrap()
-                                                                                  .iter()
-                                                                                  .map(f)
-                                                                                  .collect();
-        assert_eq!(pkgs.len(), 21971);
+            get_hist(&file, tb, tb, show, &vec![], true).unwrap().iter().filter_map(f).collect();
+        assert_eq!(pkgs.len(), 10790);
         pkgs
-    }
+    });
 
     macro_rules! bench_filterstr {
         ($n:ident, $t:expr, $e:expr) => {
             #[bench]
             /// Bench creating a filter and applying it on many strings
             fn $n(b: &mut test::Bencher) {
-                let p = pkgs();
                 let t: Vec<String> = $t.split_whitespace().map(str::to_string).collect();
                 b.iter(move || {
                      let f = FilterStr::try_new(&t, $e).unwrap();
-                     p.iter().fold(true, |a, p| a ^ f.match_pkg(&p))
+                     PKGS.iter().fold(true, |a, p| a ^ f.match_pkg(&p))
                  });
             }
         };
     }
-
     bench_filterstr!(filterstr_none, "", true);
     bench_filterstr!(filterstr_one_str, "gcc", true);
     bench_filterstr!(filterstr_one_full, "virtual/rust", true);
@@ -699,6 +711,39 @@ mod bench {
     bench_filterstr!(filterstr_one_reg, "gcc", false);
     bench_filterstr!(filterstr_many_reg, "gcc llvm clang rust emacs", false);
 
+    #[bench]
+    fn find_version_(b: &mut test::Bencher) {
+        let f = FilterStr::try_new(&vec![], true).unwrap();
+        b.iter(move || {
+             (*PKGS).iter().for_each(|p| {
+                               find_version(&p, &f);
+                           });
+         });
+    }
+
+    /// Bench parsing a whole log file without filter or postprocessing
+    fn get_hist_with(b: &mut test::Bencher, s: &str) {
+        let show = Show::parse(&String::from(s), "rptsmua", "test").unwrap();
+        let count: usize = s.chars()
+                            .map(|c| match c {
+                                'm' => 21320,
+                                'u' => 20847,
+                                's' => 661,
+                                'r' => 971,
+                                o => panic!("unhandled show {o}"),
+                            })
+                            .sum();
+        let file = String::from("benches/emerge.log");
+        b.iter(move || {
+             let mut n = 0;
+             let hist =
+                 get_hist(&file, TimeBound::None, TimeBound::None, show, &vec![], true).unwrap();
+             for _ in hist {
+                 n += 1;
+             }
+             assert_eq!(n, count);
+         });
+    }
     #[bench]
     fn get_hist_murs(b: &mut test::Bencher) {
         get_hist_with(b, "murs")
@@ -719,27 +764,29 @@ mod bench {
     fn get_hist_s(b: &mut test::Bencher) {
         get_hist_with(b, "s")
     }
-    /// Bench parsing a whole log file without filter or postprocessing
-    fn get_hist_with(b: &mut test::Bencher, s: &str) {
-        let show = Show::parse(&String::from(s), "rptsmua", "test").unwrap();
-        let count: usize = s.chars()
-                            .map(|c| match c {
-                                'm' => 21310,
-                                'u' => 20847,
-                                's' => 661,
-                                'r' => 971,
-                                o => panic!("unhandled show {o}"),
-                            })
-                            .sum();
-        let file = String::from("benches/emerge.log");
-        b.iter(move || {
-             let mut n = 0;
-             let hist =
-                 get_hist(&file, TimeBound::None, TimeBound::None, show, &vec![], true).unwrap();
-             for _ in hist {
-                 n += 1;
-             }
-             assert_eq!(n, count);
-         });
+
+    macro_rules! bench_parselines {
+        ($n:ident, $f:expr) => {
+            #[bench]
+            fn $n(b: &mut test::Bencher) {
+                let filter = FilterStr::try_new(&vec![], true).unwrap();
+                b.iter(move || {
+                     let mut found = 0;
+                     for (l1, l2) in &*EMERGE_LINES {
+                         found += $f(&filter, l1, l2).is_some() as u32;
+                     }
+                     assert!(found > 2, "Only {found} matches for {}", stringify!($f));
+                 });
+            }
+        };
     }
+    bench_parselines!(parse_ts_, |_, s, _| parse_ts(s, i64::MIN, i64::MAX));
+    bench_parselines!(parse_runstart_, |_, _, s| parse_runstart(true, 1, s));
+    bench_parselines!(parse_mergestart_, |f, _, s| parse_mergestart(true, 1, s, f));
+    bench_parselines!(parse_mergestop_, |f, _, s| parse_mergestop(true, 1, s, f));
+    bench_parselines!(parse_mergebin_, |f, _, s| parse_mergebin(true, 1, s, f));
+    bench_parselines!(parse_unmergestart_, |f, _, s| parse_unmergestart(true, 1, s, f));
+    bench_parselines!(parse_unmergestop_, |f, _, s| parse_unmergestop(true, 1, s, f));
+    bench_parselines!(parse_syncstart_, |_, _, s| parse_syncstart(true, 1, s));
+    bench_parselines!(parse_stncstop_, |f, _, s| parse_syncstop(true, 1, s, f));
 }
