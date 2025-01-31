@@ -697,9 +697,10 @@ mod bench {
             /// Bench creating a filter and applying it on many strings
             fn $n(b: &mut test::Bencher) {
                 let t: Vec<String> = $t.split_whitespace().map(str::to_string).collect();
+                let pkgs = &*PKGS;
                 b.iter(move || {
                      let f = FilterStr::try_new(&t, $e).unwrap();
-                     PKGS.iter().fold(true, |a, p| a ^ f.match_pkg(&p))
+                     pkgs.iter().fold(true, |a, p| a ^ f.match_pkg(&p))
                  });
             }
         };
@@ -713,8 +714,9 @@ mod bench {
 
     #[bench]
     fn parse_version_(b: &mut test::Bencher) {
+        let pkgs = &*PKGS;
         b.iter(move || {
-             for p in &*PKGS {
+             for p in pkgs {
                  parse_version(&p, &FilterStr::True);
              }
          });
@@ -769,9 +771,10 @@ mod bench {
             #[bench]
             fn $n(b: &mut test::Bencher) {
                 let filter = FilterStr::try_new(&vec![], true).unwrap();
+                let lines = &*EMERGE_LINES;
                 b.iter(move || {
                      let mut found = 0;
-                     for (l1, l2) in &*EMERGE_LINES {
+                     for (l1, l2) in lines {
                          found += $f(&filter, l1, l2).is_some() as u32;
                      }
                      assert!(found > 2, "Only {found} matches for {}", stringify!($f));
