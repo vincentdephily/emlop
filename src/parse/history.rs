@@ -6,7 +6,7 @@ use crate::{datetime::fmt_utctime, Show, TimeBound};
 use anyhow::{bail, ensure, Context, Error};
 use flate2::read::GzDecoder;
 use log::*;
-use memchr::memchr;
+use memchr::{memchr, memrchr, memrchr2};
 use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use std::{fs::File,
           io::{BufRead, BufReader},
@@ -177,7 +177,7 @@ pub fn get_hist(file: &str,
                         }
                     }
                 },
-                // Could be invalid UTF8, system read error...
+                // System read error...
                 Err(e) => warn!("{logfile}:{curline}: {e}"),
             }
             line.clear();
@@ -296,15 +296,17 @@ fn parse_version(atom: &str, filter: &FilterStr) -> Option<usize> {
     }
 }
 
-/// Parse and filter timestamp
-// TODO MSRV 1.80: from_utf8(s.trim_ascii_start())
+/// Parse and filter timestamp, trim line
 fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     use atoi::FromRadix10;
     match i64::from_radix_10(line) {
         (ts, n) if n != 0 && ts >= min && ts <= max => {
             let mut line = &line[(n + 1)..];
-            while let Some(32) = line.first() {
-                line = &line[1..];
+            while let [b' ', rest @ ..] = line {
+                line = rest;
+            }
+            if let [rest @ .., b'\n'] = line {
+                line = rest;
             }
             Some((ts, line))
         },
@@ -312,69 +314,76 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     }
 }
 
+/// *** emerge --update --ask --deep --reinstall=changed-use --regex-search-auto=y --verbose system
 fn parse_runstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
-    if !enabled || !line.starts_with(b"*** emerge") {
+    if !enabled || !line.starts_with(b"*** emer") {
         return None;
     }
-    Some(Hist::RunStart { ts, args: from_utf8(&line[11..]).ok()?.trim().to_owned() })
+    Some(Hist::RunStart { ts, args: from_utf8(&line[11..]).ok()?.to_owned() })
 }
 
+/// >>> emerge (1 of 1) www-client/falkon-24.08.3 to /
 fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b">>> emer") {
         return None;
     }
-    let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
-    let t6 = tokens.nth(5)?;
-    let pos = parse_version(t6, filter)?;
-    Some(Hist::MergeStart { ts, key: t6.to_owned(), pos })
+    let mut tokens = line.split(|c| *c == b' ');
+    let atom = from_utf8(tokens.nth(5)?).ok()?;
+    let pos = parse_version(atom, filter)?;
+    Some(Hist::MergeStart { ts, key: atom.to_owned(), pos })
 }
 
+/// === (1 of 1) Merging Binary (www-client/falkon-24.08.3::/var/cache/binpkgs/www-client/falkon-24.08.3.gpkg.tar)
 fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b"=== (") {
         return None;
     }
-    let line = from_utf8(line).ok()?;
-    let p1 = line.find(')')?;
-    if !&line[(p1 + 2)..].starts_with("Merging Bin") {
+    let p1 = memchr(b')', line)?;
+    if !&line[(p1 + 2)..].starts_with(b"Merging Bin") {
         return None;
     }
-    let p2 = line[p1..].find('(')? + p1 + 1;
-    let p3 = line[p2..].find("::")? + p2;
-    let pos = parse_version(&line[p2..p3], filter)?;
-    Some(Hist::MergeBin { ts, key: line[p2..p3].to_owned(), pos })
+    let p2 = memchr(b'(', &line[p1..])? + p1 + 1;
+    let p3 = memchr(b':', &line[p2..])? + p2;
+    let atom = from_utf8(&line[p2..p3]).ok()?;
+    let pos = parse_version(atom, filter)?;
+    Some(Hist::MergeBin { ts, key: atom.to_owned(), pos })
 }
 
+/// ::: completed emerge (1 of 1) www-client/falkon-24.08.3 to /
 fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     if !enabled || !line.starts_with(b"::: comp") {
         return None;
     }
-    let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
-    let t7 = tokens.nth(6)?;
-    let pos = parse_version(t7, filter)?;
-    Some(Hist::MergeStop { ts, key: t7.to_owned(), pos })
+    let mut tokens = line.split(|c| *c == b' ');
+    let atom = from_utf8(tokens.nth(6)?).ok()?;
+    let pos = parse_version(atom, filter)?;
+    Some(Hist::MergeStop { ts, key: atom.to_owned(), pos })
 }
 
+/// === Unmerging... (app-portage/getuto-1.13)
 fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
-    if !enabled || !line.starts_with(b"=== Unmerging...") {
+    if !enabled || !line.starts_with(b"=== Unmer") {
         return None;
     }
-    let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
-    let t3 = tokens.nth(2)?;
-    let ebuild_version = &t3[1..t3.len() - 1];
-    let pos = parse_version(ebuild_version, filter)?;
-    Some(Hist::UnmergeStart { ts, key: ebuild_version.to_owned(), pos })
+    let p1 = memchr(b'(', line)? + 1;
+    let atom = from_utf8(&line[p1..line.len() - 1]).ok()?;
+    let pos = parse_version(atom, filter)?;
+    Some(Hist::UnmergeStart { ts, key: atom.to_owned(), pos })
 }
 
+/// >>> unmerge success: www-client/falkon-24.08.3
 fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
-    if !enabled || !line.starts_with(b">>> unmerge success") {
+    if !enabled || !line.starts_with(b">>> unmerge succ") {
         return None;
     }
-    let mut tokens = from_utf8(line).ok()?.split_ascii_whitespace();
-    let t3 = tokens.nth(3)?;
-    let pos = parse_version(t3, filter)?;
-    Some(Hist::UnmergeStop { ts, key: t3.to_owned(), pos })
+    let p1 = memrchr(b' ', line)? + 1;
+    let atom = from_utf8(&line[p1..]).ok()?;
+    let pos = parse_version(atom, filter)?;
+    Some(Hist::UnmergeStop { ts, key: atom.to_owned(), pos })
 }
 
+/// >>> Syncing repository 'gentoo' into '/usr/portage'...
+/// >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
 fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
     // Old portage logs 'Starting rsync with <url>', new portage logs 'Syncing repository <name>',
     // and intermediate versions log both. This makes it hard to properly match a start repo string
@@ -390,24 +399,19 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
         None
     }
 }
+
+/// === Sync completed with rsync://209.177.148.226/gentoo-portage
+/// === Sync completed for gentoo
 fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
     // Old portage logs 'completed with <url>', new portage logs 'completed for <name>'
-    if !enabled || !line.starts_with(b"=== Sync completed") {
+    if !enabled || !line.starts_with(b"=== Sync comp") {
         return None;
     }
-    let line = from_utf8(line).ok()?;
-    let repo = match line.rsplit_once(['/', ' ']) {
-        Some((_, r)) => String::from(r.trim()),
-        _ => {
-            warn!("Can't find sync repo name in {ts} {line}");
-            String::from("unknown")
-        },
-    };
-    if !filter.match_str(&repo) {
-        return None;
-    }
-    Some(Hist::SyncStop { ts, repo })
+    let pos = memrchr2(b' ', b'/', line)? + 1;
+    let repo = from_utf8(&line[pos..]).ok()?;
+    filter.match_str(repo).then_some(Hist::SyncStop { ts, repo: repo.to_owned() })
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -770,12 +774,12 @@ mod bench {
         ($n:ident, $f:expr) => {
             #[bench]
             fn $n(b: &mut test::Bencher) {
-                let filter = FilterStr::try_new(&vec![], true).unwrap();
+                let f = FilterStr::True;
                 let lines = &*EMERGE_LINES;
                 b.iter(move || {
                      let mut found = 0;
                      for (l1, l2) in lines {
-                         found += $f(&filter, l1, l2).is_some() as u32;
+                         found += $f(&f, l1, l2).is_some() as u32;
                      }
                      assert!(found > 2, "Only {found} matches for {}", stringify!($f));
                  });
@@ -790,5 +794,5 @@ mod bench {
     bench_parselines!(parse_unmergestart_, |f, _, s| parse_unmergestart(true, 1, s, f));
     bench_parselines!(parse_unmergestop_, |f, _, s| parse_unmergestop(true, 1, s, f));
     bench_parselines!(parse_syncstart_, |_, _, s| parse_syncstart(true, 1, s));
-    bench_parselines!(parse_stncstop_, |f, _, s| parse_syncstop(true, 1, s, f));
+    bench_parselines!(parse_syncstop_, |f, _, s| parse_syncstop(true, 1, s, f));
 }
