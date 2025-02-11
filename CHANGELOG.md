@@ -24,7 +24,7 @@ and other goodies.
   - Behavior configurable with `--pdepth`/`-D`/`--pwidth`/`-W`
   - Format is a bit nicer and more colorful
   - `--show=e` renamed `--show=r` (running emerge processes) for consistency
-* Display a placeholder for skipped rows (`--first`/`--last`/`--pdepth`), configurable with `--showskip`
+* Optionaly display number of skipped rows (`--first`/`--last`/`--pdepth`), enable with `--showskip`
 * Colors are now configurable, to match your terminal's theme
   - Eg `theme = "count:0 duration:1;3;37"` in `emlop.toml` displays counts unstyled and durations in
     bright italic white.

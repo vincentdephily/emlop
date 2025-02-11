@@ -180,7 +180,7 @@ impl Conf {
                   clr: AnsiStr::from(if color { "\x1B[m" } else { "" }),
                   lineend: if color { b"\x1B[m\n" } else { b"\n" },
                   header: sel!(cli, toml, header, (), false)?,
-                  showskip: sel!(cli, toml, showskip, (), true)?,
+                  showskip: sel!(cli, toml, showskip, (), false)?,
                   dur_t: sel!(cli, toml, duration, (), DurationStyle::Hms)?,
                   date_offset: offset,
                   date_fmt: sel!(cli, toml, date, (), DateStyle::default())?,

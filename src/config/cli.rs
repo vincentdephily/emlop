@@ -297,10 +297,11 @@ pub fn build_cli() -> Command {
                                                (default)|auto|a: columns on tty, tab otherwise\n  \
                                                columns|c:        space-aligned columns\n  \
                                                tab|t:            tab-separated values");
-    let h = "Show placeholder for skipped rows (yes/no)\n  \
+    let h = "Show number of skipped rows (yes/no)\n  \
              (empty)|yes|y: Show 'skip <num>' placeholder\n  \
              no|n:          Skip rows silently";
     let showskip = Arg::new("showskip").long("showskip")
+                                       .short('S')
                                        .value_name("bool")
                                        .global(true)
                                        .num_args(..=1)

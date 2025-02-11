@@ -115,17 +115,17 @@ fn log() {
                2018-03-07 13:59:38     2 <<< dev-libs/nspr-4.17\n\
                2018-03-07 13:59:41    24 >>> dev-libs/nspr-4.18\n"),
              // skip first
-             ("%F10000.log l client -oc --first 2",
+             ("%F10000.log l client -oc --first 2 --showskip",
               "2018-02-04 04:55:19  35:46 >>> mail-client/thunderbird-52.6.0\n\
                2018-02-04 05:42:48  47:29 >>> www-client/firefox-58.0.1\n\
                (skip last 10)             \n"),
              // skip first
-             ("%F10000.log l client -oc --last 2",
+             ("%F10000.log l client -oc --last 2 --showskip",
               "(skip first 10)\n\
                2018-03-12 11:03:53  16 >>> kde-frameworks/kxmlrpcclient-5.44.0\n\
                2018-03-14 01:36:42  10 >>> www-client/falkon-24.08.3\n"),
              // Skip first and last
-             ("%F10000.log l client -oc --first 4 --last 2",
+             ("%F10000.log l client -oc --first 4 --last 2 --showskip",
               "(skip first 2)\n\
                2018-02-09 11:04:59  47:58 >>> mail-client/thunderbird-52.6.0-r1\n\
                2018-02-12 10:14:11     31 >>> kde-frameworks/kxmlrpcclient-5.43.0\n\
@@ -246,7 +246,7 @@ fn predict_emerge_p() {
                   ts(8 * 60 + 9 + 30)),
           0),
          // Check skip rows
-         ("%F10000.log p --date unix -oc --show m --first 2",
+         ("%F10000.log p --date unix -oc --show m --first 2 --showskip",
           "[ebuild   R   ~] dev-qt/qtcore-1\n\
            [ebuild   R   ~] dev-qt/qtcore-2\n\
            [ebuild   R   ~] dev-qt/qtcore-3\n\
@@ -257,7 +257,7 @@ fn predict_emerge_p() {
            (skip last 3)        \n"
                                    .into(),
           0),
-         ("%F10000.log p --date unix -oc --show m --first 2 --last 1",
+         ("%F10000.log p --date unix -oc --show m --first 2 --last 1 --showskip",
           "[ebuild   R   ~] dev-qt/qtcore-1\n\
            [ebuild   R   ~] dev-qt/qtcore-2\n\
            [ebuild   R   ~] dev-qt/qtcore-3\n\
