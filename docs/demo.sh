@@ -17,15 +17,29 @@ Requirements:
     exit 2
 }
 
-[ -z "$@" ] && usage "No file given"
+#[ -z "$1" ] && usage "No file given"
 cd $(dirname $(realpath $0))
 export EMLOP_CONFIG=$(pwd)/emlop.demo.toml
-for SCN in $@; do
-    rg "^[a-z]+.asc$" <<< "$SCN" || usage "Expected asc file name, got '$SCN'"
-    echo "========== $SCN =========="
-    SCN=${SCN%.asc}
-    COMMENT="[3m[32m# " CAT=cat PROMPT_PAUSE=0 TYPING_PAUSE=0.06 ./$SCN.asc || usage "$SCN.asc failed"
-    sed -i /recording/d $SCN.cast
-    agg --cols 106 --rows 20 $SCN.cast $SCN.gif || usage "agg failed"
-    gif2webp $SCN.gif -o $SCN.webp || usage "gif2webp failed"
+if [ -n "$@" ]; then
+    for SCN in $@; do
+        rg "^[a-z]+.asc$" <<< "$SCN" || usage "Expected asc file name, got '$SCN'"
+        SCN=${SCN%.asc}
+        echo "========== reccord $SCN =========="
+        COMMENT="[3m[32m# " CAT=cat PROMPT_PAUSE=0 TYPING_PAUSE=0.06 time ./$SCN.asc || usage "$SCN.asc failed"
+        sed -i /recording/d $SCN.cast
+    done
+fi
+
+for SCN in *.cast; do
+    SCN=${SCN%.cast}
+    if [ $SCN.cast -nt $SCN.gif -o ! -e $SCN.gif ]; then
+        echo "========== agg $SCN =========="
+        # Default idle-limit is lower than documented and need to be raised
+        # fps-cap significantly reduces the final file size
+        agg --cols 106 --rows 20 --idle-time-limit 10 --fps-cap 10 --last-frame-duration 5 $SCN.cast $SCN.gif || usage "agg failed"
+    fi
+    if [ $SCN.gif -nt $SCN.webp -o ! -e $SCN.webp ]; then
+        echo "========== gif2webp $SCN =========="
+        gif2webp $SCN.gif -o $SCN.webp || usage "gif2webp failed"
+    fi
 done

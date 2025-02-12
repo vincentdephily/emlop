@@ -2,6 +2,7 @@
 #
 # It is loaded from `$HOME/.config/emlop.toml` by default.
 # Use `$EMLOP_CONFIG` to set a different location, empty string to disable config loading.
+#
 # Entries have the same name and format as command-line args, see `emlop <command> --help`.
 # Some args are only avaible via the command line.
 
