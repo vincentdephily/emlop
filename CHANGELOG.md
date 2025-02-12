@@ -1,7 +1,6 @@
-# unreleased
+# 0.8.0 2025-02-??
 
-Feature release: Binary merges, package moves, emerge arguments, process tree, configurable colors,
-and other goodies.
+Feature release: Binary merges, package moves, emerge arguments, process tree, and other goodies.
 
 ## New features
 

@@ -1,6 +1,6 @@
 [package]
 name = "emlop"
-version = "0.7.1"
+version = "0.8.0"
 description = "A fast, accurate, ergonomic emerge.log parser"
 keywords = ["gentoo", "portage", "emerge"]
 categories = ["command-line-utilities", "parsing"]

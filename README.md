@@ -10,31 +10,40 @@ ergonomic, see [comparison](docs/COMPARISON.md).
 
 ## Usage
 
-Emlop is split into commands. Command names and arguments can be abbreviated (so `emlop log --from
-'1 day' --duration human` is the same as `emlop l -f1d --dur h`), and shell completion is
-available. See `emlop --help` and `emlop <command> --help` for complete and up to date usage info.
+Emlop is split into commands, which share a lot of common options:
 
-### Common options
-
-All commands share these arguments, affecting parsing and output:
-
+    Commands:
+      log       Show log of sucessful merges, unmerges and syncs
+      predict   Predict merge times for current or pretended merges
+      stats     Show statistics about syncs, per-package (un)merges, and total (un)merges
+      accuracy  Compare actual merge time against predicted merge time
+      complete  Shell completion helper
     Options:
       -F, --logfile <file>  Location of emerge log file
       -v...                 Increase verbosity (can be given multiple times)
       -h, --help            Print help (see more with '--help')
       -V, --version         Print version
     Filter:
-      -f, --from <date>  Only parse log entries after <date>
-      -t, --to <date>    Only parse log entries before <date>
+      -f, --from <date>  Only parse log entries after <date/command>
+      -t, --to <date>    Only parse log entries before <date/command>
     Format:
       -H, --header [<bool>]    Show table header
           --duration <format>  Output durations in different formats
           --date <format>      Output dates in different formats
           --utc [<bool>]       Parse/display dates in UTC instead of local time
           --color [<bool>]     Enable color (yes/no/auto)
+          --theme <key:SGR>    Set terminal colors
       -o, --output <format>    Ouput format (columns/tab/auto)
+      -S, --showskip [<bool>]  Show number of skipped rows (yes/no)
 
-### List merges, unmerges, and syncs  with `log`
+Use `-h` for short help, `--help` for detailed help, and `<command> --help` for command-specific
+help.
+
+Command names and arguments can be abbreviated (so `emlop log --from '1 day' --duration human` is
+the same as `emlop l -f1d --dur h`), and shell completion is available.
+
+
+### List merges, unmerges, syncs, and emerge commands with `log`
 
 ![Log demo](log.webp)
 
@@ -43,16 +52,16 @@ Log-specific options:
     Format:
           --starttime [<bool>]  Display start time instead of end time
     Filter:
-      [search]...           Show only packages/repos matching <search>
-      -e, --exact           Match <search> using plain string
-      -s, --show <m,u,s,a>  Show (m)erges, (u)nmerges, (s)yncs, and/or (a)ll
-      -N, --first [<num>]   Show only the first <num> entries
-      -n, --last [<num>]    Show only the last <num> entries
+      [search]...             Show only packages/repos matching <search>
+      -e, --exact             Match <search> using plain string
+      -s, --show <r,m,u,s,a>  Show emerge (r)uns, (m)erges, (u)nmerges, (s)yncs, and/or (a)ll
+      -N, --first [<num>]     Show only the first <num> entries
+      -n, --last [<num>]      Show only the last <num> entries
 
 Note that `emaint sync` currently [doesn't write to emerge.log](https://bugs.gentoo.org/553788), so
 `emlop l --show s` will appear empty if you use `emaint`. Use `emerge --sync` or `eix-sync` instead.
 
-### Estimate how long a merge with take with `predict`
+### Estimate how long a merge will take with `predict`
 
 ![Predict demo](predict.webp)
 
@@ -61,14 +70,18 @@ Predict-specific arguments:
     Options:
           --tmpdir <dir>    Location of portage tmpdir
     Filter:
-      -s, --show <e,m,t,a>     Show (e)emerge processes, (m)erges, (t)otal, and/or (a)ll
+      -s, --show <r,m,t,a>     Show (r)unning processes, (m)erges, (t)otal, and/or (a)ll
       -N, --first [<num>]      Show only the first <num> entries
       -n, --last [<num>]       Show only the last <num> entries
           --resume [<source>]  Use main, backup, either, or no portage resume list
     Stats:
-          --limit <num>     Use the last <num> merge times to predict durations
-          --avg <fn>        Select function used to predict durations
-          --unknown <secs>  Assume unkown packages take <secs> seconds to merge
+          --limit <num>      Use the last <num> merge times to predict durations
+          --avg <fn>         Select function used to predict durations
+          --unknownc <secs>  Assume unkown compiled packages take <secs> seconds to merge
+          --unknownb <secs>  Assume unkown binary packages take <secs> seconds to merge
+    Format:
+      -W, --pwidth <num>       Maximum width of emerge proces commandline (default 60)
+      -D, --pdepth <num>       Maximum depth of emerge proces tree (default 3)
 
 ### Show aggregated statistics with `stats`
 
@@ -77,18 +90,13 @@ Predict-specific arguments:
 Stats-specific arguments:
 
     Filter:
-      [search]...           Show only packages/repos matching <search>
-      -e, --exact           Match <search> using plain string
-      -s, --show <p,t,s,a>  Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll
+      [search]...             Show only packages/repos matching <search>
+      -e, --exact             Match <search> using plain string
+      -s, --show <r,p,t,s,a>  Show emerge (r)uns, (p)ackages, (t)otals, (s)yncs, and/or (a)ll
     Stats:
       -g, --groupby <y,m,w,d,n>  Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one
           --limit <num>          Use the last <num> merge times to predict durations
           --avg <fn>             Select function used to predict durations
-
-### Other commands
-
-* `complete`: shell completion helper
-* `accuracy`: analize predictions accuracy
 
 ### Configuration file
 
@@ -97,7 +105,7 @@ Stats-specific arguments:
 Emlop reads default settings from `$HOME/.config/emlop.toml`. Set `$EMLOP_CONFIG` env var to change
 the file location, or set it to  `""` to disable.
 
-This [example file](emlop.toml) documents the format, and lists supported options. Command-line
+The [example file](emlop.toml) documents the format, and lists supported options. Command-line
 arguments take precedence over the config file.
 
 ## Installation
@@ -116,8 +124,8 @@ Install Rust and using [portage](https://wiki.gentoo.org/wiki/Rust) or
 [rustup](https://www.rust-lang.org/en-US/install.html). Make sure `~/.cargo/bin/`, is in your
 `$PATH`.
 
-The current Minimum Supported Rust Version is 1.74. When building `emlop` with an old rustc version,
-you might need to pass `--locked` to `cargo install`, to use explicitly tested dependency versions.
+The current Minimum Supported Rust Version is 1.74. If you have compilation issues, try passing
+`--locked` to `cargo install`, to use possibly outdated but explicitly tested dependency versions.
 
 #### From crates.io
 

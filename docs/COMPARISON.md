@@ -20,10 +20,10 @@ Rust, Perl, C, Python, Haskell, Go... at least Gentoo doesn't suffer from a lang
 
 ## Interface
 
-Emlop is organised into subcommands, whereas {gen,q}lop only use (possibly conflicting) flags. It
-tries to merge functions where that makes sense, for example `emlop l` combines `genlop -l`, `genlop
--e`, and `genlop -t`, because there didn't seem to be a point to separate them. Same thing with
-`genlop -c` and `genlop -p` which are combined into `emlop p`.
+Emlop is organised into subcommands, whereas {gen,q}lop use (possibly conflicting) flags. It tries
+to merge functions where that makes sense, for example `emlop l` combines `genlop -l`, `genlop -e`,
+and `genlop -t`, because there didn't seem to be a point to separate them. Same thing with `genlop
+-c` and `genlop -p` which are combined into `emlop p`.
 
 ## Output
 
@@ -34,27 +34,30 @@ Default qlop duration output depends on length: `45s` -> `3′45″` -> `1:23:45
 applies to dates and durations at the same time.
 
 |                              | genlop | qlop          | emlop   |
-| :------------------------    | :----: | :-----------: | :-----: |
+|:-----------------------------|:------:|:-------------:|:-------:|
 | Output density               | sparse | compact       | compact |
 | Optional headers             | no     | no            | yes     |
 | Aligned output               | some   | some          | all     |
 | Optional plain tab alignment | no     | no            | yes     |
 | Force color output           | no     | yes           | yes     |
-| Date output formats          | -      | rfc3339,ts    | many    |
-| Timezone options             | utc    | -             | utc     |
+| Configurable colors          | no     | no            | yes     |
+| Optional UTC timezone        | yes    | no            | yes     |
+| Date output formats          | ctime  | rfc3339,ts    | many    |
 | Duration output formats      | text   | hms,secs,text | many    |
 
 ## Merge log
 
-|                                                       | genlop   | qlop   | emlop    |
-| :---------------------------------------------------- | :----:   | :----: | :------: |
-| Display merges/unmerges                               | yes      | yes    | yes      |
-| Distinguish autoclean/manual unmerges                 | no       | yes    | no       |
-| Distinguish syncs per repository                      | no       | no     | yes      |
-| Display unmerge/sync duration                         | no       | yes    | yes      |
-| Display interrupted/failed merges                     | no       | no     | no       |
-| Display currently installed package's USE/CFLAGS/date | yes      | no     | no       |
-| Display merge begin time or end time by default       | end only | begin  | end      |
+|                                                       | genlop   | qlop  | emlop |
+|:------------------------------------------------------|:--------:|:-----:|:-----:|
+| Display merges/unmerges                               | yes      | yes   | yes   |
+| Distinguish autoclean/manual unmerges                 | no       | yes   | no    |
+| Distinguish binary/compiled merges                    | no       | no    | yes   |
+| Distinguish syncs per repository                      | no       | no    | yes   |
+| Display emerge command args                           | no       | no    | yes   |
+| Display unmerge/sync duration                         | no       | yes   | yes   |
+| Display interrupted/failed merges                     | no       | no    | no    |
+| Display currently installed package's USE/CFLAGS/date | yes      | no    | no    |
+| Display merge begin time or end time by default       | end only | begin | end   |
 
 If the log contains a merge end event without a merge start, qlop displays nothing, genlop displays
 a buggy time, and emlop displays the time as `?`. Qlop also displays nothing when time jumps
@@ -66,15 +69,17 @@ ignores the pre-sync setup time (usually 0 or 1 seconds).
 ## Merge stats
 
 Emlop has a dedicated `stats` command. {gen,q}lop spread the functionality between multiple and
-sometimes incompatible flags.
+sometimes incompatible flags. Qlop only displays prediction for one package at a time.
 
-|                                                          | genlop | qlop  | emlop |
-| :------------------------------------------------------- | :----: | :---: | :---: |
-| Individual merge count/total/average/prediction          | c,t,a  | c,t,a | c,t,p |
-| Total merge count/total/average                          | -      | c,t,a | c,t,a |
-| Total unmerge count/total/average                        | -      | c,t,a | c,t,a |
-| Total sync count/total/average/prediction                | -      | c,t,a | c,t,p |
-| Group stats by year/month/week/day                       | no     | no    | yes   |
+|                                            | genlop | qlop    | emlop   |
+|:-------------------------------------------|:------:|:-------:|:-------:|
+| Metrics (count,tottime,average,prediction) | c,t,a  | c,t,a,p | c,t,a,p |
+| Distinguish binary merges                  | no     | no      | yes     |
+| Per-package (un)merge stats                | yes    | yes     | yes     |
+| Overall (un)merge stats                    | no     | yes     | yes     |
+| Overall sync stats                         | no     | yes     | yes     |
+| Overall command stats                      | no     | no      | yes     |
+| Group stats by year/month/week/day         | no     | no      | yes     |
 
 ## Filtering
 
@@ -92,8 +97,9 @@ which can be abbreviated (for example "1 week, 3 days" -> "1w3d").
 |                                          | genlop      | qlop      | emlop       |
 |:-----------------------------------------|:-----------:|:---------:|:-----------:|
 | Limit log parsing by date                | yes         | yes       | yes         |
-| Limit log to number fisrt/last n entries | no          | no        | yes         |
+| Limit log to number first/last n entries | no          | no        | yes         |
 | Limit log to nth emerge operation        | no          | last only | yes         |
+| Optionally show skiped rows              | no          | no        | yes         |
 | Filter by package categ/name             | yes         | yes       | yes         |
 | Filter by sync repo                      | no          | no        | yes         |
 | Read filter list from file               | no          | yes       | no          |
@@ -104,7 +110,8 @@ which can be abbreviated (for example "1 week, 3 days" -> "1w3d").
 
 Genlop uses the mean of the last 10 builds, ignoring the worst/best times. Qlop uses the mean of the
 last 20 builds. Emlop uses the median of the last 15 builds, with options for other window sizes and
-other averages (median/mean/weighted). Using a window mitigates against evolving build times, using
+other averages (median/mean/weighted), tracks merge time of binary packages separately, and follows
+stats accross package moves (renames). Using a window mitigates against evolving build times, using
 a median mitigates against exceptional build times. The Emlop defaults have been measured to give
 significantly better accuracy over a full emerge log.
 
@@ -122,17 +129,18 @@ All tools give pessimistic prediction when packages are merged in parallel, beca
 sequential merging. Even if they detected an ongoing parallel merge, it's not clear how they would
 estimate the resulting speedup factor.
 
-|                                                   | genlop        | qlop          | emlop                |
-|:--------------------------------------------------|:-------------:|:-------------:|:--------------------:|
-| Show ongoing merge ETA                            | current build | current build | whole list           |
-| Show `emerge -p` merges ETA                       | yes           | no            | yes                  |
-| Show individual merge ETAs                        | no            | no            | yes                  |
-| Show current merge stage                          | no            | no            | yes                  |
-| Global ETA format                                 | total time    | total time    | total time, end date |
-| Estimation accuracy                               | ok            | better        | best, configurable   |
-| Recognize binary emerges                          | no            | no            | yes                  |
-| Follow package moves                              | no            | no            | yes                  |
-| Query gentoo.linuxhowtos.org for unknown packages | yes           | no            | no                   |
+|                                        | genlop        | qlop          | emlop                |
+|:---------------------------------------|:-------------:|:-------------:|:--------------------:|
+| Show ongoing merge ETA                 | current build | current build | whole list           |
+| Show `emerge -p` merges ETA            | yes           | no            | yes                  |
+| Show individual merge ETAs             | no            | no            | yes                  |
+| Show current merge stage               | no            | no            | yes                  |
+| Show running emerge processes          | no            | no            | yes                  |
+| Global ETA format                      | total time    | total time    | total time, end date |
+| Estimation accuracy                    | ok            | better        | best, configurable   |
+| Recognize binary emerges               | no            | no            | yes                  |
+| Follow package moves                   | no            | no            | yes                  |
+| Query external db for unknown packages | obsolete      | no            | no                   |
 
 ## Speed
 
