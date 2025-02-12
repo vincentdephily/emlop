@@ -2,7 +2,7 @@
 
 Original motivation for Emlop was a faster/more accurate version of `genlop -p`, and learning
 Rust. It has since gained features and maturity to compete on all fronts. This file compares
-`genlop-0.30.12`, `qlop-0.97`, and `emlop-0.7.1`. Please report any outdated/incorrect info using
+`genlop-0.30.12`, `qlop-0.97`, and `emlop-0.8.0`. Please report any outdated/incorrect info using
 the [issue tracker](https://github.com/vincentdephily/emlop/issues).
 
 Known emerge log parsers:
@@ -148,14 +148,14 @@ faster than by case-(in)sensitive regexp ({gen,em}lop only).
 
 |                                                            | genlop | qlop | emlop |
 |:-----------------------------------------------------------|-------:|-----:|------:|
-| `genlop -l; qlop -m; emlop l`                              |    701 |   85 |    61 |
-| `genlop -lut; qlop -muUvt; emlop l -smu`                   |    931 |  140 |   109 |
-| `genlop gcc; qlop -m gcc; emlop l -e gcc`                  |    648 |   34 |    19 |
-| `genlop -r --date 2020-10-08; qlop -stl; emlop l -ss -n`   |    625 |   65 |    12 |
-| `emerge dummybuild&;genlop -c;qlop -r;emlop p`             |    760 |   77 |    70 |
-| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out` |    669 |  n/a |    46 |
-| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`  |   3383 |  n/a |    48 |
-| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out` |  20063 |  n/a |    46 |
+| `genlop -l; qlop -m; emlop l`                              |    629 |   51 |    30 |
+| `genlop -lut; qlop -muUvt; emlop l -smu`                   |    861 |   83 |    48 |
+| `genlop gcc; qlop -m gcc; emlop l -e gcc`                  |    556 |   13 |    11 |
+| `genlop -r --date 2020-10-08; qlop -stl; emlop l -ss -n`   |    540 |   27 |     9 |
+| `emerge dummybuild&;genlop -c;qlop -r;emlop p`             |    747 |   50 |    45 |
+| `genlop -p < emerge-p.gcc.out; emlop p < emerge-p.gcc.out` |    596 |  n/a |    24 |
+| `genlop -p < emerge-p.qt.out;  emlop p < emerge-p.qt.out`  |   3419 |  n/a |    26 |
+| `genlop -p < emerge-p.kde.out; emlop p < emerge-p.kde.out` |  20740 |  n/a |    24 |
 
 Emlop is faster than qlop, which is already comfortably fast (the wall time is often dominated by
 the terminal emulator). Genlop is noticably slow for basic tasks, and can be prohibitively slow for

@@ -10,14 +10,19 @@ if [ ! $TERM = alacritty ]; then
     exit 1
 fi
 
+
+echo "emerge -qO1 dummybuild"
+echo "for i in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do echo performance > $i; done"
+echo "Resize terminal to 120x30"
 while true; do
     C=$(tput cols)
     L=$(tput lines)
     P=$(emlop p -sm -ot|rg dummybuild|cut -f1)
-    if [ $C = 120 -a $L = 30 -a -n "$P" ]; then
+    S=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor)
+    if [ $C = 120 -a $L = 30 -a -n "$P" -a "$S" = performance ]; then
         break
     else
-        echo -ne "\remerge=$P cols=$C lines=$L Resize terminal to 120x30 and/or start 'emerge -qO1 dummybuild'"
+        echo -ne "\remerge=$P cols=$C lines=$L governor=$S Fix your setup, see above"
         sleep 0.5
     fi
 done
