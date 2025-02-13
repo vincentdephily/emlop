@@ -1,4 +1,4 @@
-# 0.8.0 2025-02-??
+# 0.8.0 2025-02-13
 
 Feature release: Binary merges, package moves, emerge arguments, process tree, and other goodies.
 
