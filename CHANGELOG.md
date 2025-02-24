@@ -18,7 +18,7 @@ Feature release: Binary merges, package moves, emerge arguments, process tree, a
   - New `command` keyword resolves to the time of the nth emerge command
     (`-fc` is roughly equivalent to qlop's `--lastmerge`)
   - A single span (`day`/`y`/`command`/etc) without a count now means that span with a count of 1
-    (so `-fd` is equivalent to `-1d`)
+    (so `-fd` is equivalent to `-f1d`)
 * `predict` now displays emerge proces tree instead of just top proces
   - Behavior configurable with `--pdepth`/`-D`/`--pwidth`/`-W`
   - Format is a bit nicer and more colorful
