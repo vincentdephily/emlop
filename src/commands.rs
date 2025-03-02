@@ -499,11 +499,18 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
     // Gather and print per-package and indivudual stats.
     let mut totcount = 0;
+    let mut totbuild = 0;
+    let mut totbin = 0;
     let mut totunknown = 0;
     let mut totpredict = 0;
     let mut totelapsed = 0;
     for p in pkgs {
         totcount += 1;
+        if p.bin {
+            totbin += 1;
+        } else {
+            totbuild += 1;
+        }
         // Find the elapsed time, if currently running
         let elapsed = match started.remove(p.ebuild_version()) {
             Some((s, _)) if einfo.pkgs.contains(&p) => now - s,
@@ -545,26 +552,33 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         tbl.skiprow(&[&gc.skip, &"(skip last ", &lastskip, &")"]);
     }
     // Print summary line
-    if totcount > 0 {
-        if sc.show.tot {
-            let mut s: Vec<&dyn Disp> = vec![&"Estimate for ",
-                                             &gc.cnt,
-                                             &totcount,
-                                             &gc.clr,
-                                             if totcount > 1 { &" ebuilds" } else { &" ebuild" }];
-            if totunknown > 0 {
-                s.extend::<[&dyn Disp; 5]>([&", ", &gc.cnt, &totunknown, &gc.clr, &" unknown"]);
-            }
-            let e = FmtDur(totelapsed);
-            if totelapsed > 0 {
-                s.extend::<[&dyn Disp; 4]>([&", ", &e, &gc.clr, &" elapsed"]);
-            }
-            tbl.row([&s,
-                     &[&FmtDur(totpredict), &gc.clr],
-                     &[&"@ ", &gc.dur, &FmtDate(now + totpredict)]]);
-        }
-    } else {
+    if totcount == 0 {
         tbl.row([&[&"No pretended merge found"], &[], &[]]);
+    } else if sc.show.tot {
+        let mut s: Vec<&dyn Disp> = vec![&"Estimate for "];
+        if totbuild > 0 {
+            s.extend([&gc.cnt as &dyn Disp,
+                      &totbuild,
+                      &gc.clr,
+                      if totbuild > 1 { &" builds" } else { &" build" }]);
+        }
+        if totbin > 0 {
+            s.extend([if totbuild > 0 { &", " } else { &"" } as &dyn Disp,
+                      &gc.cnt,
+                      &totbin,
+                      &gc.clr,
+                      if totbin > 1 { &" binaries" } else { &" binary" }]);
+        }
+        if totunknown > 0 {
+            s.extend([&", " as &dyn Disp, &gc.cnt, &totunknown, &gc.clr, &" unknown"]);
+        }
+        let e = FmtDur(totelapsed);
+        if totelapsed > 0 {
+            s.extend([&", " as &dyn Disp, &e, &gc.clr, &" elapsed"]);
+        }
+        tbl.row([&s,
+                 &[&FmtDur(totpredict), &gc.clr],
+                 &[&"@ ", &gc.dur, &FmtDate(now + totpredict)]]);
     }
     Ok(totcount > 0)
 }

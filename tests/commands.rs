@@ -229,9 +229,9 @@ fn predict_emerge_p() {
           "[ebuild   R   ~] dev-lang/unknown-1.42\n\
            [binary   R   ~] dev-lang/bunknown-2.42\n\
            [uninstall     ] dev-libs/eventlog-0.2.1\n",
-          format!("dev-lang/unknown-1.42              30? \n\
-                   dev-lang/bunknown-2.42             10? \n\
-                   Estimate for 2 ebuilds, 2 unknown   40 @ {}\n",
+          format!("dev-lang/unknown-1.42                      30? \n\
+                   dev-lang/bunknown-2.42                     10? \n\
+                   Estimate for 1 build, 1 binary, 2 unknown   40 @ {}\n",
                   ts(40)),
           0),
          // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
@@ -239,10 +239,10 @@ fn predict_emerge_p() {
           "[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
            [ebuild   R   ~] dev-lang/unknown-1.42\n\
            [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
-          format!("dev-qt/qtcore-5.9.4-r2             3:45 \n\
-                   dev-lang/unknown-1.42               30? \n\
-                   dev-qt/qtgui-5.9.4-r3              4:24 \n\
-                   Estimate for 3 ebuilds, 1 unknown  8:39 @ {}\n",
+          format!("dev-qt/qtcore-5.9.4-r2            3:45 \n\
+                   dev-lang/unknown-1.42              30? \n\
+                   dev-qt/qtgui-5.9.4-r3             4:24 \n\
+                   Estimate for 3 builds, 1 unknown  8:39 @ {}\n",
                   ts(8 * 60 + 9 + 30)),
           0),
          // Check skip rows
@@ -527,7 +527,7 @@ fn negative_merge_time_pred() {
     let a = "%Fnegtime.log p -stm --date unix -oc";
     let i = "[ebuild   R   ~] kde-plasma/kwin-5.15.5\n";
     let o = format!("kde-plasma/kwin-5.15.5  4:33 \n\
-                     Estimate for 1 ebuild   4:33 @ {}\n",
+                     Estimate for 1 build    4:33 @ {}\n",
                     ts(4 * 60 + 33));
     emlop(a).write_stdin(i).assert().success().stdout(o);
 }
