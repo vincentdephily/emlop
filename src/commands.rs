@@ -597,6 +597,10 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 pkg_starts.insert(key, ts);
             },
+            Hist::MergeBin { key, .. } => {
+                if !pkg_times.contains_key(&key) {
+                    warn!("{key} is a binary merge, prediction might be slightly wrong, see bug #64");
+                }
             Hist::MergeStop { ts, ref key, .. } => {
                 found = true;
                 if let Some(start) = pkg_starts.remove(key) {
