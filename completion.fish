@@ -9,7 +9,7 @@ complete -c emlop -l date -d 'Output dates in different formats' -x -a "ymd ymdh
 complete -c emlop -l utc -d 'Parse/display dates in UTC instead of local time' -f -a "yes no"
 complete -c emlop -l color -d 'Enable color (yes/no/auto)' -f -a "{yes	Enabled,no	Disabled,auto	'Enabled on terminal'}"
 complete -c emlop -l theme -d 'Set terminal colors' -f -a "merge: binmerge: unmerge: sync: duration: qmark: skip:"
-complete -c emlop -s o -l output -d 'Ouput format' -x -a "columns tab auto"
+complete -c emlop -s o -l output -d 'Output format' -x -a "columns tab auto"
 complete -c emlop -s F -l logfile -d 'Location of emerge log file' -r -F
 complete -c emlop -s v -x -a "{	'Show warnings',v	'Show info',vv	'Show debug',vvv	'Show trace'}" -d 'Increase verbosity'
 complete -c emlop -s h -d 'Print short help'

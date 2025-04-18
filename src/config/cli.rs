@@ -292,8 +292,8 @@ pub fn build_cli() -> Command {
                                    .global(true)
                                    .display_order(29)
                                    .help_heading("Format")
-                                   .help("Ouput format (columns/tab/auto)")
-                                   .long_help("Ouput format (columns/tab/auto)\n  \
+                                   .help("Output format (columns/tab/auto)")
+                                   .long_help("Output format (columns/tab/auto)\n  \
                                                (default)|auto|a: columns on tty, tab otherwise\n  \
                                                columns|c:        space-aligned columns\n  \
                                                tab|t:            tab-separated values");

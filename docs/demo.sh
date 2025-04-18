@@ -6,7 +6,7 @@ function usage() {
 This script helps creating screencasts for the readme
 
 Usage:
-    cd <ouput folder>
+    cd <output folder>
     $0 <*.asc files>
 
 Requirements:

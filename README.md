@@ -33,7 +33,7 @@ Emlop is split into commands, which share a lot of common options:
           --utc [<bool>]       Parse/display dates in UTC instead of local time
           --color [<bool>]     Enable color (yes/no/auto)
           --theme <key:SGR>    Set terminal colors
-      -o, --output <format>    Ouput format (columns/tab/auto)
+      -o, --output <format>    Output format (columns/tab/auto)
       -S, --showskip [<bool>]  Show number of skipped rows (yes/no)
 
 Use `-h` for short help, `--help` for detailed help, and `<command> --help` for command-specific
