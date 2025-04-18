@@ -17,8 +17,8 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
-'-o+[Ouput format (columns/tab/auto)]:format: ' \
-'--output=[Ouput format (columns/tab/auto)]:format: ' \
+'-o+[Output format (columns/tab/auto)]:format: ' \
+'--output=[Output format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
 '--logfile=[Location of emerge log file]:file: ' \
 '*-v[Increase verbosity (can be given multiple times)]' \
@@ -55,8 +55,8 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
-'-o+[Ouput format (columns/tab/auto)]:format: ' \
-'--output=[Ouput format (columns/tab/auto)]:format: ' \
+'-o+[Output format (columns/tab/auto)]:format: ' \
+'--output=[Output format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
 '--logfile=[Location of emerge log file]:file: ' \
 '-e[Match <search> using plain string]' \
@@ -92,8 +92,8 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
-'-o+[Ouput format (columns/tab/auto)]:format: ' \
-'--output=[Ouput format (columns/tab/auto)]:format: ' \
+'-o+[Output format (columns/tab/auto)]:format: ' \
+'--output=[Output format (columns/tab/auto)]:format: ' \
 '-W+[Maximum width of emerge proces comandline]'
 '--pwidth=[Maximum width of emerge proces comandline]'
 '-D+[Maximum depth of emerge proces tree]'
@@ -124,8 +124,8 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
-'-o+[Ouput format (columns/tab/auto)]:format: ' \
-'--output=[Ouput format (columns/tab/auto)]:format: ' \
+'-o+[Output format (columns/tab/auto)]:format: ' \
+'--output=[Output format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
 '--logfile=[Location of emerge log file]:file: ' \
 '-e[Match <search> using plain string]' \
@@ -155,8 +155,8 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
-'-o+[Ouput format (columns/tab/auto)]:format: ' \
-'--output=[Ouput format (columns/tab/auto)]:format: ' \
+'-o+[Output format (columns/tab/auto)]:format: ' \
+'--output=[Output format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
 '--logfile=[Location of emerge log file]:file: ' \
 '-e[Match <search> using plain string]' \
