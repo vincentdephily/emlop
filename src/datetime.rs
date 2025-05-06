@@ -101,7 +101,7 @@ impl ArgParse<String, UtcOffset> for TimeBound {
             Ok(i) => return Ok(Self::Run(i)),
             Err(ea) => ea,
         };
-        match parse_date_ago(s) {
+        match parse_date_ago(s, OffsetDateTime::now_utc()) {
             Ok(i) => Ok(Self::Unix(i)),
             Err(er) => {
                 let m = format!("Not a unix timestamp ({et}), absolute date ({ea}), relative date ({er}), or command ({ec})");
@@ -123,10 +123,9 @@ fn parse_command_num(s: &str) -> Result<usize, Error> {
 }
 
 /// Parse a number of day/years/hours/etc in the past, relative to current time
-fn parse_date_ago(s: &str) -> Result<i64, Error> {
+fn parse_date_ago(s: &str, mut now: OffsetDateTime) -> Result<i64, Error> {
     ensure!(s.chars().all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == ','), "bad char");
     ensure!(s.chars().any(|c| c.is_ascii_alphabetic()), "empty");
-    let mut now = OffsetDateTime::now_utc();
 
     // Handle case where only a span is given
     if let Ok(now) = parse_date_span(1, s.trim(), now) {
@@ -147,7 +146,9 @@ fn parse_date_ago(s: &str) -> Result<i64, Error> {
 fn parse_date_span(num: i32, span: &str, now: OffsetDateTime) -> Result<OffsetDateTime, Error> {
     Ok(match span {
         "y" | "year" | "years" => {
-            let d = Date::from_calendar_date(now.year() - num, now.month(), now.day())?;
+            let year = now.year() - num;
+            let month = now.month();
+            let d = Date::from_calendar_date(year, month, now.day().min(month.length(year)))?;
             now.replace_date(d)
         },
         "m" | "month" | "months" => {
@@ -159,7 +160,7 @@ fn parse_date_span(num: i32, span: &str, now: OffsetDateTime) -> Result<OffsetDa
                     year -= 1;
                 }
             }
-            let d = Date::from_calendar_date(year, month, now.day())?;
+            let d = Date::from_calendar_date(year, month, now.day().min(month.length(year)))?;
             now.replace_date(d)
         },
         "w" | "week" | "weeks" => now - num * Duration::WEEK,
@@ -332,11 +333,14 @@ mod test {
     use super::*;
     use time::format_description::well_known::Rfc3339;
 
-    fn parse_3339(s: &str) -> OffsetDateTime {
+    fn parse_rfc(s: &str) -> OffsetDateTime {
         OffsetDateTime::parse(s, &Rfc3339).expect(s)
     }
-    fn parse_date(s: &str, o: UtcOffset) -> Result<TimeBound, ArgError> {
+    fn parse_fromto(s: &str, o: UtcOffset) -> Result<TimeBound, ArgError> {
         TimeBound::parse(&String::from(s), o, "")
+    }
+    fn parse_ago(ago: &str, now: &str) -> String {
+        parse_date_ago(ago, parse_rfc(now)).map(fmt_utctime).unwrap()
     }
     fn ts(t: OffsetDateTime) -> i64 {
         t.unix_timestamp()
@@ -344,44 +348,44 @@ mod test {
 
     #[test]
     fn date() {
-        let then =
-            OffsetDateTime::parse("2018-04-03T00:00:00Z", &Rfc3339).unwrap().unix_timestamp();
-        let now = epoch_now();
-        let (day, hour, min) = (60 * 60 * 24, 60 * 60, 60);
-        let tz_utc = UtcOffset::UTC;
+        let tb_unix = |rfc| TimeBound::Unix(ts(parse_rfc(rfc)));
+        let utc = UtcOffset::UTC;
 
         // Absolute dates
-        assert_eq!(Ok(TimeBound::Unix(then)), parse_date(" 1522713600 ", tz_utc));
-        assert_eq!(Ok(TimeBound::Unix(then)), parse_date(" 2018-04-03 ", tz_utc));
-        assert_eq!(Ok(TimeBound::Unix(then + hour + min)), parse_date("2018-04-03 01:01", tz_utc));
-        assert_eq!(Ok(TimeBound::Unix(then + hour + min + 1)),
-                   parse_date("2018-04-03 01:01:01", tz_utc));
-        assert_eq!(Ok(TimeBound::Unix(then + hour + min + 1)),
-                   parse_date("2018-04-03T01:01:01", tz_utc));
+        assert_eq!(Ok(tb_unix("2018-04-03T00:00:00Z")), parse_fromto(" 1522713600 ", utc));
+        assert_eq!(Ok(tb_unix("2018-04-03T00:00:00Z")), parse_fromto(" 2018-04-03 ", utc));
+        assert_eq!(Ok(tb_unix("2018-04-03T01:02:00Z")), parse_fromto("2018-04-03 01:02", utc));
+        assert_eq!(Ok(tb_unix("2018-04-03T01:02:03Z")), parse_fromto("2018-04-03 01:02:03", utc));
+        assert_eq!(Ok(tb_unix("2018-04-03T01:02:03Z")), parse_fromto("2018-04-03T01:02:03", utc));
 
         // Different timezone (not calling `get_utcoffset()` because tests are threaded, which makes
         // `UtcOffset::current_local_offset()` error out)
-        for secs in [hour, -1 * hour, 90 * min, -90 * min] {
-            let offset = dbg!(UtcOffset::from_whole_seconds(secs.try_into().unwrap()).unwrap());
-            assert_eq!(Ok(TimeBound::Unix(then - secs)), parse_date("2018-04-03T00:00", offset));
+        for secs in [3600, -7200, 5400, -5400, 42, -42] {
+            let offset = UtcOffset::from_whole_seconds(secs.try_into().unwrap()).unwrap();
+            let tb = TimeBound::Unix(ts(parse_rfc("2018-04-03T00:00:00Z")) - secs);
+            assert_eq!(Ok(tb), parse_fromto("2018-04-03T00:00", offset));
         }
 
         // Relative dates
-        assert_eq!(Ok(TimeBound::Unix(now - hour - 3 * day - 45)),
-                   parse_date("1 hour, 3 days  45sec", tz_utc));
-        assert_eq!(Ok(TimeBound::Unix(now - 5 * 7 * day)), parse_date("5 weeks", tz_utc));
-        assert_eq!(Ok(TimeBound::Unix(now - hour - 2 * day)), parse_date("2d1h", tz_utc));
-        assert_eq!(Ok(TimeBound::Unix(now - 7 * day)), parse_date("w", tz_utc));
+        assert_eq!("2025-05-03T11:57:56Z",
+                   parse_ago("1 hour, 3 days  45sec", "2025-05-06T12:58:41Z"));
+        assert_eq!("2025-04-01T12:58:41Z", parse_ago("5 weeks", "2025-05-06T12:58:41Z"));
+        assert_eq!("2025-05-04T11:58:41Z", parse_ago("2d1h", "2025-05-06T12:58:41Z"));
+        assert_eq!("2025-04-29T12:58:41Z", parse_ago("w", "2025-05-06T12:58:41Z"));
+        assert_eq!("2025-02-28T01:02:03Z", parse_ago("2m", "2025-04-29T01:02:03Z"));
+        assert_eq!("2024-02-29T01:02:03Z", parse_ago("2m", "2024-04-29T01:02:03Z"));
+        assert_eq!("2023-02-28T01:02:03Z", parse_ago("y", "2024-02-29T01:02:03Z"));
 
         // Failure cases
-        assert!(parse_date("", tz_utc).is_err());
-        assert!(parse_date(" ", tz_utc).is_err());
-        assert!(parse_date(",", tz_utc).is_err());
-        assert!(parse_date("junk2018-04-03T01:01:01", tz_utc).is_err());
-        assert!(parse_date("2018-04-03T01:01:01junk", tz_utc).is_err());
-        assert!(parse_date("152271000o", tz_utc).is_err());
-        assert!(parse_date("1 day 3 centuries", tz_utc).is_err());
-        assert!(parse_date("a while ago", tz_utc).is_err());
+        assert!(parse_fromto("", utc).is_err());
+        assert!(parse_fromto(" ", utc).is_err());
+        assert!(parse_fromto(",", utc).is_err());
+        assert!(parse_fromto("junk2018-04-03T01:01:01", utc).is_err());
+        assert!(parse_fromto("2018-04-03T01:01:01junk", utc).is_err());
+        assert!(parse_fromto("2018-02-29T01:01:01", utc).is_err());
+        assert!(parse_fromto("152271000o", utc).is_err());
+        assert!(parse_fromto("1 day 3 centuries", utc).is_err());
+        assert!(parse_fromto("a while ago", utc).is_err());
     }
 
     #[test]
@@ -412,13 +416,13 @@ mod test {
             // returned by the function is offset.
             let v: Vec<&str> = t.split_whitespace().collect();
             let (base_s, year_s, month_s, week_s, day_s) = (v[0], v[1], v[2], v[3], v[4]);
-            let base_utc = parse_3339(&format!("{base_s}+00:00"));
+            let base_utc = parse_rfc(&format!("{base_s}+00:00"));
             for offset_s in ["+00:00", "+05:00", "-10:30"] {
-                let base = parse_3339(&format!("{base_s}{offset_s}"));
-                let year = parse_3339(&format!("{year_s}T00:00:00{offset_s}"));
-                let month = parse_3339(&format!("{month_s}T00:00:00{offset_s}"));
-                let week = parse_3339(&format!("{week_s}T00:00:00{offset_s}"));
-                let day = parse_3339(&format!("{day_s}T00:00:00{offset_s}"));
+                let base = parse_rfc(&format!("{base_s}{offset_s}"));
+                let year = parse_rfc(&format!("{year_s}T00:00:00{offset_s}"));
+                let month = parse_rfc(&format!("{month_s}T00:00:00{offset_s}"));
+                let week = parse_rfc(&format!("{week_s}T00:00:00{offset_s}"));
+                let day = parse_rfc(&format!("{day_s}T00:00:00{offset_s}"));
                 // Check our test data is correct
                 let offset = base.offset();
                 assert!(base < year && base < month && base < week && base < day,
