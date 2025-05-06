@@ -174,7 +174,6 @@ fn parse_date_span(num: i32, span: &str, now: OffsetDateTime) -> Result<OffsetDa
 
 /// Parse rfc3339-like format with added flexibility
 fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
-    use time::format_description::{modifier::*, Component, FormatItem::*};
     let mut p = Parsed::new().with_hour_24(0)
                              .unwrap()
                              .with_minute(0)
@@ -187,30 +186,13 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
                              .unwrap()
                              .with_offset_second_signed(offset.seconds_past_minute())
                              .unwrap();
-    // See <https://github.com/time-rs/time/issues/428>
-    let rest = p.parse_items(s.as_bytes(), &[
-        Component(Component::Year(Year::default())),
-        Literal(b"-"),
-        Component(Component::Month(Month::default())),
-        Literal(b"-"),
-        Component(Component::Day(Day::default())),
-        Optional(&Compound(&[
-            First(&[
-                Literal(b"T"),
-                Literal(b" ")
-            ]),
-            Component(Component::Hour(Hour::default())),
-            Literal(b":"),
-            Component(Component::Minute(Minute::default())),
-            Optional(&Compound(&[
-                Literal(b":"),
-                Component(Component::Second(Second::default()))
-            ]))
-        ]))
-    ])?;
-    if !rest.is_empty() {
-        bail!("junk at end")
-    }
+    const FMT: &[time::format_description::FormatItem<'_>] =
+        format_description!(version = 2,
+                            "[year]-[month]-[day]\
+                             [optional [[first [T][ ]][hour]:[minute][optional [:[second]]]]]\
+                             [optional [[first [Z][[offset_hour]:[offset_minute]]]]]");
+    let rest = p.parse_items(s.as_bytes(), FMT)?;
+    ensure!(rest.is_empty(), "junk at end");
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())
 }
 
@@ -357,6 +339,9 @@ mod test {
         assert_eq!(Ok(tb_unix("2018-04-03T01:02:00Z")), parse_fromto("2018-04-03 01:02", utc));
         assert_eq!(Ok(tb_unix("2018-04-03T01:02:03Z")), parse_fromto("2018-04-03 01:02:03", utc));
         assert_eq!(Ok(tb_unix("2018-04-03T01:02:03Z")), parse_fromto("2018-04-03T01:02:03", utc));
+        assert_eq!(Ok(tb_unix("2018-04-03T01:02:03Z")), parse_fromto("2018-04-03T01:02:03Z", utc));
+        assert_eq!(Ok(tb_unix("2018-04-03T00:02:03Z")),
+                   parse_fromto("2018-04-03T01:02:03+01:00", utc));
 
         // Different timezone (not calling `get_utcoffset()` because tests are threaded, which makes
         // `UtcOffset::current_local_offset()` error out)
