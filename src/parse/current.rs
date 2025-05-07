@@ -141,23 +141,22 @@ impl PkgMoves {
         self.0.get(key).unwrap_or(key)
     }
 
+    /// Compare update file names in reverse chronological order
+    fn cmp_update_files(a: &&String, b: &&String) -> std::cmp::Ordering {
+        // Find the file part
+        let a = a[a.rfind('/').map(|n| n + 1).unwrap_or(0)..].as_bytes();
+        let b = b[b.rfind('/').map(|n| n + 1).unwrap_or(0)..].as_bytes();
+        // If it looks like "Quarter-Year", rewrite it as "YearQuarter"
+        let a = if let &[q, b'Q', b'-', y1, y2, y3, y4] = a { &[y1, y2, y3, y4, q] } else { a };
+        let b = if let &[q, b'Q', b'-', y1, y2, y3, y4] = b { &[y1, y2, y3, y4, q] } else { b };
+        b.cmp(a)
+    }
+
+    /// Load, sort and parse update files
     fn try_new(db: &Mtimedb) -> Option<HashMap<String, String>> {
         let now = Instant::now();
-        // Sort the files in reverse chronological order (compare year, then quarter)
         let mut files: Vec<_> = db.updates.as_ref()?.keys().collect();
-        files.sort_by(|a, b| match (a.rsplit_once('/'), b.rsplit_once('/')) {
-                 (Some((_, a)), Some((_, b))) if a.len() == 7 && b.len() == 7 => {
-                     match a[3..].cmp(&b[3..]) {
-                         std::cmp::Ordering::Equal => a[..3].cmp(&b[..3]),
-                         o => o,
-                     }.reverse()
-                 },
-                 _ => {
-                     warn!("Using default sort for {a} <> {b}");
-                     a.cmp(b)
-                 },
-             });
-        // Read each file to populate the result map
+        files.sort_unstable_by(Self::cmp_update_files);
         let mut moves = HashMap::new();
         for f in &files {
             Self::parse(&mut moves, f);
