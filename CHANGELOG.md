@@ -1,3 +1,18 @@
+# Unreleased
+
+## Improvements
+
+* `predict` status line now counts builds and binaries separately
+* Accept offset when parsing `--from`/`--to` date
+
+## Bug fixes
+
+* Fix aligment of command table header
+* Fix documentation typos (thanks Grant Hutchins)
+* Fix `accuracy` command in the presence of binary merges
+* Properly handle relative dates that correspond to an invalid day of the month
+* Fix potential panic when loading repo update files with nonstandard names
+
 # 0.8.0 2025-02-13
 
 Feature release: Binary merges, package moves, emerge arguments, process tree, and other goodies.
