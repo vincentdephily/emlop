@@ -7,8 +7,8 @@ use regex::Regex;
 use std::{io::Write as _,
           str::FromStr,
           time::{SystemTime, UNIX_EPOCH}};
-use time::{macros::format_description, parsing::Parsed, Date, Duration, Month, OffsetDateTime,
-           UtcOffset, Weekday};
+use time::{format_description::FormatItem, macros::format_description, parsing::Parsed, Date,
+           Duration, Month, OffsetDateTime, UtcOffset, Weekday};
 
 /// Get the UtcOffset to parse/display datetimes with.
 /// Needs to be called before starting extra threads.
@@ -26,7 +26,7 @@ pub fn get_offset(utc: bool) -> UtcOffset {
 // It'd be nice to support user-defined formats, but lifetimes make this a bit akward.
 // See <https://github.com/time-rs/time/issues/429>
 #[derive(Clone, Copy)]
-pub struct DateStyle(&'static [time::format_description::FormatItem<'static>]);
+pub struct DateStyle(&'static [FormatItem<'static>]);
 impl Default for DateStyle {
     fn default() -> Self {
         Self(format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"))
@@ -186,11 +186,12 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
                              .unwrap()
                              .with_offset_second_signed(offset.seconds_past_minute())
                              .unwrap();
-    const FMT: &[time::format_description::FormatItem<'_>] =
-        format_description!(version = 2,
-                            "[year]-[month]-[day]\
-                             [optional [[first [T][ ]][hour]:[minute][optional [:[second]]]]]\
-                             [optional [[first [Z][[offset_hour]:[offset_minute]]]]]");
+    const FMT: &[FormatItem<'_>] = format_description!(
+                                                       version = 2,
+                                                       "[year]-[month]-[day]\
+        [optional [[first [T][ ]][hour]:[minute][optional [:[second]]]]]\
+        [optional [[first [Z][[offset_hour]:[offset_minute]]]]]"
+    );
     let rest = p.parse_items(s.as_bytes(), FMT)?;
     ensure!(rest.is_empty(), "junk at end");
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())

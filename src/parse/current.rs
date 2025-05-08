@@ -144,8 +144,8 @@ impl PkgMoves {
     /// Compare update file names in reverse chronological order
     fn cmp_update_files(a: &&String, b: &&String) -> std::cmp::Ordering {
         // Find the file part
-        let a = a[a.rfind('/').map(|n| n + 1).unwrap_or(0)..].as_bytes();
-        let b = b[b.rfind('/').map(|n| n + 1).unwrap_or(0)..].as_bytes();
+        let a = &a.as_bytes()[a.rfind('/').map(|n| n + 1).unwrap_or(0)..];
+        let b = &b.as_bytes()[b.rfind('/').map(|n| n + 1).unwrap_or(0)..];
         // If it looks like "Quarter-Year", rewrite it as "YearQuarter"
         let a = if let &[q, b'Q', b'-', y1, y2, y3, y4] = a { &[y1, y2, y3, y4, q] } else { a };
         let b = if let &[q, b'Q', b'-', y1, y2, y3, y4] = b { &[y1, y2, y3, y4, q] } else { b };
