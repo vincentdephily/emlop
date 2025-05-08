@@ -147,9 +147,18 @@ impl PkgMoves {
         let a = &a.as_bytes()[a.rfind('/').map(|n| n + 1).unwrap_or(0)..];
         let b = &b.as_bytes()[b.rfind('/').map(|n| n + 1).unwrap_or(0)..];
         // If it looks like "Quarter-Year", rewrite it as "YearQuarter"
-        let a = if let &[q, b'Q', b'-', y1, y2, y3, y4] = a { &[y1, y2, y3, y4, q] } else { a };
-        let b = if let &[q, b'Q', b'-', y1, y2, y3, y4] = b { &[y1, y2, y3, y4, q] } else { b };
-        b.cmp(a)
+        match (a, b) {
+            (&[a0, b'Q', b'-', a1, a2, a3, a4], &[b0, b'Q', b'-', b1, b2, b3, b4]) => {
+                [b1, b2, b3, b4, b0].cmp(&[a1, a2, a3, a4, a0])
+            },
+            (&[a0, b'Q', b'-', a1, a2, a3, a4], _) => b.cmp(&[a1, a2, a3, a4, a0]),
+            (_, &[b0, b'Q', b'-', b1, b2, b3, b4]) => (&[b1, b2, b3, b4, b0] as &[u8]).cmp(a),
+            (_, _) => b.cmp(a),
+        }
+        // TODO MSRV 1.79: simpler version
+        // let a = if let &[q, b'Q', b'-', y1, y2, y3, y4] = a { &[y1, y2, y3, y4, q] } else { a };
+        // let b = if let &[q, b'Q', b'-', y1, y2, y3, y4] = b { &[y1, y2, y3, y4, q] } else { b };
+        // b.cmp(a)
     }
 
     /// Load, sort and parse update files
