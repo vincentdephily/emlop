@@ -9,8 +9,7 @@ pub fn build_cli() -> Command {
     let pkg = Arg::new("search").num_args(..)
                                 .display_order(1)
                                 .help_heading("Filter")
-                                // Workaround bad alignment, might be fixed in clap 4
-                                .help("    Show only packages/repos matching <search>")
+                                .help("Show only packages/repos matching <search>")
                                 .long_help("Show only packages/repos matching <search>\n\
                                             Multiple terms can be provided\n\
                                             Matches using a regex unless `--exact` is specified\n\
