@@ -120,6 +120,16 @@ impl ArgParse<String, ()> for Average {
         }
     }
 }
+impl Average {
+    pub fn as_str(&self) -> &'static str {
+        match &self {
+            Self::Arith => "Arithetic mean",
+            Self::Median => "Median",
+            Self::WeightedArith => "Weighted arithmetic mean",
+            Self::WeightedMedian => "Weighted median",
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ResumeKind {

@@ -585,34 +585,38 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
 pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &sc.search, sc.exact)?;
-    let mut pkg_starts: HashMap<String, i64> = HashMap::new();
-    let mut pkg_times: BTreeMap<String, Times> = BTreeMap::new();
-    let mut pkg_errs: BTreeMap<String, Vec<f64>> = BTreeMap::new();
+    let mut pkg_starts: HashMap<String, (i64, bool)> = HashMap::new();
+    let mut pkg_times: BTreeMap<(String, bool), Times> = BTreeMap::new();
+    let mut pkg_errs: BTreeMap<(String, bool), Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let h = ["Date", "Package", "Real", "Predicted", "Error"];
+    let h = ["Date", "Package", "Real", sc.avg.as_str(), "Samples", "Error"];
     let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last).header(h);
     for p in hist {
         match p {
             Hist::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
-                pkg_starts.insert(key, ts);
+                pkg_starts.insert(key, (ts, false));
             },
             Hist::MergeBin { key, .. } => {
-                if !pkg_times.contains_key(&key) {
-                    warn!("{key} is a binary merge, prediction might be slightly wrong, see bug #64");
+                if let Some((_, bin)) = pkg_starts.get_mut(&key) {
+                    *bin = true;
                 }
             },
             Hist::MergeStop { ts, ref key, .. } => {
                 found = true;
-                if let Some(start) = pkg_starts.remove(key) {
-                    let times = pkg_times.entry(p.ebuild().to_owned()).or_insert(Times::new());
+                if let Some((start, bin)) = pkg_starts.remove(key) {
+                    let times =
+                        pkg_times.entry((p.ebuild().to_owned(), bin)).or_insert(Times::new());
                     let real = ts - start;
+                    let samples = times.count.min(sc.lim.into());
                     match times.pred(sc.lim, sc.avg) {
                         -1 => {
                             if sc.show.merge {
                                 tbl.row([&[&FmtDate(ts)],
-                                         &[&gc.merge, &p.ebuild_version()],
+                                         &[if bin { &gc.binmerge } else { &gc.merge },
+                                           &p.ebuild_version()],
                                          &[&FmtDur(real)],
+                                         &[],
                                          &[],
                                          &[]])
                             }
@@ -621,12 +625,14 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                             let err = (pred - real).abs() as f64 * 100.0 / real as f64;
                             if sc.show.merge {
                                 tbl.row([&[&FmtDate(ts)],
-                                         &[&gc.merge, &p.ebuild_version()],
+                                         &[if bin { &gc.binmerge } else { &gc.merge },
+                                           &p.ebuild_version()],
                                          &[&FmtDur(real)],
                                          &[&FmtDur(pred)],
-                                         &[&gc.cnt, &format!("{err:.1}%")]])
+                                         &[&gc.cnt, &samples],
+                                         &[&format!("{err:.1}%")]])
                             }
-                            let errs = pkg_errs.entry(p.ebuild().to_owned()).or_default();
+                            let errs = pkg_errs.entry((p.ebuild().to_owned(), bin)).or_default();
                             errs.push(err);
                         },
                     }
@@ -639,9 +645,10 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     drop(tbl);
     if sc.show.tot {
         let mut tbl = Table::new(&gc).align_left(0).header(["Package", "Error"]);
-        for (p, e) in pkg_errs {
+        for ((p, b), e) in pkg_errs {
             let avg = e.iter().sum::<f64>() / e.len() as f64;
-            tbl.row([&[&gc.pkg, &p], &[&gc.cnt, &format!("{avg:.1}%")]]);
+            tbl.row([&[if b { &gc.binpkg } else { &gc.pkg }, &p],
+                     &[&gc.cnt, &format!("{avg:.1}%")]]);
         }
     }
     Ok(found)

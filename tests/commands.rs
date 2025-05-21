@@ -532,6 +532,25 @@ fn negative_merge_time_pred() {
     emlop(a).write_stdin(i).assert().success().stdout(o);
 }
 
+/// Basic test of accuracy command
+#[test]
+fn accuracy() {
+    let t =
+        [("%F10000.log a falkon kgamma -oc -H",
+          "Date                 Package                        Real  Median  Samples  Error\n\
+           2018-02-06 22:44:50  >>> kde-plasma/kgamma-5.12.0     27                        \n\
+           2018-02-14 10:18:30  >>> kde-plasma/kgamma-5.12.1     18      27        1  50.0%\n\
+           2018-02-21 11:16:23  >>> kde-plasma/kgamma-5.12.2     37      22        2  40.5%\n\
+           2018-02-28 09:14:37  >>> www-client/falkon-3.0.0    6:02                        \n\
+           2018-03-07 09:19:09  >>> kde-plasma/kgamma-5.12.3     17      27        3  58.8%\n\
+           2018-03-14 01:36:42  >>> www-client/falkon-24.08.3    10                        \n\
+           Package            Error\n\
+           kde-plasma/kgamma  49.8%\n")];
+    for (a, o) in t {
+        emlop(a).assert().stdout(o);
+    }
+}
+
 #[test]
 fn exit_status() {
     // 0: no problem
