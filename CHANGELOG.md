@@ -1,17 +1,20 @@
-# Unreleased
+# 0.8.1 2025-05-23
+
+Maintenance release
 
 ## Improvements
 
-* `predict` status line now counts builds and binaries separately
 * Accept offset when parsing `--from`/`--to` date
+* `predict` status line now counts builds and binaries separately
+* `accuracy` now distinguishes binary merges and displays sample count
 
 ## Bug fixes
 
 * Fix aligment of command table header
 * Fix documentation typos (thanks Grant Hutchins)
-* Fix `accuracy` command in the presence of binary merges
+* Fix `accuracy` panic in the presence of binary merges
 * Properly handle relative dates that correspond to an invalid day of the month
-* Fix potential panic when loading repo update files with nonstandard names
+* Fix potential `predict/stat` panic when loading repo update files with nonstandard names (thanks xfzv)
 
 # 0.8.0 2025-02-13
 

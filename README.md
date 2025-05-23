@@ -36,8 +36,8 @@ Emlop is split into commands, which share a lot of common options:
       -o, --output <format>    Output format (columns/tab/auto)
       -S, --showskip [<bool>]  Show number of skipped rows (yes/no)
 
-Use `-h` for short help, `--help` for detailed help, and `<command> --help` for command-specific
-help.
+Use `-h` for short help (like the above), `--help` for detailed help, and `<command> --help` for
+command-specific help.
 
 Command names and arguments can be abbreviated (so `emlop log --from '1 day' --duration human` is
 the same as `emlop l -f1d --dur h`), and shell completion is available.
@@ -107,6 +107,16 @@ the file location, or set it to  `""` to disable.
 
 The [example file](emlop.toml) documents the format, and lists supported options. Command-line
 arguments take precedence over the config file.
+
+## Caveats
+
+* `emaint sync` currently [doesn't write to emerge.log](https://bugs.gentoo.org/553788), so repo
+  sync events will only appear in the log if you use `emerge --sync` or `eix-sync`.
+* Parallel emerges, build cache, distcc, etc make build times fundamentally less predictable :
+  [68](https://github.com/vincentdephily/emlop/issues/68),
+  [63](https://github.com/vincentdephily/emlop/issues/63),
+  [53](https://github.com/vincentdephily/emlop/issues/53),
+  [49](https://github.com/vincentdephily/emlop/issues/49)...
 
 ## Installation
 

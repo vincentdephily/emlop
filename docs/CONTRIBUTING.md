@@ -13,7 +13,8 @@ issues, and make sure you're running the latest version.
 ## Sending patches
 
 Emlop is licensed as GPLv3, any contribution accepted into the emlop repo will have that license.
-Send pull requests via [Github](https://github.com/vincentdephily/emlop).
+Send pull requests via [Github](https://github.com/vincentdephily/emlop). Using AI is ok but must be
+mentioned in the PR.
 
 Run `cargo test -- --include-ignored` before submitting your code. A bugfix should probably
 include a new/updated unittest. Check `cargo clippy` hints. Format code using `cargo +nightly fmt`. The
