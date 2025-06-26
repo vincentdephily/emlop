@@ -1,6 +1,5 @@
 use crate::{Conf, OutStyle};
-use std::{collections::VecDeque,
-          io::{stdout, BufWriter, Write as _}};
+use std::io::{stdout, BufWriter, Write as _};
 
 pub trait Disp {
     /// Write to buf and returns the number of visible chars written
@@ -29,9 +28,9 @@ pub struct Table<'a, const N: usize> {
     /// Having a single buffer noticably speed things up by reducing allocations.
     buf: Vec<u8>,
     /// Visible length, and start/stop index into buffer
-    rows: VecDeque<[(usize, usize, usize); N]>,
-    /// Table header
-    header: Option<[(usize, usize, usize); N]>,
+    rows: Vec<[(usize, usize, usize); N]>,
+    /// Index of the first non-header row (if header is done)
+    header_end: Option<usize>,
     /// Number of rows skipped to print only the last N
     skip: usize,
 
@@ -48,11 +47,11 @@ pub struct Table<'a, const N: usize> {
 impl<'a, const N: usize> Table<'a, N> {
     /// Initialize new table
     pub fn new(conf: &'a Conf) -> Table<'a, N> {
-        Self { rows: VecDeque::with_capacity(32),
+        Self { rows: Vec::with_capacity(32),
                buf: Vec::with_capacity(1024),
                skip: 0,
+               header_end: None,
                conf,
-               header: None,
                aligns: [Align::Right; N],
                margins: ["  "; N],
                last: usize::MAX }
@@ -76,6 +75,11 @@ impl<'a, const N: usize> Table<'a, N> {
         self
     }
 
+    /// Is there actual data to flush ?
+    pub fn has_rows(&self) -> bool {
+        self.rows.len() > self.header_end.unwrap_or(0)
+    }
+
     /// Add a section header
     pub fn header(mut self, row: [&str; N]) -> Self {
         if self.conf.header {
@@ -85,14 +89,15 @@ impl<'a, const N: usize> Table<'a, N> {
                 self.buf.extend(row[i].as_bytes());
                 idxrow[i] = (row[i].len(), start, self.buf.len());
             }
-            self.header = Some(idxrow);
+            self.rows.push(idxrow);
         }
+        self.header_done();
         self
     }
 
-    /// Is there actual data to flush ?
-    pub fn is_empty(&self) -> bool {
-        self.rows.is_empty()
+    /// Set header_end (reference position for row skip)
+    pub fn header_done(&mut self) {
+        self.header_end = Some(self.rows.len());
     }
 
     /// Add one row of data
@@ -106,10 +111,12 @@ impl<'a, const N: usize> Table<'a, N> {
             let len = row[i].iter().map(|c| c.out(&mut self.buf, self.conf)).sum();
             idxrow[i] = (len, start, self.buf.len());
         }
-        self.rows.push_back(idxrow);
-        if self.rows.len() > self.last {
-            self.skip += 1;
-            self.rows.pop_front();
+        self.rows.push(idxrow);
+        if let Some(header_end) = self.header_end {
+            if self.rows.len() - header_end > self.last {
+                self.skip += 1;
+                self.rows.remove(header_end);
+            }
         }
     }
 
@@ -121,29 +128,29 @@ impl<'a, const N: usize> Table<'a, N> {
         let start = self.buf.len();
         let len = row.iter().map(|c| c.out(&mut self.buf, self.conf)).sum();
         idxrow[0] = (len, start, self.buf.len());
-        self.rows.push_back(idxrow);
+        self.rows.push(idxrow);
     }
 
     fn flush(&self, mut out: impl std::io::Write) {
-        if self.is_empty() {
+        if !self.has_rows() {
             return;
         }
-        // Check the max len of each column, for the header+rows we have
-        let widths: [usize; N] = std::array::from_fn(|i| {
-            self.rows.iter().chain(self.header.iter()).fold(0, |m, r| usize::max(m, r[i].0))
-        });
-        // Show header
-        if let Some(h) = self.header {
-            self.flush_one(&mut out, widths, &h);
+        // Find the max len of each column
+        let widths: [usize; N] =
+            std::array::from_fn(|i| self.rows.iter().fold(0, |m, r| usize::max(m, r[i].0)));
+        // Print header
+        let header_end = self.header_end.unwrap_or(0);
+        for row in &self.rows[..header_end] {
+            self.flush_one(&mut out, widths, row);
         }
-        // Show skip row. Note that it doesn't participate to column alignment.
+        // Print skip row
         if self.conf.showskip && self.skip > 0 {
             writeln!(out,
                      "{}(skip first {}){}",
                      self.conf.skip.val, self.skip, self.conf.clr.val).unwrap_or(());
         }
-        // Show remaining rows
-        for row in &self.rows {
+        // Print body
+        for row in &self.rows[header_end..] {
             self.flush_one(&mut out, widths, row);
         }
     }
@@ -216,6 +223,7 @@ mod test {
 
         // No limit
         let mut t = Table::<1>::new(&conf);
+        t.header_done();
         for i in 0..10 {
             t.row([&[&format!("{i}")]]);
         }
@@ -223,6 +231,7 @@ mod test {
 
         // 5 max
         let mut t = Table::<1>::new(&conf).last(5);
+        t.header_done();
         for i in 0..10 {
             t.row([&[&format!("{i}")]]);
         }
@@ -242,6 +251,7 @@ mod test {
 
         // 5 max
         let mut t = Table::<1>::new(&conf).last(5);
+        t.header_done();
         for i in 0..10 {
             t.row([&[&format!("{i}")]]);
         }
@@ -284,6 +294,7 @@ mod test {
     fn align_cols_last() {
         let conf = Conf::from_str("emlop log --color=n --output=c --showskip=n");
         let mut t = Table::<2>::new(&conf).align_left(0).last(1);
+        t.header_done();
         t.row([&[&"looooooooooooong"], &[&1]]);
         t.row([&[&"short"], &[&1]]);
         let res = "short  1\n";

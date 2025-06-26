@@ -37,6 +37,8 @@ fn main() {
         ("v", "emlop",  &["-V"], None),
         // Minimal command to read the first result (no equivalent in genlop/qlop)
         ("start", "emlop",  &["-F","{emerge.log}","l","-N"],  None),
+        // Show last five merges, with skip count (no equivalent in genlop/qlop)
+        ("end", "emlop",  &["-F","{emerge.log}","l","-n5", "-S"],  None),
         // Minimal "show all merges" command (genlop adds version, emlop adds version+duration)
         ("l", "genlop", &["-f","{emerge.log}","-l"], None),
         ("l", "qlop",   &["-f","{emerge.log}","-m"], None),

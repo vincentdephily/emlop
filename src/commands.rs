@@ -284,7 +284,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     cmd_stats_group(&gc, &sc, &mut tblc, &mut tbls, &mut tblp, &mut tblt, group, &run_args,
                     &sync_time, &pkg_time);
     // Controlled drop to ensure table order and insert blank lines
-    let (ec, es, ep, et) = (!tblc.is_empty(), !tbls.is_empty(), !tblp.is_empty(), !tblt.is_empty());
+    let (ec, es, ep, et) = (tblc.has_rows(), tbls.has_rows(), tblp.has_rows(), tblt.has_rows());
     drop(tblc);
     if ec && es {
         println!();
@@ -444,6 +444,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
             proc_rows(now, &mut tbl, &procs, p, 0, &gc, &sc);
         }
     }
+    tbl.header_done();
 
     // Parse emerge log.
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &vec![], false)?;
