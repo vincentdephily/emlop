@@ -672,7 +672,7 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
         if let Hist::MergeStart { .. } = p {
             let e = p.take_ebuild();
             if !pkgs.contains(&e) {
-                println!("{}", e);
+                println!("{e}");
                 pkgs.insert(e);
             }
         }

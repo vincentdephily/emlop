@@ -17,7 +17,7 @@ pub fn get_offset(utc: bool) -> UtcOffset {
         UtcOffset::UTC
     } else {
         UtcOffset::current_local_offset().unwrap_or_else(|e| {
-                                             warn!("Falling back to UTC: {}", e);
+                                             warn!("Falling back to UTC: {e}");
                                              UtcOffset::UTC
                                          })
     }

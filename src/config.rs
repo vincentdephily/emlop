@@ -100,9 +100,9 @@ impl Configs {
             _ => LevelFilter::Trace,
         };
         env_logger::Builder::new().filter_level(level).format_timestamp(None).init();
-        trace!("{:?}", cli);
+        trace!("{cli:?}");
         let toml = Toml::load()?;
-        trace!("{:?}", toml);
+        trace!("{toml:?}");
         let conf = Conf::try_new(&cli, &toml)?;
         Ok(match cli.subcommand() {
             Some(("log", sub)) => Self::Log(conf, ConfLog::try_new(sub, &toml)?),

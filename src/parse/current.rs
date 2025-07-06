@@ -46,7 +46,7 @@ impl Pkg {
 
 /// Parse portage pretend output
 pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
-    debug!("get_pretend input={}", filename);
+    debug!("get_pretend input={filename}");
     let mut out = vec![];
     let re = Regex::new("^\\[([a-z]+)[^]]*\\] +([^ :\\n]+)").unwrap();
     let mut buf = BufReader::new(reader);
@@ -287,7 +287,7 @@ pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
                      true
                  });
     }
-    trace!("{:?}", res);
+    trace!("{res:?}");
     res
 }
 

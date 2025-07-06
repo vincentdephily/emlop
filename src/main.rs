@@ -38,8 +38,8 @@ fn main() {
 
 pub fn log_err(e: Error) {
     match e.source() {
-        Some(s) => error!("{}: {}", e, s),
-        None => error!("{}", e),
+        Some(s) => error!("{e}: {s}"),
+        None => error!("{e}"),
     }
 }
 
