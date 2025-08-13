@@ -13,11 +13,16 @@ jobs:
         toolchain: [1.74.1, stable]
         include:
           - timezone: UTC
+            target: x86_64-unknown-linux-gnu
           - timezone: Europe/Dublin
             toolchain: stable
           - timezone: Canada/Newfoundland
             toolchain: stable
           - timezone: Pacific/Kiritimati
+            toolchain: stable
+          - target: i586-unknown-linux-gnu
+            toolchain: stable
+          - target: i686-unknown-linux-musl
             toolchain: stable
     steps:
       - name: Checkout
@@ -26,7 +31,8 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-      - run: cargo test -- --include-ignored
+          target: ${{ matrix.target }}
+      - run: cargo test --target ${{ matrix.target }} -- --include-ignored
         env:
           TZ: ${{ matrix.timezone }}
 
