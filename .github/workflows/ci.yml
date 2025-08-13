@@ -10,31 +10,40 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        toolchain: [1.74.1, stable]
-        include:
-          - timezone: UTC
+        obj:
+          # Base
+          - toolchain: stable
+            timezone: UTC
             target: x86_64-unknown-linux-gnu
-          - timezone: Europe/Dublin
-            toolchain: stable
-          - timezone: Canada/Newfoundland
-            toolchain: stable
-          - timezone: Pacific/Kiritimati
-            toolchain: stable
-          - target: i586-unknown-linux-gnu
-            toolchain: stable
-          - target: i686-unknown-linux-musl
-            toolchain: stable
+          # Timezones
+          - toolchain: stable
+            timezone: Europe/Dublin
+            target: x86_64-unknown-linux-gnu
+          - toolchain: stable
+            timezone: Canada/Newfoundland
+            target: x86_64-unknown-linux-gnu
+          - toolchain: stable
+            timezone: Pacific/Kiritimati
+            target: x86_64-unknown-linux-gnu
+          # MSRV
+          - toolchain: 1.74.1
+            timezone: UTC
+            target: x86_64-unknown-linux-gnu
+          # Targets
+          - toolchain: stable
+            timezone: UTC
+            target: i686-unknown-linux-musl
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          target: ${{ matrix.target }}
-      - run: cargo test --target ${{ matrix.target }} -- --include-ignored
+          toolchain: ${{ matrix.obj.toolchain }}
+          target: ${{ matrix.obj.target }}
+      - run: cargo test --target ${{ matrix.obj.target }} -- --include-ignored
         env:
-          TZ: ${{ matrix.timezone }}
+          TZ: ${{ matrix.obj.timezone }}
 
   rustfmt:
     name: Rustfmt
