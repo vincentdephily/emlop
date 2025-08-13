@@ -8,9 +8,10 @@
 
 use crate::{config::*, table::Disp, *};
 use anyhow::{ensure, Context};
+use atoi::atoi;
 use libc::pid_t;
 use std::{collections::BTreeMap,
-          fs::{read_dir, DirEntry, File},
+          fs::{read_dir, read_to_string, DirEntry, File},
           io::prelude::*,
           path::PathBuf};
 
@@ -93,8 +94,7 @@ fn get_proc(entry: &DirEntry,
     // At this stage we expect `entry` to not always correspond to a process.
     let pid = i32::from_str(&entry.file_name().to_string_lossy()).ok()?;
     // See linux/Documentation/filesystems/proc.rst Table 1-4: Contents of the stat files.
-    let mut stat = String::new();
-    File::open(entry.path().join("stat")).ok()?.read_to_string(&mut stat).ok()?;
+    let stat = read_to_string(entry.path().join("stat")).ok()?;
     // Parse command name (it's surrounded by parens and may contain spaces)
     // If it's emerge, look for portage tmpdir in its fds
     let (cmd_start, cmd_end) = (stat.find('(')? + 1, stat.rfind(')')?);
@@ -111,8 +111,7 @@ fn get_proc(entry: &DirEntry,
     let ppid = i32::from_str(fields.nth(2)?).ok()?;
     let start_time = i64::from_str(fields.nth(17)?).ok()?;
     // Parse arguments
-    let mut cmdline = String::new();
-    File::open(entry.path().join("cmdline")).ok()?.read_to_string(&mut cmdline).ok()?;
+    let cmdline = read_to_string(entry.path().join("cmdline")).ok()?;
     // Done
     Some(Proc { kind, cmdline, start: time_ref + start_time / clocktick, pid, ppid })
 }
@@ -156,11 +155,11 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
         libc::sysconf(libc::_SC_CLK_TCK).into()
     };
     ensure!(clocktick > 0, "Failed getting system clock ticks");
-    let mut uptimestr = String::new();
+    let mut uptimebuf = Vec::with_capacity(32);
     File::open("/proc/uptime").context("Opening /proc/uptime")?
-                              .read_to_string(&mut uptimestr)
+                              .read_to_end(&mut uptimebuf)
                               .context("Reading /proc/uptime")?;
-    let uptime = i64::from_str(uptimestr.split('.').next().unwrap()).unwrap();
+    let uptime = atoi::<i64>(&uptimebuf).expect("uptime starts with an integer");
     let time_ref = epoch_now() - uptime;
     // Now iterate through /proc/<pid>
     let mut ret: BTreeMap<pid_t, Proc> = BTreeMap::new();
