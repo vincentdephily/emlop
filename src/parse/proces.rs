@@ -149,10 +149,12 @@ pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> ProcList {
                                 })
 }
 fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
-    // clocktick and time_ref are needed to interpret stat.start_time. time_ref should correspond to
-    // the system boot time; not sure why it doesn't, but it's still usable as a reference.
+    // clocktick and time_ref are needed to interpret stat.start_time.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
-    let clocktick: i64 = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
+    let clocktick: i64 = unsafe {
+        #[allow(clippy::useless_conversion)] // `sysconf()` returns `i32` on 32bit platforms
+        libc::sysconf(libc::_SC_CLK_TCK).into()
+    };
     ensure!(clocktick > 0, "Failed getting system clock ticks");
     let mut uptimestr = String::new();
     File::open("/proc/uptime").context("Opening /proc/uptime")?
