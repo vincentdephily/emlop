@@ -1,3 +1,11 @@
+# Unreleased
+
+## Bux fixes
+
+* Fix `predict`'s `--last`/`--first` to only apply to the merge list, not to the processes/summary
+* Support 32bit x86 (thanks mmccoyd)
+
+
 # 0.8.1 2025-05-23
 
 Maintenance release
