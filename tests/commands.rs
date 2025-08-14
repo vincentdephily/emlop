@@ -1,5 +1,7 @@
 use assert_cmd::Command;
+use regex::{Captures, Regex};
 use std::{collections::HashMap,
+          str::FromStr,
           thread,
           time::{Duration, SystemTime, UNIX_EPOCH}};
 
@@ -13,6 +15,16 @@ fn ts(secs: i64) -> i64 {
     } else {
         now.as_secs() as i64 + secs
     }
+}
+
+/// Render template-like calls in a string
+/// * ts(number)
+fn render_template(tmpl: &str) -> String {
+    Regex::new("ts\\(([0-9]+)\\)").unwrap()
+                                  .replace(tmpl, |c: &Captures| {
+                                      ts(i64::from_str(&c[1]).unwrap()).to_string()
+                                  })
+                                  .to_string()
 }
 
 /// Return a `Command` for the main binary (compiled by cargo) with the given args.
@@ -220,30 +232,25 @@ fn predict_tty() {
 fn predict_emerge_p() {
     let t =
         [// Check garbage input
-         ("%F10000.log p --date unix -oc",
-          "blah blah\n",
-          format!("No pretended merge found\n"),
-          1),
+         ("%F10000.log p --date unix -oc", "blah blah\n", "No pretended merge found\n", 1),
          // Check all-unknowns
          ("%F10000.log p --date unix -oc",
           "[ebuild   R   ~] dev-lang/unknown-1.42\n\
            [binary   R   ~] dev-lang/bunknown-2.42\n\
            [uninstall     ] dev-libs/eventlog-0.2.1\n",
-          format!("dev-lang/unknown-1.42                      30? \n\
-                   dev-lang/bunknown-2.42                     10? \n\
-                   Estimate for 1 build, 1 binary, 2 unknown   40 @ {}\n",
-                  ts(40)),
+          "dev-lang/unknown-1.42                      30? \n\
+           dev-lang/bunknown-2.42                     10? \n\
+           Estimate for 1 build, 1 binary, 2 unknown   40 @ ts(40)\n",
           0),
          // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
          ("%F10000.log p --date unix -oc",
           "[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
            [ebuild   R   ~] dev-lang/unknown-1.42\n\
            [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
-          format!("dev-qt/qtcore-5.9.4-r2            3:45 \n\
-                   dev-lang/unknown-1.42              30? \n\
-                   dev-qt/qtgui-5.9.4-r3             4:24 \n\
-                   Estimate for 3 builds, 1 unknown  8:39 @ {}\n",
-                  ts(8 * 60 + 9 + 30)),
+          "dev-qt/qtcore-5.9.4-r2            3:45 \n\
+           dev-lang/unknown-1.42              30? \n\
+           dev-qt/qtgui-5.9.4-r3             4:24 \n\
+           Estimate for 3 builds, 1 unknown  8:39 @ ts(519)\n",
           0),
          // Check skip rows
          ("%F10000.log p --date unix -oc --show m --first 2 --showskip",
@@ -254,8 +261,7 @@ fn predict_emerge_p() {
            [ebuild   R   ~] dev-qt/qtcore-5\n",
           "dev-qt/qtcore-1  3:45\n\
            dev-qt/qtcore-2  3:45\n\
-           (skip last 3)        \n"
-                                   .into(),
+           (skip last 3)        \n",
           0),
          ("%F10000.log p --date unix -oc --show m --first 2 --last 1 --showskip",
           "[ebuild   R   ~] dev-qt/qtcore-1\n\
@@ -265,11 +271,11 @@ fn predict_emerge_p() {
            [ebuild   R   ~] dev-qt/qtcore-5\n",
           "(skip first 1)\n\
            dev-qt/qtcore-2  3:45\n\
-           (skip last 3)        \n"
-                                   .into(),
+           (skip last 3)        \n",
           0)];
-    for (a, i, o, e) in t {
-        emlop(a).write_stdin(i).assert().code(e).stdout(o);
+    for (a, i, o, c) in t {
+        let o = render_template(o);
+        emlop(a).write_stdin(i).assert().code(c).stdout(o);
     }
 }
 
