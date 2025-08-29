@@ -246,7 +246,7 @@ impl ConfStats {
 
 impl ConfAccuracy {
     fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        Ok(Self { show: sel!(cli, toml, accuracy, show, "mta", Show::mt())?,
+        Ok(Self { show: sel!(cli, toml, accuracy, show, "mpta", Show::pt())?,
                   search: cli.get_many("search").unwrap_or_default().cloned().collect(),
                   exact: cli.get_flag("exact"),
                   avg: sel!(cli, toml, accuracy, avg, (), Average::Median)?,

@@ -584,13 +584,38 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     Ok(totcount > 0)
 }
 
+struct Stats {
+    /// Number of values
+    count: usize,
+    /// Minimum value
+    min: f64,
+    /// Minimum value
+    max: f64,
+    /// Arithmetic mean of absolute values
+    arith: f64,
+    /// Standard deviation of values
+    stddev: f64,
+}
+impl Stats {
+    /// Extract basic statistics from float list
+    fn from(vals: &[f64]) -> Self {
+        let arith = vals.iter().copied().map(f64::abs).sum::<f64>() / vals.len() as f64;
+        let variance = vals.iter().map(|&v| (v - arith).powi(2)).sum::<f64>() / vals.len() as f64;
+        Self { count: vals.len(),
+               min: vals.iter().copied().reduce(f64::min).unwrap_or(f64::NAN),
+               max: vals.iter().copied().reduce(f64::max).unwrap_or(f64::NAN),
+               arith,
+               stddev: variance.sqrt() }
+    }
+}
+
 pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &sc.search, sc.exact)?;
     let mut pkg_starts: HashMap<String, (i64, bool)> = HashMap::new();
     let mut pkg_times: BTreeMap<(String, bool), Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<(String, bool), Vec<f64>> = BTreeMap::new();
     let mut found = false;
-    let h = ["Date", "Package", "Real", sc.avg.as_str(), "Samples", "Error"];
+    let h = ["Date", "Package", "Real", sc.avg.as_str(), "Samples", "Error %"];
     let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last).header(h);
     for p in hist {
         match p {
@@ -623,7 +648,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                             }
                         },
                         pred => {
-                            let err = (pred - real).abs() as f64 * 100.0 / real as f64;
+                            let err = (pred - real) as f64 * 100.0 / real as f64;
                             if sc.show.merge {
                                 tbl.row([&[&FmtDate(ts)],
                                          &[if bin { &gc.binmerge } else { &gc.merge },
@@ -631,10 +656,9 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                                          &[&FmtDur(real)],
                                          &[&FmtDur(pred)],
                                          &[&gc.cnt, &samples],
-                                         &[&format!("{err:.1}%")]])
+                                         &[&gc.clr, &format!("{err:.1}")]])
                             }
-                            let errs = pkg_errs.entry((p.ebuild().to_owned(), bin)).or_default();
-                            errs.push(err);
+                            pkg_errs.entry((p.ebuild().to_owned(), bin)).or_default().push(err);
                         },
                     }
                     times.insert(real);
@@ -644,13 +668,35 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
         }
     }
     drop(tbl);
-    if sc.show.tot {
-        let mut tbl = Table::new(&gc).align_left(0).header(["Package", "Error"]);
-        for ((p, b), e) in pkg_errs {
-            let avg = e.iter().sum::<f64>() / e.len() as f64;
+
+    if sc.show.pkg {
+        let mut tbl = Table::new(&gc).align_left(0).header(["Package",
+                                                            "Estimates",
+                                                            "Min",
+                                                            "Max",
+                                                            "Abs arith mean",
+                                                            "Stddev"]);
+        for (&(ref p, b), errs) in &pkg_errs {
+            let s = Stats::from(errs);
             tbl.row([&[if b { &gc.binpkg } else { &gc.pkg }, &p],
-                     &[&gc.cnt, &format!("{avg:.1}%")]]);
+                     &[&gc.cnt, &s.count],
+                     &[&gc.clr, &format!("{:.1}", s.min)],
+                     &[&format!("{:.1}", s.max)],
+                     &[&format!("{:.1}", s.arith)],
+                     &[&format!("{:.1}", s.stddev)]]);
         }
+    }
+
+    if sc.show.tot {
+        let mut tbl =
+            Table::new(&gc).header(["Estimates", "Min", "Max", "Abs arith mean", "Stddev"]);
+        let errs: Vec<f64> = pkg_errs.iter().flat_map(|(_, e)| e).copied().collect();
+        let s = Stats::from(&errs);
+        tbl.row([&[&gc.cnt, &s.count],
+                 &[&gc.clr, &format!("{:.1}", s.min)],
+                 &[&format!("{:.1}", s.max)],
+                 &[&format!("{:.1}", s.arith)],
+                 &[&format!("{:.1}", s.stddev)]]);
     }
     Ok(found)
 }

@@ -211,8 +211,8 @@ impl Show {
     pub const fn p() -> Self {
         Self { run: false, pkg: true, tot: false, sync: false, merge: false, unmerge: false }
     }
-    pub const fn mt() -> Self {
-        Self { run: false, pkg: false, tot: true, sync: false, merge: true, unmerge: false }
+    pub const fn pt() -> Self {
+        Self { run: false, pkg: true, tot: true, sync: false, merge: false, unmerge: false }
     }
 }
 impl ArgParse<String, &'static str> for Show {

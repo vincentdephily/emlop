@@ -68,13 +68,14 @@ pub fn build_cli() -> Command {
                                              a: All of the above");
     let show_a = Arg::new("show").short('s')
                                  .long("show")
-                                 .value_name("m,t,a")
+                                 .value_name("m,p,t,a")
                                  .display_order(3)
                                  .help_heading("Filter")
-                                 .help("Show (m)erges, (t)otals, and/or (a)ll")
+                                 .help("Show (m)erges, (p)ackages, (t)otal, and/or (a)ll")
                                  .long_help("Show (any combination of)\n  \
-                                             m: Package merges\n  \
-                                             t: Totals\n  \
+                                             m: Real/estimate/error for each merge\n  \
+                                             p: Per-package error stats\n  \
+                                             t: Overall error stats\n  \
                                              a: All of the above");
     let h = "Only parse log entries after <date/command>\n  \
              2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
@@ -356,8 +357,8 @@ pub fn build_cli() -> Command {
     ////////////////////////////////////////////////////////////
     // Subcommands
     ////////////////////////////////////////////////////////////
-    let h = "Show log of sucessful merges, unmerges and syncs\n\
-             * (Un)merges: date, duration, package name-version\n\
+    let h = "Show log of sucessful merges, unmerges and syncs\n \
+             * (Un)merges: date, duration, package name-version\n \
              * Syncs:      date, duration, repository";
     let cmd_log = Command::new("log").about(h.split_once('\n').unwrap().0)
                                      .long_about(h)
@@ -367,8 +368,8 @@ pub fn build_cli() -> Command {
                                      .arg(show_l)
                                      .arg(&exact)
                                      .arg(&pkg);
-    let h = "Predict merge times for current or pretended merges\n\
-             * If input is a terminal, predict times for the current merges (if any)\n\
+    let h = "Predict merge times for current or pretended merges\n \
+             * If input is a terminal, predict times for the current merges (if any)\n \
              * If input is a pipe (for example by running `emerge -rOp|emlop p`), \
              predict times for those merges.";
     let cmd_pred = Command::new("predict").about(h.split_once('\n').unwrap().0)
@@ -384,9 +385,9 @@ pub fn build_cli() -> Command {
                                           .arg(pdepth)
                                           .arg(&avg)
                                           .arg(&limit);
-    let h = "Show statistics about syncs, per-package (un)merges, and total (un)merges\n\
-             * Sync:      count,       total time, predicted time\n\
-             * <package>: merge count, total time, predicted time, unmerge count, total time, predicted time\n\
+    let h = "Show statistics about syncs, per-package (un)merges, and total (un)merges\n \
+             * Sync:      count,       total time, predicted time\n \
+             * <package>: merge count, total time, predicted time, unmerge count, total time, predicted time\n \
              * Total:     merge count, total time, average time,   unmerge count, total time, average time";
     let cmd_stats = Command::new("stats").about(h.split_once('\n').unwrap().0)
                                          .long_about(h)
@@ -396,7 +397,10 @@ pub fn build_cli() -> Command {
                                          .arg(&pkg)
                                          .arg(&avg)
                                          .arg(&limit);
-    let h = "Compare actual merge time against predicted merge time\n\
+    let h = "Compare actual merge time against predicted merge time\n \
+             * Merge:   Real/estimate/error for each merge\n \
+             * Package: Per-package min/max/average/stddev of errors\n \
+             * Total:   Overall min/max/average/stddev of errors\n\
              Use this to gauge the effect of the --limit and --avg options";
     let cmd_accuracy = Command::new("accuracy").about(h.split_once('\n').unwrap().0)
                                                .long_about(h)
