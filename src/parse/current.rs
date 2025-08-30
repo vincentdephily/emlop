@@ -52,6 +52,7 @@ pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
     let mut buf = BufReader::new(reader);
     let mut line = String::new();
     loop {
+        line.clear();
         match buf.read_line(&mut line) {
             // End of file or some other error
             Ok(0) | Err(_) => break,
@@ -70,7 +71,6 @@ pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
                 }
             },
         }
-        line.clear();
     }
     out
 }
@@ -296,13 +296,16 @@ mod tests {
     use super::*;
     use crate::parse::procs;
 
+    impl PartialEq<(&str, &str)>  for Pkg {
+        fn eq(&self, p: &(&str, &str)) -> bool {
+            self.ebuild() == p.0 && self.version() == p.1
+        }
+    }
+
     /// Check that `get_pretend()` has the expected output
     fn check_pretend(file: &str, expect: &[(&str, &str)]) {
-        let mut n = 0;
-        for p in get_pretend(File::open(&format!("tests/{file}")).unwrap(), file) {
-            assert_eq!((p.ebuild(), p.version()), expect[n], "Mismatch for {file}:{n}");
-            n += 1;
-        }
+        let parsed: Vec<_> = get_pretend(File::open(&format!("tests/{file}")).unwrap(), file);
+        assert_eq!(&parsed, expect, "failed expect for {file}");
     }
 
     #[test]
