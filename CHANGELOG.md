@@ -1,9 +1,15 @@
 # Unreleased
 
+## Improvements
+
+* `accuracy` command shows a few more stats, and an overall summary line
+  - `--show=t` now shows the summary line, and the per-package line moved to `--show=p`
+
 ## Bux fixes
 
 * Fix `predict`'s `--last`/`--first` to only apply to the merge list, not to the processes/summary
 * Support 32bit x86 (thanks mmccoyd)
+* Fix `emerge -p ...|emlop p` not seeing any line after a `blocks` or `uninstall` line (thanks jenden0)
 
 
 # 0.8.1 2025-05-23

@@ -296,7 +296,7 @@ mod tests {
     use super::*;
     use crate::parse::procs;
 
-    impl PartialEq<(&str, &str)>  for Pkg {
+    impl PartialEq<(&str, &str)> for Pkg {
         fn eq(&self, p: &(&str, &str)) -> bool {
             self.ebuild() == p.0 && self.version() == p.1
         }
