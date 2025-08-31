@@ -22,8 +22,7 @@ atoi = "2.0.0"
 clap = { version = "4.5.35", features = ["cargo", "derive"] }
 clap_complete = { version = "~4.5.42", optional = true }
 env_logger = { version = "0.11.0", default-features = false, features = ["auto-color"] }
-# TODO MSRV 1.75: Switch to zlib-rs backend
-flate2 = "1.0.28"
+flate2 = {version = "1.0.28", default-features = false, features = ["zlib-rs"]}
 libc = { version = "0.2.126", default-features = false }
 log = "0.4.11"
 memchr = "2.7.4"
