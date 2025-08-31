@@ -1,6 +1,7 @@
 use anyhow::{Context, Error};
+use log::debug;
 use serde::Deserialize;
-use std::{env::var, fs::File, io::Read, path::PathBuf};
+use std::{env::var, fs::File, io::Read, path::PathBuf, time::Instant};
 
 #[derive(Deserialize, Debug)]
 pub struct TomlLog {
@@ -49,15 +50,23 @@ pub struct Toml {
 }
 impl Toml {
     pub fn load() -> Result<Self, Error> {
-        match var("EMLOP_CONFIG").ok() {
-            Some(s) if s.is_empty() => Ok(Self::default()),
-            Some(s) => Self::doload(s.as_str()),
-            _ => Self::doload(&format!("{}/.config/emlop.toml",
-                                       var("HOME").unwrap_or("".to_string()))),
-        }
+        let now = Instant::now();
+        let (src, res) = match var("EMLOP_CONFIG").ok() {
+            Some(s) if s.is_empty() => (String::from("default config"), Ok(Self::default())),
+            Some(s) => {
+                let r = Self::doload(&s);
+                (s, r)
+            },
+            _ => {
+                let s = format!("{}/.config/emlop.toml", var("HOME").unwrap_or("".to_string()));
+                let r = Self::doload(&s);
+                (s, r)
+            },
+        };
+        debug!("Loaded {src} in {:?}", now.elapsed());
+        res
     }
     fn doload(name: &str) -> Result<Self, Error> {
-        log::debug!("Loading config {name:?}");
         match File::open(name) {
             Err(e) => {
                 log::warn!("Cannot open {name:?}: {e}");
