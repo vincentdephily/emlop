@@ -80,6 +80,7 @@ pub struct ConfAccuracy {
     pub search: Vec<String>,
     pub exact: bool,
     pub avg: Average,
+    pub first: usize,
     pub last: usize,
     pub lim: u16,
 }
@@ -251,6 +252,7 @@ impl ConfAccuracy {
                   exact: cli.get_flag("exact"),
                   avg: sel!(cli, toml, accuracy, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, accuracy, limit, 1..=65000, 10)? as u16,
+                  first: *cli.get_one("first").unwrap_or(&usize::MAX),
                   last: *cli.get_one("last").unwrap_or(&usize::MAX) })
     }
 }

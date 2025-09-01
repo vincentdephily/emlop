@@ -375,7 +375,7 @@ pub fn build_cli() -> Command {
     let cmd_pred = Command::new("predict").about(h.split_once('\n').unwrap().0)
                                           .long_about(h)
                                           .arg(show_p)
-                                          .arg(first)
+                                          .arg(&first)
                                           .arg(&last)
                                           .arg(tmpdir)
                                           .arg(resume)
@@ -407,6 +407,7 @@ pub fn build_cli() -> Command {
                                                .arg(pkg)
                                                .arg(exact)
                                                .arg(show_a)
+                                               .arg(first)
                                                .arg(last)
                                                .arg(avg)
                                                .arg(limit);

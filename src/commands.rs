@@ -614,7 +614,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     let mut pkg_starts: HashMap<String, (i64, bool)> = HashMap::new();
     let mut pkg_times: BTreeMap<(String, bool), Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<(String, bool), Vec<f64>> = BTreeMap::new();
-    let mut found = false;
+    let mut found = 0;
     let h = ["Date", "Package", "Real", sc.avg.as_str(), "Samples", "Error %"];
     let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last).header(h);
     for p in hist {
@@ -629,7 +629,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                 }
             },
             Hist::MergeStop { ts, ref key, .. } => {
-                found = true;
+                found += 1;
                 if let Some((start, bin)) = pkg_starts.remove(key) {
                     let times =
                         pkg_times.entry((p.ebuild().to_owned(), bin)).or_insert(Times::new());
@@ -663,6 +663,9 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                     }
                     times.insert(real);
                 }
+                if found >= sc.first {
+                    break;
+                }
             },
             e => panic!("Unexpected {e:?}"),
         }
@@ -670,12 +673,8 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     drop(tbl);
 
     if sc.show.pkg {
-        let mut tbl = Table::new(&gc).align_left(0).header(["Package",
-                                                            "Estimates",
-                                                            "Min",
-                                                            "Max",
-                                                            "Abs arith mean",
-                                                            "Stddev"]);
+        let h = ["Package", "Estimates", "Min", "Max", "Abs arith mean", "Stddev"];
+        let mut tbl = Table::new(&gc).align_left(0).header(h);
         for (&(ref p, b), errs) in &pkg_errs {
             let s = Stats::from(errs);
             tbl.row([&[if b { &gc.binpkg } else { &gc.pkg }, &p],
@@ -698,7 +697,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                  &[&format!("{:.1}", s.arith)],
                  &[&format!("{:.1}", s.stddev)]]);
     }
-    Ok(found)
+    Ok(found > 0)
 }
 
 pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
