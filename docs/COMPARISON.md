@@ -109,11 +109,13 @@ which can be abbreviated (for example "1 week, 3 days" -> "1w3d").
 ## Merge time prediction
 
 Genlop uses the mean of the last 10 builds, ignoring the worst/best times. Qlop uses the mean of the
-last 20 builds. Emlop uses the median of the last 15 builds, with options for other window sizes and
-other averages (median/mean/weighted), tracks merge time of binary packages separately, and follows
-stats accross package moves (renames). Using a window mitigates against evolving build times, using
-a median mitigates against exceptional build times. The Emlop defaults have been measured to give
-significantly better accuracy over a full emerge log.
+last 20 builds. Emlop by default uses the median of the last 15 builds, tracks merge time of binary
+packages separately, and follows stats accross package moves (renames).
+
+Using a window mitigates against evolving build times, using a median mitigates against exceptional
+build times. Emlop has configurable window size and averaging function (median/mean/weighted). The
+defaults have been measured to give significantly better accuracy over a full emerge log, but you
+can explore the effects using the `accuracy` command.
 
 Qlop can only predict the current merge. Genlop and Emlop can also predict pretended merges (the
 output of `emerge -p foo`). Emlop by default predicts the current full merge list (similar to what
