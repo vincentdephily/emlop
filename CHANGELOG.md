@@ -1,15 +1,22 @@
 # Unreleased
 
+Maintenance release
+
 ## Improvements
 
-* `accuracy` command shows a few more stats, and an overall summary line
-  - `--show=t` now shows the summary line, and the per-package line moved to `--show=p`
+* Improved `accuracy` command
+  - More detailed and correct stats
+  - `--show=t` now shows an overall summary line (thanks palapapa)
+  - Per-package table moved from `--show=t` to `--show=p`
+  - Support `--first=...` argument
 
 ## Bux fixes
 
 * Fix `predict`'s `--last`/`--first` to only apply to the merge list, not to the processes/summary
 * Support 32bit x86 (thanks mmccoyd)
 * Fix `emerge -p ...|emlop p` not seeing any line after a `blocks` or `uninstall` line (thanks jenden0)
+- Raised MSRV to 1.80
+* Routine dep updates
 
 
 # 0.8.1 2025-05-23
@@ -29,6 +36,7 @@ Maintenance release
 * Fix `accuracy` panic in the presence of binary merges
 * Properly handle relative dates that correspond to an invalid day of the month
 * Fix potential `predict/stat` panic when loading repo update files with nonstandard names (thanks xfzv)
+
 
 # 0.8.0 2025-02-13
 
@@ -71,6 +79,7 @@ Feature release: Binary merges, package moves, emerge arguments, process tree, a
 * Allow alignment of wider columns
 * Fix bright/dim terminal colors for stats counts
 
+
 # 0.7.1 2024-09-30
 
 Maintenance release.
@@ -83,6 +92,7 @@ Maintenance release.
 * `predict` now tries both merge lists when a merge process exists
 * Updated deps
   - Notably needed to compile with Rust >= 1.80
+
 
 # 0.7.0 2024-03-04
 
@@ -184,6 +194,7 @@ and more.
   - Removed unmaintained `ansi_term` and `sysconfig`
   - New/improved benchmark tools
 
+
 # 0.5.0 2022-04-18
 
 Feature release: date and duration parsing/formating, per-repo sync stats
@@ -217,6 +228,7 @@ There are also a number of significant internal changes and refactorings:
   - Dep updates including some audit fixes
   - Refactorings
 
+
 # 0.4.2 2021-08-19
 
 Maintenance release
@@ -232,6 +244,7 @@ Maintenance release
   - Changed deps API
 * Doc updates
 
+
 # 0.4.1 2020-12-26
 
 Maintenance release
@@ -240,6 +253,7 @@ Maintenance release
   Previous fix didn't quite do it, this one has an associated test.
 * Switch to panic=abort (2% speedup, smaller binary)
 * Routine deps update
+
 
 # 0.4.0 2020-10-19
 
@@ -261,6 +275,7 @@ Long time no release, gotta get those goodies out of the door, perhaps even in t
 * Fix rare panic when printing system process comandline.
 * Code cleanups, dep updates, expanded unittests, bumped MSRV to 1.41.1.
 
+
 # 0.3.1 2019-06-10
 
 Maintenance release: Fix a panic and do some code maintenance.
@@ -273,6 +288,7 @@ with other things this year, but more emlop feature releases are comming.
 * Switched to a faster split function (raises minimum rust version to 1.34).
 * Minor code cleanups.
 * Deps refresh; the compiled binary is a bit smaller.
+
 
 # 0.3.0 2018-12-24
 
@@ -292,6 +308,7 @@ parsing. Happy Christams to those who celebraye it :)
 * Bumped minimum rust version to 1.30.
 * Code is now formated using rustfmt.
 * A bunch of of small bugfixes, QA fixes, and optimisations.
+
 
 # 0.2.0 2018-04-28
 
@@ -313,6 +330,7 @@ another try if you haven't switched yet ;)
 * Fixed bugs #6, #7, 8 and some unreported ones.
 * Shell exit codes are now well-defined and documented.
 * Various refactorings, unittest improvements, and general polish.
+
 
 # 0.1 2018-03-07
 
