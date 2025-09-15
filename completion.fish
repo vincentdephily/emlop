@@ -3,7 +3,7 @@ complete -c emlop -f
 complete -c emlop -s f -l from -d 'Only parse log entries after <date>' -x -a "{1y	'One year ago',1m	'One month ago',1w	'One week ago',1d	'One day ago',1h	'One hour ago',(date -Is)	'Exact date'}"
 complete -c emlop -s t -l to -d 'Only parse log entries before <date>' -x -a "{1y	'One year ago',1m	'One month ago',1w	'One week ago',1d	'One day ago',1h	'One hour ago',(date -Is)	'Exact date'}"
 complete -c emlop -s H -l header -d 'Show table header' -f -a "yes no"
-complete -c emlop -l showskip -d 'Show skipped rows' -f -a "yes no"
+complete -c emlop -s S -l showskip -d 'Show skipped rows' -f -a "yes no"
 complete -c emlop -l duration -d 'Output durations in different formats' -x -a "hms hmsfixed human secs"
 complete -c emlop -l date -d 'Output dates in different formats' -x -a "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix"
 complete -c emlop -l utc -d 'Parse/display dates in UTC instead of local time' -f -a "yes no"
@@ -47,7 +47,8 @@ complete -c emlop -n "__fish_seen_subcommand_from stats" -l limit -d 'Use the la
 complete -c emlop -n "__fish_seen_subcommand_from stats" -s e -l exact -d 'Match <search> using plain string'
 complete -c emlop -n "__fish_seen_subcommand_from stats" -a "(emlop complete '$1')"
 
-complete -c emlop -n "__fish_seen_subcommand_from accuracy" -s s -l show -d 'Show (m)erges, (t)otals, and/or (a)ll' -x -a "mta"
+complete -c emlop -n "__fish_seen_subcommand_from accuracy" -s s -l show -d 'Show (m)erges, (p)packages, (t)otals, and/or (a)ll' -x -a "mpta"
+complete -c emlop -n "__fish_seen_subcommand_from accuracy" -s N -l first -d 'Show only the first <num> entries' -f -a "{	'Show only first entry',5	'Show only first 5 entries',10	'Show only first 10 entries'}"
 complete -c emlop -n "__fish_seen_subcommand_from accuracy" -s n -l last -d 'Show only the last <num> entries' -x -a "{	'Show only last entry',5	'Show only last 5 entries',10	'Show only last 10 entries'}"
 complete -c emlop -n "__fish_seen_subcommand_from accuracy" -l avg -d 'Select function used to predict durations' -x -a "arith median weighted-arith weighted-median"
 complete -c emlop -n "__fish_seen_subcommand_from accuracy" -l limit -d 'Use the last <num> merge times to predict durations' -x -a "1 5 20 999"

@@ -11,6 +11,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'-S+[Show skipped rows]' \
 '--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
@@ -49,6 +50,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'-S+[Show skipped rows]' \
 '--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
@@ -86,6 +88,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'-S+[Show skipped rows]' \
 '--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
@@ -118,6 +121,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'-S+[Show skipped rows]' \
 '--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \
@@ -138,7 +142,9 @@ _emlop() {
             (accuracy)
                 _arguments -s -S -C \
 '-s+[Show (m)erges, (t)otals, and/or (a)ll]:m,t,a: ' \
-'--show=[Show (m)erges, (t)otals, and/or (a)ll]:m,t,a: ' \
+'--show=[Show (m)erges, (p)ackages, (t)otals, and/or (a)ll]:m,p,t,a: ' \
+'-N+[Show only the first <num> entries]' \
+'--first=[Show only the first <num> entries]' \
 '-n+[Show only the last <num> entries]' \
 '--last=[Show only the last <num> entries]' \
 '--avg=[Select function used to predict durations]:fn: ' \
@@ -149,6 +155,7 @@ _emlop() {
 '--to=[Only parse log entries before <date>]:date: ' \
 '-H+[Show table header]' \
 '--header=[Show table header]' \
+'-S+[Show skipped rows]' \
 '--showskip=[Show skipped rows]' \
 '--duration=[Output durations in different formats]:format: ' \
 '--date=[Output dates in different formats]:format: ' \

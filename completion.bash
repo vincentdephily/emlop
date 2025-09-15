@@ -27,7 +27,7 @@ _emlop() {
 
     case "${cmd}" in
         emlop)
-            opts="log predict stats accuracy -f -t -H -o -F -v -h -V --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help --version"
+            opts="log predict stats accuracy -f -t -H -S -o -F -v -h -V --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help --version"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -36,7 +36,7 @@ _emlop() {
                 --from|--to|-f|-t)
                     COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip)
+                --header|-H|--showskip|-S)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -67,7 +67,7 @@ _emlop() {
             return 0
             ;;
         emlop__accuracy)
-            opts="[search]... -e -s -n -f -t -H -o -F -v -h --exact --show --last --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
+            opts="[search]... -e -s -N -n -f -t -H -S -o -F -v -h --exact --show  --first --last --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -76,7 +76,7 @@ _emlop() {
                 --from|--to|-f|-t)
                     COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip)
+                --header|-H|--showskip|-S)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -101,9 +101,9 @@ _emlop() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     ;;
                 --show|-s)
-                    COMPREPLY=($(compgen -W "mta" "${cur}"))
+                    COMPREPLY=($(compgen -W "mpta" "${cur}"))
                     ;;
-                --last|-n)
+                --first|-N|--last|-n)
                     COMPREPLY=($(compgen -W "1 5 10 20 100" "${cur}"))
                     ;;
                 --avg)
@@ -123,7 +123,7 @@ _emlop() {
             return 0
             ;;
         emlop__log)
-            opts="[search]... -N -n -s -e -f -t -H -o -F -v -h --starttime --first --last --show --exact --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
+            opts="[search]... -N -n -s -e -f -t -H -S -o -F -v -h --starttime --first --last --show --exact --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -132,7 +132,7 @@ _emlop() {
                 --from|--to|-f|-t)
                     COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip)
+                --header|-H|--showskip|-S)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -176,7 +176,7 @@ _emlop() {
             return 0
             ;;
         emlop__predict)
-            opts="-s -N -n -W -D -f -t -H -o -F -v -h --show --first --last --tmpdir --resume --unknownc --unknownb --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --pdepth --pwidth --logfile --help"
+            opts="-s -N -n -W -D -f -t -H -S -o -F -v -h --show --first --last --tmpdir --resume --unknownc --unknownb --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --pdepth --pwidth --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -185,7 +185,7 @@ _emlop() {
                 --from|--to|-f|-t)
                     COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip)
+                --header|-H|--showskip|-S)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -243,7 +243,7 @@ _emlop() {
             return 0
             ;;
         emlop__stats)
-            opts="[search]... -s -g -e -f -t -H -o -F -v -h --show --groupby --exact --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
+            opts="[search]... -s -g -e -f -t -H -S -o -F -v -h --show --groupby --exact --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -252,7 +252,7 @@ _emlop() {
                 --from|--to|-f|-t)
                     COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip)
+                --header|-H|--showskip|-S)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
