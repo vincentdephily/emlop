@@ -64,6 +64,7 @@ pub struct ConfPred {
     pub unknownb: i64,
     pub unknownc: i64,
     pub tmpdirs: Vec<PathBuf>,
+    pub mtimedbfile: String,
     pub pwidth: usize,
     pub pdepth: usize,
 }
@@ -214,6 +215,10 @@ impl ConfPred {
         } else {
             vec![PathBuf::from("/var/tmp")]
         };
+        let mtimedbfile = cli.get_one::<String>("mtimedbfile")
+                              .cloned()
+                              .or_else(|| toml.predict.as_ref().and_then(|t| t.mtimedbfile.clone()))
+                              .unwrap_or_else(|| String::from("/var/cache/edb/mtimedb"));
         Ok(Self { show: sel!(cli, toml, predict, show, "rmta", Show::rmt())?,
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,
@@ -221,6 +226,7 @@ impl ConfPred {
                   unknownc: sel!(cli, toml, predict, unknownc, 0..=3600, 30)?,
                   resume: *cli.get_one("resume").unwrap_or(&ResumeKind::Auto),
                   tmpdirs,
+                  mtimedbfile,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),
                   last: *cli.get_one("last").unwrap_or(&usize::MAX),
                   pwidth: sel!(cli, toml, predict, pwidth, 10..=1000, 60)? as usize,

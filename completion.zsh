@@ -77,6 +77,7 @@ _emlop() {
 '-n+[Show only the last <num> entries]' \
 '--last=[Show only the last <num> entries]' \
 '*--tmpdir=[Location of portage tmpdir]:dir:_files' \
+'--mtimedbfile=[Location of portage mtimedb file]:file: ' \
 '--resume=[Use main, backup, either, or no portage resume list]' \
 '--unknownb=[Assume unkown binary packages take <secs> seconds to merge]:secs: ' \
 '--unknownc=[Assume unkown compiled packages take <secs> seconds to merge]:secs: ' \

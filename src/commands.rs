@@ -177,7 +177,7 @@ impl ArgKind {
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let moves = PkgMoves::new(&Mtimedb::new());
+    let moves = PkgMoves::new(&Mtimedb::new("/var/cache/edb/mtimedb"));
     let h = [sc.group.name(), "Logged emerges", "Install/Update", "Unmerge/Clean", "Sync"];
     let mut tblc = Table::new(&gc).align_left(0).margin(1, " ").header(h);
     let h = [sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"];
@@ -448,7 +448,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
     // Parse emerge log.
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &vec![], false)?;
-    let mdb = Mtimedb::new();
+    let mdb = Mtimedb::new(&sc.mtimedbfile);
     let moves = PkgMoves::new(&mdb);
     let mut started: BTreeMap<String, (i64, bool)> = BTreeMap::new();
     let mut times: HashMap<(String, bool), Times> = HashMap::new();

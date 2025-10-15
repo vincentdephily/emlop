@@ -25,6 +25,7 @@
 # unknownb = 30
 # unknownc = 10
 # tmpdir = ["/foo", "/bar"]
+# mtimedbfile = "/var/cache/edb/mtimedb"
 # pwidth = 60
 # pdepth = 3
 [stats]

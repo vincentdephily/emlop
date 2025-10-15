@@ -176,7 +176,7 @@ _emlop() {
             return 0
             ;;
         emlop__predict)
-            opts="-s -N -n -W -D -f -t -H -S -o -F -v -h --show --first --last --tmpdir --resume --unknownc --unknownb --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --pdepth --pwidth --logfile --help"
+            opts="-s -N -n -W -D -f -t -H -S -o -F -v -h --show --first --last --tmpdir --mtimedbfile --resume --unknownc --unknownb --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --pdepth --pwidth --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -213,6 +213,9 @@ _emlop() {
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
                     ;;
                 --logfile|-F)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    ;;
+                --mtimedbfile)
                     COMPREPLY=($(compgen -f "${cur}"))
                     ;;
                 --show|-s)

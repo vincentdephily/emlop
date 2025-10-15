@@ -331,6 +331,11 @@ pub fn build_cli() -> Command {
                                    .long_help("Location of portage tmpdir\n\
                                                Multiple folders can be provided\n\
                                                Emlop also looks for tmpdir using current emerge processes");
+    let mtimedbfile = Arg::new("mtimedbfile").long("mtimedbfile")
+                                             .value_name("file")
+                                             .num_args(1)
+                                             .display_order(42)
+                                             .help("Location of portage mtimedb file");
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
                                      .action(Count)
@@ -378,6 +383,7 @@ pub fn build_cli() -> Command {
                                           .arg(&first)
                                           .arg(&last)
                                           .arg(tmpdir)
+                                          .arg(mtimedbfile)
                                           .arg(resume)
                                           .arg(unknownc)
                                           .arg(unknownb)
