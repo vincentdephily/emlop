@@ -383,7 +383,7 @@ pub fn build_cli() -> Command {
                                           .arg(&first)
                                           .arg(&last)
                                           .arg(tmpdir)
-                                          .arg(mtimedbfile.clone())
+                                          .arg(&mtimedbfile)
                                           .arg(resume)
                                           .arg(unknownc)
                                           .arg(unknownb)
@@ -401,7 +401,7 @@ pub fn build_cli() -> Command {
                                          .arg(group)
                                          .arg(&exact)
                                          .arg(&pkg)
-                                         .arg(mtimedbfile.clone())
+                                         .arg(&mtimedbfile)
                                          .arg(&avg)
                                          .arg(&limit);
     let h = "Compare actual merge time against predicted merge time\n \

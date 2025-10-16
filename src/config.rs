@@ -216,12 +216,8 @@ impl ConfPred {
         } else {
             vec![PathBuf::from("/var/tmp")]
         };
-        let mtimedbfile = sel!(cli,
-                               toml,
-                               predict,
-                               mtimedbfile,
-                               (),
-                               String::from("/var/cache/edb/mtimedb"))?;
+        let mtimedbfile =
+            sel!(cli, toml, predict, mtimedbfile, (), String::from("/var/cache/edb/mtimedb"))?;
         Ok(Self { show: sel!(cli, toml, predict, show, "rmta", Show::rmt())?,
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,
@@ -251,11 +247,11 @@ impl ConfStats {
                   lim: sel!(cli, toml, stats, limit, 1..=65000, 10)? as u16,
                   avg: sel!(cli, toml, stats, avg, (), Average::Median)?,
                   mtimedbfile: sel!(cli,
-                                     toml,
-                                     stats,
-                                     mtimedbfile,
-                                     (),
-                                     String::from("/var/cache/edb/mtimedb"))?,
+                                    toml,
+                                    stats,
+                                    mtimedbfile,
+                                    (),
+                                    String::from("/var/cache/edb/mtimedb"))?,
                   group: sel!(cli, toml, stats, group, (), Timespan::None)? })
     }
 }
