@@ -246,7 +246,7 @@ _emlop() {
             return 0
             ;;
         emlop__stats)
-            opts="[search]... -s -g -e -f -t -H -S -o -F -v -h --show --groupby --exact --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
+            opts="[search]... -s -g -e -f -t -H -S -o -F -v -h --show --groupby --exact --avg --limit --mtimedbfile --from --to --header --showskip --duration --date --utc --color --theme --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -277,6 +277,9 @@ _emlop() {
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
                     ;;
                 --logfile|-F)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    ;;
+                --mtimedbfile)
                     COMPREPLY=($(compgen -f "${cur}"))
                     ;;
                 --show|-s)

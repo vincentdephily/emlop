@@ -25,6 +25,7 @@ pub struct TomlStats {
     pub show: Option<String>,
     pub avg: Option<String>,
     pub limit: Option<i64>,
+    pub mtimedbfile: Option<String>,
     pub group: Option<String>,
 }
 #[derive(Deserialize, Debug)]

@@ -177,7 +177,7 @@ impl ArgKind {
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
-    let moves = PkgMoves::new(&Mtimedb::new("/var/cache/edb/mtimedb"));
+    let moves = PkgMoves::new(&Mtimedb::new(&sc.mtimedbfile));
     let h = [sc.group.name(), "Logged emerges", "Install/Update", "Unmerge/Clean", "Sync"];
     let mut tblc = Table::new(&gc).align_left(0).margin(1, " ").header(h);
     let h = [sc.group.name(), "Repo", "Syncs", "Total time", "Predict time"];

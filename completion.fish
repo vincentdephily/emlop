@@ -42,6 +42,7 @@ complete -c emlop -n "__fish_seen_subcommand_from predict" -s W -l pwidth -d 'Ma
 complete -c emlop -n "__fish_seen_subcommand_from predict" -s D -l pdepth -d 'Maximum depth of emerge proces tree' -x -a "0 1 3 5 7 99"
 
 complete -c emlop -n "__fish_seen_subcommand_from stats" -s s -l show -d 'Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll' -x -a "ptsa"
+complete -c emlop -n "__fish_seen_subcommand_from stats" -l mtimedbfile -d 'Location of portage mtimedb file' -r -F
 complete -c emlop -n "__fish_seen_subcommand_from stats" -s g -l groupby -d 'Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one' -x -a "year month week day none"
 complete -c emlop -n "__fish_seen_subcommand_from stats" -l avg -d 'Select function used to predict durations' -x -a "arith median weighted-arith weighted-median"
 complete -c emlop -n "__fish_seen_subcommand_from stats" -l limit -d 'Use the last <num> merge times to predict durations' -x -a "1 5 20 999"

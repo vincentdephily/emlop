@@ -74,6 +74,7 @@ pub struct ConfStats {
     pub exact: bool,
     pub avg: Average,
     pub lim: u16,
+    pub mtimedbfile: String,
     pub group: Timespan,
 }
 pub struct ConfAccuracy {
@@ -215,10 +216,12 @@ impl ConfPred {
         } else {
             vec![PathBuf::from("/var/tmp")]
         };
-        let mtimedbfile = cli.get_one::<String>("mtimedbfile")
-                              .cloned()
-                              .or_else(|| toml.predict.as_ref().and_then(|t| t.mtimedbfile.clone()))
-                              .unwrap_or_else(|| String::from("/var/cache/edb/mtimedb"));
+        let mtimedbfile = sel!(cli,
+                               toml,
+                               predict,
+                               mtimedbfile,
+                               (),
+                               String::from("/var/cache/edb/mtimedb"))?;
         Ok(Self { show: sel!(cli, toml, predict, show, "rmta", Show::rmt())?,
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,
@@ -247,6 +250,12 @@ impl ConfStats {
                   exact: cli.get_flag("exact"),
                   lim: sel!(cli, toml, stats, limit, 1..=65000, 10)? as u16,
                   avg: sel!(cli, toml, stats, avg, (), Average::Median)?,
+                  mtimedbfile: sel!(cli,
+                                     toml,
+                                     stats,
+                                     mtimedbfile,
+                                     (),
+                                     String::from("/var/cache/edb/mtimedb"))?,
                   group: sel!(cli, toml, stats, group, (), Timespan::None)? })
     }
 }
