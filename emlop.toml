@@ -25,6 +25,7 @@
 # unknownb = 30
 # unknownc = 10
 # tmpdir = ["/foo", "/bar"]
+# mtimedbfile = "/var/cache/edb/mtimedb"
 # pwidth = 60
 # pdepth = 3
 [stats]
@@ -32,6 +33,7 @@
 # avg = "arith"
 # limit = 20
 # group = "y"
+# mtimedbfile = "/var/cache/edb/mtimedb"
 [accuracy]
 # show = "mt"
 # avg = "arith"

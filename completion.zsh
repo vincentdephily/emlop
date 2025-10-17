@@ -77,6 +77,7 @@ _emlop() {
 '-n+[Show only the last <num> entries]' \
 '--last=[Show only the last <num> entries]' \
 '*--tmpdir=[Location of portage tmpdir]:dir:_files' \
+'--mtimedbfile=[Location of portage mtimedb file]:file: ' \
 '--resume=[Use main, backup, either, or no portage resume list]' \
 '--unknownb=[Assume unkown binary packages take <secs> seconds to merge]:secs: ' \
 '--unknownc=[Assume unkown compiled packages take <secs> seconds to merge]:secs: ' \
@@ -111,6 +112,7 @@ _emlop() {
                 _arguments -s -S -C \
 '-s+[Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll]:p,t,s,a: ' \
 '--show=[Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll]:p,t,s,a: ' \
+'--mtimedbfile=[Location of portage mtimedb file]:file: ' \
 '-g+[Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one]:y,m,w,d,n: ' \
 '--groupby=[Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one]:y,m,w,d,n: ' \
 '--avg=[Select function used to predict durations]:fn: ' \

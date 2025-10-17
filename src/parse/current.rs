@@ -87,8 +87,8 @@ pub struct Mtimedb {
     updates: Option<HashMap<String, i64>>,
 }
 impl Mtimedb {
-    pub fn new() -> Self {
-        Self::try_new("/var/cache/edb/mtimedb").unwrap_or_default()
+    pub fn new(file: &str) -> Self {
+        Self::try_new(file).unwrap_or_default()
     }
     fn try_new(file: &str) -> Option<Self> {
         let now = Instant::now();

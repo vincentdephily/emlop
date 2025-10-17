@@ -16,6 +16,7 @@ pub struct TomlPred {
     pub unknownb: Option<i64>,
     pub unknownc: Option<i64>,
     pub tmpdir: Option<Vec<PathBuf>>,
+    pub mtimedbfile: Option<String>,
     pub pwidth: Option<i64>,
     pub pdepth: Option<i64>,
 }
@@ -24,6 +25,7 @@ pub struct TomlStats {
     pub show: Option<String>,
     pub avg: Option<String>,
     pub limit: Option<i64>,
+    pub mtimedbfile: Option<String>,
     pub group: Option<String>,
 }
 #[derive(Deserialize, Debug)]

@@ -32,6 +32,7 @@ complete -c emlop -n "__fish_seen_subcommand_from predict" -s s -l show -d 'Show
 complete -c emlop -n "__fish_seen_subcommand_from predict" -s N -l first -d 'Show only the first <num> entries' -f -a "{	'Show only first entry',5	'Show only first 5 entries',10	'Show only first 10 entries'}"
 complete -c emlop -n "__fish_seen_subcommand_from predict" -s n -l last -d 'Show only the last <num> entries' -f -a "{	'Show only last entry',5	'Show only last 5 entries',10	'Show only last 10 entries'}"
 complete -c emlop -n "__fish_seen_subcommand_from predict" -l tmpdir -d 'Location of portage tmpdir' -x -a "(__fish_complete_directories '$1')"
+complete -c emlop -n "__fish_seen_subcommand_from predict" -l mtimedbfile -d 'Location of portage mtimedb file' -r -F
 complete -c emlop -n "__fish_seen_subcommand_from predict" -l resume -d 'Use main, backup, either, or no portage resume list' -f -a "{auto	'',either	'',main	'',backup	'',no	''}"
 complete -c emlop -n "__fish_seen_subcommand_from predict" -l unknownb -d 'Assume unkown binary packages take <secs> seconds to merge' -x -a "0 5 10 20 60"
 complete -c emlop -n "__fish_seen_subcommand_from predict" -l unknownc -d 'Assume unkown compiled packages take <secs> seconds to merge' -x -a "0 5 10 20 60"
@@ -41,6 +42,7 @@ complete -c emlop -n "__fish_seen_subcommand_from predict" -s W -l pwidth -d 'Ma
 complete -c emlop -n "__fish_seen_subcommand_from predict" -s D -l pdepth -d 'Maximum depth of emerge proces tree' -x -a "0 1 3 5 7 99"
 
 complete -c emlop -n "__fish_seen_subcommand_from stats" -s s -l show -d 'Show (p)ackages, (t)otals, (s)yncs, and/or (a)ll' -x -a "ptsa"
+complete -c emlop -n "__fish_seen_subcommand_from stats" -l mtimedbfile -d 'Location of portage mtimedb file' -r -F
 complete -c emlop -n "__fish_seen_subcommand_from stats" -s g -l groupby -d 'Group by (y)ear, (m)onth, (w)eek, (d)ay, (n)one' -x -a "year month week day none"
 complete -c emlop -n "__fish_seen_subcommand_from stats" -l avg -d 'Select function used to predict durations' -x -a "arith median weighted-arith weighted-median"
 complete -c emlop -n "__fish_seen_subcommand_from stats" -l limit -d 'Use the last <num> merge times to predict durations' -x -a "1 5 20 999"
