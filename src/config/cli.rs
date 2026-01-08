@@ -168,7 +168,7 @@ pub fn build_cli() -> Command {
                                  .help("Use the last <num> merge times to predict durations");
     let h = "Select function used to predict durations\n  \
              arith|a:            simple 'sum/count' average\n  \
-             (defaut)|median|m:  middle value, mitigates outliers\n  \
+             (default)|median|m: middle value, mitigates outliers\n  \
              weighted-arith|wa:  'sum/count' with more weight for recent values\n  \
              weighted-median|wm: \"middle\" value shifted toward recent values";
     let avg = Arg::new("avg").long("avg")
