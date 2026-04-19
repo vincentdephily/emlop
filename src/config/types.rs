@@ -164,11 +164,10 @@ impl ArgParse<String, ()> for DurationStyle {
     }
 }
 
-pub type ColorStyle = bool;
-impl ArgParse<String, bool> for ColorStyle {
-    fn parse(v: &String, isterm: bool, s: &'static str) -> Result<Self, ArgError> {
+impl ArgParse<String, bool> for bool {
+    fn parse(v: &String, default: bool, s: &'static str) -> Result<Self, ArgError> {
         match v.as_str() {
-            "auto" | "a" => Ok(isterm),
+            "auto" | "a" => Ok(default),
             "yes" | "y" => Ok(true),
             "no" | "n" => Ok(false),
             _ => Err(ArgError::new(v, s).pos("(y)es (n)o (a)uto")),

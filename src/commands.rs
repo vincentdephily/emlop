@@ -110,7 +110,7 @@ impl Times {
             Average::Arith => self.vals.iter().take(l).sum::<i64>() / l as i64,
             // Middle value (or avg of the middle two)
             Average::Median => {
-                let mut s: Vec<i64> = self.vals.iter().copied().take(l).collect();
+                let mut s: Vec<i64> = self.vals.iter().take(l).copied().collect();
                 s.sort_unstable();
                 if l % 2 == 0 {
                     (s[(l / 2) - 1] + s[l / 2]) / 2
@@ -133,7 +133,7 @@ impl Times {
             // Eg 3,1,2 -> 3,3,3,1,1,2 -> 1,1,2,2,3,3,3 -> 2
             Average::WeightedMedian => {
                 let mut s = Vec::with_capacity((l + 1) * (l / 2 + 1));
-                for (n, v) in self.vals.iter().copied().take(l).enumerate() {
+                for (n, v) in self.vals.iter().take(l).copied().enumerate() {
                     s.resize(s.len() - n + l, v);
                 }
                 s.sort_unstable();
@@ -473,7 +473,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         }
     }
 
-    // Build list of pending merges
+    // Find list of packages to predict
     let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
         // From resume list
         let mut r = get_resume(sc.resume, &mdb);
@@ -523,12 +523,12 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         let (fmtpred, pred) = match times.get(&(p.ebuild().to_string(), p.bin)) {
             Some(tv) => {
                 let pred = tv.pred(sc.lim, sc.avg);
-                (pred, pred)
+                (FmtDur(pred), pred)
             },
             None => {
                 totunknown += 1;
                 let u = if p.bin { sc.unknownb } else { sc.unknownc };
-                (i64::MIN + u, u)
+                (FmtDur(u).unsure(), u)
             },
         };
         totpredict += std::cmp::max(0, pred - elapsed);
@@ -539,11 +539,11 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
             if elapsed > 0 {
                 let stage = get_buildlog(&p, &sc.tmpdirs).unwrap_or_default();
                 tbl.row([&[if p.bin { &gc.binpkg } else { &gc.pkg }, &p.ebuild_version()],
-                         &[&FmtDur(fmtpred)],
+                         &[&fmtpred],
                          &[&gc.clr, &"- ", &FmtDur(elapsed), &gc.clr, &stage]]);
             } else {
                 tbl.row([&[if p.bin { &gc.binpkg } else { &gc.pkg }, &p.ebuild_version()],
-                         &[&FmtDur(fmtpred)],
+                         &[&fmtpred],
                          &[]]);
             }
         }

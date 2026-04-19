@@ -81,7 +81,7 @@ pub enum TimeBound {
     None,
     /// Bound by unix timestamp
     Unix(i64),
-    /// Bound by time of nth fist/last emerge run
+    /// Bound by time of nth first/last emerge run
     Run(usize),
 }
 
@@ -91,15 +91,15 @@ impl ArgParse<String, UtcOffset> for TimeBound {
         let s = val.trim();
         let et = match i64::from_str(s) {
             Ok(i) => return Ok(Self::Unix(i)),
-            Err(et) => et,
+            Err(e) => e,
         };
         let ea = match parse_date_yyyymmdd(s, offset) {
             Ok(i) => return Ok(Self::Unix(i)),
-            Err(ea) => ea,
+            Err(e) => e,
         };
         let ec = match parse_command_num(s) {
             Ok(i) => return Ok(Self::Run(i)),
-            Err(ea) => ea,
+            Err(e) => e,
         };
         match parse_date_ago(s, OffsetDateTime::now_utc()) {
             Ok(i) => Ok(Self::Unix(i)),
@@ -271,9 +271,16 @@ impl Timespan {
 
 /// Wrapper around a duration (seconds) to implement `table::Disp`
 ///
-/// Normal negatives (> -2^62) are rendered as `?`
-/// Far negatives (< -2^62) are rendered as `{value + 1 + 2^63}?`
+/// A single integer encodes 3 levels of certainty:
+/// * 0..MAX:     Actual value
+/// * -2^62..0:   Unknown, rendered as `?`
+/// * MIN..-2^62: Unsure, rendered as `{value + 1 + 2^63}?`
 pub struct FmtDur(pub i64);
+impl FmtDur {
+    pub fn unsure(self) -> Self {
+        Self(i64::MIN + self.0)
+    }
+}
 impl crate::table::Disp for FmtDur {
     fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
         use std::io::Write;
@@ -398,7 +405,7 @@ mod test {
                   "2020-02-28T12:34:00 2021-01-01 2020-03-01 2020-03-02 2020-02-29"]
         {
             // Convert the test string into test data (base input, and results depending on
-            // timespan). The same test data works whatever the timeone, but the actual timestamp
+            // timespan). The same test data works whatever the timezone, but the actual timestamp
             // returned by the function is offset.
             let v: Vec<&str> = t.split_whitespace().collect();
             let (base_s, year_s, month_s, week_s, day_s) = (v[0], v[1], v[2], v[3], v[4]);

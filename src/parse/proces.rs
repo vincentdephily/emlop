@@ -84,7 +84,7 @@ impl Disp for FmtProc<'_> {
     }
 }
 
-/// Get command name, arguments, start time, and pid for one process.
+/// Fill `Proc` struct for one process, and update tmpdirs
 fn get_proc(entry: &DirEntry,
             clocktick: i64,
             time_ref: i64,
@@ -140,7 +140,7 @@ fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
 
 pub type ProcList = BTreeMap<pid_t, Proc>;
 
-/// Get command name, arguments, start time, and pid for all processes.
+/// Gather info for all processes
 pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> ProcList {
     get_all_proc_result(tmpdirs).unwrap_or_else(|e| {
                                     log_err(e);

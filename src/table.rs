@@ -63,13 +63,13 @@ impl<'a, const N: usize> Table<'a, N> {
         self
     }
 
-    /// Specify column left margin (1st printted column never has a left margin)
+    /// Specify column left margin (1st printed column never has a left margin)
     pub const fn margin(mut self, col: usize, margin: &'static str) -> Self {
         self.margins[col] = margin;
         self
     }
 
-    /// Specify column left margin (1st printted column never has a left margin)
+    /// Specify that only the last N rows should be printed
     pub const fn last(mut self, last: usize) -> Self {
         self.last = last;
         self

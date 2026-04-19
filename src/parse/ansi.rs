@@ -116,9 +116,9 @@ impl Theme {
                qmark: "\x1B[0m",
                skip: "\x1B[3;37m" }
     }
-    /// Parse "(<field>:<SGR> )+" string to update Self's fields
+    /// Parse "(&lt;field>:&lt;SGR> )+" string to update Self's fields
     ///
-    /// <Field> must match a known set, and <SGR> is just checked for valid chars
+    /// &lt;Field> must match a known set, and &lt;SGR> is just checked for valid chars
     pub fn update(mut self, kvs: Option<&String>, src: &'static str) -> Result<Self, ArgError> {
         if let Some(kvs) = kvs {
             for kv in kvs.split_whitespace() {
