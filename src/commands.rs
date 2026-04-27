@@ -1,7 +1,7 @@
 use crate::{datetime::*, parse::*, table::*, *};
 use libc::pid_t;
 use std::{collections::{BTreeMap, HashMap, HashSet},
-          io::{stdin, IsTerminal}};
+          io::stdin};
 
 /// Straightforward display of merge events
 ///
@@ -432,9 +432,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     // Gather and print info about current merge process.
     let procs = get_all_proc(&mut sc.tmpdirs);
     let einfo = get_emerge(&procs);
-    if einfo.roots.is_empty()
-       && std::io::stdin().is_terminal()
-       && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
+    if einfo.roots.is_empty() && gc.ttyin && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
     {
         tbl.row([&[&"No ongoing merge found"], &[], &[]]);
         return Ok(false);
@@ -474,7 +472,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     }
 
     // Find list of packages to predict
-    let pkgs: Vec<Pkg> = if std::io::stdin().is_terminal() {
+    let pkgs: Vec<Pkg> = if gc.ttyin {
         // From resume list
         let mut r = get_resume(sc.resume, &mdb);
         // Plus specific emerge processes

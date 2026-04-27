@@ -145,6 +145,20 @@ pub enum ResumeKind {
     No,
 }
 
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+pub enum Tty {
+    #[clap(alias("a"))]
+    Auto,
+    #[clap(alias("i"))]
+    In,
+    #[clap(alias("o"))]
+    Out,
+    #[clap(alias("io"))]
+    Inout,
+    #[clap(alias("n"))]
+    None,
+}
+
 #[derive(Clone, Copy)]
 pub enum DurationStyle {
     Hms,

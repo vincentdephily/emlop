@@ -272,6 +272,26 @@ pub fn build_cli() -> Command {
                                              (default)|auto|a: colored if on tty\n  \
                                              (empty)|yes|y:    colored\n  \
                                              no|n:             not colored");
+    let h = "Assume stdin/stdout is a terminal (in/out/inout/none/auto)\n\
+             This is useful when running emlop from scripts\n  \
+             (default)|auto|a: autodetect\n  \
+             (empty)|inout|io: input and output are terminals\n  \
+             in|i:             input is terminal, output is file/pipe\n  \
+             out|o:            output is terminal, input is file/pipe\n  \
+             none|n:           input and output are file/pipe";
+    let tty = Arg::new("tty").long("tty")
+                             .alias("pty")
+                             .alias("terminal")
+                             .value_name("inout")
+                             .value_parser(value_parser!(crate::config::Tty))
+                             .hide_possible_values(true)
+                             .global(true)
+                             .num_args(..=1)
+                             .default_missing_value("io")
+                             .display_order(28)
+                             .help_heading("Format")
+                             .help(h.split_once('\n').unwrap().0)
+                             .long_help(h);
     let h = "Set terminal colors\n\
              Argument should be a space-separated list of <key>:<SGR> strings, where\n  \
              <key> is one of merge, binmerge, unmerge, sync, duration, qmark, or skip\n  \
@@ -282,7 +302,7 @@ pub fn build_cli() -> Command {
                                  .value_name("key:SGR")
                                  .global(true)
                                  .num_args(1)
-                                 .display_order(28)
+                                 .display_order(29)
                                  .help_heading("Format")
                                  .help("Set terminal colors")
                                  .long_help(h);
@@ -290,7 +310,7 @@ pub fn build_cli() -> Command {
                                    .short('o')
                                    .value_name("format")
                                    .global(true)
-                                   .display_order(29)
+                                   .display_order(30)
                                    .help_heading("Format")
                                    .help("Output format (columns/tab/auto)")
                                    .long_help("Output format (columns/tab/auto)\n  \
@@ -306,7 +326,7 @@ pub fn build_cli() -> Command {
                                        .global(true)
                                        .num_args(..=1)
                                        .default_missing_value("y")
-                                       .display_order(30)
+                                       .display_order(31)
                                        .help_heading("Format")
                                        .help(h.split_once('\n').unwrap().0)
                                        .long_help(h);
@@ -464,6 +484,7 @@ pub fn build_cli() -> Command {
                          .arg(verbose)
                          .arg(showskip)
                          .arg(theme)
+                         .arg(tty)
                          .subcommand(cmd_log)
                          .subcommand(cmd_pred)
                          .subcommand(cmd_stats)

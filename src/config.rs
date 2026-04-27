@@ -45,6 +45,7 @@ pub struct Conf {
     pub logfile: String,
     pub from: TimeBound,
     pub to: TimeBound,
+    pub ttyin: bool,
 }
 pub struct ConfLog {
     pub show: Show,
@@ -158,9 +159,17 @@ macro_rules! sel {
 
 impl Conf {
     pub fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        let isterm = std::io::stdout().is_terminal();
-        let color = sel!(cli, toml, color, isterm, isterm)?;
-        let outdef = if isterm { OutStyle::Columns } else { OutStyle::Tab };
+        let (ttyin, ttyout) = match cli.get_one("tty") {
+            Some(&Tty::Auto) | None => {
+                (std::io::stdin().is_terminal(), std::io::stdout().is_terminal())
+            },
+            Some(&Tty::In) => (true, false),
+            Some(&Tty::Out) => (false, true),
+            Some(&Tty::Inout) => (true, true),
+            Some(&Tty::None) => (false, false),
+        };
+        let color = sel!(cli, toml, color, ttyout, ttyout)?;
+        let outdef = if ttyout { OutStyle::Columns } else { OutStyle::Tab };
         let offset = get_offset(sel!(cli, toml, utc, (), false)?);
         let theme = Theme::new().update(toml.theme.as_ref(), "theme")?
                                 .update(cli.get_one("theme"), "--theme")?;
@@ -187,7 +196,8 @@ impl Conf {
                   dur_t: sel!(cli, toml, duration, (), DurationStyle::Hms)?,
                   date_offset: offset,
                   date_fmt: sel!(cli, toml, date, (), DateStyle::default())?,
-                  out: sel!(cli, toml, output, isterm, outdef)? })
+                  out: sel!(cli, toml, output, ttyout, outdef)?,
+                  ttyin })
     }
     #[cfg(test)]
     pub fn from_str(s: impl AsRef<str>) -> Self {
