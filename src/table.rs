@@ -19,8 +19,6 @@ enum Align {
     Right,
 }
 
-const SPACES: [u8; 512] = [b' '; 512];
-
 pub struct Table<'a, const N: usize> {
     /// Buffer where unaligned entries are written
     ///
@@ -138,10 +136,11 @@ impl<'a, const N: usize> Table<'a, N> {
         // Find the max len of each column
         let widths: [usize; N] =
             std::array::from_fn(|i| self.rows.iter().fold(0, |m, r| usize::max(m, r[i].0)));
+        let pad = vec![b' '; widths.into_iter().max().unwrap_or(0)];
         // Print header
         let header_end = self.header_end.unwrap_or(0);
         for row in &self.rows[..header_end] {
-            self.flush_one(&mut out, widths, row);
+            self.flush_one(&mut out, widths, &pad, row);
         }
         // Print skip row
         if self.conf.showskip && self.skip > 0 {
@@ -151,13 +150,14 @@ impl<'a, const N: usize> Table<'a, N> {
         }
         // Print body
         for row in &self.rows[header_end..] {
-            self.flush_one(&mut out, widths, row);
+            self.flush_one(&mut out, widths, &pad, row);
         }
     }
 
     fn flush_one(&self,
                  out: &mut impl std::io::Write,
                  widths: [usize; N],
+                 pad: &[u8],
                  row: &[(usize, usize, usize); N]) {
         let mut first = true;
         for i in 0..N {
@@ -177,16 +177,15 @@ impl<'a, const N: usize> Table<'a, N> {
                     out.write_all(self.margins[i].as_bytes()).unwrap_or(());
                 }
                 // Write the cell with alignment
-                let pad = &SPACES[0..usize::min(SPACES.len(), widths[i] - len)];
                 match self.aligns[i] {
                     Align::Right => {
-                        out.write_all(pad).unwrap_or(());
+                        out.write_all(&pad[..widths[i].saturating_sub(len)]).unwrap_or(());
                         out.write_all(&self.buf[pos0..pos1]).unwrap_or(());
                     },
                     Align::Left => {
                         out.write_all(&self.buf[pos0..pos1]).unwrap_or(());
                         if i < N - 1 {
-                            out.write_all(pad).unwrap_or(());
+                            out.write_all(&pad[..widths[i].saturating_sub(len)]).unwrap_or(());
                         }
                     },
                 }
