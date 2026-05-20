@@ -95,7 +95,7 @@ impl Times {
     fn insert(&mut self, t: i64) {
         self.count += 1;
         if t > 0 {
-            self.vals.insert(0, t);
+            self.vals.push(t);
             self.tot += t;
         }
     }
@@ -104,14 +104,16 @@ impl Times {
         if self.vals.is_empty() {
             return -1; // FIXME Return None
         }
-        let l = self.vals.len().min(lim as usize);
+        let start = self.vals.len().saturating_sub(lim as usize);
+        let vals = &self.vals[start..];
         match avg {
             // Simple arithmetic mean
-            Average::Arith => self.vals.iter().take(l).sum::<i64>() / l as i64,
+            Average::Arith => vals.iter().sum::<i64>() / vals.len() as i64,
             // Middle value (or avg of the middle two)
             Average::Median => {
-                let mut s: Vec<i64> = self.vals.iter().take(l).copied().collect();
+                let mut s: Vec<i64> = vals.to_vec();
                 s.sort_unstable();
+                let l = vals.len();
                 if l % 2 == 0 {
                     (s[(l / 2) - 1] + s[l / 2]) / 2
                 } else {
@@ -121,20 +123,16 @@ impl Times {
             // Arithmically weighted arithmetic mean
             // Eg for 4 values the weights are 4,3,2,1 (most recent value first)
             Average::WeightedArith => {
-                let (s, n, w) =
-                    self.vals
-                        .iter()
-                        .take(l)
-                        .fold((0, l as i64, 0), |(s, n, w), v| (s + v * n, n - 1, w + n));
-                debug_assert!(n == 0);
+                let (s, _, w) =
+                    vals.iter().fold((0, 1, 0), |(s, n, w), v| (s + v * n, n + 1, w + n));
                 s / w
             },
             // Arithmically weighted median
-            // Eg 3,1,2 -> 3,3,3,1,1,2 -> 1,1,2,2,3,3,3 -> 2
+            // Eg 3,1,2 -> 3,1,1,2,2,2 -> 1,1,2,2,2,3 -> 2
             Average::WeightedMedian => {
-                let mut s = Vec::with_capacity((l + 1) * (l / 2 + 1));
-                for (n, v) in self.vals.iter().take(l).copied().enumerate() {
-                    s.resize(s.len() - n + l, v);
+                let mut s = Vec::with_capacity(((vals.len() + 1) * vals.len()) / 2);
+                for (n, &v) in vals.iter().enumerate() {
+                    s.resize(s.len() + n + 1, v);
                 }
                 s.sort_unstable();
                 let l = s.len();
