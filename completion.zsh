@@ -18,6 +18,7 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
+'--tty=[Assume stdin/stdout is a terminal (in/out/inout/none/auto)]' \
 '-o+[Output format (columns/tab/auto)]:format: ' \
 '--output=[Output format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
@@ -57,6 +58,7 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
+'--tty=[Assume stdin/stdout is a terminal (in/out/inout/none/auto)]' \
 '-o+[Output format (columns/tab/auto)]:format: ' \
 '--output=[Output format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
@@ -96,6 +98,7 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
+'--tty=[Assume stdin/stdout is a terminal (in/out/inout/none/auto)]' \
 '-o+[Output format (columns/tab/auto)]:format: ' \
 '--output=[Output format (columns/tab/auto)]:format: ' \
 '-W+[Maximum width of emerge proces comandline]'
@@ -130,6 +133,7 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
+'--tty=[Assume stdin/stdout is a terminal (in/out/inout/none/auto)]' \
 '-o+[Output format (columns/tab/auto)]:format: ' \
 '--output=[Output format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
@@ -164,6 +168,7 @@ _emlop() {
 '--utc=[Parse/display dates in UTC instead of local time]' \
 '--color=[Enable color (yes/no/auto)]' \
 '--theme=[Set terminal colors]' \
+'--tty=[Assume stdin/stdout is a terminal (in/out/inout/none/auto)]' \
 '-o+[Output format (columns/tab/auto)]:format: ' \
 '--output=[Output format (columns/tab/auto)]:format: ' \
 '-F+[Location of emerge log file]:file: ' \
