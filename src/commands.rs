@@ -687,7 +687,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     if sc.show.tot {
         let mut tbl =
             Table::new(&gc).header(["Estimates", "Min", "Max", "Abs arith mean", "Stddev"]);
-        let errs: Vec<f64> = pkg_errs.iter().flat_map(|(_, e)| e).copied().collect();
+        let errs: Vec<f64> = pkg_errs.values().flatten().copied().collect();
         let s = Stats::from(&errs);
         tbl.row([&[&gc.cnt, &s.count],
                  &[&gc.clr, &format!("{:.1}", s.min)],
