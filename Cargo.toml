@@ -13,7 +13,7 @@ authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Alexis <flexibeast@gmail.com>",
            "Grant Hutchins <git@nertzy.com>"]
 edition = "2021"
-rust-version = "1.80.1"
+rust-version = "1.88"
 exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
 [dependencies]
@@ -58,3 +58,4 @@ codegen-units = 1
 incremental = false
 lto = true
 panic = "abort"
+
