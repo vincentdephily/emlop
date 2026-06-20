@@ -251,10 +251,10 @@ pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
                 res.start = std::cmp::min(res.start, proc.start);
                 res.roots.push(*pid);
             },
-            ProcKind::Python => {
-                if let Some(a) = proc.cmdline.find("sandbox [") {
-                    if let Some(b) = proc.cmdline.find("] sandbox") {
-                        if let Some(p) = Pkg::try_new(&proc.cmdline[(a + 9)..b], false) {
+            ProcKind::Sandbox => {
+                if let Some(a) = proc.cmdline.find("] sandbox\0") {
+                    if let Some(b) = proc.cmdline[..a].rfind("[") {
+                        if let Some(p) = Pkg::try_new(&proc.cmdline[(b + 1)..a], false) {
                             res.pkgs.push(p);
                         }
                     }

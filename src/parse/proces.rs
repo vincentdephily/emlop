@@ -18,7 +18,7 @@ use std::{collections::BTreeMap,
 #[derive(Debug, Clone, Copy)]
 pub enum ProcKind {
     Emerge,
-    Python,
+    Sandbox,
     Other,
 }
 
@@ -101,8 +101,10 @@ fn get_proc(entry: &DirEntry,
     let kind = if &stat[cmd_start..cmd_end] == "emerge" {
         extend_tmpdirs(entry.path(), tmpdirs);
         ProcKind::Emerge
-    } else if stat[cmd_start..cmd_end].starts_with("python") {
-        ProcKind::Python
+    } else if stat[cmd_start..cmd_end].starts_with("python")
+              || stat[cmd_start..cmd_end] == *"sandbox"
+    {
+        ProcKind::Sandbox
     } else {
         ProcKind::Other
     };
