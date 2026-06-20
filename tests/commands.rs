@@ -37,6 +37,31 @@ fn emlop(args: &str) -> Command {
     e
 }
 
+/// Start/kill processes that make `emlop` think that a merge is running
+struct FakeEmerge(std::process::Child);
+impl FakeEmerge {
+    fn new(ebuild: &str) -> Self {
+        // Start in a new process group so that the kill can include children
+        let c = std::process::Command::new("setpgid").args(["tests/emerge", ebuild, "5"])
+                                                     .spawn()
+                                                     .expect("spawn FakeEmerge");
+        println!("Started FakeEmerge {ebuild:?} {}", c.id());
+        // Wait for the whole tree to spin up
+        thread::sleep(Duration::from_millis(10));
+        Self(c)
+    }
+}
+impl Drop for FakeEmerge {
+    fn drop(&mut self) {
+        // Kill the process group (unlike `self.0.kill()` which would only kill the parent)
+        let err = unsafe { libc::killpg(self.0.id() as i32, libc::SIGINT) };
+        if err == -1 {
+            panic!("killpg({}) failed: {}", self.0.id(), err);
+        }
+        self.0.wait().expect("wait FakeEmerge");
+    }
+}
+
 /// Run emlop, check for success, return output as string
 fn emlop_out(args: &str) -> String {
     let out = emlop(args).output().expect(&format!("could not run emlop {:?}", args));
@@ -217,24 +242,55 @@ fn timezone() {
     }
 }
 
-/// Check Basic 'emlop p`. Not a hugely useful test, but it's something.
+/// Check `emlop p` with various stdin and running process configurations
 ///
 /// Ignored by default: depends on there being no currently running emerge.
 #[ignore]
 #[test]
 fn predict_tty() {
-    emlop("p %F10000.log").assert().code(1).stdout("No pretended merge found\n");
+    let t = [// Exit early if no process, stdin is tty, and resume is no/auto
+             ("", "", "--tty=i", "Nothing to predict: no emerge running\n"),
+             ("", "", "--tty=i --resume=no", "Nothing to predict: no emerge running\n"),
+             ("", "", "--tty=i --resume=auto", "Nothing to predict: no emerge running\n"),
+             // Stdin is a file, so read from that, ignoring process and resume
+             ("test/proc-1", "", "--resume", "Nothing to predict: no ebuild in stdin\n"),
+             ("test/proc-2", "nomatch", "--resume", "Nothing to predict: no ebuild in stdin\n"),
+             ("test/proc-3", "[ebuild] test/stdin-3", "--resume", "test/stdin-3\t30?\n"),
+             // Stdin is a file, but --tty=i asks to ignore that
+             ("test/proc-4", "[ebuild] test/stdin-4", "--tty=i --resume=no", "test/proc-4\t30?\n"),
+             ("",
+              "[ebuild] test/stdin-5",
+              "--tty=i --resume",
+              "app-portage/dummybuild-0.1.600\t30?\napp-portage/dummybuild-0.1.60\t30?\n"),
+             // No process and no resume
+             ("",
+              "",
+              "--resume=main --tty=i",
+              "Nothing to predict: empty resume list, no matching process\n"),
+             // Both a process and a resume
+             ("test/proc-5",
+              "",
+              "--tty=i --resume",
+               "app-portage/dummybuild-0.1.600\t30?\napp-portage/dummybuild-0.1.60\t30?\ntest/proc-5\t30?\n")
+             ];
+    for (proc, stdin, args, out) in t {
+        let a = format!("%F10000.log p --mtimedb tests/mtimedb.backuponly --date unix -sm {args}");
+        let o = render_template(out);
+        let _p = (proc != "").then(|| FakeEmerge::new(proc));
+        emlop(&a).write_stdin(stdin).assert().stdout(o);
+    }
 }
 
-/// Ignored by default: depends on there being no currently running emerge.
-#[ignore]
+//
+// Ignored by default: depends on there being no currently running emerge.
+//#[ignore]
 #[test]
-fn predict_emerge_p() {
+fn predict_stdin() {
     let t =
         [// Check garbage input
-         ("%F10000.log p --date unix -oc", "blah blah\n", "No pretended merge found\n", 1),
+         ("-smt", "blah blah\n", "Nothing to predict: no ebuild in stdin\n", 1),
          // Check all-unknowns
-         ("%F10000.log p --date unix -oc",
+         ("-smt",
           "[ebuild   R   ~] dev-lang/unknown-1.42\n\
            [binary   R   ~] dev-lang/bunknown-2.42\n\
            [uninstall     ] dev-libs/eventlog-0.2.1\n",
@@ -243,7 +299,7 @@ fn predict_emerge_p() {
            Estimate for 1 build, 1 binary, 2 unknown   40 @ ts(40)\n",
           0),
          // Check that unknown ebuild don't wreck alignment. Remember that times are {:>9}
-         ("%F10000.log p --date unix -oc",
+         ("-smt",
           "[ebuild   R   ~] dev-qt/qtcore-5.9.4-r2\n\
            [ebuild   R   ~] dev-lang/unknown-1.42\n\
            [ebuild   R   ~] dev-qt/qtgui-5.9.4-r3\n",
@@ -253,7 +309,7 @@ fn predict_emerge_p() {
            Estimate for 3 builds, 1 unknown  8:39 @ ts(519)\n",
           0),
          // Check skip rows
-         ("%F10000.log p --date unix -oc --show m --first 2 --showskip",
+         ("-sm --first 2 --showskip",
           "[ebuild   R   ~] dev-qt/qtcore-1\n\
            [ebuild   R   ~] dev-qt/qtcore-2\n\
            [ebuild   R   ~] dev-qt/qtcore-3\n\
@@ -263,7 +319,7 @@ fn predict_emerge_p() {
            dev-qt/qtcore-2  3:45\n\
            (skip last 3)        \n",
           0),
-         ("%F10000.log p --date unix -oc --show m --first 2 --last 1 --showskip",
+         ("-sm --first 2 --last 1 --showskip",
           "[ebuild   R   ~] dev-qt/qtcore-1\n\
            [ebuild   R   ~] dev-qt/qtcore-2\n\
            [ebuild   R   ~] dev-qt/qtcore-3\n\
@@ -273,9 +329,10 @@ fn predict_emerge_p() {
            dev-qt/qtcore-2  3:45\n\
            (skip last 3)        \n",
           0)];
-    for (a, i, o, c) in t {
+    for (args, i, o, c) in t {
+        let a = format!("%F10000.log p --date unix -oc {args}");
         let o = render_template(o);
-        emlop(a).write_stdin(i).assert().code(c).stdout(o);
+        emlop(&a).write_stdin(i).assert().code(c).stdout(o);
     }
 }
 

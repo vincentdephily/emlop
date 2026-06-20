@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# See parent `emerge` bash script for more info
+sleep $1

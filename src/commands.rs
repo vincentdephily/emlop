@@ -427,12 +427,13 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
     let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(last);
 
-    // Gather and print info about current merge process.
+    // Gather and print info about current merge process. Return early if there won't be anything to
+    // predict (no stdin, no emerge process, and no unconditional resume)
     let procs = get_all_proc(&mut sc.tmpdirs);
     let einfo = get_emerge(&procs);
     if einfo.roots.is_empty() && gc.ttyin && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
     {
-        tbl.row([&[&"No ongoing merge found"], &[], &[]]);
+        tbl.row([&[&"Nothing to predict: no emerge running"], &[], &[]]);
         return Ok(false);
     }
     if sc.show.run {
@@ -469,7 +470,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         }
     }
 
-    // Find list of packages to predict
+    // Build list of packages to predict, either from stdin or from the current system state
     let pkgs: Vec<Pkg> = if gc.ttyin {
         // From resume list
         let mut r = get_resume(sc.resume, &mdb);
@@ -493,6 +494,14 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         get_pretend(stdin(), "STDIN")
     };
     trace!("pending: {pkgs:?}");
+    if pkgs.is_empty() {
+        if gc.ttyin {
+            tbl.row([&[&"Nothing to predict: empty resume list, no matching process"], &[], &[]]);
+        } else {
+            tbl.row([&[&"Nothing to predict: no ebuild in stdin"], &[], &[]]);
+        }
+        return Ok(false);
+    }
 
     // Gather and print per-package and indivudual stats.
     let mut totcount = 0;
@@ -549,9 +558,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         tbl.skiprow(&[&gc.skip, &"(skip last ", &lastskip, &")"]);
     }
     // Print summary line
-    if totcount == 0 {
-        tbl.row([&[&"No pretended merge found"], &[], &[]]);
-    } else if sc.show.tot {
+    if sc.show.tot {
         let mut s: Vec<&dyn Disp> = vec![&"Estimate for "];
         if totbuild > 0 {
             s.extend([&gc.cnt as &dyn Disp,

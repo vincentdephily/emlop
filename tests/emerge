@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Pretend to be an emerge proces, to make emlop think that a merge is runing.
+# * Start with a process called `emerge` that emlop identifies as a root
+# * Child process called `python*` or `sandbox` and has a recognizable ebuild arg
+EBUILD=${1:-test/fake-1}
+SLEEP=${2:-30}
+$(dirname $(realpath $0))/python $SLEEP "[$EBUILD] sandbox"
+
