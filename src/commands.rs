@@ -114,7 +114,7 @@ impl Times {
                 let mut s: Vec<i64> = vals.to_vec();
                 s.sort_unstable();
                 let l = vals.len();
-                if l % 2 == 0 {
+                if l.is_multiple_of(2) {
                     (s[(l / 2) - 1] + s[l / 2]) / 2
                 } else {
                     s[l / 2]
