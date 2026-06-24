@@ -19,8 +19,8 @@ exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 [dependencies]
 anyhow = "1.0.32"
 atoi = "2.0.0"
-clap = { version = "4.5.35", features = ["cargo", "derive"] }
-clap_complete = { version = "~4.5.42", optional = true }
+clap = { version = "~4.6.1", features = ["cargo", "derive"] }
+clap_complete = { version = "~4.6.5", optional = true }
 env_logger = { version = "0.11.0", default-features = false, features = ["auto-color"] }
 flate2 = {version = "1.0.28", default-features = false, features = ["zlib-rs"]}
 libc = { version = "0.2.126", default-features = false }
