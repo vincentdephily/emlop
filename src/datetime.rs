@@ -98,7 +98,7 @@ impl ArgParse<String, UtcOffset> for TimeBound {
             Err(e) => e,
         };
         let ec = match parse_command_num(s) {
-            Ok(i) => return Ok(Self::Run(i)),
+            Ok(i) => return Ok(Self::Run(i as usize)),
             Err(e) => e,
         };
         match parse_date_ago(s, OffsetDateTime::now_utc()) {
@@ -112,9 +112,9 @@ impl ArgParse<String, UtcOffset> for TimeBound {
 }
 
 /// Parse a command index (parse as 1-based, return as 0-based)
-fn parse_command_num(s: &str) -> Result<usize, Error> {
+fn parse_command_num(s: &str) -> Result<u32, Error> {
     use atoi::FromRadix10;
-    let (num, pos) = usize::from_radix_10(s.as_bytes());
+    let (num, pos) = u32::from_radix_10(s.as_bytes());
     match s[pos..].trim() {
         "c" | "command" | "commands" if num > 0 => Ok(num - 1),
         "c" | "command" if pos == 0 => Ok(0),

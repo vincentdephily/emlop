@@ -18,7 +18,7 @@ exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
 [dependencies]
 anyhow = "1.0.32"
-atoi = "2.0.0"
+atoi = "3.0.0"
 clap = { version = "~4.6.1", features = ["cargo", "derive"] }
 clap_complete = { version = "~4.6.5", optional = true }
 env_logger = { version = "0.11.0", default-features = false, features = ["auto-color"] }
