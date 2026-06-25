@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use regex::{Captures, Regex};
 use std::{collections::HashMap,
+          os::unix::process::CommandExt,
           str::FromStr,
           thread,
           time::{Duration, SystemTime, UNIX_EPOCH}};
@@ -42,9 +43,10 @@ struct FakeEmerge(std::process::Child);
 impl FakeEmerge {
     fn new(ebuild: &str) -> Self {
         // Start in a new process group so that the kill can include children
-        let c = std::process::Command::new("setpgid").args(["tests/emerge", ebuild, "5"])
-                                                     .spawn()
-                                                     .expect("spawn FakeEmerge");
+        let c = std::process::Command::new("tests/emerge").args([ebuild, "5"])
+                                                          .process_group(0)
+                                                          .spawn()
+                                                          .expect("spawn FakeEmerge");
         println!("Started FakeEmerge {ebuild:?} {}", c.id());
         // Wait for the whole tree to spin up
         thread::sleep(Duration::from_millis(10));
