@@ -17,7 +17,7 @@ _emlop() {
                     COMPREPLY=($found)
                     return 0
                 else
-                    cmd="emlop__$found"
+                    cmd="emlop__subcmd__$found"
                     break
                 fi
                 ;;
@@ -69,7 +69,7 @@ _emlop() {
             esac
             return 0
             ;;
-        emlop__accuracy)
+        emlop__subcmd__accuracy)
             opts="[search]... -e -s -N -n -f -t -H -S -o -F -v -h --exact --show  --first --last --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --tty --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -128,7 +128,7 @@ _emlop() {
             esac
             return 0
             ;;
-        emlop__log)
+        emlop__subcmd__log)
             opts="[search]... -N -n -s -e -f -t -H -S -o -F -v -h --starttime --first --last --show --exact --from --to --header --showskip --duration --date --utc --color --theme --tty --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -184,7 +184,7 @@ _emlop() {
             esac
             return 0
             ;;
-        emlop__predict)
+        emlop__subcmd__predict)
             opts="-s -N -n -W -D -f -t -H -S -o -F -v -h --show --first --last --tmpdir --mtimedbfile --resume --unknownc --unknownb --avg --limit --from --to --header --showskip --duration --date --utc --color --theme --tty --output --pdepth --pwidth --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -257,7 +257,7 @@ _emlop() {
             esac
             return 0
             ;;
-        emlop__stats)
+        emlop__subcmd__stats)
             opts="[search]... -s -g -e -f -t -H -S -o -F -v -h --show --groupby --exact --avg --limit --mtimedbfile --from --to --header --showskip --duration --date --utc --color --theme --tty --output --logfile --help"
             if [[ ${cur} == -* ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
