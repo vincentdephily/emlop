@@ -17,12 +17,12 @@
 //!     rand = "0.8.5"
 //! scriptisto-end
 
-use clap::{value_parser, Arg, ArgAction::*, Command as ClapCmd};
+use clap::{Arg, ArgAction::*, Command as ClapCmd, value_parser};
 use inc_stats::*;
 use rand::prelude::SliceRandom;
 use std::{collections::BTreeMap,
           fs::File,
-          io::{stderr, Write},
+          io::{Write, stderr},
           process::{Command, Stdio},
           time::Instant};
 use tabwriter::TabWriter;
@@ -281,7 +281,8 @@ impl Out {
         match file {
             None => {
                 let mut tw = TabWriter::new(stderr()).alignment(tabwriter::Alignment::Right);
-                writeln!(tw, "\n\x1B[32mtest\tcmd\tmax\t95%\t85%\t75%\tmin\tmean\tstddev\ttot\tbucketed values")?;
+                writeln!(tw,
+                         "\n\x1B[32mtest\tcmd\tmax\t95%\t85%\t75%\tmin\tmean\tstddev\ttot\tbucketed values")?;
                 Ok(Self::Term(tw, String::new(), b""))
             },
             Some(f) => {

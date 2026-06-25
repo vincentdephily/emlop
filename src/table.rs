@@ -1,5 +1,5 @@
 use crate::{Conf, OutStyle};
-use std::io::{stdout, BufWriter, Write as _};
+use std::io::{BufWriter, Write as _, stdout};
 
 pub trait Disp {
     /// Write to buf and returns the number of visible chars written

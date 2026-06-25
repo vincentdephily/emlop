@@ -1,14 +1,15 @@
-use crate::{config::{ArgError, ArgParse},
+use crate::{Conf, DurationStyle,
+            config::{ArgError, ArgParse},
             table::Disp,
-            wtb, Conf, DurationStyle};
-use anyhow::{bail, ensure, Error};
+            wtb};
+use anyhow::{Error, bail, ensure};
 use log::{debug, warn};
 use regex::Regex;
 use std::{io::Write as _,
           str::FromStr,
           time::{SystemTime, UNIX_EPOCH}};
-use time::{format_description::FormatItem, macros::format_description, parsing::Parsed, Date,
-           Duration, Month, OffsetDateTime, UtcOffset, Weekday};
+use time::{Date, Duration, Month, OffsetDateTime, UtcOffset, Weekday,
+           format_description::FormatItem, macros::format_description, parsing::Parsed};
 
 /// Get the UtcOffset to parse/display datetimes with.
 /// Needs to be called before starting extra threads.
@@ -283,8 +284,8 @@ impl FmtDur {
 }
 impl crate::table::Disp for FmtDur {
     fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
-        use std::io::Write;
         use DurationStyle::*;
+        use std::io::Write;
         let sec = self.0;
         let dur = conf.dur.val;
         let qmark = conf.qmark.val;

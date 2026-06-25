@@ -7,11 +7,11 @@
 //! be fast.
 
 use crate::{config::*, table::Disp, *};
-use anyhow::{ensure, Context};
+use anyhow::{Context, ensure};
 use atoi::atoi;
 use libc::pid_t;
 use std::{collections::BTreeMap,
-          fs::{read_dir, read_to_string, DirEntry, File},
+          fs::{DirEntry, File, read_dir, read_to_string},
           io::prelude::*,
           path::PathBuf};
 
@@ -179,7 +179,7 @@ pub mod tests {
     use super::{config::Conf, *};
     use regex::Regex;
     use std::{collections::BTreeMap, process::Command};
-    use time::{macros::format_description, PrimitiveDateTime};
+    use time::{PrimitiveDateTime, macros::format_description};
 
     /// Helper to create a process list
     pub fn procs(procs: &[(ProcKind, &str, pid_t, pid_t)]) -> ProcList {

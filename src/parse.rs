@@ -4,8 +4,8 @@ mod history;
 mod proces;
 
 pub use ansi::{Ansi, AnsiStr, Theme};
-pub use current::{get_buildlog, get_emerge, get_pretend, get_resume, Mtimedb, Pkg, PkgMoves};
-pub use history::{get_hist, Hist};
+pub use current::{Mtimedb, Pkg, PkgMoves, get_buildlog, get_emerge, get_pretend, get_resume};
+pub use history::{Hist, get_hist};
 #[cfg(test)]
 pub use proces::tests::procs;
-pub use proces::{get_all_proc, FmtProc, ProcKind, ProcList};
+pub use proces::{FmtProc, ProcKind, ProcList, get_all_proc};

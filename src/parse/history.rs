@@ -2,8 +2,8 @@
 //!
 //! Use `new_hist()` to start parsing and retrieve `Hist` enums.
 
-use crate::{datetime::fmt_utctime, Show, TimeBound};
-use anyhow::{bail, ensure, Context, Error};
+use crate::{Show, TimeBound, datetime::fmt_utctime};
+use anyhow::{Context, Error, bail, ensure};
 use flate2::read::GzDecoder;
 use log::*;
 use memchr::{memchr, memrchr, memrchr2};
@@ -11,7 +11,7 @@ use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use std::{fs::File,
           io::{BufRead, BufReader},
           str::from_utf8,
-          sync::mpsc::{sync_channel, Receiver, SyncSender},
+          sync::mpsc::{Receiver, SyncSender, sync_channel},
           thread,
           time::Instant};
 

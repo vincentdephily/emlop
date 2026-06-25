@@ -1,4 +1,4 @@
-use clap::{builder::styling, crate_version, value_parser, Arg, ArgAction::*, Command};
+use clap::{Arg, ArgAction::*, Command, builder::styling, crate_version, value_parser};
 use std::path::PathBuf;
 
 /// Generate cli argument parser without the `complete` subcommand.
@@ -449,13 +449,15 @@ pub fn build_cli() -> Command {
     ////////////////////////////////////////////////////////////
     let about = "A fast, accurate, ergonomic EMerge LOg Parser\n\
                  https://github.com/vincentdephily/emlop";
-    let after_help =
-        concat!("Commands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
-                 Commands have their own -h / --help\n\
-                 Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of other errors\n\
-                 Config can be set in $HOME/.config/emlop.toml\n\
-                 See readme, changelog, and sample config in /usr/share/doc/emlop-",
-                crate_version!(), "/");
+    let after_help = concat!(
+                             "Commands and long args can be abbreviated (eg `emlop l -ss --head -f1w`)\n\
+			      Commands have their own -h / --help\n\
+			      Exit code is 0 if sucessful, 1 if search found nothing, 2 in case of other errors\n\
+			      Config can be set in $HOME/.config/emlop.toml\n\
+			      See readme, changelog, and sample config in /usr/share/doc/emlop-",
+                             crate_version!(),
+                             "/"
+    );
     let styles =
         styling::Styles::styled().header(styling::AnsiColor::Blue.on_default()
                                          | styling::Effects::BOLD)
