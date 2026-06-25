@@ -110,11 +110,11 @@ impl<'a, const N: usize> Table<'a, N> {
             idxrow[i] = (len, start, self.buf.len());
         }
         self.rows.push(idxrow);
-        if let Some(header_end) = self.header_end {
-            if self.rows.len() - header_end > self.last {
-                self.skip += 1;
-                self.rows.remove(header_end);
-            }
+        if let Some(header_end) = self.header_end
+           && self.rows.len() - header_end > self.last
+        {
+            self.skip += 1;
+            self.rows.remove(header_end);
         }
     }
 
@@ -144,9 +144,8 @@ impl<'a, const N: usize> Table<'a, N> {
         }
         // Print skip row
         if self.conf.showskip && self.skip > 0 {
-            writeln!(out,
-                     "{}(skip first {}){}",
-                     self.conf.skip.val, self.skip, self.conf.clr.val).unwrap_or(());
+            writeln!(out, "{}(skip first {}){}", self.conf.skip.val, self.skip, self.conf.clr.val)
+                .unwrap_or(());
         }
         // Print body
         for row in &self.rows[header_end..] {

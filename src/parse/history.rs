@@ -141,39 +141,18 @@ pub fn get_hist(file: &str,
                                   fmt_utctime(t));
                         }
                         prev_t = t;
-                        if let Some(found) = parse_mergestart(show_merge, t, s, &filter) {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
-                        } else if let Some(found) = parse_mergestop(show_merge, t, s, &filter) {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
-                        } else if let Some(found) = parse_unmergestart(show_unmerge, t, s, &filter)
+                        let parsed = parse_mergestart(show_merge, t, s, &filter)
+			    .or_else(|| parse_mergestop(show_merge, t, s, &filter))
+			    .or_else(|| parse_unmergestart(show_unmerge, t, s, &filter))
+			    .or_else(|| parse_unmergestop(show_unmerge, t, s, &filter))
+			    .or_else(|| parse_runstart(show.run, t, s))
+			    .or_else(|| parse_syncstart(show.sync, t, s))
+			    .or_else(|| parse_syncstop(show.sync, t, s, &filter))
+			    .or_else(|| parse_mergebin(show_merge, t, s, &filter));
+                        if let Some(found) = parsed
+                           && tx.send(found).is_err()
                         {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
-                        } else if let Some(found) = parse_unmergestop(show_unmerge, t, s, &filter) {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
-                        } else if let Some(found) = parse_runstart(show.run, t, s) {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
-                        } else if let Some(found) = parse_syncstart(show.sync, t, s) {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
-                        } else if let Some(found) = parse_syncstop(show.sync, t, s, &filter) {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
-                        } else if let Some(found) = parse_mergebin(show_merge, t, s, &filter) {
-                            if tx.send(found).is_err() {
-                                break;
-                            }
+                            break;
                         }
                     }
                 },
@@ -200,10 +179,10 @@ fn filter_ts(file: &str, min: TimeBound, max: TimeBound) -> Result<(i64, i64), E
             match buf.read_until(b'\n', &mut line) {
                 Ok(0) => break,
                 Ok(_) => {
-                    if let Some((t, s)) = parse_ts(&line, i64::MIN, i64::MAX) {
-                        if s.starts_with(b"*** emerge") {
-                            runs.push(t)
-                        }
+                    if let Some((t, s)) = parse_ts(&line, i64::MIN, i64::MAX)
+                       && s.starts_with(b"*** emerge")
+                    {
+                        runs.push(t)
                     }
                 },
                 Err(_) => (),

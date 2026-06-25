@@ -57,10 +57,10 @@ impl Disp for FmtProc<'_> {
             if let Some(f1) = approx_filename(&cmdline[..z1]) {
                 cmdstart = f1 + 1;
             }
-            if let Some(z2) = cmdline[z1 + 1..].find('\0') {
-                if let Some(f2) = approx_filename(&cmdline[z1 + 1..z1 + 1 + z2]) {
-                    cmdstart = z1 + f2 + 2;
-                }
+            if let Some(z2) = cmdline[z1 + 1..].find('\0')
+               && let Some(f2) = approx_filename(&cmdline[z1 + 1..z1 + 1 + z2])
+            {
+                cmdstart = z1 + f2 + 2;
             }
         }
         let cmd = cmdline[cmdstart..].replace(|c: char| c.is_control(), " ");
