@@ -33,7 +33,6 @@ arm/freebsd/funtoo/paludis/etc would be appreciated.
 ## Release checklist
 
 * Update deps:
-  - Enable [MSRV-aware resolver](https://doc.rust-lang.org/cargo/reference/config.html#resolverincompatible-rust-versions)
   - `cargo outdated`, check changelogs, edit Cargo.toml if needed
   - `cargo update; cargo test`
 * Check `git status` and either `commit+push` or `stash`.

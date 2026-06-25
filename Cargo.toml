@@ -12,7 +12,7 @@ authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Illia Shestakov <ishestakov@airmail.cc>",
            "Alexis <flexibeast@gmail.com>",
            "Grant Hutchins <git@nertzy.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.88"
 exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
 
