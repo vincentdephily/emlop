@@ -35,9 +35,9 @@ jobs:
             target: i686-unknown-linux-musl
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1.16.1
         with:
           toolchain: ${{ matrix.obj.toolchain }}
           target: ${{ matrix.obj.target }}
@@ -50,23 +50,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1.16.1
         with:
           toolchain: nightly
           components: rustfmt
       - name: Check formatting
-        uses: actions-rust-lang/rustfmt@v1
+        uses: actions-rust-lang/rustfmt@v1.1.2
 
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1.16.1
         with:
           toolchain: stable
           components: clippy
