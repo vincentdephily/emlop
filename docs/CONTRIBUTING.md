@@ -13,11 +13,13 @@ issues, and make sure you're running the latest version.
 ## Sending patches
 
 Emlop is licensed as GPLv3, any contribution accepted into the emlop repo will have that license.
-Send pull requests via [Github](https://github.com/vincentdephily/emlop). Using AI is ok but must be
-mentioned in the PR.
+Send pull requests via [Github](https://github.com/vincentdephily/emlop).
 
-Run `cargo test -- --include-ignored` before submitting your code. A bugfix should probably
-include a new/updated unittest. Check `cargo clippy` hints. Format code using `cargo +nightly fmt`. The
+Commits containing AI-generated code must have a `Co-Authored-By: <model>` line. Use of AI tools,
+even for design or exploration tasks, should be mentioned in the PR.
+
+Run `cargo test -- --include-ignored` before submitting your code. A bugfix should probably include
+a new/updated unittest. Check `cargo clippy` hints. Format code using `cargo +nightly fmt`. The
 github CI also runs these checks.
 
 Test emlop with the latest rust stable versions from both Gentoo and upstream, and the oldest

@@ -11,7 +11,9 @@ repository = "https://github.com/vincentdephily/emlop"
 authors = ["Vincent de Phily <moltonel@gmail.com>",
            "Illia Shestakov <ishestakov@airmail.cc>",
            "Alexis <flexibeast@gmail.com>",
-           "Grant Hutchins <git@nertzy.com>"]
+           "Grant Hutchins <git@nertzy.com>",
+	   "Sreus <114226379+sricharanandra@users.noreply.github.com>",
+	   "Doasu <login+github@doasu.dev>"]
 edition = "2024"
 rust-version = "1.88"
 exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
