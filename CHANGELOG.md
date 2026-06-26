@@ -1,7 +1,10 @@
-# Unreleased
+# 0.9.0 2026-06-26
 
-* Add `--tty=in/out/inout/no/auto` cli flag, to bypass auto-detection in scripts and pipes
+Feature release: Flags for scripting.
+
 * Add `--mtimedbfile` cli flag and toml config, for complex setups (thanks Sricharanandra)
+* Add `--tty=in/out/inout/no/auto` cli flag, to bypass auto-detection in scripts and pipes
+* More nuanced "nothing to predict" messages
 * Fix race condition that could cause some processes not to be seen
 * Fix 'defaut/default' typo (thanks Doasu)
 * Update shell completions
