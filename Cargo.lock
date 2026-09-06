@@ -190,6 +190,7 @@ dependencies = [
  "atoi",
  "clap",
  "clap_complete",
+ "emlop-lib",
  "env_logger",
  "flate2",
  "libc",
@@ -201,6 +202,13 @@ dependencies = [
  "serde_json",
  "time",
  "toml",
+]
+
+[[package]]
+name = "emlop-lib"
+version = "0.9.0"
+dependencies = [
+ "clap",
 ]
 
 [[package]]

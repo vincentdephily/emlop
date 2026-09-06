@@ -1,57 +1,6 @@
-[package]
-name = "emlop"
-version = "0.9.0"
-description = "A fast, accurate, ergonomic emerge.log parser"
-keywords = ["gentoo", "portage", "emerge"]
-categories = ["command-line-utilities", "parsing"]
-readme = "README.md"
-license = "GPL-3.0-only"
-homepage = "https://github.com/vincentdephily/emlop"
-repository = "https://github.com/vincentdephily/emlop"
-authors = ["Vincent de Phily <moltonel@gmail.com>",
-           "Illia Shestakov <ishestakov@airmail.cc>",
-           "Alexis <flexibeast@gmail.com>",
-           "Grant Hutchins <git@nertzy.com>",
-	   "Sreus <114226379+sricharanandra@users.noreply.github.com>",
-	   "Doasu <login+github@doasu.dev>"]
-edition = "2024"
-rust-version = "1.88"
-exclude = ["benches", "docs", "rustfmt.toml", ".github", ".gitignore"]
-
-[dependencies]
-anyhow = "1.0.32"
-atoi = "3.1.0"
-clap = { version = "~4.6.1", features = ["cargo", "derive"] }
-clap_complete = { version = "~4.6.5", optional = true }
-env_logger = { version = "0.11.0", default-features = false, features = ["auto-color"] }
-flate2 = {version = "1.0.28", default-features = false, features = ["zlib-rs"]}
-libc = { version = "0.2.126", default-features = false }
-log = "0.4.11"
-memchr = "2.7.4"
-regex = { version = "1.10.0", default-features = false, features = ["std", "perf-inline", "perf-literal", "unicode-case"] }
-rev_lines = "0.3.0"
-serde = { version = "1.0.184", features = ["derive"] }
-serde_json = "1.0.89"
-time = {version = "~0.3.47", features = ["parsing", "formatting", "local-offset", "macros"]}
-toml = {version = "~1.1.2", default-features = false, features = ["std", "serde", "parse"] }
-
-[dev-dependencies]
-assert_cmd = "~2.2.0"
-
-[[bench]]
-# This is meant to be started directly, using scriptisto not cargo
-name = "exec_compare"
-bench = false
-# https://github.com/rust-lang/cargo/issues/13456
-path = "benches/exec_compare.rs"
-
-[features]
-# Experimental features, may require nightly compiler.
-# Currently only benchmarking.
-unstable = []
-# Generate shell completions at runtime instead of using static version.
-# Only intended for developers.
-clap_complete = ["dep:clap_complete"]
+[workspace]
+resolver = "3"
+members = ["emlop", "emlop-lib"]
 
 [profile.release]
 debug = false
@@ -60,4 +9,3 @@ codegen-units = 1
 incremental = false
 lto = true
 panic = "abort"
-

@@ -1,4 +1,4 @@
-use crate::ArgError;
+use emlop_lib::types::ArgError;
 
 /// Simple Ansi escape parser, sufficient to strip text styling.
 ///

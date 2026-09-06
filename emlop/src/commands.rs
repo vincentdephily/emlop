@@ -1,4 +1,5 @@
 use crate::{datetime::*, parse::*, table::*, *};
+use emlop_lib::types::*;
 use libc::pid_t;
 use std::{collections::{BTreeMap, HashMap, HashSet},
           io::stdin};
@@ -728,7 +729,7 @@ mod tests {
 
     #[test]
     fn averages() {
-        use crate::Average::*;
+        use emlop_lib::types::Average::*;
         for (a, m, wa, wm, lim, vals) in
             [(-1, -1, -1, -1, 10, vec![]),
              (1, 1, 1, 1, 10, vec![1]),

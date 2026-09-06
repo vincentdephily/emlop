@@ -3,13 +3,13 @@
 /// Order of precedance is command line (clap), config file (toml), default.
 mod cli;
 mod toml;
-mod types;
 
-pub use crate::config::{cli::*, types::*};
+pub use crate::config::cli::*;
 use crate::{config::toml::Toml,
             parse::{AnsiStr, Theme},
             *};
 use clap::ArgMatches;
+use emlop_lib::types::*;
 use std::{io::IsTerminal, path::PathBuf};
 
 /// Global config, one enum variant per command

@@ -1,4 +1,5 @@
-use crate::{Conf, OutStyle};
+use crate::Conf;
+use emlop_lib::types::OutStyle;
 use std::io::{BufWriter, Write as _, stdout};
 
 pub trait Disp {

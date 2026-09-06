@@ -1,0 +1,16 @@
+[package]
+name = "emlop-lib"
+version = "0.9.0"
+description = "emerge.log parsing utilities"
+keywords = ["gentoo", "portage", "emerge"]
+categories = ["command-line-utilities", "parsing"]
+readme = "../README.md"
+license = "GPL-3.0-only"
+homepage = "https://github.com/vincentdephily/emlop"
+repository = "https://github.com/vincentdephily/emlop"
+authors = ["Vincent de Phily <moltonel@gmail.com>"]
+edition = "2024"
+rust-version = "1.88"
+
+[dependencies]
+clap = { version = "~4.6.1", features = ["derive"] }

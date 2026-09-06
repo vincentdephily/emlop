@@ -2,8 +2,9 @@
 //!
 //! Use `new_hist()` to start parsing and retrieve `Hist` enums.
 
-use crate::{Show, TimeBound, datetime::fmt_utctime};
+use crate::{TimeBound, datetime::fmt_utctime};
 use anyhow::{Context, Error, bail, ensure};
+use emlop_lib::types::Show;
 use flate2::read::GzDecoder;
 use log::*;
 use memchr::{memchr, memrchr, memrchr2};
@@ -395,7 +396,7 @@ fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Op
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ArgParse;
+    use emlop_lib::types::ArgParse;
     use std::collections::HashMap;
 
     /// This checks parsing the given emerge.log.

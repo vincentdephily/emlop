@@ -1,8 +1,6 @@
-use crate::{Conf, DurationStyle,
-            config::{ArgError, ArgParse},
-            table::Disp,
-            wtb};
+use crate::{Conf, table::Disp, wtb};
 use anyhow::{Error, bail, ensure};
+use emlop_lib::types::{ArgError, ArgParse, DurationStyle};
 use log::{debug, warn};
 use regex::Regex;
 use std::{io::Write as _,

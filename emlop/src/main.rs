@@ -8,6 +8,7 @@ mod table;
 
 use crate::{config::*, datetime::*};
 use anyhow::Error;
+use emlop_lib::types::ArgError;
 use log::*;
 use std::str::FromStr;
 
