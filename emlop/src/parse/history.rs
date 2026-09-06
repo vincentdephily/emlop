@@ -2,9 +2,8 @@
 //!
 //! Use `new_hist()` to start parsing and retrieve `Hist` enums.
 
-use crate::{TimeBound, datetime::fmt_utctime};
 use anyhow::{Context, Error, bail, ensure};
-use emlop_lib::types::Show;
+use emlop_lib::{HistBound, Show, fmt_utctime};
 use flate2::read::GzDecoder;
 use log::*;
 use memchr::{memchr, memrchr, memrchr2};
@@ -108,10 +107,10 @@ fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Sen
     }
 }
 
-/// Parse emerge log into a channel of `Parsed` enums.
+/// Parse emerge log into a channel of `Hist` enums.
 pub fn get_hist(file: &str,
-                min: TimeBound,
-                max: TimeBound,
+                min: HistBound,
+                max: HistBound,
                 show: Show,
                 search_terms: &Vec<String>,
                 search_exact: bool)
@@ -169,11 +168,11 @@ pub fn get_hist(file: &str,
 }
 
 /// Return min/max timestamp depending on options.
-fn filter_ts(file: &str, min: TimeBound, max: TimeBound) -> Result<(i64, i64), Error> {
+fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), Error> {
     // Parse emerge log into a Vec of emerge command starts
     // This is a specialized version of get_hist(), about 20% faster for this usecase
     let mut runs = vec![];
-    if matches!(min, TimeBound::Run(_)) || matches!(max, TimeBound::Run(_)) {
+    if matches!(min, HistBound::Run(_)) || matches!(max, HistBound::Run(_)) {
         let mut buf = open_any_buffered(file)?;
         let mut line = Vec::with_capacity(255);
         loop {
@@ -193,14 +192,14 @@ fn filter_ts(file: &str, min: TimeBound, max: TimeBound) -> Result<(i64, i64), E
     }
     // Convert to Option<int>
     let min = match min {
-        TimeBound::Run(n) => runs.iter().rev().nth(n).copied(),
-        TimeBound::Unix(n) => Some(n),
-        TimeBound::None => None,
+        HistBound::Run(n) => runs.iter().rev().nth(n).copied(),
+        HistBound::Unix(n) => Some(n),
+        HistBound::None => None,
     };
     let max = match max {
-        TimeBound::Run(n) => runs.get(n).copied(),
-        TimeBound::Unix(n) => Some(n),
-        TimeBound::None => None,
+        HistBound::Run(n) => runs.get(n).copied(),
+        HistBound::Unix(n) => Some(n),
+        HistBound::None => None,
     };
     // Check and log bounds, return result
     match (min, max) {
@@ -418,8 +417,8 @@ mod tests {
             o => unimplemented!("Unknown test log file {:?}", o),
         };
         let hist = get_hist(&format!("tests/emerge.{}.log", file),
-                            filter_mints.map_or(TimeBound::None, |n| TimeBound::Unix(n)),
-                            filter_maxts.map_or(TimeBound::None, |n| TimeBound::Unix(n)),
+                            filter_mints.map_or(HistBound::None, |n| HistBound::Unix(n)),
+                            filter_maxts.map_or(HistBound::None, |n| HistBound::Unix(n)),
                             Show::parse(&String::from(show), "rptsmua", "test").unwrap(),
                             &filter_terms,
                             exact).unwrap();
@@ -668,7 +667,7 @@ mod bench {
         };
         let show = Show::parse(&String::from("ms"), "rptsmua", "test").unwrap();
         let file = String::from("benches/emerge.log");
-        let tb = TimeBound::None;
+        let tb = HistBound::None;
         let pkgs: Vec<_> =
             get_hist(&file, tb, tb, show, &vec![], true).unwrap().iter().filter_map(f).collect();
         assert_eq!(pkgs.len(), 10790);
@@ -722,7 +721,7 @@ mod bench {
         b.iter(move || {
              let mut n = 0;
              let hist =
-                 get_hist(&file, TimeBound::None, TimeBound::None, show, &vec![], true).unwrap();
+                 get_hist(&file, HistBound::None, HistBound::None, show, &vec![], true).unwrap();
              for _ in hist {
                  n += 1;
              }

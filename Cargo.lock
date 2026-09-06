@@ -208,7 +208,11 @@ dependencies = [
 name = "emlop-lib"
 version = "0.9.0"
 dependencies = [
+ "anyhow",
+ "atoi",
  "clap",
+ "regex",
+ "time",
 ]
 
 [[package]]

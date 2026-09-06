@@ -9,7 +9,7 @@ use crate::{config::toml::Toml,
             parse::{AnsiStr, Theme},
             *};
 use clap::ArgMatches;
-use emlop_lib::types::*;
+use emlop_lib::*;
 use std::{io::IsTerminal, path::PathBuf};
 
 /// Global config, one enum variant per command
@@ -43,8 +43,8 @@ pub struct Conf {
     pub date_fmt: DateStyle,
     pub out: OutStyle,
     pub logfile: String,
-    pub from: TimeBound,
-    pub to: TimeBound,
+    pub from: HistBound,
+    pub to: HistBound,
     pub ttyin: bool,
 }
 pub struct ConfLog {
@@ -176,9 +176,9 @@ impl Conf {
         Ok(Self { logfile: sel!(cli, toml, logfile, (), String::from("/var/log/emerge.log"))?,
                   from:
                       cli.get_one("from")
-                         .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--from"))?,
+                         .map_or(Ok(HistBound::None), |d| HistBound::parse(d, offset, "--from"))?,
                   to: cli.get_one("to")
-                         .map_or(Ok(TimeBound::None), |d| TimeBound::parse(d, offset, "--to"))?,
+                         .map_or(Ok(HistBound::None), |d| HistBound::parse(d, offset, "--to"))?,
                   pkg: AnsiStr::from(if color { theme.merge } else { "" }),
                   binpkg: AnsiStr::from(if color { theme.binmerge } else { "" }),
                   merge: AnsiStr::from(if color { theme.merge } else { ">>> " }),

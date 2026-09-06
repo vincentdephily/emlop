@@ -176,6 +176,7 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
 #[cfg(test)]
 pub mod tests {
     use super::{config::Conf, *};
+    use emlop_lib::fmt_utctime;
     use regex::Regex;
     use std::{collections::BTreeMap, process::Command};
     use time::{PrimitiveDateTime, macros::format_description};

@@ -13,4 +13,8 @@ edition = "2024"
 rust-version = "1.88"
 
 [dependencies]
+anyhow = "1.0.32"
+atoi = "3.1.0"
 clap = { version = "~4.6.1", features = ["derive"] }
+regex = { version = "1.10.0", default-features = false, features = ["std", "perf-inline", "perf-literal", "unicode-case"] }
+time = {version = "~0.3.47", features = ["parsing", "formatting", "local-offset", "macros"]}
