@@ -1,4 +1,4 @@
-use crate::Conf;
+use crate::config::Conf;
 use emlop_lib::types::OutStyle;
 use std::io::{BufWriter, Write as _, stdout};
 

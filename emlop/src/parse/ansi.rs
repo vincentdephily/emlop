@@ -85,7 +85,7 @@ impl From<&'static str> for AnsiStr {
     }
 }
 impl crate::table::Disp for AnsiStr {
-    fn out(&self, buf: &mut Vec<u8>, _conf: &crate::Conf) -> usize {
+    fn out(&self, buf: &mut Vec<u8>, _conf: &crate::config::Conf) -> usize {
         buf.extend_from_slice(self.val.as_bytes());
         self.len
     }

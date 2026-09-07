@@ -1,4 +1,4 @@
-use crate::{Conf, table::Disp, wtb};
+use crate::{config::Conf, table::Disp, wtb};
 use emlop_lib::{ArgError, ArgParse, DurationStyle, fmt_utctime};
 use log::{trace, warn};
 use std::{io::Write as _,

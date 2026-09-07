@@ -6,11 +6,9 @@ mod datetime;
 mod parse;
 mod table;
 
-use crate::{config::*, datetime::*};
-use anyhow::Error;
-use emlop_lib::types::ArgError;
-use log::*;
-use std::str::FromStr;
+use crate::config::{Configs, build_cli};
+use emlop_lib::ArgError;
+use log::error;
 
 fn main() {
     let res = match Configs::load() {
@@ -37,7 +35,7 @@ fn main() {
     }
 }
 
-pub fn log_err(e: Error) {
+pub fn log_err(e: anyhow::Error) {
     match e.source() {
         Some(s) => error!("{e}: {s}"),
         None => error!("{e}"),

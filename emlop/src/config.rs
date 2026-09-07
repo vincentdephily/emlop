@@ -1,15 +1,17 @@
 /// Runtime config
 ///
-/// Order of precedance is command line (clap), config file (toml), default.
+/// Order of precedence is command line (clap), config file (toml), default.
 mod cli;
 mod toml;
 
-pub use crate::config::cli::*;
+pub use crate::config::cli::build_cli;
 use crate::{config::toml::Toml,
-            parse::{AnsiStr, Theme},
-            *};
+            datetime::{DateStyle, Timespan, get_offset},
+            parse::{AnsiStr, Theme}};
+use anyhow::Error;
 use clap::ArgMatches;
 use emlop_lib::*;
+use log::{LevelFilter, trace};
 use std::{io::IsTerminal, path::PathBuf};
 
 /// Global config, one enum variant per command

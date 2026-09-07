@@ -6,14 +6,16 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
-use crate::{config::*, table::Disp, *};
-use anyhow::{Context, ensure};
+use crate::{config::Conf, datetime::epoch_now, log_err, table::Disp, wtb};
+use anyhow::{Context, Error, ensure};
 use atoi::atoi;
 use libc::pid_t;
+use log::debug;
 use std::{collections::BTreeMap,
           fs::{DirEntry, File, read_dir, read_to_string},
           io::prelude::*,
-          path::PathBuf};
+          path::PathBuf,
+          str::FromStr};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ProcKind {
@@ -175,7 +177,7 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
 
 #[cfg(test)]
 pub mod tests {
-    use super::{config::Conf, *};
+    use super::*;
     use emlop_lib::fmt_utctime;
     use regex::Regex;
     use std::{collections::BTreeMap, process::Command};
