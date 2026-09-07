@@ -416,7 +416,7 @@ mod tests {
             "shortline" => (1327867709, 1327871057),
             o => unimplemented!("Unknown test log file {:?}", o),
         };
-        let hist = get_hist(&format!("tests/emerge.{}.log", file),
+        let hist = get_hist(&format!("../testdata/emerge.{}.log", file),
                             filter_mints.map_or(HistBound::None, |n| HistBound::Unix(n)),
                             filter_maxts.map_or(HistBound::None, |n| HistBound::Unix(n)),
                             Show::parse(&String::from(show), "rptsmua", "test").unwrap(),
