@@ -2,8 +2,8 @@ mod ansi;
 mod current;
 mod proces;
 
-pub use ansi::{Ansi, AnsiStr, Theme};
+pub use ansi::{AnsiStr, Theme};
 pub use current::{Mtimedb, Pkg, PkgMoves, get_buildlog, get_emerge, get_pretend, get_resume};
+pub use proces::FmtProc;
 #[cfg(test)]
 pub use proces::tests::procs;
-pub use proces::{FmtProc, ProcKind, ProcList, get_all_proc};

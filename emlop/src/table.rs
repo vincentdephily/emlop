@@ -1,5 +1,5 @@
 use crate::config::Conf;
-use emlop_lib::types::OutStyle;
+use emlop_lib::OutStyle;
 use std::io::{BufWriter, Write as _, stdout};
 
 pub trait Disp {
@@ -214,7 +214,7 @@ impl<const N: usize> Drop for Table<'_, N> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parse::Ansi;
+    use emlop_lib::Ansi;
 
     #[test]
     fn last() {

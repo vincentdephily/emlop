@@ -1,8 +1,7 @@
 use crate::{config::Conf, table::Disp, wtb};
 use emlop_lib::{ArgError, ArgParse, DurationStyle, fmt_utctime};
 use log::{trace, warn};
-use std::{io::Write as _,
-          time::{SystemTime, UNIX_EPOCH}};
+use std::io::Write as _;
 use time::{Date, Duration, Month, OffsetDateTime, UtcOffset, Weekday,
            format_description::FormatItem, macros::format_description};
 
@@ -58,10 +57,6 @@ impl Disp for FmtDate {
         }
         buf.len() - start
     }
-}
-
-pub fn epoch_now() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
 #[derive(Clone, Copy)]
@@ -151,7 +146,6 @@ impl FmtDur {
 impl crate::table::Disp for FmtDur {
     fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
         use DurationStyle::*;
-        use std::io::Write;
         let sec = self.0;
         let dur = conf.dur.val;
         let qmark = conf.qmark.val;
@@ -181,7 +175,7 @@ impl crate::table::Disp for FmtDur {
                 }
             },
         }
-        crate::parse::Ansi::len(&buf[start..])
+        emlop_lib::Ansi::len(&buf[start..])
     }
 }
 

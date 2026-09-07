@@ -1,7 +1,6 @@
 //! Handles parsing of current emerge state.
 
-use super::{Ansi, ProcKind, ProcList};
-use emlop_lib::types::ResumeKind;
+use emlop_lib::{Ansi, ProcKind, ProcList, ResumeKind};
 use libc::pid_t;
 use log::*;
 use regex::Regex;

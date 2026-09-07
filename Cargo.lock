@@ -211,6 +211,7 @@ dependencies = [
  "atoi",
  "clap",
  "flate2",
+ "libc",
  "log",
  "memchr",
  "regex",

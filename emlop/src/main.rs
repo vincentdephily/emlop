@@ -27,18 +27,14 @@ fn main() {
                 Ok(ce) => ce.format(&mut build_cli()).print().unwrap_or(()),
                 Err(e) => match e.downcast::<ArgError>() {
                     Ok(ae) => eprintln!("{ae}"),
-                    Err(e) => log_err(e),
+                    Err(e) => match e.source() {
+                        Some(s) => error!("{e}: {s}"),
+                        None => error!("{e}"),
+                    },
                 },
             }
             std::process::exit(2)
         },
-    }
-}
-
-pub fn log_err(e: anyhow::Error) {
-    match e.source() {
-        Some(s) => error!("{e}: {s}"),
-        None => error!("{e}"),
     }
 }
 
