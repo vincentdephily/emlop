@@ -160,7 +160,7 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
     File::open("/proc/uptime").context("Opening /proc/uptime")?
                               .read_to_end(&mut uptimebuf)
                               .context("Reading /proc/uptime")?;
-    let uptime = atoi::<i64>(&uptimebuf).expect("uptime starts with an integer");
+    let uptime = atoi::<i64>(&uptimebuf).context("Parsing /proc/uptime")?;
     let time_ref = epoch_now() - uptime;
     // Now iterate through /proc/<pid>
     let mut ret: BTreeMap<pid_t, Proc> = BTreeMap::new();
