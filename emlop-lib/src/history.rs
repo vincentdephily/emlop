@@ -2,8 +2,8 @@
 //!
 //! Use `new_hist()` to start parsing and retrieve `Hist` enums.
 
+use crate::{HistBound, Show, fmt_utctime};
 use anyhow::{Context, Error, bail, ensure};
-use emlop_lib::{HistBound, Show, fmt_utctime};
 use flate2::read::GzDecoder;
 use log::*;
 use memchr::{memchr, memrchr, memrchr2};
@@ -395,7 +395,7 @@ fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Op
 #[cfg(test)]
 mod tests {
     use super::*;
-    use emlop_lib::types::ArgParse;
+    use crate::ArgParse;
     use std::collections::HashMap;
 
     /// This checks parsing the given emerge.log.
@@ -640,11 +640,11 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use emlop_lib::*;
+    use crate::*;
     use std::sync::LazyLock;
     extern crate test;
 
-    static EMERGE_LOG: &str = include_str!("../../../benches/emerge.log");
+    static EMERGE_LOG: &str = include_str!("../../benches/emerge.log");
 
     /// Vec<(full, no_ts)> of emerge.log lines
     static EMERGE_LINES: LazyLock<Vec<(&[u8], &[u8])>> = LazyLock::new(|| {

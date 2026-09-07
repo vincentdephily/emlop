@@ -16,5 +16,13 @@ rust-version = "1.88"
 anyhow = "1.0.32"
 atoi = "3.1.0"
 clap = { version = "~4.6.1", features = ["derive"] }
+flate2 = {version = "1.0.28", default-features = false, features = ["zlib-rs"]}
+log = "0.4.11"
+memchr = "2.7.4"
 regex = { version = "1.10.0", default-features = false, features = ["std", "perf-inline", "perf-literal", "unicode-case"] }
 time = {version = "~0.3.47", features = ["parsing", "formatting", "local-offset", "macros"]}
+
+[features]
+# Experimental features, may require nightly compiler.
+# Currently only benchmarking.
+unstable = []

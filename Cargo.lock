@@ -195,7 +195,6 @@ dependencies = [
  "flate2",
  "libc",
  "log",
- "memchr",
  "regex",
  "rev_lines",
  "serde",
@@ -211,6 +210,9 @@ dependencies = [
  "anyhow",
  "atoi",
  "clap",
+ "flate2",
+ "log",
+ "memchr",
  "regex",
  "time",
 ]

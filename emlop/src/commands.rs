@@ -1,5 +1,5 @@
 use crate::{datetime::*, parse::*, table::*, *};
-use emlop_lib::types::*;
+use emlop_lib::*;
 use libc::pid_t;
 use std::{collections::{BTreeMap, HashMap, HashSet},
           io::stdin};
