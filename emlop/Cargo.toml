@@ -39,13 +39,6 @@ toml = {version = "~1.1.2", default-features = false, features = ["std", "serde"
 [dev-dependencies]
 assert_cmd = "~2.2.0"
 
-[[bench]]
-# This is meant to be started directly, using scriptisto not cargo
-name = "exec_compare"
-bench = false
-# https://github.com/rust-lang/cargo/issues/13456
-path = "benches/exec_compare.rs"
-
 [features]
 # Experimental features, may require nightly compiler.
 # Currently only benchmarking.

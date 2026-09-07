@@ -640,11 +640,11 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use crate::config::*;
+    use emlop_lib::*;
     use std::sync::LazyLock;
     extern crate test;
 
-    static EMERGE_LOG: &str = include_str!("../../benches/emerge.log");
+    static EMERGE_LOG: &str = include_str!("../../../benches/emerge.log");
 
     /// Vec<(full, no_ts)> of emerge.log lines
     static EMERGE_LINES: LazyLock<Vec<(&[u8], &[u8])>> = LazyLock::new(|| {
@@ -666,7 +666,7 @@ mod bench {
             _ => None,
         };
         let show = Show::parse(&String::from("ms"), "rptsmua", "test").unwrap();
-        let file = String::from("benches/emerge.log");
+        let file = String::from("../benches/emerge.log");
         let tb = HistBound::None;
         let pkgs: Vec<_> =
             get_hist(&file, tb, tb, show, &vec![], true).unwrap().iter().filter_map(f).collect();
@@ -717,7 +717,7 @@ mod bench {
                                 o => panic!("unhandled show {o}"),
                             })
                             .sum();
-        let file = String::from("benches/emerge.log");
+        let file = String::from("../benches/emerge.log");
         b.iter(move || {
              let mut n = 0;
              let hist =
