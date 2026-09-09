@@ -138,7 +138,6 @@ pub fn build_cli() -> Command {
              no|n:             Never use resume list";
     let resume = Arg::new("resume").long("resume")
                                    .value_name("source")
-                                   .value_parser(value_parser!(crate::config::ResumeKind))
                                    .hide_possible_values(true)
                                    .num_args(..=1)
                                    .default_missing_value("either")
@@ -283,7 +282,6 @@ pub fn build_cli() -> Command {
                              .alias("pty")
                              .alias("terminal")
                              .value_name("inout")
-                             .value_parser(value_parser!(crate::config::Tty))
                              .hide_possible_values(true)
                              .global(true)
                              .num_args(..=1)

@@ -209,7 +209,6 @@ version = "0.9.0"
 dependencies = [
  "anyhow",
  "atoi",
- "clap",
  "flate2",
  "libc",
  "log",

@@ -161,15 +161,14 @@ macro_rules! sel {
 
 impl Conf {
     pub fn try_new(cli: &ArgMatches, toml: &Toml) -> Result<Self, Error> {
-        let (ttyin, ttyout) = match cli.get_one("tty") {
-            Some(&Tty::Auto) | None => {
-                (std::io::stdin().is_terminal(), std::io::stdout().is_terminal())
-            },
-            Some(&Tty::In) => (true, false),
-            Some(&Tty::Out) => (false, true),
-            Some(&Tty::Inout) => (true, true),
-            Some(&Tty::None) => (false, false),
-        };
+        let (ttyin, ttyout) =
+            match cli.get_one("tty").map_or(Ok(Tty::Auto), |v| Tty::parse(v, (), "--tty"))? {
+                Tty::Auto => (std::io::stdin().is_terminal(), std::io::stdout().is_terminal()),
+                Tty::In => (true, false),
+                Tty::Out => (false, true),
+                Tty::Inout => (true, true),
+                Tty::None => (false, false),
+            };
         let color = sel!(cli, toml, color, ttyout, ttyout)?;
         let outdef = if ttyout { OutStyle::Columns } else { OutStyle::Tab };
         let offset = get_offset(sel!(cli, toml, utc, (), false)?);
@@ -235,7 +234,9 @@ impl ConfPred {
                   lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,
                   unknownb: sel!(cli, toml, predict, unknownb, 0..=3600, 10)?,
                   unknownc: sel!(cli, toml, predict, unknownc, 0..=3600, 30)?,
-                  resume: *cli.get_one("resume").unwrap_or(&ResumeKind::Auto),
+                  resume:
+                      cli.get_one("resume")
+                         .map_or(Ok(ResumeKind::Auto), |v| ResumeKind::parse(v, (), "--resume"))?,
                   tmpdirs,
                   mtimedbfile,
                   first: *cli.get_one("first").unwrap_or(&usize::MAX),

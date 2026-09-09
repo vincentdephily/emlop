@@ -131,32 +131,46 @@ impl Average {
     }
 }
 
-#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug)]
 pub enum ResumeKind {
-    #[clap(alias("a"))]
     Auto,
-    #[clap(alias("e"))]
     Either,
-    #[clap(alias("m"))]
     Main,
-    #[clap(alias("b"))]
     Backup,
-    #[clap(alias("n"))]
     No,
 }
+impl ArgParse<String, ()> for ResumeKind {
+    fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "a" | "auto" => Ok(Self::Auto),
+            "e" | "either" => Ok(Self::Either),
+            "m" | "main" => Ok(Self::Main),
+            "b" | "backup" => Ok(Self::Backup),
+            "n" | "no" => Ok(Self::No),
+            _ => Err(ArgError::new(v, s).pos("(a)uto (e)ither (m)ain (b)ackup (n)o")),
+        }
+    }
+}
 
-#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug)]
 pub enum Tty {
-    #[clap(alias("a"))]
     Auto,
-    #[clap(alias("i"))]
     In,
-    #[clap(alias("o"))]
     Out,
-    #[clap(alias("io"))]
     Inout,
-    #[clap(alias("n"))]
     None,
+}
+impl ArgParse<String, ()> for Tty {
+    fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "a" | "auto" => Ok(Self::Auto),
+            "i" | "in" => Ok(Self::In),
+            "o" | "out" => Ok(Self::Out),
+            "io" | "inout" => Ok(Self::Inout),
+            "n" | "none" => Ok(Self::None),
+            _ => Err(ArgError::new(v, s).pos("(a)uto (i)n (o)ut (io)nout (n)one")),
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
