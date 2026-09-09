@@ -1,6 +1,6 @@
 //! Handles parsing of current emerge state.
 
-use emlop_lib::{Ansi, ProcKind, ProcList, ResumeKind};
+use crate::{Ansi, ProcKind, ProcList, ResumeKind};
 use libc::pid_t;
 use log::*;
 use regex::Regex;
@@ -283,7 +283,19 @@ pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parse::procs;
+    use crate::Proc;
+
+    /// Helper to create a process list
+    pub fn procs(procs: &[(ProcKind, &str, pid_t, pid_t)]) -> ProcList {
+        ProcList::from_iter(procs.into_iter().map(|p| {
+                                                 (p.2,
+                                                  Proc { kind: p.0,
+                                                         cmdline: p.1.into(),
+                                                         start: p.2 as i64,
+                                                         pid: p.2,
+                                                         ppid: p.3 })
+                                             }))
+    }
 
     impl PartialEq<(&str, &str)> for Pkg {
         fn eq(&self, p: &(&str, &str)) -> bool {

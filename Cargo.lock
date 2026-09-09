@@ -196,9 +196,7 @@ dependencies = [
  "libc",
  "log",
  "regex",
- "rev_lines",
  "serde",
- "serde_json",
  "time",
  "toml",
 ]
@@ -209,11 +207,15 @@ version = "0.9.0"
 dependencies = [
  "anyhow",
  "atoi",
+ "env_logger",
  "flate2",
  "libc",
  "log",
  "memchr",
  "regex",
+ "rev_lines",
+ "serde",
+ "serde_json",
  "time",
 ]
 
