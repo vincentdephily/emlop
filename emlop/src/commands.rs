@@ -5,6 +5,7 @@ use libc::pid_t;
 use log::{error, trace, warn};
 use std::{collections::{BTreeMap, HashMap, HashSet},
           io::stdin};
+use time::Timestamp;
 
 /// Straightforward display of merge events
 ///
@@ -418,7 +419,7 @@ fn proc_rows(now: i64,
 ///
 /// Very similar to cmd_summary except we want total build time for a list of ebuilds.
 pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
-    let now = epoch_now();
+    let now = Timestamp::now().as_seconds();
     let last = if sc.show.tot { sc.last.saturating_add(1) } else { sc.last };
     let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(last);
 
@@ -758,7 +759,7 @@ mod tests {
     fn procs_pid1() {
         let (gc, mut sc) = ConfPred::from_str("emlop p --pdepth 4");
         let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
-        let now = epoch_now();
+        let now = Timestamp::now().as_seconds();
         let procs = get_all_proc(&mut sc.tmpdirs);
         proc_rows(now, &mut tbl, &procs, 1, 0, &gc, &sc);
         println!("{}", tbl.to_string());

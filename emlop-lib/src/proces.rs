@@ -6,7 +6,6 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
-use crate::epoch_now;
 use anyhow::{Context, Error, ensure};
 use atoi::atoi;
 use libc::pid_t;
@@ -16,6 +15,7 @@ use std::{collections::BTreeMap,
           io::prelude::*,
           path::PathBuf,
           str::FromStr};
+use time::Timestamp;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ProcKind {
@@ -59,7 +59,7 @@ fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
                               .read_to_end(&mut uptimebuf)
                               .context("Reading /proc/uptime")?;
     let uptime = atoi::<i64>(&uptimebuf).context("Parsing /proc/uptime")?;
-    let time_ref = epoch_now() - uptime;
+    let time_ref = Timestamp::now().as_seconds() - uptime;
     // Now iterate through /proc/<pid>
     let mut ret: BTreeMap<pid_t, Proc> = BTreeMap::new();
     for entry in read_dir("/proc/").context("Listing /proc/")?.filter_map(Result::ok) {
@@ -156,7 +156,7 @@ pub mod tests {
             .map(|(pid, i)| (*pid, (i.cmdline.clone(), Some(i.start), None)))
             .collect::<BTreeMap<pid_t, (String, Option<i64>, Option<i64>)>>();
         // Then get them using the ps implementation (merging them into the same data structure)
-        let ps_start = epoch_now();
+        let ps_start = Timestamp::now().as_seconds();
         let cmd = Command::new("ps").env("TZ", "UTC")
                                     .env("LC_ALL", "C") // Use a consistent format for datetimes
                                     .args(&["-o",

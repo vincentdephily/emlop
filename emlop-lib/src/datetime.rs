@@ -1,14 +1,9 @@
 use crate::types::{ArgError, ArgParse};
 use anyhow::{Error, bail, ensure};
 use regex::Regex;
-use std::{str::FromStr,
-          time::{SystemTime, UNIX_EPOCH}};
+use std::str::FromStr;
 use time::{Date, Duration, OffsetDateTime, UtcOffset, format_description::FormatItem,
            macros::format_description, parsing::Parsed};
-
-pub fn epoch_now() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
-}
 
 #[cfg_attr(test, derive(PartialEq, Debug))]
 #[derive(Clone, Copy)]
