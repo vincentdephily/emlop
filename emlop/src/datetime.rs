@@ -1,5 +1,5 @@
 use crate::{config::Conf, table::Disp, wtb};
-use emlop_lib::{ArgError, ArgParse, DurationStyle, fmt_utctime};
+use emlop_lib::{ArgError, ArgParse, DurationStyle, FmtUtc};
 use log::{trace, warn};
 use std::io::Write as _;
 use time::{Date, Duration, Month, OffsetDateTime, UtcOffset, Weekday,
@@ -105,7 +105,7 @@ impl Timespan {
             Self::None => panic!("Called next() on a Timespan::None"),
         };
         let res = d2.with_hms(0, 0, 0).unwrap().assume_offset(offset).unix_timestamp();
-        trace!("{} + {} = {}", fmt_utctime(ts), self.name(), fmt_utctime(res));
+        trace!("{} + {} = {}", FmtUtc(ts), self.name(), FmtUtc(res));
         res
     }
 

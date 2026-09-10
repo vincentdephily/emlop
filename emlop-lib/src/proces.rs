@@ -129,7 +129,7 @@ fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::fmt_utctime;
+    use crate::FmtUtc;
     use regex::Regex;
     use std::{collections::BTreeMap, process::Command};
     use time::{PrimitiveDateTime, macros::format_description};
@@ -187,12 +187,12 @@ pub mod tests {
         let mut e: u32 = 0;
         for (pid, times) in info {
             e += match times {
-                (c, Some(t), None) =>                           {println!("WARN {pid} {} disappeared after rust run\t{c}", fmt_utctime(t)); 1},
-                (c, None, Some(t)) if t >= ps_start -1 =>       {println!("WARN {pid} {} appeared right after rust run\t{c}", fmt_utctime(t)); 1},
-                (c, None, Some(t)) =>                           {println!("ERR  {pid} {} seen by ps but not by rust\t{c}", fmt_utctime(t)); 10},
-                (c, Some(tr), Some(tp)) if (tr-tp).abs() < 2 => {println!("OK   {pid} {} {} secs diff\t{c}", fmt_utctime(tr), tr-tp); 0},
-                (c, Some(tr), Some(tp)) if (tr-tp).abs() < 5 => {println!("WARN {pid} {} {} secs diff\t{c}", fmt_utctime(tr), tr-tp); 1},
-                (c, Some(tr), Some(tp)) =>                      {println!("ERR  {pid} {} {} secs diff\t{c}", fmt_utctime(tr), tr-tp); 5},
+                (c, Some(t), None) =>                           {println!("WARN {pid} {} disappeared after rust run\t{c}", FmtUtc(t)); 1},
+                (c, None, Some(t)) if t >= ps_start -1 =>       {println!("WARN {pid} {} appeared right after rust run\t{c}", FmtUtc(t)); 1},
+                (c, None, Some(t)) =>                           {println!("ERR  {pid} {} seen by ps but not by rust\t{c}", FmtUtc(t)); 10},
+                (c, Some(tr), Some(tp)) if (tr-tp).abs() < 2 => {println!("OK   {pid} {} {} secs diff\t{c}", FmtUtc(tr), tr-tp); 0},
+                (c, Some(tr), Some(tp)) if (tr-tp).abs() < 5 => {println!("WARN {pid} {} {} secs diff\t{c}", FmtUtc(tr), tr-tp); 1},
+                (c, Some(tr), Some(tp)) =>                      {println!("ERR  {pid} {} {} secs diff\t{c}", FmtUtc(tr), tr-tp); 5},
                 (c, None, None) =>                              {println!("ERR  {pid}: no times\t{c}"); 10},
             }
         }

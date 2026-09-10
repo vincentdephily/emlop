@@ -133,10 +133,15 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())
 }
 
-/// Format standardized utc dates
-pub fn fmt_utctime(ts: i64) -> String {
-    let fmt = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z");
-    OffsetDateTime::from_unix_timestamp(ts).unwrap().format(&fmt).unwrap()
+/// Unix timestamp (i64) wrapper that `Display`s as `YYYY-MM-DDTHH:MM:SSZ`
+pub struct FmtUtc(pub i64);
+impl std::fmt::Display for FmtUtc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match time::Timestamp::from_seconds(self.0) {
+            Ok(t) => write!(f, "{}T{:02}:{:02}:{:02}Z", t.date(), t.hour(), t.minute(), t.second()),
+            Err(_) => write!(f, "#{}#", self.0),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -151,7 +156,7 @@ mod test {
         HistBound::parse(&String::from(s), o, "")
     }
     fn parse_ago(ago: &str, now: &str) -> String {
-        parse_date_ago(ago, parse_rfc(now)).map(fmt_utctime).unwrap()
+        parse_date_ago(ago, parse_rfc(now)).map(|i| format!("{}", FmtUtc(i))).unwrap()
     }
     fn ts(t: OffsetDateTime) -> i64 {
         t.unix_timestamp()

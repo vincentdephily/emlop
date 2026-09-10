@@ -2,7 +2,7 @@
 //!
 //! Use `new_hist()` to start parsing and retrieve `Hist` enums.
 
-use crate::{HistBound, Show, fmt_utctime};
+use crate::{FmtUtc, HistBound, Show};
 use anyhow::{Context, Error, bail, ensure};
 use flate2::read::GzDecoder;
 use log::*;
@@ -137,8 +137,8 @@ pub fn get_hist(file: &str,
                     if let Some((t, s)) = parse_ts(&line, ts_min, ts_max) {
                         if prev_t > t {
                             warn!("{logfile}:{curline}: System clock jump: {} -> {}",
-                                  fmt_utctime(prev_t),
-                                  fmt_utctime(t));
+                                  FmtUtc(prev_t),
+                                  FmtUtc(t));
                         }
                         prev_t = t;
                         let parsed = parse_mergestart(show_merge, t, s, &filter)
@@ -204,15 +204,15 @@ fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), E
     // Check and log bounds, return result
     match (min, max) {
         (None, None) => trace!("Date: None"),
-        (Some(a), None) => trace!("Date: after {}", fmt_utctime(a)),
-        (None, Some(b)) => trace!("Date: before {}", fmt_utctime(b)),
+        (Some(a), None) => trace!("Date: after {}", FmtUtc(a)),
+        (None, Some(b)) => trace!("Date: before {}", FmtUtc(b)),
         (Some(a), Some(b)) if a < b => {
-            trace!("Date: between {} and {}", fmt_utctime(a), fmt_utctime(b))
+            trace!("Date: between {} and {}", FmtUtc(a), FmtUtc(b))
         },
         (Some(a), Some(b)) => {
             bail!("Invalid date filter: {} <= {}, did you swap --to and --from ?",
-                  fmt_utctime(a),
-                  fmt_utctime(b))
+                  FmtUtc(a),
+                  FmtUtc(b))
         },
     }
     Ok((min.unwrap_or(i64::MIN), max.unwrap_or(i64::MAX)))
@@ -441,7 +441,7 @@ mod tests {
             *counts.entry(ebuild.to_string()).or_insert(0) += 1;
             assert!(ts >= filter_mints.unwrap_or(mints) && ts <= filter_maxts.unwrap_or(maxts),
                     "Out of bound date {} in  in {p:?}",
-                    fmt_utctime(ts));
+                    FmtUtc(ts));
             assert!(re_atom.is_match(ebuild), "Invalid ebuild atom {} in {p:?}", ebuild);
             assert!(re_version.is_match(version), "Invalid version {} in {p:?}", version);
         }
