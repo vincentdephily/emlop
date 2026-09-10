@@ -1,5 +1,7 @@
-use crate::{config::Conf, table::Disp, wtb};
-use emlop_lib::{ArgError, ArgParse, DurationStyle, FmtUtc};
+use crate::{config::{Conf, DurationStyle},
+            table::Disp,
+            wtb};
+use emlop_lib::{ArgError, ArgParse, FmtUtc};
 use log::{trace, warn};
 use std::io::Write as _;
 use time::{Date, Duration, Month, OffsetDateTime, UtcOffset, Weekday,

@@ -3,8 +3,9 @@
 /// Order of precedence is command line (clap), config file (toml), default.
 mod cli;
 mod toml;
+mod types;
 
-pub use crate::config::cli::build_cli;
+pub use crate::config::{cli::build_cli, types::*};
 use crate::{config::toml::Toml,
             datetime::{DateStyle, Timespan, get_offset},
             parse::{AnsiStr, Theme}};

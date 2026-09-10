@@ -731,7 +731,7 @@ mod tests {
 
     #[test]
     fn averages() {
-        use emlop_lib::Average::*;
+        use crate::config::Average::*;
         for (a, m, wa, wm, lim, vals) in
             [(-1, -1, -1, -1, 10, vec![]),
              (1, 1, 1, 1, 10, vec![1]),
