@@ -18,13 +18,18 @@ use std::{collections::BTreeMap,
 use time::Timestamp;
 
 #[derive(Debug, Clone, Copy)]
+/// Portage process kind
 pub enum ProcKind {
+    /// Main portage `emerge` process, one of those is the initial emerge command
     Emerge,
+    /// Portage sandbox process, tells us which ebuild is currently (un)merging
     Sandbox,
+    /// Other process, possibly not related to portage at all
     Other,
 }
 
 #[derive(Debug)]
+/// System process info
 pub struct Proc {
     pub kind: ProcKind,
     pub cmdline: String,
@@ -33,20 +38,24 @@ pub struct Proc {
     pub ppid: pid_t,
 }
 
+/// Map of pid to [Proc]
 pub type ProcList = BTreeMap<pid_t, Proc>;
 
-/// Gather info for all processes
-pub fn get_all_proc(tmpdirs: &mut Vec<PathBuf>) -> ProcList {
-    get_all_proc_result(tmpdirs).unwrap_or_else(|e| {
-                                    match e.source() {
-                                        Some(s) => error!("{e}: {s}"),
-                                        None => error!("{e}"),
-                                    };
-                                    //                          log_err(e);
-                                    BTreeMap::new()
-                                })
+/// Gather portage-relevant info on sytem processes
+///
+/// Besides the fields listed in [Proc], this function will also add detected postage tmpdir folders
+/// to the passed `&mut tmpdirs`.
+pub fn get_procs(tmpdirs: &mut Vec<PathBuf>) -> ProcList {
+    get_procs_result(tmpdirs).unwrap_or_else(|e| {
+                                 match e.source() {
+                                     Some(s) => error!("{e}: {s}"),
+                                     None => error!("{e}"),
+                                 };
+                                 BTreeMap::new()
+                             })
 }
-fn get_all_proc_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
+// TODO: Try building BTreeMap<pid_t, Vec<pid_t>>, maybe even remove them from Proc
+fn get_procs_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
     // clocktick and time_ref are needed to interpret stat.start_time.
     // SAFETY: returns a system constant, only failure mode should be a zero/negative value
     let clocktick: i64 = unsafe {
@@ -151,7 +160,7 @@ pub mod tests {
         // First get the system's process start times using our implementation
         // Store it as pid => (cmd, rust_time, ps_time)
         let mut tmpdirs = vec![];
-        let mut info = get_all_proc(&mut tmpdirs)
+        let mut info = get_procs(&mut tmpdirs)
             .iter()
             .map(|(pid, i)| (*pid, (i.cmdline.clone(), Some(i.start), None)))
             .collect::<BTreeMap<pid_t, (String, Option<i64>, Option<i64>)>>();
@@ -203,15 +212,14 @@ pub mod tests {
 #[cfg(feature = "unstable")]
 #[cfg(test)]
 mod bench {
-    use super::*;
     extern crate test;
 
     #[bench]
     /// Bench listing all processes
-    fn get_all(b: &mut test::Bencher) {
+    fn get_procs(b: &mut test::Bencher) {
         b.iter(move || {
              let mut tmpdirs = vec![];
-             get_all_proc(&mut tmpdirs);
+             super::get_procs(&mut tmpdirs);
          });
     }
 }

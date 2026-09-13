@@ -82,7 +82,7 @@ pub mod tests {
                                              }))
     }
 
-    /// FmtProc should try shorten (elipsis at start) the command line when ther is no space
+    /// FmtProc should shorten (elipsis at start) the command line when there is no space
     #[test]
     fn proc_width() {
         let conf = Conf::from_str(&format!("emlop p --color=n"));
@@ -130,20 +130,5 @@ pub mod tests {
             FmtProc(&p, 0, 100).out(&mut buf, &conf);
             assert_eq!(&String::from_utf8(buf).unwrap(), out, "got left expected right {cmd:?}");
         }
-    }
-}
-
-#[cfg(feature = "unstable")]
-#[cfg(test)]
-mod bench {
-    extern crate test;
-
-    #[bench]
-    /// Bench listing all processes
-    fn get_all(b: &mut test::Bencher) {
-        b.iter(move || {
-             let mut tmpdirs = vec![];
-             emlop_lib::get_all_proc(&mut tmpdirs);
-         });
     }
 }

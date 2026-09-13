@@ -21,22 +21,22 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
         Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last).header(h);
     for p in hist {
         match p {
-            Hist::RunStart { ts, args, .. } => {
+            HistEvent::RunStart { ts, args, .. } => {
                 found += 1;
                 if found <= sc.first {
                     tbl.row([&[&FmtDate(ts)], &[], &[&"Emerge ", &args]]);
                 }
             },
-            Hist::MergeStart { ts, key, .. } => {
+            HistEvent::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 merges.insert(key, (ts, false));
             },
-            Hist::MergeBin { key, .. } => {
+            HistEvent::MergeBin { key, .. } => {
                 if let Some((_, bin)) = merges.get_mut(&key) {
                     *bin = true;
                 }
             },
-            Hist::MergeStop { ts, ref key, .. } => {
+            HistEvent::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 let (started, bin) = merges.remove(key).unwrap_or((ts + 1, false));
                 if found <= sc.first {
@@ -45,11 +45,11 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                              &[if bin { &gc.binmerge } else { &gc.merge }, &p.ebuild_version()]]);
                 }
             },
-            Hist::UnmergeStart { ts, key, .. } => {
+            HistEvent::UnmergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if an unmerge started but never finished
                 unmerges.insert(key, ts);
             },
-            Hist::UnmergeStop { ts, ref key, .. } => {
+            HistEvent::UnmergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 if found <= sc.first {
@@ -58,11 +58,11 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                              &[&gc.unmerge, &p.ebuild_version()]]);
                 }
             },
-            Hist::SyncStart { ts } => {
+            HistEvent::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
                 sync_start = Some(ts);
             },
-            Hist::SyncStop { ts, repo } => {
+            HistEvent::SyncStop { ts, repo } => {
                 found += 1;
                 let started = sync_start.take().unwrap_or(ts + 1);
                 if found <= sc.first {
@@ -145,6 +145,7 @@ impl Times {
 /// Classify emerge commands by looking at their args.
 ///
 /// Note that some commands don't get logged at all, so this enum is quite limited.
+// TODO: Remove `All` variant, move to HistEvent
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum ArgKind {
     All,
@@ -225,19 +226,19 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             }
         }
         match p {
-            Hist::RunStart { args, .. } => {
+            HistEvent::RunStart { args, .. } => {
                 *run_args.entry(ArgKind::All).or_insert(0) += 1;
                 *run_args.entry(ArgKind::new(&args)).or_insert(0) += 1;
             },
-            Hist::MergeStart { ts, key, .. } => {
+            HistEvent::MergeStart { ts, key, .. } => {
                 merge_start.insert(moves.get(key), (ts, false));
             },
-            Hist::MergeBin { key, .. } => {
+            HistEvent::MergeBin { key, .. } => {
                 if let Some((_, bin)) = merge_start.get_mut(&key) {
                     *bin = true;
                 }
             },
-            Hist::MergeStop { ts, ref key, .. } => {
+            HistEvent::MergeStop { ts, ref key, .. } => {
                 if let Some((start_ts, bin)) = merge_start.remove(moves.get_ref(key)) {
                     let (tc, tb, _) =
                         pkg_time.entry(moves.get(p.take_ebuild()))
@@ -249,10 +250,10 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                     }
                 }
             },
-            Hist::UnmergeStart { ts, key, .. } => {
+            HistEvent::UnmergeStart { ts, key, .. } => {
                 unmerge_start.insert(moves.get(key), ts);
             },
-            Hist::UnmergeStop { ts, ref key, .. } => {
+            HistEvent::UnmergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = unmerge_start.remove(moves.get_ref(key)) {
                     let (_, _, times) =
                         pkg_time.entry(moves.get(p.take_ebuild()))
@@ -260,11 +261,11 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                     times.insert(ts - start_ts);
                 }
             },
-            Hist::SyncStart { ts } => {
+            HistEvent::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
                 sync_start = Some(ts);
             },
-            Hist::SyncStop { ts, repo } => {
+            HistEvent::SyncStop { ts, repo } => {
                 if let Some(start_ts) = sync_start.take() {
                     let times = sync_time.entry(repo).or_insert(Times::new());
                     times.insert(ts - start_ts);
@@ -425,7 +426,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
     // Gather and print info about current merge process. Return early if there won't be anything to
     // predict (no stdin, no emerge process, and no unconditional resume)
-    let procs = get_all_proc(&mut sc.tmpdirs);
+    let procs = get_procs(&mut sc.tmpdirs);
     let einfo = get_emerge(&procs);
     if einfo.roots.is_empty() && gc.ttyin && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
     {
@@ -447,22 +448,22 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     let mut times: HashMap<(String, bool), Times> = HashMap::new();
     for p in hist {
         match p {
-            Hist::MergeStart { ts, key, .. } => {
+            HistEvent::MergeStart { ts, key, .. } => {
                 started.insert(moves.get(key), (ts, false));
             },
-            Hist::MergeBin { key, .. } => {
+            HistEvent::MergeBin { key, .. } => {
                 if let Some((_, bin)) = started.get_mut(moves.get_ref(&key)) {
                     *bin = true;
                 }
             },
-            Hist::MergeStop { ts, ref key, .. } => {
+            HistEvent::MergeStop { ts, ref key, .. } => {
                 if let Some((start_ts, bin)) = started.remove(moves.get_ref(key)) {
                     let timevec =
                         times.entry((moves.get(p.take_ebuild()), bin)).or_insert(Times::new());
                     timevec.insert(ts - start_ts);
                 }
             },
-            _ => unreachable!("Should only receive Hist::{{Start,Step,Stop}}"),
+            _ => unreachable!("Should only receive HistEvent::{{Start,Step,Stop}}"),
         }
     }
 
@@ -618,16 +619,16 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
     let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last).header(h);
     for p in hist {
         match p {
-            Hist::MergeStart { ts, key, .. } => {
+            HistEvent::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 pkg_starts.insert(key, (ts, false));
             },
-            Hist::MergeBin { key, .. } => {
+            HistEvent::MergeBin { key, .. } => {
                 if let Some((_, bin)) = pkg_starts.get_mut(&key) {
                     *bin = true;
                 }
             },
-            Hist::MergeStop { ts, ref key, .. } => {
+            HistEvent::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 if let Some((start, bin)) = pkg_starts.remove(key) {
                     let times =
@@ -713,7 +714,7 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
     let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &term, false)?;
     let mut pkgs: HashSet<String> = HashSet::new();
     for p in hist {
-        if let Hist::MergeStart { .. } = p {
+        if let HistEvent::MergeStart { .. } = p {
             let e = p.take_ebuild();
             if !pkgs.contains(&e) {
                 println!("{e}");
@@ -760,7 +761,7 @@ mod tests {
         let (gc, mut sc) = ConfPred::from_str("emlop p --pdepth 4");
         let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
         let now = Timestamp::now().as_seconds();
-        let procs = get_all_proc(&mut sc.tmpdirs);
+        let procs = get_procs(&mut sc.tmpdirs);
         proc_rows(now, &mut tbl, &procs, 1, 0, &gc, &sc);
         println!("{}", tbl.to_string());
     }

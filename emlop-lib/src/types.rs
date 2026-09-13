@@ -4,6 +4,7 @@ use std::{ops::RangeInclusive, str::FromStr};
 ///
 /// Similar to std::convert::From but takes extra context and returns a custom error
 pub trait ArgParse<T, A> {
+    /// Convert `T` to `Self`, using `A` for context and `src` for error reporting
     fn parse(val: &T, arg: A, src: &'static str) -> Result<Self, ArgError>
         where Self: Sized;
 }
@@ -40,6 +41,16 @@ impl ArgParse<i64, RangeInclusive<i64>> for i64 {
             Err(ArgError::new(i, src).msg(format!("Should be between {} and {}",
                                                   r.start(),
                                                   r.end())))
+        }
+    }
+}
+impl ArgParse<String, bool> for bool {
+    fn parse(v: &String, default: bool, s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "auto" | "a" => Ok(default),
+            "yes" | "y" => Ok(true),
+            "no" | "n" => Ok(false),
+            _ => Err(ArgError::new(v, s).pos("(y)es (n)o (a)uto")),
         }
     }
 }
@@ -101,39 +112,9 @@ impl std::fmt::Display for ArgError {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum ResumeKind {
-    Auto,
-    Either,
-    Main,
-    Backup,
-    No,
-}
-impl ArgParse<String, ()> for ResumeKind {
-    fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
-        match v.as_str() {
-            "a" | "auto" => Ok(Self::Auto),
-            "e" | "either" => Ok(Self::Either),
-            "m" | "main" => Ok(Self::Main),
-            "b" | "backup" => Ok(Self::Backup),
-            "n" | "no" => Ok(Self::No),
-            _ => Err(ArgError::new(v, s).pos("(a)uto (e)ither (m)ain (b)ackup (n)o")),
-        }
-    }
-}
-
-impl ArgParse<String, bool> for bool {
-    fn parse(v: &String, default: bool, s: &'static str) -> Result<Self, ArgError> {
-        match v.as_str() {
-            "auto" | "a" => Ok(default),
-            "yes" | "y" => Ok(true),
-            "no" | "n" => Ok(false),
-            _ => Err(ArgError::new(v, s).pos("(y)es (n)o (a)uto")),
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
+/// Type of HistEvent to look for
+// TODO: Move this to binary, create a new library-specific type
 pub struct Show {
     pub run: bool,
     pub pkg: bool,
@@ -143,15 +124,19 @@ pub struct Show {
     pub unmerge: bool,
 }
 impl Show {
+    /// merge
     pub const fn m() -> Self {
         Self { run: false, pkg: false, tot: false, sync: false, merge: true, unmerge: false }
     }
+    /// run, merge, total
     pub const fn rmt() -> Self {
         Self { run: true, pkg: false, tot: true, sync: false, merge: true, unmerge: false }
     }
+    /// package
     pub const fn p() -> Self {
         Self { run: false, pkg: true, tot: false, sync: false, merge: false, unmerge: false }
     }
+    /// package, total
     pub const fn pt() -> Self {
         Self { run: false, pkg: true, tot: true, sync: false, merge: false, unmerge: false }
     }

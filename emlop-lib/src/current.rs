@@ -1,6 +1,6 @@
 //! Handles parsing of current emerge state.
 
-use crate::{Ansi, ProcKind, ProcList, ResumeKind};
+use crate::{Ansi, ArgError, ArgParse, ProcKind, ProcList};
 use libc::pid_t;
 use log::*;
 use regex::Regex;
@@ -12,14 +12,16 @@ use std::{collections::HashMap,
           path::PathBuf,
           time::Instant};
 
-/// Package name and version
+/// Package name, version, and binary flag
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Pkg {
     key: String,
     pos: usize,
+    /// Whether package is (getting) installed from binary or compiled
     pub bin: bool,
 }
 impl Pkg {
+    /// Parse a string like "app-portage/emlop-0.9.0" into a `Pkg`
     // Algorithm is taken from history.rs and more thoroughly tested there
     pub fn try_new(key: &str, bin: bool) -> Option<Self> {
         let mut pos = 0;
@@ -31,19 +33,24 @@ impl Pkg {
             pos += 1;
         }
     }
+    /// Return the "app-portage/emlop" part
     pub fn ebuild(&self) -> &str {
         &self.key[..(self.pos - 1)]
     }
     #[cfg(test)]
+    /// Return the "0.9.0" part
     pub fn version(&self) -> &str {
         &self.key[self.pos..]
     }
+    /// Return the full "app-portage/emlop-0.9.0" part
     pub fn ebuild_version(&self) -> &str {
         &self.key
     }
 }
 
-/// Parse portage pretend output
+/// Parse portage pretend (`emerge foo -pv`) output
+///
+/// Extracts which packages would get compiled.
 pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
     debug!("get_pretend input={filename}");
     let mut out = vec![];
@@ -80,12 +87,18 @@ struct Resume {
     mergelist: Vec<Vec<String>>,
 }
 #[derive(Deserialize, Default)]
+/// Portage mtime database
+///
+/// We only extract update files and resume lists.
 pub struct Mtimedb {
     resume: Option<Resume>,
     resume_backup: Option<Resume>,
     updates: Option<HashMap<String, i64>>,
 }
 impl Mtimedb {
+    /// Load db file
+    ///
+    /// Standard location is `/var/cache/edb/mtimedb`.
     pub fn new(file: &str) -> Self {
         Self::try_new(file).unwrap_or_default()
     }
@@ -98,6 +111,32 @@ impl Mtimedb {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+/// Selector for emerge resume list
+pub enum ResumeKind {
+    /// Main or backup or (to be implemented by the caller) no list
+    Auto,
+    /// Main or backup list
+    Either,
+    /// Main list
+    Main,
+    /// Backup list
+    Backup,
+    /// No list
+    No,
+}
+impl ArgParse<String, ()> for ResumeKind {
+    fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
+        match v.as_str() {
+            "a" | "auto" => Ok(Self::Auto),
+            "e" | "either" => Ok(Self::Either),
+            "m" | "main" => Ok(Self::Main),
+            "b" | "backup" => Ok(Self::Backup),
+            "n" | "no" => Ok(Self::No),
+            _ => Err(ArgError::new(v, s).pos("(a)uto (e)ither (m)ain (b)ackup (n)o")),
+        }
+    }
+}
 
 /// Parse resume list from portage mtimedb
 pub fn get_resume(kind: ResumeKind, db: &Mtimedb) -> Vec<Pkg> {
@@ -123,6 +162,10 @@ fn try_get_resume(kind: ResumeKind, db: &Mtimedb) -> Option<Vec<Pkg>> {
 }
 
 
+/// Map old ebuild name to new one
+///
+/// For example `dev-util/lldb -> llvm-core/lldb`.
+/// The quarterly updates files are only present for renames that happened after the OS was installed.
 pub struct PkgMoves(HashMap<String, String>);
 impl PkgMoves {
     /// Parse package moves using file list from portagedb
@@ -132,10 +175,12 @@ impl PkgMoves {
         Self(r)
     }
 
+    /// Get new package name for `key` (owned)
     pub fn get(&self, key: String) -> String {
         self.0.get(&key).cloned().unwrap_or(key)
     }
 
+    /// Get new package name for `key`
     pub fn get_ref<'a>(&'a self, key: &'a String) -> &'a String {
         self.0.get(key).unwrap_or(key)
     }
@@ -228,6 +273,9 @@ fn read_buildlog(file: File, max: usize) -> String {
 }
 
 #[derive(Debug)]
+/// Info about current emerge process
+///
+/// See [get_emerge()]
 pub struct EmergeInfo {
     pub start: i64,
     pub roots: Vec<pid_t>,

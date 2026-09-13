@@ -1,6 +1,6 @@
 //! Handles emerge.log parsing.
 //!
-//! Use `new_hist()` to start parsing and retrieve `Hist` enums.
+//! Use `get_hist()` to start parsing and retrieve `HistEvent` enums.
 
 use crate::{FmtUtc, HistBound, Show};
 use anyhow::{Context, Error, bail, ensure};
@@ -15,9 +15,14 @@ use std::{fs::File,
           thread,
           time::Instant};
 
-/// Items sent on the channel returned by `new_hist()`.
+/// A parsed `emerge.log` event
+///
+/// Each event corresponds to one interesting log line. The `key` can normaly be used to match
+/// related events together (the ones with the same prefix).
+///
+/// See [`get_hist()`].
 #[derive(Debug)]
-pub enum Hist {
+pub enum HistEvent {
     /// Emerge run started (might never complete).
     // There's no RunStop, because matching a Stop to the correct Start is too unreliable
     RunStart { ts: i64, args: String },
@@ -36,7 +41,10 @@ pub enum Hist {
     /// Sync completed.
     SyncStop { ts: i64, repo: String },
 }
-impl Hist {
+impl HistEvent {
+    /// Get the ebuild as an `&str`
+    ///
+    /// Panics for `Run` and `Sync` variants
     pub fn ebuild(&self) -> &str {
         match self {
             Self::MergeStart { key, pos, .. }
@@ -47,6 +55,9 @@ impl Hist {
             _ => unreachable!("No ebuild for {:?}", self),
         }
     }
+    /// Get the ebuild as an owned `String` (existing allocation), consuming self
+    ///
+    /// Panics for `Run` and `Sync` variants
     pub fn take_ebuild(self) -> String {
         match self {
             Self::MergeStart { mut key, pos, .. }
@@ -61,6 +72,9 @@ impl Hist {
         }
     }
     #[cfg(test)]
+    /// Get the version as an `&str`
+    ///
+    /// Panics for `Run` and `Sync` variants
     pub fn version(&self) -> &str {
         match self {
             Self::MergeStart { key, pos, .. }
@@ -71,6 +85,9 @@ impl Hist {
             _ => unreachable!("No version for {:?}", self),
         }
     }
+    /// Get ebuild-version as an `&str`
+    ///
+    /// Panics for `Run` and `Sync` variants
     pub fn ebuild_version(&self) -> &str {
         match self {
             Self::MergeStart { key, .. }
@@ -81,6 +98,7 @@ impl Hist {
             _ => unreachable!("No ebuild/version for {:?}", self),
         }
     }
+    /// Get the unix timestamp
     pub const fn ts(&self) -> i64 {
         match self {
             Self::RunStart { ts, .. }
@@ -107,21 +125,28 @@ fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Sen
     }
 }
 
-/// Parse emerge log into a channel of `Hist` enums.
+/// Parse emerge log into [`HistEvent`]s.
+///
+/// Parsing happen in a thread, this function returns a channel that can be iterated on.
+///
+/// * `file` is `/var/log/emerge.log` on most systems.
+/// * `min` and `max` allow reading only part of the file
+/// * `show` filters on event type
+/// * `search_terms` and `search_exact` filter by pkg/repo name
 pub fn get_hist(file: &str,
                 min: HistBound,
                 max: HistBound,
                 show: Show,
                 search_terms: &Vec<String>,
                 search_exact: bool)
-                -> Result<Receiver<Hist>, Error> {
+                -> Result<Receiver<HistEvent>, Error> {
     trace!("Show: {show}");
     let now = Instant::now();
     let logfile = file.to_owned();
     let (ts_min, ts_max) = filter_ts(file, min, max)?;
-    let filter = FilterStr::try_new(search_terms, search_exact)?;
+    let filter = Filter::try_new(search_terms, search_exact)?;
     let mut buf = open_any_buffered(file)?;
-    let (tx, rx): (SyncSender<Hist>, Receiver<Hist>) = sync_channel(256);
+    let (tx, rx): (SyncSender<HistEvent>, Receiver<HistEvent>) = sync_channel(256);
     thread::spawn(move || {
         let show_merge = show.merge || show.pkg || show.tot;
         let show_unmerge = show.unmerge || show.pkg || show.tot;
@@ -219,13 +244,13 @@ fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), E
 }
 
 /// Matches package/repo depending on options.
-enum FilterStr {
+enum Filter {
     True,
     Eq { a: Vec<String>, b: Vec<String>, c: Vec<String> },
     Re1 { r: Regex },
     Re { r: RegexSet },
 }
-impl FilterStr {
+impl Filter {
     fn try_new(terms: &Vec<String>, exact: bool) -> Result<Self, regex::Error> {
         trace!("Search: {terms:?} {exact}");
         Ok(match (terms.len(), exact) {
@@ -264,7 +289,7 @@ impl FilterStr {
 
 
 /// Find position of "version" in "categ/name-version" and filter on pkg name
-fn parse_version(atom: &str, filter: &FilterStr) -> Option<usize> {
+fn parse_version(atom: &str, filter: &Filter) -> Option<usize> {
     let batom = atom.as_bytes();
     let mut pos = 0;
     loop {
@@ -294,26 +319,26 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
 }
 
 /// *** emerge --update --ask --deep --reinstall=changed-use --regex-search-auto=y --verbose system
-fn parse_runstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
+fn parse_runstart(enabled: bool, ts: i64, line: &[u8]) -> Option<HistEvent> {
     if !enabled || !line.starts_with(b"*** emer") {
         return None;
     }
-    Some(Hist::RunStart { ts, args: from_utf8(&line[11..]).ok()?.to_owned() })
+    Some(HistEvent::RunStart { ts, args: from_utf8(&line[11..]).ok()?.to_owned() })
 }
 
 /// >>> emerge (1 of 1) www-client/falkon-24.08.3 to /
-fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
+fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
     if !enabled || !line.starts_with(b">>> emer") {
         return None;
     }
     let mut tokens = line.split(|c| *c == b' ');
     let atom = from_utf8(tokens.nth(5)?).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(Hist::MergeStart { ts, key: atom.to_owned(), pos })
+    Some(HistEvent::MergeStart { ts, key: atom.to_owned(), pos })
 }
 
 /// === (1 of 1) Merging Binary (www-client/falkon-24.08.3::/var/cache/binpkgs/www-client/falkon-24.08.3.gpkg.tar)
-fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
+fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
     if !enabled || !line.starts_with(b"=== (") {
         return None;
     }
@@ -325,45 +350,45 @@ fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Op
     let p3 = memchr(b':', &line[p2..])? + p2;
     let atom = from_utf8(&line[p2..p3]).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(Hist::MergeBin { ts, key: atom.to_owned(), pos })
+    Some(HistEvent::MergeBin { ts, key: atom.to_owned(), pos })
 }
 
 /// ::: completed emerge (1 of 1) www-client/falkon-24.08.3 to /
-fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
+fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
     if !enabled || !line.starts_with(b"::: comp") {
         return None;
     }
     let mut tokens = line.split(|c| *c == b' ');
     let atom = from_utf8(tokens.nth(6)?).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(Hist::MergeStop { ts, key: atom.to_owned(), pos })
+    Some(HistEvent::MergeStop { ts, key: atom.to_owned(), pos })
 }
 
 /// === Unmerging... (app-portage/getuto-1.13)
-fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
+fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
     if !enabled || !line.starts_with(b"=== Unmer") {
         return None;
     }
     let p1 = memchr(b'(', line)? + 1;
     let atom = from_utf8(&line[p1..line.len() - 1]).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(Hist::UnmergeStart { ts, key: atom.to_owned(), pos })
+    Some(HistEvent::UnmergeStart { ts, key: atom.to_owned(), pos })
 }
 
 /// >>> unmerge success: www-client/falkon-24.08.3
-fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
+fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
     if !enabled || !line.starts_with(b">>> unmerge succ") {
         return None;
     }
     let p1 = memrchr(b' ', line)? + 1;
     let atom = from_utf8(&line[p1..]).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(Hist::UnmergeStop { ts, key: atom.to_owned(), pos })
+    Some(HistEvent::UnmergeStop { ts, key: atom.to_owned(), pos })
 }
 
 /// >>> Syncing repository 'gentoo' into '/usr/portage'...
 /// >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
-fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
+fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<HistEvent> {
     // Old portage logs 'Starting rsync with <url>', new portage logs 'Syncing repository <name>',
     // and intermediate versions log both. This makes it hard to properly match a start repo string
     // to a stop repo string across portage versions. Since syncs are not concurrent, we simply
@@ -373,7 +398,7 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
            || line.starts_with(b">>> Starting rsync")
            || line.starts_with(b">>> starting rsync"))
     {
-        Some(Hist::SyncStart { ts })
+        Some(HistEvent::SyncStart { ts })
     } else {
         None
     }
@@ -381,14 +406,14 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<Hist> {
 
 /// === Sync completed with rsync://209.177.148.226/gentoo-portage
 /// === Sync completed for gentoo
-fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &FilterStr) -> Option<Hist> {
+fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
     // Old portage logs 'completed with <url>', new portage logs 'completed for <name>'
     if !enabled || !line.starts_with(b"=== Sync comp") {
         return None;
     }
     let pos = memrchr2(b' ', b'/', line)? + 1;
     let repo = from_utf8(&line[pos..]).ok()?;
-    filter.match_str(repo).then_some(Hist::SyncStop { ts, repo: repo.to_owned() })
+    filter.match_str(repo).then_some(HistEvent::SyncStop { ts, repo: repo.to_owned() })
 }
 
 
@@ -428,14 +453,14 @@ mod tests {
         // Check that all items look valid
         for p in hist {
             let (kind, ts, ebuild, version) = match p {
-                Hist::RunStart { ts, .. } => ("RStart", ts, "c/e", "1"),
-                Hist::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
-                Hist::MergeBin { ts, .. } => ("MBin", ts, p.ebuild(), p.version()),
-                Hist::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
-                Hist::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
-                Hist::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version()),
-                Hist::SyncStart { ts, .. } => ("SStart", ts, "c/e", "1"),
-                Hist::SyncStop { ts, .. } => ("SStop", ts, "c/e", "1"),
+                HistEvent::RunStart { ts, .. } => ("RStart", ts, "c/e", "1"),
+                HistEvent::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
+                HistEvent::MergeBin { ts, .. } => ("MBin", ts, p.ebuild(), p.version()),
+                HistEvent::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
+                HistEvent::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
+                HistEvent::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version()),
+                HistEvent::SyncStart { ts, .. } => ("SStart", ts, "c/e", "1"),
+                HistEvent::SyncStop { ts, .. } => ("SStop", ts, "c/e", "1"),
             };
             *counts.entry(kind.to_string()).or_insert(0) += 1;
             *counts.entry(ebuild.to_string()).or_insert(0) += 1;
@@ -600,7 +625,7 @@ mod tests {
                      ("a.", false, "ab", true, true),];
         for (terms, e, s, mpkg, mstr) in t {
             let t: Vec<String> = terms.split_whitespace().map(str::to_string).collect();
-            let f = FilterStr::try_new(&t, e).unwrap();
+            let f = Filter::try_new(&t, e).unwrap();
             assert_eq!(f.match_pkg(s), mpkg, "filter({t:?}, {e}).match_pkg({s:?})");
             assert_eq!(f.match_str(s), mstr, "filter({t:?}, {e}).match_str({s:?})");
         }
@@ -608,7 +633,7 @@ mod tests {
 
     #[test]
     fn split_atom() {
-        let g = |s| parse_version(s, &FilterStr::True).map(|n| (&s[..n - 1], &s[n..]));
+        let g = |s| parse_version(s, &Filter::True).map(|n| (&s[..n - 1], &s[n..]));
         assert_eq!(None, g(""));
         assert_eq!(None, g("a"));
         assert_eq!(None, g("-"));
@@ -662,7 +687,7 @@ mod bench {
     /// Vec<String> of package categ/name-version
     static PKGS: LazyLock<Vec<String>> = LazyLock::new(|| {
         let f = |p| match p {
-            Hist::MergeStart { key, .. } => Some(key),
+            HistEvent::MergeStart { key, .. } => Some(key),
             _ => None,
         };
         let show = Show::parse(&String::from("ms"), "rptsmua", "test").unwrap();
@@ -682,7 +707,7 @@ mod bench {
                 let t: Vec<String> = $t.split_whitespace().map(str::to_string).collect();
                 let pkgs = &*PKGS;
                 b.iter(move || {
-                     let f = FilterStr::try_new(&t, $e).unwrap();
+                     let f = Filter::try_new(&t, $e).unwrap();
                      pkgs.iter().fold(true, |a, p| a ^ f.match_pkg(&p))
                  });
             }
@@ -700,7 +725,7 @@ mod bench {
         let pkgs = &*PKGS;
         b.iter(move || {
              for p in pkgs {
-                 parse_version(&p, &FilterStr::True);
+                 parse_version(&p, &Filter::True);
              }
          });
     }
@@ -753,7 +778,7 @@ mod bench {
         ($n:ident, $f:expr) => {
             #[bench]
             fn $n(b: &mut test::Bencher) {
-                let f = FilterStr::True;
+                let f = Filter::True;
                 let lines = &*EMERGE_LINES;
                 b.iter(move || {
                      let mut found = 0;

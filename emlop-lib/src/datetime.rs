@@ -7,6 +7,9 @@ use time::{Date, Duration, OffsetDateTime, UtcOffset, format_description::Format
 
 #[cfg_attr(test, derive(PartialEq, Debug))]
 #[derive(Clone, Copy)]
+/// Represents a position to read from/to in `emerge.log`
+///
+/// See [get_hist()](fn.get_hist.html) and the [ArgParse] impl.
 pub enum HistBound {
     /// Unbounded
     None,
@@ -16,7 +19,12 @@ pub enum HistBound {
     Run(usize),
 }
 
-/// Parse datetime in various formats, returning unix timestamp
+/// Parse HistBound from various formats
+///
+/// * A plain unix timestamp
+/// * An absolute date (rfc3339-like, interpreted with the given [UtcOffset], see `parse_date_yyyymmdd()`)
+/// * A relative date (see `parse_date_ago()`)
+/// * An emerge command number (see `parse_command_num()`)
 impl ArgParse<String, UtcOffset> for HistBound {
     fn parse(val: &String, offset: UtcOffset, src: &'static str) -> Result<Self, ArgError> {
         let s = val.trim();
