@@ -111,6 +111,36 @@ impl HistEvent {
             | Self::SyncStop { ts, .. } => *ts,
         }
     }
+    /// Return the command kind
+    ///
+    /// Note that portage doesn't log all command kinds.
+    ///
+    /// Panics on variants other than `Run`.
+    pub fn cmd_kind(&self) -> CmdKind {
+        match self {
+            Self::RunStart { args, .. } => {
+                for arg in args.split_ascii_whitespace() {
+                    match arg {
+                        "--deselect" | "--unmerge" | "--clean" | "--depclean" => {
+                            return CmdKind::Clean;
+                        },
+                        "--sync" => return CmdKind::Sync,
+                        _ => (),
+                    }
+                }
+                CmdKind::Merge
+            },
+            _ => unreachable!("No ebuild/version for {:?}", self),
+        }
+    }
+}
+
+/// Kind of logged emerge command
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum CmdKind {
+    Merge,
+    Clean,
+    Sync,
 }
 
 /// Open maybe-compressed file, returning a BufReader

@@ -142,29 +142,6 @@ impl Times {
     }
 }
 
-/// Classify emerge commands by looking at their args.
-///
-/// Note that some commands don't get logged at all, so this enum is quite limited.
-// TODO: Remove `All` variant, move to HistEvent
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-enum ArgKind {
-    All,
-    Merge,
-    Clean,
-    Sync,
-}
-impl ArgKind {
-    fn new(args: &str) -> Self {
-        for arg in args.split_ascii_whitespace() {
-            match arg {
-                "--deselect" | "--unmerge" | "--clean" | "--depclean" => return Self::Clean,
-                "--sync" => return Self::Sync,
-                _ => (),
-            }
-        }
-        Self::Merge
-    }
-}
 
 /// Summary display of merge events
 ///
@@ -205,7 +182,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let mut pkg_time: BTreeMap<String, (Times, Times, Times)> = BTreeMap::new();
     let mut sync_start: Option<i64> = None;
     let mut sync_time: BTreeMap<String, Times> = BTreeMap::new();
-    let mut run_args: BTreeMap<ArgKind, usize> = BTreeMap::new();
+    let mut run_args: BTreeMap<CmdKind, usize> = BTreeMap::new();
     let mut nextts = 0;
     let mut curts = 0;
     for p in hist {
@@ -226,9 +203,8 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             }
         }
         match p {
-            HistEvent::RunStart { args, .. } => {
-                *run_args.entry(ArgKind::All).or_insert(0) += 1;
-                *run_args.entry(ArgKind::new(&args)).or_insert(0) += 1;
+            HistEvent::RunStart { .. } => {
+                *run_args.entry(p.cmd_kind()).or_insert(0) += 1;
             },
             HistEvent::MergeStart { ts, key, .. } => {
                 merge_start.insert(moves.get(key), (ts, false));
@@ -305,16 +281,19 @@ fn cmd_stats_group(gc: &Conf,
                    tblp: &mut Table<11>,
                    tblt: &mut Table<10>,
                    group: String,
-                   run_args: &BTreeMap<ArgKind, usize>,
+                   run_args: &BTreeMap<CmdKind, usize>,
                    sync_time: &BTreeMap<String, Times>,
                    pkg_time: &BTreeMap<String, (Times, Times, Times)>) {
     // Commands
     if sc.show.run && !run_args.is_empty() {
+        let m = run_args.get(&CmdKind::Merge).unwrap_or(&0);
+        let c = run_args.get(&CmdKind::Clean).unwrap_or(&0);
+        let s = run_args.get(&CmdKind::Sync).unwrap_or(&0);
         tblc.row([&[&group],
-                  &[&gc.cnt, run_args.get(&ArgKind::All).unwrap_or(&0)],
-                  &[&gc.cnt, run_args.get(&ArgKind::Merge).unwrap_or(&0)],
-                  &[&gc.cnt, run_args.get(&ArgKind::Clean).unwrap_or(&0)],
-                  &[&gc.cnt, run_args.get(&ArgKind::Sync).unwrap_or(&0)]]);
+                  &[&gc.cnt, &(m + c + s)],
+                  &[&gc.cnt, m],
+                  &[&gc.cnt, c],
+                  &[&gc.cnt, s]]);
     }
     // Syncs
     if sc.show.sync && !sync_time.is_empty() {
