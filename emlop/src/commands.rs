@@ -1,8 +1,7 @@
 use crate::{config::*, datetime::*, parse::*, table::*};
 use anyhow::Error;
 use emlop_lib::*;
-use libc::pid_t;
-use log::{error, trace, warn};
+use log::{trace, warn};
 use std::{collections::{BTreeMap, HashMap, HashSet},
           io::stdin};
 use time::Timestamp;
@@ -350,45 +349,27 @@ fn cmd_stats_group(gc: &Conf,
     }
 }
 
-/// Count processes in tree, including given proces
-fn proc_count(procs: &ProcList, pid: pid_t) -> usize {
-    let mut count = 1;
-    for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
-        count += proc_count(procs, *child);
-    }
-    count
-}
-
 /// Display proces tree
 fn proc_rows(now: i64,
              tbl: &mut Table<3>,
-             procs: &ProcList,
-             pid: pid_t,
+             einfo: &EmergeInfo,
+             proc: &Proc,
              depth: usize,
              gc: &Conf,
              sc: &ConfPred) {
-    // This should always succeed because we're getting pid from procs, but to allow experiments we
-    // warn instead of panic/ignore.
-    let proc = match procs.get(&pid) {
-        Some(p) => p,
-        None => {
-            error!("Could not find proces {pid}");
-            return;
-        },
-    };
     // Print current level
     if depth < sc.pdepth {
         tbl.row([&[&FmtProc(proc, depth, sc.pwidth)], &[&FmtDur(now - proc.start)], &[]]);
     }
     // Either recurse with children...
     if depth + 1 < sc.pdepth {
-        for child in procs.iter().filter(|(_, p)| p.ppid == pid).map(|(pid, _)| pid) {
-            proc_rows(now, tbl, procs, *child, depth + 1, gc, sc);
+        for child in einfo.children_of(proc.pid) {
+            proc_rows(now, tbl, einfo, child, depth + 1, gc, sc);
         }
     }
     // ...or print skipped rows
     else if gc.showskip {
-        let count = proc_count(procs, pid) - 1;
+        let count = einfo.count(proc.pid) - 1;
         if count > 0 {
             tbl.skiprow(&[&"  ".repeat(depth + 1), &gc.skip, &"(skip ", &count, &" below)"]);
         }
@@ -405,16 +386,15 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
     // Gather and print info about current merge process. Return early if there won't be anything to
     // predict (no stdin, no emerge process, and no unconditional resume)
-    let procs = get_procs(&mut sc.tmpdirs);
-    let einfo = get_emerge(&procs);
+    let einfo = EmergeInfo::new(&mut sc.tmpdirs);
     if einfo.roots.is_empty() && gc.ttyin && matches!(sc.resume, ResumeKind::No | ResumeKind::Auto)
     {
         tbl.row([&[&"Nothing to predict: no emerge running"], &[], &[]]);
         return Ok(false);
     }
     if sc.show.run {
-        for p in einfo.roots {
-            proc_rows(now, &mut tbl, &procs, p, 0, &gc, &sc);
+        for rootproc in einfo.roots.iter().filter_map(|&p| einfo.procs.get(&p)) {
+            proc_rows(now, &mut tbl, &einfo, rootproc, 0, &gc, &sc);
         }
     }
     tbl.header_done();
@@ -708,7 +688,6 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parse::procs;
 
     #[test]
     fn averages() {
@@ -740,8 +719,8 @@ mod tests {
         let (gc, mut sc) = ConfPred::from_str("emlop p --pdepth 4");
         let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
         let now = Timestamp::now().as_seconds();
-        let procs = get_procs(&mut sc.tmpdirs);
-        proc_rows(now, &mut tbl, &procs, 1, 0, &gc, &sc);
+        let einfo = EmergeInfo::new(&mut sc.tmpdirs);
+        proc_rows(now, &mut tbl, &einfo, einfo.procs.get(&1).unwrap(), 0, &gc, &sc);
         println!("{}", tbl.to_string());
     }
 
@@ -750,18 +729,18 @@ mod tests {
     fn procs_hierarchy() {
         let (gc, sc) = ConfPred::from_str("emlop p --pdepth 3 --color=n --output=c --showskip");
         let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
-        let procs = procs(&[(ProcKind::Other, "a", 1, 0),
-                            (ProcKind::Other, "a.a", 2, 1),
-                            (ProcKind::Other, "a.b", 3, 1),
-                            (ProcKind::Other, "a.a.a", 4, 2),
-                            (ProcKind::Other, "a.a.b", 5, 2),
-                            (ProcKind::Other, "a.b.a", 6, 3),
-                            // basic skip
-                            (ProcKind::Other, "a.a.a.a", 7, 4),
-                            // nested/sibling skip
-                            (ProcKind::Other, "a.a.b.a", 8, 5),
-                            (ProcKind::Other, "a.a.b.a.a", 9, 8),
-                            (ProcKind::Other, "a.a.b.b", 10, 5)]);
+        let einfo = EmergeInfo::mock([(ProcKind::Other, "a", 1, 0),
+                                      (ProcKind::Other, "a.a", 2, 1),
+                                      (ProcKind::Other, "a.b", 3, 1),
+                                      (ProcKind::Other, "a.a.a", 4, 2),
+                                      (ProcKind::Other, "a.a.b", 5, 2),
+                                      (ProcKind::Other, "a.b.a", 6, 3),
+                                      // basic skip
+                                      (ProcKind::Other, "a.a.a.a", 7, 4),
+                                      // nested/sibling skip
+                                      (ProcKind::Other, "a.a.b.a", 8, 5),
+                                      (ProcKind::Other, "a.a.b.a.a", 9, 8),
+                                      (ProcKind::Other, "a.a.b.b", 10, 5)]);
         let out = r#"1 a                   9
   2 a.a               8
     4 a.a.a           6
@@ -771,7 +750,7 @@ mod tests {
   3 a.b               7
     6 a.b.a           4
 "#;
-        proc_rows(10, &mut tbl, &procs, 1, 0, &gc, &sc);
+        proc_rows(10, &mut tbl, &einfo, einfo.procs.get(&1).unwrap(), 0, &gc, &sc);
         assert_eq!(tbl.to_string(), out);
     }
 }

@@ -66,21 +66,7 @@ impl Disp for FmtProc<'_> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use emlop_lib::{Proc, ProcKind, ProcList};
-    use libc::pid_t;
-    use std::collections::BTreeMap;
-
-    /// Helper to create a process list
-    pub fn procs(procs: &[(ProcKind, &str, pid_t, pid_t)]) -> ProcList {
-        BTreeMap::from_iter(procs.into_iter().map(|p| {
-                                                 (p.2,
-                                                  Proc { kind: p.0,
-                                                         cmdline: p.1.into(),
-                                                         start: p.2 as i64,
-                                                         pid: p.2,
-                                                         ppid: p.3 })
-                                             }))
-    }
+    use emlop_lib::{Proc, ProcKind};
 
     /// FmtProc should shorten (elipsis at start) the command line when there is no space
     #[test]

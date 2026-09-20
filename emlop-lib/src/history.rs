@@ -155,9 +155,9 @@ fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Sen
     }
 }
 
-/// Parse emerge log into [`HistEvent`]s.
+/// Parse `emerge.log` into [`HistEvent`]s.
 ///
-/// Parsing happen in a thread, this function returns a channel that can be iterated on.
+/// Parsing happens in a thread, this function returns a channel that can be iterated on.
 ///
 /// * `file` is `/var/log/emerge.log` on most systems.
 /// * `min` and `max` allow reading only part of the file

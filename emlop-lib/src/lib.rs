@@ -4,13 +4,13 @@
 //!
 //! # Reading historical data
 //!
-//! * [get_hist()] returns an iterator of filtered [HistEvent]s. Some post-analysis is needed, for
+//! * [get_hist()] an iterator of filtered [HistEvent]s. Some post-analysis is needed, for
 //!   example matching a `MergeStop` to a previous `MergeStart` (using their `key` field), to tell how
 //!   long that merge took.
 //! * [PkgMoves] (initialized using [Mtimedb]) keeps track of package renames.
 //!
 //! # Gathering info about ongoing merge
-//! * [get_procs()] and [get_emerge()] return info about live emerge processes
+//! * The fields of [EmergeInfo] contains info about live emerge processes
 //! * [get_resume()]  returns the merge list according to [Mtimedb]
 //! * [get_pretend()]  returns the merge list according to `emerge -pv`
 //!

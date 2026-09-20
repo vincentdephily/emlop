@@ -6,25 +6,40 @@
 //! implementaion (does procinfo crate work on BSDs ?), but it's unit-tested against ps and should
 //! be fast.
 
+use crate::Pkg;
 use anyhow::{Context, Error, ensure};
 use atoi::atoi;
 use libc::pid_t;
-use log::{debug, error};
+use log::{debug, error, trace};
 use std::{collections::BTreeMap,
           fs::{DirEntry, File, read_dir, read_to_string},
           io::prelude::*,
           path::PathBuf,
-          str::FromStr};
+          str::FromStr,
+          time::Instant};
 use time::Timestamp;
 
 #[derive(Debug, Clone, Copy)]
 /// Portage process kind
 pub enum ProcKind {
-    /// Main portage `emerge` process, one of those is the initial emerge command
+    /// Main portage `emerge` process
+    ///
+    /// One of those is the initial emerge command, and some of those may have a build.log open,
+    /// which tels us where tmpdirs is.
+    /// `
+    /// emerge /usr/lib/python-exec/python3.11/emerge -Ov1 dummybuild
+    /// `
     Emerge,
-    /// Portage sandbox process, tells us which ebuild is currently (un)merging
+    /// Helper portage `sandbox` process
+    ///
+    /// Tells us the current (un)merging ebuild and stage (depends on portage FEATURES=sandbox,
+    /// which should be the case for almost all users).
+    /// `
+    /// python3.11 /usr/lib/portage/python3.11/pid-ns-init 250 250 250 18 0,1,2 /usr/bin/sandbox
+    /// [app-portage/dummybuild-0.1.600] sandbox /usr/lib/portage/python3.11/ebuild.sh unpack`
+    /// `
     Sandbox,
-    /// Other process, possibly not related to portage at all
+    /// Other process, possibly not related to portage
     Other,
 }
 
@@ -37,103 +52,185 @@ pub struct Proc {
     pub pid: pid_t,
     pub ppid: pid_t,
 }
-
-/// Map of pid to [Proc]
-pub type ProcList = BTreeMap<pid_t, Proc>;
-
-/// Gather portage-relevant info on sytem processes
-///
-/// Besides the fields listed in [Proc], this function will also add detected postage tmpdir folders
-/// to the passed `&mut tmpdirs`.
-pub fn get_procs(tmpdirs: &mut Vec<PathBuf>) -> ProcList {
-    get_procs_result(tmpdirs).unwrap_or_else(|e| {
-                                 match e.source() {
-                                     Some(s) => error!("{e}: {s}"),
-                                     None => error!("{e}"),
-                                 };
-                                 BTreeMap::new()
-                             })
-}
-// TODO: Try building BTreeMap<pid_t, Vec<pid_t>>, maybe even remove them from Proc
-fn get_procs_result(tmpdirs: &mut Vec<PathBuf>) -> Result<ProcList, Error> {
-    // clocktick and time_ref are needed to interpret stat.start_time.
-    // SAFETY: returns a system constant, only failure mode should be a zero/negative value
-    let clocktick: i64 = unsafe {
-        #[allow(clippy::useless_conversion)] // `sysconf()` returns `i32` on 32bit platforms
-        libc::sysconf(libc::_SC_CLK_TCK).into()
-    };
-    ensure!(clocktick > 0, "Failed getting system clock ticks");
-    let mut uptimebuf = Vec::with_capacity(32);
-    File::open("/proc/uptime").context("Opening /proc/uptime")?
-                              .read_to_end(&mut uptimebuf)
-                              .context("Reading /proc/uptime")?;
-    let uptime = atoi::<i64>(&uptimebuf).context("Parsing /proc/uptime")?;
-    let time_ref = Timestamp::now().as_seconds() - uptime;
-    // Now iterate through /proc/<pid>
-    let mut ret: BTreeMap<pid_t, Proc> = BTreeMap::new();
-    for entry in read_dir("/proc/").context("Listing /proc/")?.filter_map(Result::ok) {
-        if let Some(p) = get_proc(&entry, clocktick, time_ref, tmpdirs) {
-            ret.insert(p.pid, p);
-        }
-    }
-    Ok(ret)
-}
-
-/// Fill `Proc` struct for one process, and update tmpdirs
-fn get_proc(entry: &DirEntry,
-            clocktick: i64,
-            time_ref: i64,
-            tmpdirs: &mut Vec<PathBuf>)
-            -> Option<Proc> {
-    // Parse pid.
-    // At this stage we expect `entry` to not always correspond to a process.
-    let pid = i32::from_str(&entry.file_name().to_string_lossy()).ok()?;
-    // See linux/Documentation/filesystems/proc.rst Table 1-4: Contents of the stat files.
-    let stat = read_to_string(entry.path().join("stat")).ok()?;
-    // Parse command name (it's surrounded by parens and may contain spaces)
-    // If it's emerge, look for portage tmpdir in its fds
-    let (cmd_start, cmd_end) = (stat.find('(')? + 1, stat.rfind(')')?);
-    let kind = if &stat[cmd_start..cmd_end] == "emerge" {
-        extend_tmpdirs(entry.path(), tmpdirs);
-        ProcKind::Emerge
-    } else if stat[cmd_start..cmd_end].starts_with("python")
-              || stat[cmd_start..cmd_end] == *"sandbox"
-    {
-        ProcKind::Sandbox
-    } else {
-        ProcKind::Other
-    };
-    // Parse parent pid and start time
-    let mut fields = stat[cmd_end + 1..].split(' ');
-    let ppid = i32::from_str(fields.nth(2)?).ok()?;
-    let start_time = i64::from_str(fields.nth(17)?).ok()?;
-    // Parse arguments
-    let cmdline = read_to_string(entry.path().join("cmdline")).ok()?;
-    // Done
-    Some(Proc { kind, cmdline, start: time_ref + start_time / clocktick, pid, ppid })
-}
-
-/// Find tmpdir by looking for "build.log" in the process fds, and add it to the provided vector.
-fn extend_tmpdirs(proc: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
-    if let Ok(entries) = read_dir(proc.join("fd")) {
-        let procstr = proc.to_string_lossy();
-        for d in entries.filter_map(|e| {
-                            let p = e.ok()?.path().canonicalize().ok()?;
-                            if p.file_name() != Some(std::ffi::OsStr::new("build.log")) {
-                                return None;
-                            }
-                            let d = p.parent()?.parent()?.parent()?.parent()?.parent()?;
-                            debug!("Tmpdir {} found in {}", d.to_string_lossy(), procstr);
-                            Some(d.to_path_buf())
-                        })
+impl Proc {
+    /// Fill `Proc` struct for one process
+    pub fn try_new(entry: &DirEntry, clocktick: i64, time_ref: i64) -> Option<Self> {
+        // Parse pid.
+        // At this stage we expect `entry` to not always correspond to a process.
+        let pid = i32::from_str(&entry.file_name().to_string_lossy()).ok()?;
+        // See linux/Documentation/filesystems/proc.rst Table 1-4: Contents of the stat files.
+        let stat = read_to_string(entry.path().join("stat")).ok()?;
+        // Parse command name (it's surrounded by parens and may contain spaces)
+        // If it's emerge, look for portage tmpdir in its fds
+        let (cmd_start, cmd_end) = (stat.find('(')? + 1, stat.rfind(')')?);
+        let kind = if &stat[cmd_start..cmd_end] == "emerge" {
+            ProcKind::Emerge
+        } else if stat[cmd_start..cmd_end].starts_with("python")
+                  || stat[cmd_start..cmd_end] == *"sandbox"
         {
-            if !tmpdirs.contains(&d) {
-                // Insert at the front because it's a better candidate than cli/default tmpdir
-                tmpdirs.insert(0, d)
+            ProcKind::Sandbox
+        } else {
+            ProcKind::Other
+        };
+        // Parse parent pid and start time
+        let mut fields = stat[cmd_end + 1..].split(' ');
+        let ppid = i32::from_str(fields.nth(2)?).ok()?;
+        let start_time = i64::from_str(fields.nth(17)?).ok()?;
+        // Parse arguments
+        let cmdline = read_to_string(entry.path().join("cmdline")).ok()?;
+        // Done
+        Some(Self { kind, cmdline, start: time_ref + start_time / clocktick, pid, ppid })
+    }
+}
+
+/// Info about current emerge process
+pub struct EmergeInfo {
+    /// [Proc] info of every system process
+    pub procs: BTreeMap<pid_t, Proc>,
+    /// Pid of the initial emerge command(s), the root of the build tree(s)
+    pub roots: Vec<pid_t>,
+    /// Startup timestamp of the oldest root
+    ///
+    /// [i64::MAX] if no root is found
+    pub start: i64,
+    /// Packages currently being built by a process
+    pub pkgs: Vec<Pkg>,
+}
+impl EmergeInfo {
+    /// Builds the [EmergeInfo] struct, and update `tmpdirs` in-place
+    ///
+    /// This function always succeeds: failure to read the process list results in a log and an
+    /// empty struct.
+    pub fn new(tmpdirs: &mut Vec<PathBuf>) -> Self {
+        let now = Instant::now();
+        let r = Self::try_new(tmpdirs).unwrap_or_else(|e| {
+                                          match e.source() {
+                                              Some(s) => error!("{e}: {s}"),
+                                              None => error!("{e}"),
+                                          };
+                                          Self::default()
+                                      });
+        debug!("Found {} procs ({} roots, {} pkgs) in {:?}",
+               r.procs.len(),
+               r.roots.len(),
+               r.pkgs.len(),
+               now.elapsed());
+        r
+    }
+
+    /// Return direct children of given pid
+    pub fn children_of(&self, pid: pid_t) -> impl Iterator<Item = &Proc> {
+        self.procs.values().filter(move |p| p.ppid == pid)
+    }
+
+    /// Count all children of given pid
+    pub fn count(&self, pid: pid_t) -> u32 {
+        1 + self.children_of(pid).map(|c| self.count(c.pid)).sum::<u32>()
+    }
+
+    fn default() -> Self {
+        Self { procs: BTreeMap::new(), roots: vec![], start: i64::MAX, pkgs: vec![] }
+    }
+
+    fn try_new(tmpdirs: &mut Vec<PathBuf>) -> Result<Self, Error> {
+        // clocktick and time_ref are needed to interpret stat.start_time.
+        // SAFETY: returns a system constant, only failure mode should be a zero/negative value
+        let clocktick: i64 = unsafe {
+            #[allow(clippy::useless_conversion)] // `sysconf()` returns `i32` on 32bit platforms
+            libc::sysconf(libc::_SC_CLK_TCK).into()
+        };
+        ensure!(clocktick > 0, "Failed getting system clock ticks");
+        let mut uptimebuf = Vec::with_capacity(32);
+        File::open("/proc/uptime").context("Opening /proc/uptime")?
+                                  .read_to_end(&mut uptimebuf)
+                                  .context("Reading /proc/uptime")?;
+        let uptime = atoi::<i64>(&uptimebuf).context("Parsing /proc/uptime")?;
+        let time_ref = Timestamp::now().as_seconds() - uptime;
+
+        // Now iterate through /proc/<pid>
+        let mut ret = Self::default();
+        for entry in read_dir("/proc/").context("Listing /proc/")?.filter_map(Result::ok) {
+            if let Some(proc) = Proc::try_new(&entry, clocktick, time_ref) {
+                ret.add_proc(proc, &entry, tmpdirs);
+            }
+        }
+        ret.reduce_roots();
+        Ok(ret)
+    }
+
+    /// Update self with info from [Proc]
+    fn add_proc(&mut self, proc: Proc, entry: &DirEntry, tmpdirs: &mut Vec<PathBuf>) {
+        match proc.kind {
+            ProcKind::Emerge => {
+                self.start = std::cmp::min(self.start, proc.start);
+                self.roots.push(proc.pid);
+                Self::extend_tmpdirs(entry.path(), tmpdirs);
+            },
+            ProcKind::Sandbox => {
+                if let Some(a) = proc.cmdline.find("] sandbox\0")
+                   && let Some(b) = proc.cmdline[..a].rfind("[")
+                   && let Some(p) = Pkg::try_new(&proc.cmdline[(b + 1)..a], false)
+                {
+                    self.pkgs.push(p);
+                }
+            },
+            ProcKind::Other => (),
+        }
+        self.procs.insert(proc.pid, proc);
+    }
+
+    /// Remove roots that  one of their parent is already a root
+    fn reduce_roots(&mut self) {
+        self.roots.retain(|&r| {
+                      let mut proc = self.procs.get(&r).expect("Root not in procs");
+                      while let Some(p) = self.procs.get(&proc.ppid) {
+                          if matches!(p.kind, ProcKind::Emerge) {
+                              trace!("Removing root {}: grandchild of {}", r, p.pid);
+                              return false;
+                          }
+                          proc = p;
+                      }
+                      true
+                  });
+    }
+
+    /// Find tmpdir by looking for "build.log" in the process fds, and add it to the provided vector
+    fn extend_tmpdirs(procpath: PathBuf, tmpdirs: &mut Vec<PathBuf>) {
+        if let Ok(entries) = read_dir(procpath.join("fd")) {
+            for d in entries.filter_map(|e| {
+                                let p = e.ok()?.path().canonicalize().ok()?;
+                                if p.file_name()? != "build.log" {
+                                    return None;
+                                }
+                                let d = p.parent()?.parent()?.parent()?.parent()?.parent()?;
+                                debug!("Tmpdir {:?} found in {:?}", d, procpath);
+                                Some(d.to_path_buf())
+                            })
+            {
+                if !tmpdirs.contains(&d) {
+                    // Insert at the front because it's a better candidate than cli/default tmpdir
+                    tmpdirs.insert(0, d)
+                }
             }
         }
     }
+
+    #[cfg(feature = "test-helpers")]
+    /// Create [EmergeInfo] from a list of (kind, cmdline, pid, ppid) tuples
+    pub fn mock<const N: usize>(procs: [(ProcKind, &str, pid_t, pid_t); N]) -> Self {
+        let mut ret = Self::default();
+        let entry: DirEntry = read_dir("/").unwrap().next().unwrap().unwrap();
+        let mut tmpdirs = vec![];
+        for p in procs {
+            let proc =
+                Proc { kind: p.0, cmdline: p.1.into(), start: p.2 as i64, pid: p.2, ppid: p.3 };
+            ret.add_proc(proc, &entry, &mut tmpdirs);
+        }
+        ret.reduce_roots();
+        ret
+    }
 }
+
 
 #[cfg(test)]
 pub mod tests {
@@ -159,8 +256,8 @@ pub mod tests {
     fn start_time() {
         // First get the system's process start times using our implementation
         // Store it as pid => (cmd, rust_time, ps_time)
-        let mut tmpdirs = vec![];
-        let mut info = get_procs(&mut tmpdirs)
+        let mut info = EmergeInfo::new(&mut vec![])
+            .procs
             .iter()
             .map(|(pid, i)| (*pid, (i.cmdline.clone(), Some(i.start), None)))
             .collect::<BTreeMap<pid_t, (String, Option<i64>, Option<i64>)>>();
@@ -207,6 +304,20 @@ pub mod tests {
         }
         assert!(e < 10, "Got failure score of {e}");
     }
+
+    /// Check that get_emerge() finds the expected roots
+    #[test]
+    fn get_emerge_roots() {
+        let _ = env_logger::try_init();
+        let einfo = EmergeInfo::mock([(ProcKind::Emerge, "a", 1, 0),
+                                      (ProcKind::Other, "a.a", 2, 1),
+                                      (ProcKind::Emerge, "a.a.b", 3, 2),
+                                      (ProcKind::Other, "b", 4, 0),
+                                      (ProcKind::Emerge, "b.a", 5, 6),
+                                      (ProcKind::Emerge, "b.a", 6, 4),
+                                      (ProcKind::Other, "b.a.a", 7, 5)]);
+        assert_eq!(einfo.roots, vec![1, 6]);
+    }
 }
 
 #[cfg(feature = "unstable")]
@@ -218,8 +329,7 @@ mod bench {
     /// Bench listing all processes
     fn get_procs(b: &mut test::Bencher) {
         b.iter(move || {
-             let mut tmpdirs = vec![];
-             super::get_procs(&mut tmpdirs);
+             super::EmergeInfo::new(&mut vec![]);
          });
     }
 }

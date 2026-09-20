@@ -32,3 +32,5 @@ env_logger = { version = "0.11.0", default-features = false, features = ["auto-c
 # Experimental features, may require nightly compiler.
 # Currently only benchmarking.
 unstable = []
+# Expose unittest helpers like `EmergeInfo::mock()`.
+test-helpers = []

@@ -1,7 +1,6 @@
 //! Handles parsing of current emerge state.
 
-use crate::{Ansi, ArgError, ArgParse, ProcKind, ProcList};
-use libc::pid_t;
+use crate::{Ansi, ArgError, ArgParse};
 use log::*;
 use regex::Regex;
 use serde::Deserialize;
@@ -272,78 +271,10 @@ fn read_buildlog(file: File, max: usize) -> String {
     format!(" ({last})")
 }
 
-#[derive(Debug)]
-/// Info about current emerge process
-///
-/// See [get_emerge()]
-pub struct EmergeInfo {
-    pub start: i64,
-    pub roots: Vec<pid_t>,
-    pub pkgs: Vec<Pkg>,
-}
-
-/// Get info from currently running emerge processes
-///
-/// * emerge /usr/lib/python-exec/python3.11/emerge -Ov1 dummybuild
-///   gives us the emerge command, and the tmpdir (looking at open fds)
-/// * python3.11 /usr/lib/portage/python3.11/pid-ns-init 250 250 250 18 0,1,2 /usr/bin/sandbox
-///   [app-portage/dummybuild-0.1.600] sandbox /usr/lib/portage/python3.11/ebuild.sh unpack
-///   gives us the actually emerging ebuild and stage (depends on portage FEATURES=sandbox, which
-///   should be the case for almost all users)
-pub fn get_emerge(procs: &ProcList) -> EmergeInfo {
-    let mut res = EmergeInfo { start: i64::MAX, roots: vec![], pkgs: vec![] };
-    for (pid, proc) in procs {
-        match proc.kind {
-            ProcKind::Emerge => {
-                res.start = std::cmp::min(res.start, proc.start);
-                res.roots.push(*pid);
-            },
-            ProcKind::Sandbox => {
-                if let Some(a) = proc.cmdline.find("] sandbox\0")
-                   && let Some(b) = proc.cmdline[..a].rfind("[")
-                   && let Some(p) = Pkg::try_new(&proc.cmdline[(b + 1)..a], false)
-                {
-                    res.pkgs.push(p);
-                }
-            },
-            ProcKind::Other => (),
-        }
-    }
-    // Remove roots that are (grand)children of another root
-    if res.roots.len() > 1 {
-        let origroots = res.roots.clone();
-        res.roots.retain(|&r| {
-                     let mut proc = procs.get(&r).expect("Root not in ProcList");
-                     while let Some(p) = procs.get(&proc.ppid) {
-                         if origroots.contains(&p.pid) {
-                             debug!("Skipping proces {}: grandchild of {}", r, p.pid);
-                             return false;
-                         }
-                         proc = p;
-                     }
-                     true
-                 });
-    }
-    trace!("{res:?}");
-    res
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Proc;
-
-    /// Helper to create a process list
-    pub fn procs(procs: &[(ProcKind, &str, pid_t, pid_t)]) -> ProcList {
-        ProcList::from_iter(procs.into_iter().map(|p| {
-                                                 (p.2,
-                                                  Proc { kind: p.0,
-                                                         cmdline: p.1.into(),
-                                                         start: p.2 as i64,
-                                                         pid: p.2,
-                                                         ppid: p.3 })
-                                             }))
-    }
 
     impl PartialEq<(&str, &str)> for Pkg {
         fn eq(&self, p: &(&str, &str)) -> bool {
@@ -423,20 +354,6 @@ mod tests {
                 File::open(&format!("../testdata/{file}")).expect(&format!("can't open {file:?}"));
             assert_eq!(format!(" ({res})"), read_buildlog(f, lim));
         }
-    }
-
-    /// Check that get_emerge() finds the expected roots
-    #[test]
-    fn get_emerge_roots() {
-        let _ = env_logger::try_init();
-        let procs = procs(&[(ProcKind::Emerge, "a", 1, 0),
-                            (ProcKind::Other, "a.a", 2, 1),
-                            (ProcKind::Emerge, "a.a.b", 3, 2),
-                            (ProcKind::Other, "b", 4, 0),
-                            (ProcKind::Emerge, "b.a", 5, 4),
-                            (ProcKind::Other, "b.a.a", 6, 5)]);
-        let einfo = get_emerge(&procs);
-        assert_eq!(einfo.roots, vec![1, 5]);
     }
 
     #[test]
