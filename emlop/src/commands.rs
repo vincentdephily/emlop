@@ -81,66 +81,6 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     Ok(found > 0)
 }
 
-/// Wrapper to extract stats from a list of data points (durations).
-struct Times {
-    vals: Vec<i64>,
-    count: i64,
-    tot: i64,
-}
-impl Times {
-    const fn new() -> Self {
-        Self { vals: vec![], count: 0, tot: 0 }
-    }
-    /// Digest new data point
-    ///
-    /// Data points should be inserted in chronological order.
-    /// We don't store negative values but we still take them into account.
-    fn insert(&mut self, t: i64) {
-        self.count += 1;
-        if t > 0 {
-            self.vals.push(t);
-            self.tot += t;
-        }
-    }
-    /// Predict the next data point by looking at past ones
-    fn pred(&self, lim: u16, avg: Average) -> i64 {
-        if self.vals.is_empty() {
-            return -1; // FIXME Return None
-        }
-        let start = self.vals.len().saturating_sub(lim as usize);
-        let vals = &self.vals[start..];
-        match avg {
-            // Simple arithmetic mean
-            Average::Arith => vals.iter().sum::<i64>() / vals.len() as i64,
-            // Middle value (or avg of the middle two)
-            Average::Median => {
-                let mut s: Vec<i64> = vals.to_vec();
-                s.sort_unstable();
-                let l = vals.len();
-                if l.is_multiple_of(2) { (s[(l / 2) - 1] + s[l / 2]) / 2 } else { s[l / 2] }
-            },
-            // Arithmically weighted arithmetic mean
-            // Eg for 4 values the weights are 4,3,2,1 (most recent value first)
-            Average::WeightedArith => {
-                let (s, _, w) =
-                    vals.iter().fold((0, 1, 0), |(s, n, w), v| (s + v * n, n + 1, w + n));
-                s / w
-            },
-            // Arithmically weighted median
-            // Eg 3,1,2 -> 3,1,1,2,2,2 -> 1,1,2,2,2,3 -> 2
-            Average::WeightedMedian => {
-                let mut s = Vec::with_capacity(((vals.len() + 1) * vals.len()) / 2);
-                for (n, &v) in vals.iter().enumerate() {
-                    s.resize(s.len() + n + 1, v);
-                }
-                s.sort_unstable();
-                let l = s.len();
-                if l.is_multiple_of(2) { (s[(l / 2) - 1] + s[l / 2]) / 2 } else { s[l / 2] }
-            },
-        }
-    }
-}
-
 
 /// Summary display of merge events
 ///
@@ -689,31 +629,9 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn averages() {
-        use crate::config::Average::*;
-        for (a, m, wa, wm, lim, vals) in
-            [(-1, -1, -1, -1, 10, vec![]),
-             (1, 1, 1, 1, 10, vec![1]),
-             (12 / 2, 6, 21 / 3, 10, 10, vec![2, 10]),
-             (12 / 2, 6, 14 / 3, 2, 10, vec![10, 2]),
-             (15 / 3, 4, (1 + 20 + 12) / (1 + 2 + 3), 4, 10, vec![1, 10, 4]),
-             (15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), 2, 10, vec![1, 10, 3, 1]),
-             (15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), 2, 4, vec![999, 1, 10, 3, 1])]
-        {
-            let mut t = Times::new();
-            for &v in vals.iter() {
-                t.insert(v);
-            }
-            assert_eq!(a, t.pred(lim, Arith), "arith {lim} {vals:?}");
-            assert_eq!(m, t.pred(lim, Median), "median {lim} {vals:?}");
-            assert_eq!(wa, t.pred(lim, WeightedArith), "weighted arith {lim} {vals:?}");
-            assert_eq!(wm, t.pred(lim, WeightedMedian), "weighted median {lim} {vals:?}");
-        }
-    }
-
     /// Shows the whole system's processes.
     /// Mainly useful as an interactive test, use `cargo test -- --nocapture procs_pid1`.
+    // todo: convert to example
     #[test]
     fn procs_pid1() {
         let (gc, mut sc) = ConfPred::from_str("emlop p --pdepth 4");

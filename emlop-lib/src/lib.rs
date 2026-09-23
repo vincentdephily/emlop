@@ -29,6 +29,7 @@ mod current;
 mod datetime;
 mod history;
 mod proces;
+mod stats;
 mod types;
 
 pub use ansi::*;
@@ -36,4 +37,5 @@ pub use current::*;
 pub use datetime::*;
 pub use history::*;
 pub use proces::*;
+pub use stats::*;
 pub use types::*;

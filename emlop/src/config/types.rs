@@ -1,35 +1,6 @@
 use emlop_lib::{ArgError, ArgParse};
 
 #[derive(Clone, Copy)]
-pub enum Average {
-    Arith,
-    Median,
-    WeightedArith,
-    WeightedMedian,
-}
-impl ArgParse<String, ()> for Average {
-    fn parse(v: &String, _: (), s: &'static str) -> Result<Self, ArgError> {
-        match v.as_str() {
-            "a" | "arith" => Ok(Self::Arith),
-            "m" | "median" => Ok(Self::Median),
-            "wa" | "weighted-arith" => Ok(Self::WeightedArith),
-            "wm" | "weighted-median" => Ok(Self::WeightedMedian),
-            _ => Err(ArgError::new(v, s).pos("(a)rith (m)edian wa/weightedarith wm/weigtedmedian")),
-        }
-    }
-}
-impl Average {
-    pub fn as_str(&self) -> &'static str {
-        match &self {
-            Self::Arith => "Arithetic mean",
-            Self::Median => "Median",
-            Self::WeightedArith => "Weighted arithmetic mean",
-            Self::WeightedMedian => "Weighted median",
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
 pub enum DurationStyle {
     Hms,
     HmsFixed,
