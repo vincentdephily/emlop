@@ -155,9 +155,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             },
             HistEvent::MergeStop { ts, ref key, .. } => {
                 if let Some((start_ts, bin)) = merge_start.remove(moves.get_ref(key)) {
-                    let (tc, tb, _) =
-                        pkg_time.entry(moves.get(p.take_ebuild()))
-                                .or_insert((Times::new(), Times::new(), Times::new()));
+                    let (tc, tb, _) = pkg_time.entry(moves.get(p.take_ebuild())).or_default();
                     if bin {
                         tb.insert(ts - start_ts);
                     } else {
@@ -170,9 +168,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             },
             HistEvent::UnmergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = unmerge_start.remove(moves.get_ref(key)) {
-                    let (_, _, times) =
-                        pkg_time.entry(moves.get(p.take_ebuild()))
-                                .or_insert((Times::new(), Times::new(), Times::new()));
+                    let (_, _, times) = pkg_time.entry(moves.get(p.take_ebuild())).or_default();
                     times.insert(ts - start_ts);
                 }
             },
@@ -182,8 +178,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             },
             HistEvent::SyncStop { ts, repo } => {
                 if let Some(start_ts) = sync_start.take() {
-                    let times = sync_time.entry(repo).or_insert(Times::new());
-                    times.insert(ts - start_ts);
+                    sync_time.entry(repo).or_default().insert(ts - start_ts);
                 } else {
                     warn!("Sync stop without a start at {ts}")
                 }
@@ -357,9 +352,9 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
             },
             HistEvent::MergeStop { ts, ref key, .. } => {
                 if let Some((start_ts, bin)) = started.remove(moves.get_ref(key)) {
-                    let timevec =
-                        times.entry((moves.get(p.take_ebuild()), bin)).or_insert(Times::new());
-                    timevec.insert(ts - start_ts);
+                    times.entry((moves.get(p.take_ebuild()), bin))
+                         .or_default()
+                         .insert(ts - start_ts);
                 }
             },
             _ => unreachable!("Should only receive HistEvent::{{Start,Step,Stop}}"),
@@ -527,8 +522,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
             HistEvent::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 if let Some((start, bin)) = pkg_starts.remove(key) {
-                    let times =
-                        pkg_times.entry((p.ebuild().to_owned(), bin)).or_insert(Times::new());
+                    let times = pkg_times.entry((p.ebuild().to_owned(), bin)).or_default();
                     let real = ts - start;
                     let samples = times.count.min(sc.lim.into());
                     match times.pred(sc.lim, sc.avg) {

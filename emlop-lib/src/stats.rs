@@ -37,6 +37,7 @@ impl Average {
 /// Container for durations (seconds) to predict the next value
 ///
 /// Negative values are used for `count`, but ignored for `tot` and `pred()`.
+#[derive(Default)]
 pub struct Times {
     /// All positive values
     vals: Vec<i64>,
@@ -46,10 +47,6 @@ pub struct Times {
     pub tot: i64,
 }
 impl Times {
-    pub const fn new() -> Self {
-        // Does not preallocate, because it's used in const contexts and might never insert a value
-        Self { vals: vec![], count: 0, tot: 0 }
-    }
     /// Digest new data point
     ///
     /// Data points should be inserted in chronological order.
@@ -110,7 +107,7 @@ mod tests {
     #[test]
     fn averages() {
         use Average::*;
-        assert_eq!(None, Times::new().pred(10, Arith), "empty");
+        assert_eq!(None, Times::default().pred(10, Arith), "empty");
         for (a, m, wa, wm, lim, vals) in
             [(1, 1, 1, 1, 10, vec![1]),
              (12 / 2, 6, 21 / 3, 10, 10, vec![2, 10]),
@@ -119,7 +116,7 @@ mod tests {
              (15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), 2, 10, vec![1, 10, 3, 1]),
              (15 / 4, 2, (1 + 20 + 9 + 4) / (1 + 2 + 3 + 4), 2, 4, vec![999, 1, 10, 3, 1])]
         {
-            let mut t = Times::new();
+            let mut t = Times::default();
             for &v in vals.iter() {
                 t.insert(v);
             }
