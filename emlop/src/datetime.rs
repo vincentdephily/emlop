@@ -148,16 +148,12 @@ impl FmtDur {
 impl crate::table::Disp for FmtDur {
     fn out(&self, buf: &mut Vec<u8>, conf: &Conf) -> usize {
         use DurationStyle::*;
-        let sec = self.0;
+        let unsure = self.0 < 0;
+        let sec = if self.0 < i64::MIN / 2 { i64::MAX + self.0 + 1 } else { self.0 };
         let dur = conf.dur.val;
-        let qmark = conf.qmark.val;
         let start = buf.len();
         match conf.dur_t {
-            _ if sec < i64::MIN / 2 => {
-                FmtDur(i64::MAX + sec + 1).out(buf, conf);
-                wtb!(buf, "{qmark}?")
-            },
-            _ if sec < 0 => wtb!(buf, "{qmark}?"),
+            _ if sec < 0 => (),
             Hms if sec >= 3600 => {
                 wtb!(buf, "{dur}{}:{:02}:{:02}", sec / 3600, sec % 3600 / 60, sec % 60)
             },
@@ -176,6 +172,9 @@ impl crate::table::Disp for FmtDur {
                     prefix = ", ";
                 }
             },
+        }
+        if unsure {
+            wtb!(buf, "{}?", conf.qmark.val);
         }
         emlop_lib::Ansi::len(&buf[start..])
     }

@@ -241,7 +241,7 @@ fn cmd_stats_group(gc: &Conf,
                       &[&gc.sync, repo],
                       &[&gc.cnt, &time.count],
                       &[&FmtDur(time.tot)],
-                      &[&FmtDur(time.pred(sc.lim, sc.avg))]]);
+                      &[&FmtDur(time.pred(sc.lim, sc.avg).unwrap_or(-1))]]);
         }
     }
     // Packages
@@ -251,13 +251,13 @@ fn cmd_stats_group(gc: &Conf,
                       &[&gc.pkg, pkg],
                       &[&gc.cnt, &merge.count],
                       &[&FmtDur(merge.tot)],
-                      &[&FmtDur(merge.pred(sc.lim, sc.avg))],
+                      &[&FmtDur(merge.pred(sc.lim, sc.avg).unwrap_or(-1))],
                       &[&gc.cnt, &binmerge.count],
                       &[&FmtDur(binmerge.tot)],
-                      &[&FmtDur(binmerge.pred(sc.lim, sc.avg))],
+                      &[&FmtDur(binmerge.pred(sc.lim, sc.avg).unwrap_or(-1))],
                       &[&gc.cnt, &unmerge.count],
                       &[&FmtDur(unmerge.tot)],
-                      &[&FmtDur(unmerge.pred(sc.lim, sc.avg))]]);
+                      &[&FmtDur(unmerge.pred(sc.lim, sc.avg).unwrap_or(-1))]]);
         }
     }
     // Totals
@@ -422,11 +422,8 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
 
         // Find the predicted time and adjust counters
         let (fmtpred, pred) = match times.get(&(p.ebuild().to_string(), p.bin)) {
-            Some(tv) => {
-                let pred = tv.pred(sc.lim, sc.avg);
-                (FmtDur(pred), pred)
-            },
-            None => {
+            Some(tv) if let Some(pred) = tv.pred(sc.lim, sc.avg) => (FmtDur(pred), pred),
+            _ => {
                 totunknown += 1;
                 let u = if p.bin { sc.unknownb } else { sc.unknownc };
                 (FmtDur(u).unsure(), u)
@@ -535,7 +532,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                     let real = ts - start;
                     let samples = times.count.min(sc.lim.into());
                     match times.pred(sc.lim, sc.avg) {
-                        -1 => {
+                        None => {
                             if sc.show.merge {
                                 tbl.row([&[&FmtDate(ts)],
                                          &[if bin { &gc.binmerge } else { &gc.merge },
@@ -546,7 +543,7 @@ pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
                                          &[]])
                             }
                         },
-                        pred => {
+                        Some(pred) => {
                             let err = (pred - real) as f64 * 100.0 / real as f64;
                             if sc.show.merge {
                                 tbl.row([&[&FmtDate(ts)],

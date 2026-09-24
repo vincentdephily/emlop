@@ -64,14 +64,13 @@ impl Times {
     /// Predict the next data point
     ///
     /// Only the last `lim` values are taken into account.
-    /// Return -1 when no prediction can be made (no values inserted).
-    pub fn pred(&self, lim: u16, avg: Average) -> i64 {
+    pub fn pred(&self, lim: u16, avg: Average) -> Option<i64> {
         if self.vals.is_empty() {
-            return -1; // FIXME Return None
+            return None;
         }
         let start = self.vals.len().saturating_sub(lim as usize);
         let vals = &self.vals[start..];
-        match avg {
+        let pred = match avg {
             // Simple arithmetic mean
             Average::Arith => vals.iter().sum::<i64>() / vals.len() as i64,
             // Middle value (or avg of the middle two)
@@ -99,7 +98,8 @@ impl Times {
                 let l = s.len();
                 if l.is_multiple_of(2) { (s[(l / 2) - 1] + s[l / 2]) / 2 } else { s[l / 2] }
             },
-        }
+        };
+        Some(pred)
     }
 }
 
@@ -109,9 +109,10 @@ mod tests {
 
     #[test]
     fn averages() {
+        use Average::*;
+        assert_eq!(None, Times::new().pred(10, Arith), "empty");
         for (a, m, wa, wm, lim, vals) in
-            [(-1, -1, -1, -1, 10, vec![]),
-             (1, 1, 1, 1, 10, vec![1]),
+            [(1, 1, 1, 1, 10, vec![1]),
              (12 / 2, 6, 21 / 3, 10, 10, vec![2, 10]),
              (12 / 2, 6, 14 / 3, 2, 10, vec![10, 2]),
              (15 / 3, 4, (1 + 20 + 12) / (1 + 2 + 3), 4, 10, vec![1, 10, 4]),
@@ -122,10 +123,10 @@ mod tests {
             for &v in vals.iter() {
                 t.insert(v);
             }
-            assert_eq!(a, t.pred(lim, Average::Arith), "arith {lim} {vals:?}");
-            assert_eq!(m, t.pred(lim, Average::Median), "median {lim} {vals:?}");
-            assert_eq!(wa, t.pred(lim, Average::WeightedArith), "weighted arith {lim} {vals:?}");
-            assert_eq!(wm, t.pred(lim, Average::WeightedMedian), "weighted median {lim} {vals:?}");
+            assert_eq!(Some(a), t.pred(lim, Arith), "arith {lim} {vals:?}");
+            assert_eq!(Some(m), t.pred(lim, Median), "median {lim} {vals:?}");
+            assert_eq!(Some(wa), t.pred(lim, WeightedArith), "weighted arith {lim} {vals:?}");
+            assert_eq!(Some(wm), t.pred(lim, WeightedMedian), "weighted median {lim} {vals:?}");
         }
     }
 }
