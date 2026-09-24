@@ -108,6 +108,33 @@ impl Mtimedb {
         debug!("Loaded {file} in {:?}", now.elapsed());
         r
     }
+
+    /// Return the list of packages that portage has saved for resuming
+    ///
+    /// Portage maintains a "main" and a "backup" list, but the state can get messy especially when
+    /// more than two emerge commands are running concurently.
+    pub fn resume_list(&self, kind: ResumeKind) -> Vec<Pkg> {
+        let r = self.try_resume_list(kind).unwrap_or_default();
+        debug!("Loaded {kind:?} resume list: {r:?}");
+        r
+    }
+    fn try_resume_list(&self, kind: ResumeKind) -> Option<Vec<Pkg>> {
+        let r = match kind {
+            ResumeKind::Either | ResumeKind::Auto => self.resume
+                                                         .as_ref()
+                                                         .filter(|o| !o.mergelist.is_empty())
+                                                         .or(self.resume_backup.as_ref())?,
+            ResumeKind::Main => self.resume.as_ref()?,
+            ResumeKind::Backup => self.resume_backup.as_ref()?,
+            ResumeKind::No => return Some(vec![]),
+        };
+        Some(r.mergelist
+              .iter()
+              .filter_map(|v| {
+                  v.get(2).and_then(|s| Pkg::try_new(s, v.first().is_some_and(|b| b == "binary")))
+              })
+              .collect())
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -136,30 +163,6 @@ impl ArgParse<String, ()> for ResumeKind {
         }
     }
 }
-
-/// Parse resume list from portage mtimedb
-pub fn get_resume(kind: ResumeKind, db: &Mtimedb) -> Vec<Pkg> {
-    let r = try_get_resume(kind, db).unwrap_or_default();
-    debug!("Loaded {kind:?} resume list: {r:?}");
-    r
-}
-fn try_get_resume(kind: ResumeKind, db: &Mtimedb) -> Option<Vec<Pkg>> {
-    let r = match kind {
-        ResumeKind::Either | ResumeKind::Auto => {
-            db.resume.as_ref().filter(|o| !o.mergelist.is_empty()).or(db.resume_backup.as_ref())?
-        },
-        ResumeKind::Main => db.resume.as_ref()?,
-        ResumeKind::Backup => db.resume_backup.as_ref()?,
-        ResumeKind::No => return Some(vec![]),
-    };
-    Some(r.mergelist
-          .iter()
-          .filter_map(|v| {
-              v.get(2).and_then(|s| Pkg::try_new(s, v.first().is_some_and(|b| b == "binary")))
-          })
-          .collect())
-}
-
 
 /// Map old ebuild name to new one
 ///
@@ -240,9 +243,12 @@ impl PkgMoves {
 
 
 /// Retrieve summary info from the build log
-pub fn get_buildlog(pkg: &Pkg, portdirs: &Vec<PathBuf>) -> Option<String> {
-    for portdir in portdirs {
-        let name = portdir.join("portage").join(pkg.ebuild_version()).join("temp/build.log");
+///
+/// `tmpdirs` are possible `$PORTAGE_TMPDIR` paths. Usually `/var/tmp`, but can be autodetected by
+/// [EmergeInfo::new()](crate::EmergeInfo::new()).
+pub fn get_buildlog(pkg: &Pkg, tmpdirs: &Vec<PathBuf>) -> Option<String> {
+    for dir in tmpdirs {
+        let name = dir.join("portage").join(pkg.ebuild_version()).join("temp/build.log");
         if let Ok(file) = File::open(&name).map_err(|e| warn!("Cannot open {name:?}: {e}")) {
             info!("Build log: {}", name.display());
             return Some(read_buildlog(file, 50));
@@ -310,7 +316,7 @@ mod tests {
         let expect_pkg: Option<Vec<Pkg>> =
             expect.map(|o| o.into_iter().map(|(s, b)| Pkg::try_new(s, *b).unwrap()).collect());
         let res =
-            Mtimedb::try_new(&format!("../testdata/{file}")).and_then(|m| try_get_resume(kind, &m));
+            Mtimedb::try_new(&format!("../testdata/{file}")).and_then(|m| m.try_resume_list(kind));
         assert_eq!(expect_pkg, res, "Mismatch for {file}");
     }
 

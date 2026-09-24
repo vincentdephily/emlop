@@ -364,7 +364,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     // Build list of packages to predict, either from stdin or from the current system state
     let pkgs: Vec<Pkg> = if gc.ttyin {
         // From resume list
-        let mut r = get_resume(sc.resume, &mdb);
+        let mut r = mdb.resume_list(sc.resume);
         // Plus specific emerge processes
         for p in einfo.pkgs.iter() {
             if !r.contains(p) {
