@@ -4,9 +4,10 @@
 //!
 //! # Reading historical data
 //!
-//! * [get_hist()] returns an iterator of [HistEvent]s, with filters for variant, timestamp, and
-//!   content. Some post-analysis is needed, for example matching a `MergeStop` to a previous
-//!   `MergeStart` (using their `key` field), to tell how long that merge took.
+//! * [ELog.get()](ELog::get()) returns an iterator of [ELogLine]s, with filters for
+//!   variant, timestamp, and content. Some post-analysis is needed, for example matching a
+//!   `MergeStop` to a previous `MergeStart` (using their `key` field), to tell how long that merge
+//!   took.
 //! * [PkgMoves.get()](PkgMoves::get()) returns the newest name of a renamed package.
 //!
 //! # Gathering info about ongoing merge
@@ -22,9 +23,7 @@
 //! * [FmtUtc] formats a unix timestamp as ISO8601.
 //! * [Ansi] strips ansi color sequences from logs.
 
-// TODO: Show::{tot,pkg} don't belong in the library, split this type
 // TODO: Make Arg{Parse,Error} optional, or even move it back to the binary ?
-// TODO: Make serde (Mtimedb,PkgMove,get_resume...) optional ?
 
 mod ansi;
 mod current;

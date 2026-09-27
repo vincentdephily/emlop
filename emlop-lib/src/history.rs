@@ -1,8 +1,6 @@
 //! Handles emerge.log parsing.
-//!
-//! Use `get_hist()` to start parsing and retrieve `HistEvent` enums.
 
-use crate::{FmtUtc, HistBound, Show};
+use crate::{FmtUtc, HistBound};
 use anyhow::{Context, Error, bail, ensure};
 use flate2::read::GzDecoder;
 use log::*;
@@ -15,16 +13,17 @@ use std::{fs::File,
           thread,
           time::Instant};
 
-/// A parsed `emerge.log` event
+/// A parsed `emerge.log` line
 ///
-/// Each event corresponds to one interesting log line. The `key` can normaly be used to match
-/// related events together (the ones with the same prefix).
+/// Each variant corresponds to one interesting log line. The `key` can normaly be used to match
+/// related lines together (the ones with the same prefix).
 ///
-/// See [`get_hist()`].
+/// See [ELog].
 #[derive(Debug)]
-pub enum HistEvent {
+pub enum ELogLine {
     /// Emerge run started (might never complete).
-    // There's no RunStop, because matching a Stop to the correct Start is too unreliable
+    ///
+    /// There's no RunStop, because matching a Stop to the correct Start is too unreliable
     RunStart { ts: i64, args: String },
     /// Merge started (might never complete).
     MergeStart { ts: i64, key: String, pos: usize },
@@ -41,7 +40,7 @@ pub enum HistEvent {
     /// Sync completed.
     SyncStop { ts: i64, repo: String },
 }
-impl HistEvent {
+impl ELogLine {
     /// Get the ebuild as an `&str`
     ///
     /// Panics for `Run` and `Sync` variants
@@ -155,72 +154,120 @@ fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Sen
     }
 }
 
-/// Parse `emerge.log` into [`HistEvent`]s.
+/// Parser for emerge log file
 ///
-/// Parsing happens in a thread, this function returns a channel that can be iterated on.
-///
-/// * `file` is `/var/log/emerge.log` on most systems.
-/// * `min` and `max` allow reading only part of the file
-/// * `show` filters on event type
-/// * `search_terms` and `search_exact` filter by pkg/repo name
-pub fn get_hist(file: &str,
-                min: HistBound,
-                max: HistBound,
-                show: Show,
-                search_terms: &Vec<String>,
-                search_exact: bool)
-                -> Result<Receiver<HistEvent>, Error> {
-    trace!("Show: {show}");
-    let now = Instant::now();
-    let logfile = file.to_owned();
-    let (ts_min, ts_max) = filter_ts(file, min, max)?;
-    let filter = Filter::try_new(search_terms, search_exact)?;
-    let mut buf = open_any_buffered(file)?;
-    let (tx, rx): (SyncSender<HistEvent>, Receiver<HistEvent>) = sync_channel(256);
-    thread::spawn(move || {
-        let show_merge = show.merge || show.pkg || show.tot;
-        let show_unmerge = show.unmerge || show.pkg || show.tot;
-        let mut prev_t = 0;
-        let mut curline = 1;
-        let mut line = Vec::with_capacity(255);
-        loop {
-            match buf.read_until(b'\n', &mut line) {
-                // End of file
-                Ok(0) => break,
-                // Got a line, see if one of the funs match it
-                Ok(_) => {
-                    if let Some((t, s)) = parse_ts(&line, ts_min, ts_max) {
-                        if prev_t > t {
-                            warn!("{logfile}:{curline}: System clock jump: {} -> {}",
-                                  FmtUtc(prev_t),
-                                  FmtUtc(t));
-                        }
-                        prev_t = t;
-                        let parsed = parse_mergestart(show_merge, t, s, &filter)
-			    .or_else(|| parse_mergestop(show_merge, t, s, &filter))
-			    .or_else(|| parse_unmergestart(show_unmerge, t, s, &filter))
-			    .or_else(|| parse_unmergestop(show_unmerge, t, s, &filter))
-			    .or_else(|| parse_runstart(show.run, t, s))
-			    .or_else(|| parse_syncstart(show.sync, t, s))
-			    .or_else(|| parse_syncstop(show.sync, t, s, &filter))
-			    .or_else(|| parse_mergebin(show_merge, t, s, &filter));
-                        if let Some(found) = parsed
-                           && tx.send(found).is_err()
-                        {
-                            break;
-                        }
-                    }
-                },
-                // System read error...
-                Err(e) => warn!("{logfile}:{curline}: {e}"),
-            }
-            line.clear();
-            curline += 1;
-        }
-        debug!("Parsed {curline} {logfile} lines in {:?}", now.elapsed());
-    });
-    Ok(rx)
+/// 1. Create a new parser with [new()](Self::new())
+/// 2. Call the filter methodss if needed
+/// 3. Consume with [get()](Self::get()), returning [ELogLine]s
+pub struct ELog {
+    buf: BufReader<Box<dyn std::io::Read + Send>>,
+    file: String,
+    min: i64,
+    max: i64,
+    merge: bool,
+    unmerge: bool,
+    run: bool,
+    sync: bool,
+    filter: Filter,
 }
+impl ELog {
+    /// Create a new `emerge.log` file parser
+    ///
+    /// `file` is `/var/log/emerge.log` on most systems. Compressed files (*.gz) are supported.
+    pub fn new(file: &str) -> Result<Self, Error> {
+        let file = file.to_owned();
+        Ok(Self { buf: open_any_buffered(&file)?,
+                  file,
+                  min: i64::MIN,
+                  max: i64::MAX,
+                  merge: true,
+                  unmerge: false,
+                  run: false,
+                  sync: false,
+                  filter: Filter::True })
+    }
+    /// Parse the file only between `min` and `max`
+    pub fn bounds(mut self, min: HistBound, max: HistBound) -> Result<Self, Error> {
+        (self.min, self.max) = filter_ts(&self.file, min, max)?;
+        Ok(self)
+    }
+    /// Parse merge events
+    pub fn merge(mut self, b: bool) -> Self {
+        self.merge = b;
+        self
+    }
+    /// Parse unmerge events
+    pub fn unmerge(mut self, b: bool) -> Self {
+        self.unmerge = b;
+        self
+    }
+    /// Parse sync events
+    pub fn sync(mut self, b: bool) -> Self {
+        self.sync = b;
+        self
+    }
+    /// Parse run events
+    pub fn run(mut self, b: bool) -> Self {
+        self.run = b;
+        self
+    }
+    /// Filter events by ebuild or repo name
+    ///
+    /// * If exact=false: Case-insensitive regex matche on `repo` or `categ/ebuild`
+    /// * If exact=true: String equality on `repo`, `categ/ebuild`, or `ebuild`
+    pub fn search(mut self, terms: &Vec<String>, exact: bool) -> Result<Self, Error> {
+        self.filter = Filter::try_new(terms, exact)?;
+        Ok(self)
+    }
+    /// Start parsing thread, and return a [Receiver] of [ELogLine]s
+    pub fn get(mut self) -> Receiver<ELogLine> {
+        let now = Instant::now();
+        let (tx, rx): (SyncSender<ELogLine>, Receiver<ELogLine>) = sync_channel(256);
+        thread::spawn(move || {
+            let mut prev_t = 0;
+            let mut curline = 1;
+            let mut line = Vec::with_capacity(255);
+            loop {
+                match self.buf.read_until(b'\n', &mut line) {
+                    // End of file
+                    Ok(0) => break,
+                    // Got a line, see if one of the funs match it
+                    Ok(_) => {
+                        if let Some((t, s)) = parse_ts(&line, self.min, self.max) {
+                            if prev_t > t {
+                                warn!("{}:{curline}: System clock jump: {} -> {}",
+                                      self.file,
+                                      FmtUtc(prev_t),
+                                      FmtUtc(t));
+                            }
+                            prev_t = t;
+                            let parsed = parse_mergestart(self.merge, t, s, &self.filter)
+                            .or_else(|| parse_mergestop(self.merge, t, s, &self.filter))
+                            .or_else(|| parse_unmergestart(self.unmerge, t, s, &self.filter))
+                            .or_else(|| parse_unmergestop(self.unmerge, t, s, &self.filter))
+                            .or_else(|| parse_runstart(self.run, t, s))
+                            .or_else(|| parse_syncstart(self.sync, t, s))
+                            .or_else(|| parse_syncstop(self.sync, t, s, &self.filter))
+                            .or_else(|| parse_mergebin(self.merge, t, s, &self.filter));
+                            if let Some(found) = parsed
+                               && tx.send(found).is_err()
+                            {
+                                break;
+                            }
+                        }
+                    },
+                    // System read error...
+                    Err(e) => warn!("{}:{curline}: {e}", self.file),
+                }
+                line.clear();
+                curline += 1;
+            }
+            debug!("Parsed {} lines in {:?}", self.file, now.elapsed());
+        });
+        rx
+    }
+}
+
 
 /// Return min/max timestamp depending on options.
 fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), Error> {
@@ -349,26 +396,26 @@ fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
 }
 
 /// *** emerge --update --ask --deep --reinstall=changed-use --regex-search-auto=y --verbose system
-fn parse_runstart(enabled: bool, ts: i64, line: &[u8]) -> Option<HistEvent> {
+fn parse_runstart(enabled: bool, ts: i64, line: &[u8]) -> Option<ELogLine> {
     if !enabled || !line.starts_with(b"*** emer") {
         return None;
     }
-    Some(HistEvent::RunStart { ts, args: from_utf8(&line[11..]).ok()?.to_owned() })
+    Some(ELogLine::RunStart { ts, args: from_utf8(&line[11..]).ok()?.to_owned() })
 }
 
 /// >>> emerge (1 of 1) www-client/falkon-24.08.3 to /
-fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
+fn parse_mergestart(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<ELogLine> {
     if !enabled || !line.starts_with(b">>> emer") {
         return None;
     }
     let mut tokens = line.split(|c| *c == b' ');
     let atom = from_utf8(tokens.nth(5)?).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(HistEvent::MergeStart { ts, key: atom.to_owned(), pos })
+    Some(ELogLine::MergeStart { ts, key: atom.to_owned(), pos })
 }
 
 /// === (1 of 1) Merging Binary (www-client/falkon-24.08.3::/var/cache/binpkgs/www-client/falkon-24.08.3.gpkg.tar)
-fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
+fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<ELogLine> {
     if !enabled || !line.starts_with(b"=== (") {
         return None;
     }
@@ -380,45 +427,45 @@ fn parse_mergebin(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Optio
     let p3 = memchr(b':', &line[p2..])? + p2;
     let atom = from_utf8(&line[p2..p3]).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(HistEvent::MergeBin { ts, key: atom.to_owned(), pos })
+    Some(ELogLine::MergeBin { ts, key: atom.to_owned(), pos })
 }
 
 /// ::: completed emerge (1 of 1) www-client/falkon-24.08.3 to /
-fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
+fn parse_mergestop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<ELogLine> {
     if !enabled || !line.starts_with(b"::: comp") {
         return None;
     }
     let mut tokens = line.split(|c| *c == b' ');
     let atom = from_utf8(tokens.nth(6)?).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(HistEvent::MergeStop { ts, key: atom.to_owned(), pos })
+    Some(ELogLine::MergeStop { ts, key: atom.to_owned(), pos })
 }
 
 /// === Unmerging... (app-portage/getuto-1.13)
-fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
+fn parse_unmergestart(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<ELogLine> {
     if !enabled || !line.starts_with(b"=== Unmer") {
         return None;
     }
     let p1 = memchr(b'(', line)? + 1;
     let atom = from_utf8(&line[p1..line.len() - 1]).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(HistEvent::UnmergeStart { ts, key: atom.to_owned(), pos })
+    Some(ELogLine::UnmergeStart { ts, key: atom.to_owned(), pos })
 }
 
 /// >>> unmerge success: www-client/falkon-24.08.3
-fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
+fn parse_unmergestop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<ELogLine> {
     if !enabled || !line.starts_with(b">>> unmerge succ") {
         return None;
     }
     let p1 = memrchr(b' ', line)? + 1;
     let atom = from_utf8(&line[p1..]).ok()?;
     let pos = parse_version(atom, filter)?;
-    Some(HistEvent::UnmergeStop { ts, key: atom.to_owned(), pos })
+    Some(ELogLine::UnmergeStop { ts, key: atom.to_owned(), pos })
 }
 
 /// >>> Syncing repository 'gentoo' into '/usr/portage'...
 /// >>> Starting rsync with rsync://91.186.30.235/gentoo-portage
-fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<HistEvent> {
+fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<ELogLine> {
     // Old portage logs 'Starting rsync with <url>', new portage logs 'Syncing repository <name>',
     // and intermediate versions log both. This makes it hard to properly match a start repo string
     // to a stop repo string across portage versions. Since syncs are not concurrent, we simply
@@ -428,7 +475,7 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<HistEvent> {
            || line.starts_with(b">>> Starting rsync")
            || line.starts_with(b">>> starting rsync"))
     {
-        Some(HistEvent::SyncStart { ts })
+        Some(ELogLine::SyncStart { ts })
     } else {
         None
     }
@@ -436,21 +483,20 @@ fn parse_syncstart(enabled: bool, ts: i64, line: &[u8]) -> Option<HistEvent> {
 
 /// === Sync completed with rsync://209.177.148.226/gentoo-portage
 /// === Sync completed for gentoo
-fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<HistEvent> {
+fn parse_syncstop(enabled: bool, ts: i64, line: &[u8], filter: &Filter) -> Option<ELogLine> {
     // Old portage logs 'completed with <url>', new portage logs 'completed for <name>'
     if !enabled || !line.starts_with(b"=== Sync comp") {
         return None;
     }
     let pos = memrchr2(b' ', b'/', line)? + 1;
     let repo = from_utf8(&line[pos..]).ok()?;
-    filter.match_str(repo).then_some(HistEvent::SyncStop { ts, repo: repo.to_owned() })
+    filter.match_str(repo).then_some(ELogLine::SyncStop { ts, repo: repo.to_owned() })
 }
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ArgParse;
     use std::collections::HashMap;
 
     /// This checks parsing the given emerge.log.
@@ -471,26 +517,33 @@ mod tests {
             "shortline" => (1327867709, 1327871057),
             o => unimplemented!("Unknown test log file {:?}", o),
         };
-        let hist = get_hist(&format!("../testdata/emerge.{}.log", file),
-                            filter_mints.map_or(HistBound::None, |n| HistBound::Unix(n)),
-                            filter_maxts.map_or(HistBound::None, |n| HistBound::Unix(n)),
-                            Show::parse(&String::from(show), "rptsmua", "test").unwrap(),
-                            &filter_terms,
-                            exact).unwrap();
+        let file = &format!("../testdata/emerge.{file}.log");
+        let min = filter_mints.map_or(HistBound::None, |n| HistBound::Unix(n));
+        let max = filter_maxts.map_or(HistBound::None, |n| HistBound::Unix(n));
+        let elog = ELog::new(file).expect("el new")
+                                  .bounds(min, max)
+                                  .expect("el bounds")
+                                  .merge(show.contains("m"))
+                                  .unmerge(show.contains("u"))
+                                  .run(show.contains("r"))
+                                  .sync(show.contains("s"))
+                                  .search(&filter_terms, exact)
+                                  .expect("el search")
+                                  .get();
         let re_atom = Regex::new("^[a-zA-Z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();
         let mut counts: HashMap<String, usize> = HashMap::new();
         // Check that all items look valid
-        for p in hist {
+        for p in elog {
             let (kind, ts, ebuild, version) = match p {
-                HistEvent::RunStart { ts, .. } => ("RStart", ts, "c/e", "1"),
-                HistEvent::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
-                HistEvent::MergeBin { ts, .. } => ("MBin", ts, p.ebuild(), p.version()),
-                HistEvent::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
-                HistEvent::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
-                HistEvent::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version()),
-                HistEvent::SyncStart { ts, .. } => ("SStart", ts, "c/e", "1"),
-                HistEvent::SyncStop { ts, .. } => ("SStop", ts, "c/e", "1"),
+                ELogLine::RunStart { ts, .. } => ("RStart", ts, "c/e", "1"),
+                ELogLine::MergeStart { ts, .. } => ("MStart", ts, p.ebuild(), p.version()),
+                ELogLine::MergeBin { ts, .. } => ("MBin", ts, p.ebuild(), p.version()),
+                ELogLine::MergeStop { ts, .. } => ("MStop", ts, p.ebuild(), p.version()),
+                ELogLine::UnmergeStart { ts, .. } => ("UStart", ts, p.ebuild(), p.version()),
+                ELogLine::UnmergeStop { ts, .. } => ("UStop", ts, p.ebuild(), p.version()),
+                ELogLine::SyncStart { ts, .. } => ("SStart", ts, "c/e", "1"),
+                ELogLine::SyncStop { ts, .. } => ("SStop", ts, "c/e", "1"),
             };
             *counts.entry(kind.to_string()).or_insert(0) += 1;
             *counts.entry(ebuild.to_string()).or_insert(0) += 1;
@@ -695,36 +748,34 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use crate::*;
     use std::sync::LazyLock;
     extern crate test;
 
-    static EMERGE_LOG: &str = include_str!("../../benches/emerge.log");
+    fn bench_log() -> ELog {
+        ELog::new("../benches/emerge.log").unwrap()
+    }
 
     /// Vec<(full, no_ts)> of emerge.log lines
     static EMERGE_LINES: LazyLock<Vec<(&[u8], &[u8])>> = LazyLock::new(|| {
-        EMERGE_LOG.lines()
-                  .map(|l| {
-                      let mut p = l.find(' ').unwrap();
-                      while l.as_bytes().get(p) == Some(&b' ') {
-                          p += 1;
-                      }
-                      (l.as_bytes(), l[p..].as_bytes())
-                  })
-                  .collect()
+        let elog = include_str!("../../benches/emerge.log");
+        elog.lines()
+            .map(|l| {
+                let mut p = l.find(' ').unwrap();
+                while l.as_bytes().get(p) == Some(&b' ') {
+                    p += 1;
+                }
+                (l.as_bytes(), l[p..].as_bytes())
+            })
+            .collect()
     });
 
     /// Vec<String> of package categ/name-version
     static PKGS: LazyLock<Vec<String>> = LazyLock::new(|| {
         let f = |p| match p {
-            HistEvent::MergeStart { key, .. } => Some(key),
+            ELogLine::MergeStart { key, .. } => Some(key),
             _ => None,
         };
-        let show = Show::parse(&String::from("ms"), "rptsmua", "test").unwrap();
-        let file = String::from("../benches/emerge.log");
-        let tb = HistBound::None;
-        let pkgs: Vec<_> =
-            get_hist(&file, tb, tb, show, &vec![], true).unwrap().iter().filter_map(f).collect();
+        let pkgs: Vec<_> = bench_log().get().into_iter().filter_map(f).collect();
         assert_eq!(pkgs.len(), 10790);
         pkgs
     });
@@ -762,25 +813,24 @@ mod bench {
 
     /// Bench parsing a whole log file without filter or postprocessing
     fn get_hist_with(b: &mut test::Bencher, s: &str) {
-        let show = Show::parse(&String::from(s), "rptsmua", "test").unwrap();
-        let count: usize = s.chars()
-                            .map(|c| match c {
-                                'm' => 21320,
-                                'u' => 20847,
-                                's' => 661,
-                                'r' => 971,
-                                o => panic!("unhandled show {o}"),
-                            })
-                            .sum();
-        let file = String::from("../benches/emerge.log");
+        let want: usize = s.chars()
+                           .map(|c| match c {
+                               'm' => 21320,
+                               'u' => 20847,
+                               's' => 661,
+                               'r' => 971,
+                               o => panic!("unhandled show {o}"),
+                           })
+                           .sum();
         b.iter(move || {
-             let mut n = 0;
-             let hist =
-                 get_hist(&file, HistBound::None, HistBound::None, show, &vec![], true).unwrap();
-             for _ in hist {
-                 n += 1;
-             }
-             assert_eq!(n, count);
+             let have = bench_log().merge(s.contains("m"))
+                                   .unmerge(s.contains("u"))
+                                   .run(s.contains("r"))
+                                   .sync(s.contains("s"))
+                                   .get()
+                                   .iter()
+                                   .count();
+             assert_eq!(have, want);
          });
     }
     #[bench]

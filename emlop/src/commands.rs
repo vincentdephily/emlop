@@ -10,7 +10,13 @@ use time::Timestamp;
 ///
 /// We store the start times in a hashmap to compute/print the duration when we reach a stop event.
 pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
-    let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
+    let elog = ELog::new(&gc.logfile)?.bounds(gc.from, gc.to)?
+                                      .merge(sc.show.merge || sc.show.pkg || sc.show.tot)
+                                      .unmerge(sc.show.unmerge || sc.show.pkg || sc.show.tot)
+                                      .run(sc.show.run)
+                                      .sync(sc.show.sync)
+                                      .search(&sc.search, sc.exact)?
+                                      .get();
     let mut merges: HashMap<String, (i64, bool)> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut sync_start: Option<i64> = None;
@@ -18,24 +24,24 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
     let h = ["Date", "Duration", "Package/Repo"];
     let mut tbl =
         Table::new(&gc).align_left(0).align_left(2).margin(2, " ").last(sc.last).header(h);
-    for p in hist {
+    for p in elog {
         match p {
-            HistEvent::RunStart { ts, args, .. } => {
+            ELogLine::RunStart { ts, args, .. } => {
                 found += 1;
                 if found <= sc.first {
                     tbl.row([&[&FmtDate(ts)], &[], &[&"Emerge ", &args]]);
                 }
             },
-            HistEvent::MergeStart { ts, key, .. } => {
+            ELogLine::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 merges.insert(key, (ts, false));
             },
-            HistEvent::MergeBin { key, .. } => {
+            ELogLine::MergeBin { key, .. } => {
                 if let Some((_, bin)) = merges.get_mut(&key) {
                     *bin = true;
                 }
             },
-            HistEvent::MergeStop { ts, ref key, .. } => {
+            ELogLine::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 let (started, bin) = merges.remove(key).unwrap_or((ts + 1, false));
                 if found <= sc.first {
@@ -44,11 +50,11 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                              &[if bin { &gc.binmerge } else { &gc.merge }, &p.ebuild_version()]]);
                 }
             },
-            HistEvent::UnmergeStart { ts, key, .. } => {
+            ELogLine::UnmergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if an unmerge started but never finished
                 unmerges.insert(key, ts);
             },
-            HistEvent::UnmergeStop { ts, ref key, .. } => {
+            ELogLine::UnmergeStop { ts, ref key, .. } => {
                 found += 1;
                 let started = unmerges.remove(key).unwrap_or(ts + 1);
                 if found <= sc.first {
@@ -57,11 +63,11 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                              &[&gc.unmerge, &p.ebuild_version()]]);
                 }
             },
-            HistEvent::SyncStart { ts } => {
+            ELogLine::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
                 sync_start = Some(ts);
             },
-            HistEvent::SyncStop { ts, repo } => {
+            ELogLine::SyncStop { ts, repo } => {
                 found += 1;
                 let started = sync_start.take().unwrap_or(ts + 1);
                 if found <= sc.first {
@@ -87,7 +93,13 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
 /// First loop is like cmd_list but we store the merge time for each ebuild instead of printing it.
 /// Then we compute the stats per ebuild, and print that.
 pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
-    let hist = get_hist(&gc.logfile, gc.from, gc.to, sc.show, &sc.search, sc.exact)?;
+    let elog = ELog::new(&gc.logfile)?.bounds(gc.from, gc.to)?
+                                      .merge(sc.show.merge || sc.show.pkg || sc.show.tot)
+                                      .unmerge(sc.show.unmerge || sc.show.pkg || sc.show.tot)
+                                      .run(sc.show.run)
+                                      .sync(sc.show.sync)
+                                      .search(&sc.search, sc.exact)?
+                                      .get();
     let moves = PkgMoves::new(&Mtimedb::new(&sc.mtimedbfile));
     let h = [sc.group.name(), "Logged emerges", "Install/Update", "Unmerge/Clean", "Sync"];
     let mut tblc = Table::new(&gc).align_left(0).margin(1, " ").header(h);
@@ -124,7 +136,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
     let mut run_args: BTreeMap<CmdKind, usize> = BTreeMap::new();
     let mut nextts = 0;
     let mut curts = 0;
-    for p in hist {
+    for p in elog {
         if !matches!(sc.group, Timespan::None) {
             let t = p.ts();
             if nextts == 0 {
@@ -142,18 +154,18 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
             }
         }
         match p {
-            HistEvent::RunStart { .. } => {
+            ELogLine::RunStart { .. } => {
                 *run_args.entry(p.cmd_kind()).or_insert(0) += 1;
             },
-            HistEvent::MergeStart { ts, key, .. } => {
+            ELogLine::MergeStart { ts, key, .. } => {
                 merge_start.insert(moves.get(key), (ts, false));
             },
-            HistEvent::MergeBin { key, .. } => {
+            ELogLine::MergeBin { key, .. } => {
                 if let Some((_, bin)) = merge_start.get_mut(&key) {
                     *bin = true;
                 }
             },
-            HistEvent::MergeStop { ts, ref key, .. } => {
+            ELogLine::MergeStop { ts, ref key, .. } => {
                 if let Some((start_ts, bin)) = merge_start.remove(moves.get_ref(key)) {
                     let (tc, tb, _) = pkg_time.entry(moves.get(p.take_ebuild())).or_default();
                     if bin {
@@ -163,20 +175,20 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                     }
                 }
             },
-            HistEvent::UnmergeStart { ts, key, .. } => {
+            ELogLine::UnmergeStart { ts, key, .. } => {
                 unmerge_start.insert(moves.get(key), ts);
             },
-            HistEvent::UnmergeStop { ts, ref key, .. } => {
+            ELogLine::UnmergeStop { ts, ref key, .. } => {
                 if let Some(start_ts) = unmerge_start.remove(moves.get_ref(key)) {
                     let (_, _, times) = pkg_time.entry(moves.get(p.take_ebuild())).or_default();
                     times.insert(ts - start_ts);
                 }
             },
-            HistEvent::SyncStart { ts } => {
+            ELogLine::SyncStart { ts } => {
                 // Some sync starts have multiple entries in old logs
                 sync_start = Some(ts);
             },
-            HistEvent::SyncStop { ts, repo } => {
+            ELogLine::SyncStop { ts, repo } => {
                 if let Some(start_ts) = sync_start.take() {
                     sync_time.entry(repo).or_default().insert(ts - start_ts);
                 } else {
@@ -335,29 +347,29 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     tbl.header_done();
 
     // Parse emerge log.
-    let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &vec![], false)?;
+    let elog = ELog::new(&gc.logfile)?.bounds(gc.from, gc.to)?.get();
     let mdb = Mtimedb::new(&sc.mtimedbfile);
     let moves = PkgMoves::new(&mdb);
     let mut started: BTreeMap<String, (i64, bool)> = BTreeMap::new();
     let mut times: HashMap<(String, bool), Times> = HashMap::new();
-    for p in hist {
+    for p in elog {
         match p {
-            HistEvent::MergeStart { ts, key, .. } => {
+            ELogLine::MergeStart { ts, key, .. } => {
                 started.insert(moves.get(key), (ts, false));
             },
-            HistEvent::MergeBin { key, .. } => {
+            ELogLine::MergeBin { key, .. } => {
                 if let Some((_, bin)) = started.get_mut(moves.get_ref(&key)) {
                     *bin = true;
                 }
             },
-            HistEvent::MergeStop { ts, ref key, .. } => {
+            ELogLine::MergeStop { ts, ref key, .. } => {
                 if let Some((start_ts, bin)) = started.remove(moves.get_ref(key)) {
                     times.entry((moves.get(p.take_ebuild()), bin))
                          .or_default()
                          .insert(ts - start_ts);
                 }
             },
-            _ => unreachable!("Should only receive HistEvent::{{Start,Step,Stop}}"),
+            _ => unreachable!("Should only receive LogEvent::{{Start,Step,Stop}}"),
         }
     }
 
@@ -501,25 +513,25 @@ impl Stats {
 }
 
 pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
-    let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &sc.search, sc.exact)?;
+    let elog = ELog::new(&gc.logfile)?.bounds(gc.from, gc.to)?.search(&sc.search, sc.exact)?.get();
     let mut pkg_starts: HashMap<String, (i64, bool)> = HashMap::new();
     let mut pkg_times: BTreeMap<(String, bool), Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<(String, bool), Vec<f64>> = BTreeMap::new();
     let mut found = 0;
     let h = ["Date", "Package", "Real", sc.avg.as_str(), "Samples", "Error %"];
     let mut tbl = Table::new(&gc).align_left(0).align_left(1).last(sc.last).header(h);
-    for p in hist {
+    for p in elog {
         match p {
-            HistEvent::MergeStart { ts, key, .. } => {
+            ELogLine::MergeStart { ts, key, .. } => {
                 // This'll overwrite any previous entry, if a merge started but never finished
                 pkg_starts.insert(key, (ts, false));
             },
-            HistEvent::MergeBin { key, .. } => {
+            ELogLine::MergeBin { key, .. } => {
                 if let Some((_, bin)) = pkg_starts.get_mut(&key) {
                     *bin = true;
                 }
             },
-            HistEvent::MergeStop { ts, ref key, .. } => {
+            ELogLine::MergeStop { ts, ref key, .. } => {
                 found += 1;
                 if let Some((start, bin)) = pkg_starts.remove(key) {
                     let times = pkg_times.entry((p.ebuild().to_owned(), bin)).or_default();
@@ -601,10 +613,10 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
     }
     // Look for (un)merged matching packages in the log and print each once
     let term: Vec<_> = sc.pkg.map_or(vec![], |p| vec![p]);
-    let hist = get_hist(&gc.logfile, gc.from, gc.to, Show::m(), &term, false)?;
+    let elog = ELog::new(&gc.logfile)?.search(&term, false)?.get();
     let mut pkgs: HashSet<String> = HashSet::new();
-    for p in hist {
-        if let HistEvent::MergeStart { .. } = p {
+    for p in elog {
+        if let ELogLine::MergeStart { .. } = p {
             let e = p.take_ebuild();
             if !pkgs.contains(&e) {
                 println!("{e}");
