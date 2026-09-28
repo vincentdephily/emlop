@@ -175,7 +175,7 @@ impl Conf {
         let offset = get_offset(sel!(cli, toml, utc, (), false)?);
         let theme = Theme::new().update(toml.theme.as_ref(), "theme")?
                                 .update(cli.get_one("theme"), "--theme")?;
-        Ok(Self { logfile: sel!(cli, toml, logfile, (), String::from("/var/log/emerge.log"))?,
+        Ok(Self { logfile: sel!(cli, toml, logfile, (), String::from(DEFAULT_EMERGELOG))?,
                   from:
                       cli.get_one("from")
                          .map_or(Ok(HistBound::None), |d| HistBound::parse(d, offset, "--from"))?,
@@ -226,10 +226,9 @@ impl ConfPred {
         } else if let Some(a) = toml.predict.as_ref().and_then(|t| t.tmpdir.as_ref()) {
             a.to_vec()
         } else {
-            vec![PathBuf::from("/var/tmp")]
+            vec![PathBuf::from(DEFAULT_TMPDIR)]
         };
-        let mtimedbfile =
-            sel!(cli, toml, predict, mtimedbfile, (), String::from("/var/cache/edb/mtimedb"))?;
+        let mtimedbfile = sel!(cli, toml, predict, mtimedbfile, (), String::from(DEFAULT_MTIMEDB))?;
         Ok(Self { show: sel!(cli, toml, predict, show, "rmta", Show::rmt())?,
                   avg: sel!(cli, toml, predict, avg, (), Average::Median)?,
                   lim: sel!(cli, toml, predict, limit, 1..=65000, 10)? as u16,

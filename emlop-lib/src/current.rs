@@ -81,6 +81,9 @@ pub fn get_pretend<R: Read>(reader: R, filename: &str) -> Vec<Pkg> {
 }
 
 
+/// Default location of portage `mtimedb` file
+pub const DEFAULT_MTIMEDB: &str = "/var/cache/edb/mtimedb";
+
 #[derive(Deserialize)]
 struct Resume {
     mergelist: Vec<Vec<String>>,
@@ -97,7 +100,7 @@ pub struct Mtimedb {
 impl Mtimedb {
     /// Load db file
     ///
-    /// Standard location is `/var/cache/edb/mtimedb`.
+    /// Pass [DEFAULT_MTIMEDB] if unsure.
     pub fn new(file: &str) -> Self {
         Self::try_new(file).unwrap_or_default()
     }
@@ -241,11 +244,13 @@ impl PkgMoves {
     }
 }
 
+/// Default location of portage `$PORTAGE_TMPDIR` folder
+pub const DEFAULT_TMPDIR: &str = "/var/tmp";
 
 /// Retrieve summary info from the build log
 ///
-/// `tmpdirs` are possible `$PORTAGE_TMPDIR` paths. Usually `/var/tmp`, but can be autodetected by
-/// [EmergeInfo::new()](crate::EmergeInfo::new()).
+/// `tmpdirs` are possible `$PORTAGE_TMPDIR` paths. If unsure, start with `vec![`[DEFAULT_TMPDIR]`]` and use
+/// [EmergeInfo::new()](crate::EmergeInfo::new()) to detect live values.
 pub fn get_buildlog(pkg: &Pkg, tmpdirs: &Vec<PathBuf>) -> Option<String> {
     for dir in tmpdirs {
         let name = dir.join("portage").join(pkg.ebuild_version()).join("temp/build.log");

@@ -99,6 +99,7 @@ pub struct EmergeInfo {
 impl EmergeInfo {
     /// Builds the [EmergeInfo] struct, and update `tmpdirs` in-place
     ///
+    /// If unsure, initialise `tmpdirs` as `vec![`[DEFAULT_TMPDIR](crate::DEFAULT_TMPDIR)`]`.
     /// This function always succeeds: failure to read the process list results in a log and an
     /// empty struct.
     pub fn new(tmpdirs: &mut Vec<PathBuf>) -> Self {

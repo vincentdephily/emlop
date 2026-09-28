@@ -4,16 +4,16 @@
 //!
 //! # Reading historical data
 //!
-//! * [ELog.get()](ELog::get()) returns an iterator of [ELogLine]s, with filters for
-//!   variant, timestamp, and content. Some post-analysis is needed, for example matching a
-//!   `MergeStop` to a previous `MergeStart` (using their `key` field), to tell how long that merge
-//!   took.
-//! * [PkgMoves.get()](PkgMoves::get()) returns the newest name of a renamed package.
+//! * [ELog] returns an iterator of [ELogLine]s, with filters for variant, timestamp, and
+//!   content. Some post-analysis is needed, for example matching a `MergeStop` to a previous
+//!   `MergeStart` (using their `key` field), to tell how long that merge took.
+//! * [PkgMoves] returns the newest name of a renamed package.
 //!
 //! # Gathering info about ongoing merge
 //! * [EmergeInfo] contains info about system processes, the emerge process tree, and the currently
 //!   building packages.
-//! * [Mtimedb.resume_list()](Mtimedb::resume_list()) returns the current/backup merge list saved by portage.
+//! * [Mtimedb] returns the current/backup merge list saved by portage, and info required by
+//!   [PkgMoves].
 //! * [get_pretend()] returns the merge list parsed from `emerge -pv`.
 //! * [get_buildlog()] returns a one-line status from a package's `build.log`.
 //!

@@ -13,6 +13,9 @@ use std::{fs::File,
           thread,
           time::Instant};
 
+/// Default location of portage `emerge.log` file
+pub const DEFAULT_EMERGELOG: &str = "/var/log/emerge.log";
+
 /// A parsed `emerge.log` line
 ///
 /// Each variant corresponds to one interesting log line. The `key` can normaly be used to match
@@ -173,7 +176,7 @@ pub struct ELog {
 impl ELog {
     /// Create a new `emerge.log` file parser
     ///
-    /// `file` is `/var/log/emerge.log` on most systems. Compressed files (*.gz) are supported.
+    /// Pass [DEFAULT_EMERGELOG] if unsure. Compressed files (*.gz) are supported.
     pub fn new(file: &str) -> Result<Self, Error> {
         let file = file.to_owned();
         Ok(Self { buf: open_any_buffered(&file)?,
