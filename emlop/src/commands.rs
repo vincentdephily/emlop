@@ -428,13 +428,14 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         };
 
         // Find the predicted time and adjust counters
-        let (fmtpred, pred) = match times.get(&(p.ebuild().to_string(), p.bin)) {
-            Some(tv) if let Some(pred) = tv.pred(sc.lim, sc.avg) => (FmtDur(pred), pred),
-            _ => {
-                totunknown += 1;
-                let u = if p.bin { sc.unknownb } else { sc.unknownc };
-                (FmtDur(u).unsure(), u)
-            },
+        let (fmtpred, pred) = if let Some(t) = times.get(&(p.ebuild().to_string(), p.bin))
+                                 && let Some(pred) = t.pred(sc.lim, sc.avg)
+        {
+            (FmtDur(pred), pred)
+        } else {
+            totunknown += 1;
+            let u = if p.bin { sc.unknownb } else { sc.unknownc };
+            (FmtDur(u).unsure(), u)
         };
         totpredict += std::cmp::max(0, pred - elapsed);
         totelapsed += elapsed;
