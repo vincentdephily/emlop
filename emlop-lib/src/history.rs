@@ -149,8 +149,6 @@ pub enum CmdKind {
 #[derive(Snafu, Debug)]
 #[snafu(context(suffix(Err)))]
 pub enum ELogError {
-    #[snafu(display("Invalid date filter: {} should {}", FmtUtc(*min), FmtUtc(*max)))]
-    DateFilter { min: i64, max: i64 },
     #[snafu(display("{op}: should {source}"))]
     /// Standard IO error
     IO { op: String, source: std::io::Error },
@@ -209,6 +207,9 @@ impl ELog {
     /// Parse the file only between `min` and `max`
     pub fn bounds(mut self, min: HistBound, max: HistBound) -> Result<Self, ELogError> {
         (self.min, self.max) = filter_ts(&self.file, min, max)?;
+        if self.min > self.max {
+            std::mem::swap(&mut self.min, &mut self.max);
+        }
         Ok(self)
     }
     /// Parse merge events
@@ -328,8 +329,7 @@ fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), E
         (None, None) => trace!("Date: None"),
         (Some(a), None) => trace!("Date: after {}", FmtUtc(a)),
         (None, Some(b)) => trace!("Date: before {}", FmtUtc(b)),
-        (Some(a), Some(b)) if a <= b => trace!("Date: between {} and {}", FmtUtc(b), FmtUtc(a)),
-        (Some(a), Some(b)) => return Err(ELogError::DateFilter { min: a, max: b }),
+        (Some(a), Some(b)) => trace!("Date: between {} and {}", FmtUtc(b), FmtUtc(a)),
     }
     Ok((min.unwrap_or(i64::MIN), max.unwrap_or(i64::MAX)))
 }
