@@ -7,10 +7,10 @@
 //! be fast.
 
 use crate::Pkg;
-use anyhow::{Context, Error, ensure};
 use atoi::atoi;
 use libc::pid_t;
 use log::{debug, error, trace};
+use snafu::prelude::*;
 use std::{collections::BTreeMap,
           fs::{DirEntry, File, read_dir, read_to_string},
           io::prelude::*,
@@ -83,6 +83,17 @@ impl Proc {
     }
 }
 
+#[derive(Snafu, Debug)]
+#[snafu(context(suffix(Err)))]
+enum MyErr<'a> {
+    /// Failed getting system clock ticks
+    NoClockTicks,
+    /// {op}: {source}
+    IO { op: &'a str, source: std::io::Error },
+    /// {what}: Cannot parse integer
+    Atoi { what: &'a str },
+}
+
 /// Info about current emerge process
 pub struct EmergeInfo {
     /// [Proc] info of every system process
@@ -105,10 +116,7 @@ impl EmergeInfo {
     pub fn new(tmpdirs: &mut Vec<PathBuf>) -> Self {
         let now = Instant::now();
         let r = Self::try_new(tmpdirs).unwrap_or_else(|e| {
-                                          match e.source() {
-                                              Some(s) => error!("{e}: {s}"),
-                                              None => error!("{e}"),
-                                          };
+                                          error!("{e}");
                                           Self::default()
                                       });
         debug!("Found {} procs ({} roots, {} pkgs) in {:?}",
@@ -133,24 +141,25 @@ impl EmergeInfo {
         Self { procs: BTreeMap::new(), roots: vec![], start: i64::MAX, pkgs: vec![] }
     }
 
-    fn try_new(tmpdirs: &mut Vec<PathBuf>) -> Result<Self, Error> {
+    fn try_new(tmpdirs: &mut Vec<PathBuf>) -> Result<Self, MyErr<'_>> {
         // clocktick and time_ref are needed to interpret stat.start_time.
         // SAFETY: returns a system constant, only failure mode should be a zero/negative value
         let clocktick: i64 = unsafe {
             #[allow(clippy::useless_conversion)] // `sysconf()` returns `i32` on 32bit platforms
             libc::sysconf(libc::_SC_CLK_TCK).into()
         };
-        ensure!(clocktick > 0, "Failed getting system clock ticks");
+        ensure!(clocktick > 0, NoClockTicksErr);
         let mut uptimebuf = Vec::with_capacity(32);
-        File::open("/proc/uptime").context("Opening /proc/uptime")?
+        File::open("/proc/uptime").context(IOErr { op: "Open /proc/uptime" })?
                                   .read_to_end(&mut uptimebuf)
-                                  .context("Reading /proc/uptime")?;
-        let uptime = atoi::<i64>(&uptimebuf).context("Parsing /proc/uptime")?;
+                                  .context(IOErr { op: "Read /proc/uptime" })?;
+        let uptime = atoi::<i64>(&uptimebuf).context(AtoiErr { what: "/proc/uptime" })?;
         let time_ref = Timestamp::now().as_seconds() - uptime;
 
         // Now iterate through /proc/<pid>
         let mut ret = Self::default();
-        for entry in read_dir("/proc/").context("Listing /proc/")?.filter_map(Result::ok) {
+        for entry in read_dir("/proc/").context(IOErr { op: "List /proc" })?.filter_map(Result::ok)
+        {
             if let Some(proc) = Proc::try_new(&entry, clocktick, time_ref) {
                 ret.add_proc(proc, &entry, tmpdirs);
             }

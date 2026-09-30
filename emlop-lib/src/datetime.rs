@@ -1,6 +1,6 @@
 use crate::types::{ArgError, ArgParse};
-use anyhow::{Error, bail, ensure};
-use regex::Regex;
+use atoi::FromRadix10;
+use snafu::prelude::*;
 use std::str::FromStr;
 use time::{Date, Duration, OffsetDateTime, UtcOffset, format_description::FormatItem,
            macros::format_description, parsing::Parsed};
@@ -28,61 +28,77 @@ pub enum HistBound {
 impl ArgParse<String, UtcOffset> for HistBound {
     fn parse(val: &String, offset: UtcOffset, src: &'static str) -> Result<Self, ArgError> {
         let s = val.trim();
-        let et = match i64::from_str(s) {
-            Ok(i) => return Ok(Self::Unix(i)),
-            Err(e) => e,
-        };
+        if let Ok(i) = i64::from_str(s) {
+            return Ok(Self::Unix(i));
+        }
+        if let Some(i) = parse_command_num(s) {
+            return Ok(Self::Run(i));
+        }
         let ea = match parse_date_yyyymmdd(s, offset) {
             Ok(i) => return Ok(Self::Unix(i)),
-            Err(e) => e,
-        };
-        let ec = match parse_command_num(s) {
-            Ok(i) => return Ok(Self::Run(i)),
             Err(e) => e,
         };
         match parse_date_ago(s, OffsetDateTime::now_utc()) {
             Ok(i) => Ok(Self::Unix(i)),
             Err(er) => {
-                let m = format!("Not a unix timestamp ({et}), absolute date ({ea}), relative date ({er}), or command ({ec})");
+                let m = format!("Not a unix timestamp, absolute date ({ea}), relative date ({er}), or command index");
                 Err(ArgError::new(val, src).msg(m))
             },
         }
     }
 }
 
+#[derive(Snafu, Debug)]
+#[snafu(context(suffix(Err)))]
+enum MyErr<'a> {
+    /// {val:?}: {msg}
+    Base { msg: &'static str, val: &'a str },
+    #[snafu(transparent)]
+    ComponentRange { source: time::error::ComponentRange },
+    #[snafu(transparent)]
+    TryFromParsed { source: time::error::TryFromParsed },
+    #[snafu(transparent)]
+    ParseFromDescription { source: time::error::ParseFromDescription },
+}
+
 /// Parse a command index (parse as 1-based, return as 0-based)
-fn parse_command_num(s: &str) -> Result<usize, Error> {
-    use atoi::FromRadix10;
+fn parse_command_num(s: &str) -> Option<usize> {
     let (num, pos) = usize::from_radix_10(s.as_bytes());
     match s[pos..].trim() {
-        "c" | "command" | "commands" if num > 0 => Ok(num - 1),
-        "c" | "command" if pos == 0 => Ok(0),
-        _ => bail!("bad span {:?}", &s[pos..]),
+        "c" | "command" | "commands" if num > 0 => Some(num - 1),
+        "c" | "command" if pos == 0 => Some(0),
+        _ => None,
     }
 }
 
 /// Parse a number of day/years/hours/etc in the past, relative to current time
-fn parse_date_ago(s: &str, mut now: OffsetDateTime) -> Result<i64, Error> {
-    ensure!(s.chars().all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == ','), "bad char");
-    ensure!(s.chars().any(|c| c.is_ascii_alphabetic()), "empty");
+fn parse_date_ago(mut s: &str, mut now: OffsetDateTime) -> Result<i64, MyErr<'_>> {
+    // Handle no span case
+    ensure!(s.chars().all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == ','),
+            BaseErr { msg: "bad char", val: s });
+    ensure!(s.chars().any(|c| c.is_ascii_alphabetic()), BaseErr { msg: "no span", val: s });
 
-    // Handle case where only a span is given
+    // Handle naked span case
     if let Ok(now) = parse_date_span(1, s.trim(), now) {
         return Ok(now.unix_timestamp());
     }
 
-    // The regex gives us a list of positive integers and strings. We expect to always have a
-    // number, followed by a known string.
-    let re = Regex::new("([0-9]+|[a-z]+)").expect("Bad date span regex");
-    let mut tokens = re.find_iter(s);
-    while let Some(t) = tokens.next() {
-        let num: i32 = t.as_str().parse().map_err(|_| Error::msg("not a number"))?;
-        now = parse_date_span(num, tokens.next().map(|m| m.as_str()).unwrap_or(""), now)?;
+    while !s.is_empty() {
+        // Parse number
+        s = s.trim_start_matches([' ', ',']);
+        let (num, pos) = i32::from_radix_10(s.as_bytes());
+        ensure!(pos != 0, BaseErr { msg: "not a number", val: &s[..(std::cmp::min(s.len(), 5))] });
+        // Parse span
+        s = s[pos..].trim_start_matches([' ', ',']);
+        let (span, _) = s.split_once(|c: char| !c.is_ascii_alphabetic()).unwrap_or((s, ""));
+        now = parse_date_span(num, span, now)?;
+        // Continue
+        s = &s[span.len()..];
     }
     Ok(now.unix_timestamp())
 }
 
-fn parse_date_span(num: i32, span: &str, now: OffsetDateTime) -> Result<OffsetDateTime, Error> {
+fn parse_date_span(num: i32, span: &str, now: OffsetDateTime) -> Result<OffsetDateTime, MyErr<'_>> {
     Ok(match span {
         "y" | "year" | "years" => {
             let year = now.year() - num;
@@ -107,12 +123,12 @@ fn parse_date_span(num: i32, span: &str, now: OffsetDateTime) -> Result<OffsetDa
         "h" | "hour" | "hours" => now - num * Duration::HOUR,
         "min" | "mins" | "minute" | "minutes" => now - num * Duration::MINUTE,
         "s" | "sec" | "secs" | "second" | "seconds" => now - num * Duration::SECOND,
-        o => bail!("bad span {:?}", o),
+        o => return Err(MyErr::Base { msg: "bad span", val: o }),
     })
 }
 
 /// Parse rfc3339-like format with added flexibility
-fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
+fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, MyErr<'_>> {
     let mut p = Parsed::new().with_hour_24(0)
                              .unwrap()
                              .with_minute(0)
@@ -132,7 +148,7 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, Error> {
         [optional [[first [Z][[offset_hour]:[offset_minute]]]]]"
     );
     let rest = p.parse_items(s.as_bytes(), FMT)?;
-    ensure!(rest.is_empty(), "junk at end");
+    ensure!(rest.is_empty(), BaseErr { msg: "junk at end", val: &s[(s.len() - rest.len())..] });
     Ok(OffsetDateTime::try_from(p)?.unix_timestamp())
 }
 
@@ -212,14 +228,35 @@ mod test {
 
     #[test]
     fn command_num() {
-        assert_eq!(parse_command_num("1c").unwrap(), 0);
-        assert_eq!(parse_command_num("5c").unwrap(), 4);
-        assert_eq!(parse_command_num("c").unwrap(), 0);
-        assert_eq!(parse_command_num("1 commands ").unwrap(), 0);
-        assert!(parse_command_num("").is_err());
-        assert!(parse_command_num("0c").is_err());
-        assert!(parse_command_num("0").is_err());
-        assert!(parse_command_num("1cool").is_err());
-        assert!(parse_command_num("-1c").is_err());
+        assert_eq!(parse_command_num("1c"), Some(0));
+        assert_eq!(parse_command_num("5c"), Some(4));
+        assert_eq!(parse_command_num("c"), Some(0));
+        assert_eq!(parse_command_num("1 commands "), Some(0));
+        assert_eq!(parse_command_num(""), None);
+        assert_eq!(parse_command_num("0c"), None);
+        assert_eq!(parse_command_num("0"), None);
+        assert_eq!(parse_command_num("1cool"), None);
+        assert_eq!(parse_command_num("-1c"), None);
+    }
+}
+
+#[cfg(feature = "unstable")]
+#[cfg(test)]
+mod bench {
+    extern crate test;
+    use super::*;
+
+    #[bench]
+    fn parse_ago(b: &mut test::Bencher) {
+        let now = OffsetDateTime::now_utc();
+        b.iter(move || {
+             let _ = parse_date_ago("1 hour, 3 days  45sec", now);
+             let _ = parse_date_ago("5 weeks", now);
+             let _ = parse_date_ago("2d1h", now);
+             let _ = parse_date_ago("w", now);
+             let _ = parse_date_ago("2m", now);
+             let _ = parse_date_ago("2m", now);
+             let _ = parse_date_ago("y", now);
+         });
     }
 }

@@ -1,11 +1,11 @@
 //! Handles emerge.log parsing.
 
 use crate::{FmtUtc, HistBound};
-use anyhow::{Context, Error, bail, ensure};
 use flate2::read::GzDecoder;
 use log::*;
 use memchr::{memchr, memrchr, memrchr2};
 use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
+use snafu::prelude::*;
 use std::{fs::File,
           io::{BufRead, BufReader},
           str::from_utf8,
@@ -145,12 +145,29 @@ pub enum CmdKind {
     Sync,
 }
 
+/// Possible errors when constructing an [ELog]
+#[derive(Snafu, Debug)]
+#[snafu(context(suffix(Err)))]
+pub enum ELogError {
+    #[snafu(display("Invalid date filter: {} should {}", FmtUtc(*min), FmtUtc(*max)))]
+    DateFilter { min: i64, max: i64 },
+    #[snafu(display("{op}: should {source}"))]
+    /// Standard IO error
+    IO { op: String, source: std::io::Error },
+    #[snafu(display("{msg}"))]
+    /// Invalid file format
+    File { msg: String },
+    /// Invaalid regex
+    #[snafu(transparent)]
+    Regex { source: regex::Error },
+}
+
 /// Open maybe-compressed file, returning a BufReader
-fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Send>>, Error> {
-    let reader = File::open(name).with_context(|| format!("Cannot open {name:?}"))?;
+fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Send>>, ELogError> {
+    let reader = File::open(name).context(IOErr { op: format!("Open {name}") })?;
     if name.ends_with(".gz") {
         let gz = GzDecoder::new(reader);
-        ensure!(gz.header().is_some(), "Cannot open {name:?}: invalid gzip header");
+        ensure!(gz.header().is_some(), FileErr { msg: format!("{name}: invalid gzip header") });
         Ok(BufReader::new(Box::new(gz)))
     } else {
         Ok(BufReader::new(Box::new(reader)))
@@ -177,7 +194,7 @@ impl ELog {
     /// Create a new `emerge.log` file parser
     ///
     /// Pass [DEFAULT_EMERGELOG] if unsure. Compressed files (*.gz) are supported.
-    pub fn new(file: &str) -> Result<Self, Error> {
+    pub fn new(file: &str) -> Result<Self, ELogError> {
         let file = file.to_owned();
         Ok(Self { buf: open_any_buffered(&file)?,
                   file,
@@ -190,7 +207,7 @@ impl ELog {
                   filter: Filter::True })
     }
     /// Parse the file only between `min` and `max`
-    pub fn bounds(mut self, min: HistBound, max: HistBound) -> Result<Self, Error> {
+    pub fn bounds(mut self, min: HistBound, max: HistBound) -> Result<Self, ELogError> {
         (self.min, self.max) = filter_ts(&self.file, min, max)?;
         Ok(self)
     }
@@ -218,7 +235,7 @@ impl ELog {
     ///
     /// * If exact=false: Case-insensitive regex matche on `repo` or `categ/ebuild`
     /// * If exact=true: String equality on `repo`, `categ/ebuild`, or `ebuild`
-    pub fn search(mut self, terms: &Vec<String>, exact: bool) -> Result<Self, Error> {
+    pub fn search(mut self, terms: &Vec<String>, exact: bool) -> Result<Self, ELogError> {
         self.filter = Filter::try_new(terms, exact)?;
         Ok(self)
     }
@@ -273,7 +290,7 @@ impl ELog {
 
 
 /// Return min/max timestamp depending on options.
-fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), Error> {
+fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), ELogError> {
     // Parse emerge log into a Vec of emerge command starts
     // This is a specialized version of get_hist(), about 20% faster for this usecase
     let mut runs = vec![];
@@ -311,14 +328,8 @@ fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), E
         (None, None) => trace!("Date: None"),
         (Some(a), None) => trace!("Date: after {}", FmtUtc(a)),
         (None, Some(b)) => trace!("Date: before {}", FmtUtc(b)),
-        (Some(a), Some(b)) if a < b => {
-            trace!("Date: between {} and {}", FmtUtc(a), FmtUtc(b))
-        },
-        (Some(a), Some(b)) => {
-            bail!("Invalid date filter: {} <= {}, did you swap --to and --from ?",
-                  FmtUtc(a),
-                  FmtUtc(b))
-        },
+        (Some(a), Some(b)) if a <= b => trace!("Date: between {} and {}", FmtUtc(b), FmtUtc(a)),
+        (Some(a), Some(b)) => return Err(ELogError::DateFilter { min: a, max: b }),
     }
     Ok((min.unwrap_or(i64::MIN), max.unwrap_or(i64::MAX)))
 }

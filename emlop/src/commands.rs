@@ -638,6 +638,7 @@ mod tests {
     // todo: convert to example
     #[test]
     fn procs_pid1() {
+        let _ = env_logger::try_init();
         let (gc, mut sc) = ConfPred::from_str("emlop p --pdepth 4");
         let mut tbl = Table::new(&gc).align_left(0).align_left(2).margin(2, " ");
         let now = Timestamp::now().as_seconds();
