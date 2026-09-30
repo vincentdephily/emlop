@@ -249,14 +249,15 @@ pub const DEFAULT_TMPDIR: &str = "/var/tmp";
 
 /// Retrieve summary info from the build log
 ///
-/// `tmpdirs` are possible `$PORTAGE_TMPDIR` paths. If unsure, start with `vec![`[DEFAULT_TMPDIR]`]` and use
-/// [EmergeInfo::new()](crate::EmergeInfo::new()) to detect live values.
-pub fn get_buildlog(pkg: &Pkg, tmpdirs: &Vec<PathBuf>) -> Option<String> {
+/// * `tmpdirs` are possible `$PORTAGE_TMPDIR` paths. If unsure, start with `vec![`[DEFAULT_TMPDIR]`]` and use
+///   [EmergeInfo::new()](crate::EmergeInfo::new()) to detect live values.
+/// * `max` is the line length extracted from the log
+pub fn get_buildlog(pkg: &Pkg, tmpdirs: &Vec<PathBuf>, max: usize) -> Option<String> {
     for dir in tmpdirs {
         let name = dir.join("portage").join(pkg.ebuild_version()).join("temp/build.log");
         if let Ok(file) = File::open(&name).map_err(|e| warn!("Cannot open {name:?}: {e}")) {
             info!("Build log: {}", name.display());
-            return Some(read_buildlog(file, 50));
+            return Some(read_buildlog(file, max));
         }
     }
     None

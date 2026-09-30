@@ -443,7 +443,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
         // Done
         if sc.show.merge && totcount <= sc.first {
             if elapsed > 0 {
-                let stage = get_buildlog(&p, &sc.tmpdirs).unwrap_or_default();
+                let stage = get_buildlog(&p, &sc.tmpdirs, 50).unwrap_or_default();
                 tbl.row([&[if p.bin { &gc.binpkg } else { &gc.pkg }, &p.ebuild_version()],
                          &[&fmtpred],
                          &[&gc.clr, &"- ", &FmtDur(elapsed), &gc.clr, &stage]]);
