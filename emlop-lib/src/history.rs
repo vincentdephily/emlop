@@ -283,7 +283,7 @@ impl ELog {
                 line.clear();
                 curline += 1;
             }
-            debug!("Parsed {} lines in {:?}", self.file, now.elapsed());
+            debug!("Parsed {curline} {} lines in {:?}", self.file, now.elapsed());
         });
         rx
     }
