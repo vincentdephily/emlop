@@ -5,7 +5,7 @@ mod cli;
 mod toml;
 mod types;
 
-pub use crate::config::{cli::build_cli, types::*};
+pub use crate::config::types::*;
 use crate::{config::toml::Toml,
             datetime::{DateStyle, Timespan, get_offset},
             parse::{AnsiStr, Theme}};

@@ -45,12 +45,12 @@ impl ArgParse<i64, RangeInclusive<i64>> for i64 {
     }
 }
 impl ArgParse<String, bool> for bool {
-    fn parse(v: &String, default: bool, s: &'static str) -> Result<Self, ArgError> {
+    fn parse(v: &String, default: bool, src: &'static str) -> Result<Self, ArgError> {
         match v.as_str() {
             "auto" | "a" => Ok(default),
             "yes" | "y" => Ok(true),
             "no" | "n" => Ok(false),
-            _ => Err(ArgError::new(v, s).pos("(y)es (n)o (a)uto")),
+            _ => Err(ArgError::new(v, src).pos("(y)es (n)o (a)uto")),
         }
     }
 }
@@ -61,53 +61,53 @@ impl ArgParse<String, bool> for bool {
 /// Designed to look like clap::Error, but more tailored to our usecase
 #[derive(Debug, PartialEq)]
 pub struct ArgError {
-    val: String,
-    src: &'static str,
-    msg: String,
-    possible: &'static str,
+    /// The stringified value that failed parsing
+    pub val: String,
+    /// The source (eg argument name) of the value
+    pub src: &'static str,
+    /// Core error message (eg "not a number")
+    pub msg: Option<String>,
+    /// Possible error values (see `pos()` fn)
+    pub pos: Option<&'static str>,
 }
 impl ArgError {
     /// Instantiate basic error with value and source
     pub fn new(val: impl ToString, src: &'static str) -> Self {
-        Self { val: val.to_string(), src, msg: String::new(), possible: "" }
+        Self { val: val.to_string(), src, msg: None, pos: None }
     }
     /// Set extra error message
     pub fn msg(mut self, msg: impl ToString) -> Self {
-        self.msg = msg.to_string();
+        self.msg = Some(msg.to_string());
         self
     }
     /// Set possible values (as a space-delimited string or as a set of letters)
-    pub const fn pos(mut self, possible: &'static str) -> Self {
-        self.possible = possible;
+    pub const fn pos(mut self, pos: &'static str) -> Self {
+        self.pos = Some(pos);
         self
     }
 }
 impl std::error::Error for ArgError {}
 impl std::fmt::Display for ArgError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let r = "\x1B[1;31m";
-        let g = "\x1B[32m";
-        let b = "\x1B[33m";
-        let c = "\x1B[m";
-        write!(f, "{r}error{c}: invalid value '{b}{}{c}' for '{g}{}{c}'", self.val, self.src)?;
-        if !self.msg.is_empty() {
-            write!(f, ": {}", self.msg)?;
+        match &self.msg {
+            Some(msg) => write!(f, "{} '{}': {msg}", self.src, self.val)?,
+            None => write!(f, "{} '{}': Invalid value", self.src, self.val)?,
         }
-        if !self.possible.is_empty() {
-            if self.possible.contains(' ') {
-                let mut sep = "\n  possible values: ";
-                for p in self.possible.split_ascii_whitespace() {
-                    write!(f, "{sep}{g}{p}{c}")?;
+        if let Some(pos) = self.pos {
+            if pos.contains(' ') {
+                let mut sep = ", try one of ";
+                for p in pos.split_ascii_whitespace() {
+                    write!(f, "{sep}{p}")?;
                     sep = ", ";
                 }
             } else {
-                let mut sep = "\n  possible value: combination of ";
-                for p in self.possible.chars() {
-                    write!(f, "{sep}{g}{p}{c}")?;
+                let mut sep = ", try combination of ";
+                for p in pos.chars() {
+                    write!(f, "{sep}{p}")?;
                     sep = ", ";
                 }
             }
         }
-        write!(f, "\n\nFor more information, try '{g}--help{c}'.")
+        Ok(())
     }
 }
