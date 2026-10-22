@@ -1,7 +1,7 @@
 {
        	"updates": {
-		"../testdata/notfound": 1640636550,
-		"../testdata/1Q-2024": 1669625966,
-		"../testdata/4Q-2022": 1640636540
+		"tests/notfound": 1640636550,
+		"tests/1Q-2024": 1669625966,
+		"tests/4Q-2022": 1640636540
 	}
 }

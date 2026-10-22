@@ -55,6 +55,7 @@ impl ArgParse<String, ()> for Tty {
         }
     }
 }
+
 #[derive(Clone, Copy)]
 /// Type of info shown to the user
 pub struct Show {

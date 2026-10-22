@@ -45,7 +45,7 @@ impl Disp for FmtProc<'_> {
         let cmd = cmd.trim();
 
         // Figure out how much space we have
-        let pidlen = pid.max(&1).ilog10() as usize + 2 * indent + 1;
+        let pidlen = pid.ilog10() as usize + 2 * indent + 1;
         let cmdcap = width.saturating_sub(pidlen + 1);
 
         // Output it

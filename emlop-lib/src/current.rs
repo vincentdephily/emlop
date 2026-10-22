@@ -294,9 +294,13 @@ mod tests {
         }
     }
 
+    fn open_testfixture(file: &str) -> File {
+        File::open(&format!("tests/{file}")).expect(&format!("can't open {file:?}"))
+    }
+
     /// Check that `get_pretend()` has the expected output
     fn check_pretend(file: &str, expect: &[(&str, &str)]) {
-        let parsed: Vec<_> = get_pretend(File::open(&format!("../testdata/{file}")).unwrap(), file);
+        let parsed: Vec<_> = get_pretend(open_testfixture(file), file);
         assert_eq!(&parsed, expect, "failed expect for {file}");
     }
 
@@ -321,13 +325,13 @@ mod tests {
     fn check_resume(kind: ResumeKind, file: &str, expect: Option<&[(&str, bool)]>) {
         let expect_pkg: Option<Vec<Pkg>> =
             expect.map(|o| o.into_iter().map(|(s, b)| Pkg::try_new(s, *b).unwrap()).collect());
-        let res =
-            Mtimedb::try_new(&format!("../testdata/{file}")).and_then(|m| m.try_resume_list(kind));
+        let res = Mtimedb::try_new(&format!("tests/{file}")).and_then(|m| m.try_resume_list(kind));
         assert_eq!(expect_pkg, res, "Mismatch for {file}");
     }
 
     #[test]
     fn resume() {
+        let _ = env_logger::try_init();
         let main = &[("dev-lang/rust-1.65.0", false), ("app-portage/emlop-0.5.0", false)];
         let bkp =
             &[("app-portage/dummybuild-0.1.600", false), ("app-portage/dummybuild-0.1.60", false)];
@@ -362,21 +366,19 @@ mod tests {
              ("build.log.color", 100, "Unpacking source: 0:57.55    Compiling syn v1.0.99"),
              ("build.log.color", 15, "Unpacking source: 0:57.55    Comp...")]
         {
-            let f =
-                File::open(&format!("../testdata/{file}")).expect(&format!("can't open {file:?}"));
-            assert_eq!(format!(" ({res})"), read_buildlog(f, lim));
+            assert_eq!(format!(" ({res})"), read_buildlog(open_testfixture(file), lim));
         }
     }
 
     #[test]
     fn pkgmoves() {
         // It's interesting to run this test with RUST_LOG=trace. Expect:
-        // * "Cannot open testdata/notfound: No such file or directory"
+        // * "Cannot open test/notfound: No such file or directory"
         // * "Using default sort ..." (depending on random hashmap seed)
         // * "Using move chain/v1 -> chain/v3 instead -> chain/v2 in tests/4Q-2022"
-        // * "Ignoring move loop/final -> loop/from in testdata/4Q-2022"
+        // * "Ignoring move loop/final -> loop/from in test/4Q-2022"
         let _ = env_logger::try_init();
-        let moves = PkgMoves::new(&Mtimedb::try_new("../testdata/mtimedb.updates").unwrap());
+        let moves = PkgMoves::new(&Mtimedb::try_new("tests/mtimedb.updates").unwrap());
         for (have, want, why) in
             [// Basic cases
              ("app-doc/doxygen", "app-text/doxygen", "simple move in 2024"),

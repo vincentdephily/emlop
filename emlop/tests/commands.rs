@@ -29,12 +29,12 @@ fn render_template(tmpl: &str) -> String {
 }
 
 /// Return a `Command` for the main binary (compiled by cargo) with the given args.
-/// For convenience, "%F" is replace by "-F ../testdata/emerge.".
+/// For convenience, "%F" is replace by "-F tests/emerge.".
 fn emlop(args: &str) -> Command {
     let mut e = Command::new(env!("CARGO_BIN_EXE_emlop"));
     e.env("TZ", "UTC");
     e.env("EMLOP_CONFIG", "");
-    e.args(args.replace("%F", "-F ../testdata/emerge.").split_whitespace());
+    e.args(args.replace("%F", "-F tests/emerge.").split_whitespace());
     e
 }
 
@@ -233,7 +233,7 @@ fn timezone() {
     // dates with the same offset (the curent one detected at program start) even though it should
     // be different at different dates. Not adding a unitest for this, as it would need to be
     // updated twice a year.
-    //(&["-F", "test/emerge.dst.log", "l"],
+    //(&["-F", "tests/emerge.dst.log", "l"],
     // "Europe/Dublin",
     // "2021-03-26 17:07:08 +00:00    20 >>> dev-libs/libksba-1.5.0\n\
     //  2021-03-26 17:08:20 +00:00  1:12 >>> sys-boot/grub-2.06_rc1\n\
@@ -275,7 +275,7 @@ fn predict_tty() {
               "--tty=i --resume",
               "app-portage/dummybuild-0.1.600\t30?\napp-portage/dummybuild-0.1.60\t30?\ntest/proc-5\t30?\n")];
     for (proc, stdin, args, out) in t {
-        let a = format!("%F10000.log p --mtimedb ../testdata/mtimedb.backuponly --date unix -sm {args}");
+        let a = format!("%F10000.log p --mtimedb tests/mtimedb.backuponly --date unix -sm {args}");
         let o = render_template(out);
         let _p = (proc != "").then(|| FakeEmerge::new(proc));
         emlop(&a).write_stdin(stdin).assert().stdout(o);

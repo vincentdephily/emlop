@@ -531,7 +531,7 @@ mod tests {
             "shortline" => (1327867709, 1327871057),
             o => unimplemented!("Unknown test log file {:?}", o),
         };
-        let file = &format!("../testdata/emerge.{file}.log");
+        let file = &format!("tests/emerge.{file}.log");
         let min = filter_mints.map_or(HistBound::None, |n| HistBound::Unix(n));
         let max = filter_maxts.map_or(HistBound::None, |n| HistBound::Unix(n));
         let elog = ELog::new(file).expect("el new")
@@ -577,7 +577,7 @@ mod tests {
     }
 
     #[test]
-    /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see test/generate.sh)
+    /// Simplified emerge log containing all the ebuilds in all the versions of the current portage tree (see testdata/generate.sh)
     fn parse_hist_all() {
         let t = vec![("MStart", 31467)];
         chk_hist("all", "m", None, None, vec![], false, t);
