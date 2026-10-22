@@ -205,7 +205,6 @@ dependencies = [
 name = "emlop-lib"
 version = "0.9.0"
 dependencies = [
- "anyhow",
  "atoi",
  "env_logger",
  "flate2",
