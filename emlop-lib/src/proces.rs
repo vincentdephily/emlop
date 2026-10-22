@@ -225,7 +225,7 @@ impl EmergeInfo {
         }
     }
 
-    #[cfg(feature = "test-helpers")]
+    #[cfg(any(test, feature = "test-helpers"))]
     /// Create [EmergeInfo] from a list of (kind, cmdline, pid, ppid) tuples
     pub fn mock<const N: usize>(procs: [(ProcKind, &str, pid_t, pid_t); N]) -> Self {
         let mut ret = Self::default();

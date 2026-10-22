@@ -22,8 +22,11 @@
 //! * [Times] accumulates durations and predicts the next one.
 //! * [FmtUtc] formats a unix timestamp as ISO8601.
 //! * [Ansi] strips ansi color sequences from logs.
-
-// TODO: Make Arg{Parse,Error} optional, or even move it back to the binary ?
+//!
+//! # optional features
+//!
+//! * `test-helpers`: Add unittesting helpers
+//! * `unstable`: Add benchmarks
 
 mod ansi;
 mod current;
