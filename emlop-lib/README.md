@@ -15,6 +15,6 @@ Emlop-lib provides information about past and present
 
 For more information, see
 
-* Online [API docs](https://docs.rs/crate/emlop-lib/latest)
+* Online [API docs](https://docs.rs/emlop-lib/latest)
 * Code [examples](examples)
 * [Emlop](https://github.com/vincentdephily/emlop) end-user CLI
