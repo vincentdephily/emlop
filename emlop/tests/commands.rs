@@ -49,7 +49,7 @@ impl FakeEmerge {
                                                           .expect("spawn FakeEmerge");
         println!("Started FakeEmerge {ebuild:?} {}", c.id());
         // Wait for the whole tree to spin up
-        thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(25));
         Self(c)
     }
 }
