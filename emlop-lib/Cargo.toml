@@ -1,7 +1,7 @@
 [package]
 name = "emlop-lib"
-version = "0.9.0"
-description = "emerge.log parsing utilities"
+version = "0.9.1"
+description = "Emerge and portage log/files/process parsing library"
 keywords = ["gentoo", "portage", "emerge"]
 categories = ["parsing"]
 readme = "README.md"

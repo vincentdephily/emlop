@@ -1,3 +1,16 @@
+# 0.9.1 2026-10-24
+
+Architecture release: Split into a binary and a library
+
+* The parsing functionality has been split off to an `emlop-lib` crate, to make it more widely
+  available. See [its readme](emlop-lib/README.md) for usage and functionality.
+* Multiple refactorings, for maintainability, ease of use, and technical debt
+* Updated docs, added example program
+* Giving a `--to` that is earlier than `--from` now swaps the values instead of failing
+* Minor changes to loging and error reporting
+* Some small optimizations
+* Routine dep updates
+
 # 0.9.0 2026-06-26
 
 Feature release: Flags for scripting.

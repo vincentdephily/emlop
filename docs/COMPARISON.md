@@ -181,4 +181,5 @@ the terminal emulator). Genlop is noticably slow for basic tasks, and can be pro
 | Read compressed emerge.log | yes         | no     | yes           |
 | Unittests                  | no          | yes    | yes           |
 | Documentation and help     | ok          | good   | good          |
+| Library for 3rd parties    | no          | no     | yes           |
 | Development activity       | minimal     | active | active        |

@@ -1,4 +1,4 @@
-# Emerge and portage parsing library
+# Emerge and portage log/files/process parsing library
 
 Emlop-lib provides information about past and present
 [Portage](https://wiki.gentoo.org/wiki/Project:Portage) activity:
