@@ -15,9 +15,6 @@ issues, and make sure you're running the latest version.
 Emlop is licensed as GPLv3, any contribution accepted into the emlop repo will have that license.
 Send pull requests via [Github](https://github.com/vincentdephily/emlop).
 
-Commits containing AI-generated code must have a `Co-Authored-By: <model>` line. Use of AI tools,
-even for design or exploration tasks, should be mentioned in the PR.
-
 Run `cargo test -- --include-ignored` before submitting your code. A bugfix should probably include
 a new/updated unittest. Check `cargo clippy` hints. Format code using `cargo +nightly fmt`. The
 github CI also runs these checks.
@@ -31,6 +28,14 @@ Check for performance improvements/regressions using `benches/exec_compare.rs` (
 
 I only have access to amd64/linux/gentoo/portage environements. Reports about running emlop on
 arm/freebsd/funtoo/paludis/etc would be appreciated.
+
+## AI
+
+Emlop is developped by humans. Use of GenAI/LLM/Agent is not permitted for code, commit messages, or
+issue comments. Obviously generated submissions may get closed without comment.
+
+GenAI (as well as classic deterministic tools, like dependabot or ad-hoc generators) can be used to
+explore the code or find bugs, but this should be mentioned in the PR/Issue.
 
 ## Release checklist
 
