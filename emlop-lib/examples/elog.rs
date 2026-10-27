@@ -23,7 +23,7 @@ fn main() {
 
 fn elog() -> Result<(), Box<dyn std::error::Error>> {
     // Setup logging
-    let _ = env_logger::init();
+    env_logger::init();
 
     // Parse user input. Emlop-lib provides some default values as constants, and some parser using
     // the ArgParse trait
@@ -37,23 +37,23 @@ fn elog() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create the struct that holds `emerge.log` parsing options. File is opened immediately, and
     // can be gzip-compressed
-    let elog = ELog::new(&file)?
-                                // Set a search term to filter ebuilds or sync repos. Multiple terms
-                                // can be provided, the boolean specifies full string match instead
-                                // of regex match.
-                                .search(&search, false)?
-                                // Set the min/max timestamps to read from the file. An "nth
-                                // command" bound will do an optimized parse to find the command
-                                // timestamps
-                                .bounds(start, stop)?
-                                // Set what types of ELogLines we want to get, defaults to 'merge'
-                                .merge(what.contains('m'))
-                                .unmerge(what.contains('u'))
-                                .sync(what.contains('s'))
-                                .run(what.contains('r'))
-                                // Now that everything is configured, start parsing and return an
-                                // interator over ELogLine
-                                .get();
+    let elog = ELog::new(&[&file])?
+                                   // Set a search term to filter ebuilds or sync repos. Multiple terms
+                                   // can be provided, the boolean specifies full string match instead
+                                   // of regex match.
+                                   .search(&search, false)?
+                                   // Set the min/max timestamps to read from the file. An "nth
+                                   // command" bound will do an optimized parse to find the command
+                                   // timestamps
+                                   .bounds(start, stop)?
+                                   // Set what types of ELogLines we want to get, defaults to 'merge'
+                                   .merge(what.contains('m'))
+                                   .unmerge(what.contains('u'))
+                                   .sync(what.contains('s'))
+                                   .run(what.contains('r'))
+                                   // Now that everything is configured, start parsing and return an
+                                   // interator over ELogLine
+                                   .get();
 
     // Init some state to use while looping through ELogLines
     let mut merges: HashMap<String, (i64, &'static str)> = HashMap::new();

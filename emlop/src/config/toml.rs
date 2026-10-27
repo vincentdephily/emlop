@@ -36,7 +36,7 @@ pub struct TomlAccuracy {
 }
 #[derive(Deserialize, Debug, Default)]
 pub struct Toml {
-    pub logfile: Option<String>,
+    pub logfiles: Option<Vec<String>>,
     pub date: Option<String>,
     pub duration: Option<String>,
     pub header: Option<bool>,

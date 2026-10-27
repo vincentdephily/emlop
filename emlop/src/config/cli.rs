@@ -337,8 +337,9 @@ pub fn build_cli() -> Command {
                                      .value_name("file")
                                      .global(true)
                                      .num_args(1)
+                                     .action(Append)
                                      .display_order(40)
-                                     .help("Location of emerge log file");
+                                     .help("Location of emerge log files");
     let tmpdir = Arg::new("tmpdir").long("tmpdir")
                                    .value_name("dir")
                                    .num_args(1)

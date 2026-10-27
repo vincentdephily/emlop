@@ -45,7 +45,7 @@ pub struct Conf {
     pub date_offset: time::UtcOffset,
     pub date_fmt: DateStyle,
     pub out: OutStyle,
-    pub logfile: String,
+    pub logfiles: Vec<String>,
     pub from: HistBound,
     pub to: HistBound,
     pub ttyin: bool,
@@ -175,7 +175,14 @@ impl Conf {
         let offset = get_offset(sel!(cli, toml, utc, (), false)?);
         let theme = Theme::new().update(toml.theme.as_ref(), "theme")?
                                 .update(cli.get_one("theme"), "--theme")?;
-        Ok(Self { logfile: sel!(cli, toml, logfile, (), String::from(DEFAULT_EMERGELOG))?,
+        let logfiles = if let Some(a) = cli.get_many::<String>("logfile") {
+            a.cloned().collect()
+        } else if let Some(a) = toml.logfiles.as_ref() {
+            a.to_vec()
+        } else {
+            vec![String::from(DEFAULT_EMERGELOG)]
+        };
+        Ok(Self { logfiles,
                   from:
                       cli.get_one("from")
                          .map_or(Ok(HistBound::None), |d| HistBound::parse(d, offset, "--from"))?,
