@@ -34,8 +34,9 @@ arm/freebsd/funtoo/paludis/etc would be appreciated.
 Emlop is developped by humans. Use of GenAI/LLM/Agent is not permitted for code, commit messages, or
 issue comments. Obviously generated submissions may get closed without comment.
 
-GenAI (as well as classic deterministic tools, like dependabot or ad-hoc generators) can be used to
-explore the code or find bugs, but this should be mentioned in the PR/Issue.
+GenAI can be used to explore the code or find bugs, but this should be mentioned in the
+PR/Issue. Classic deterministic tools, like dependabot or ad-hoc generators, can be used for any
+task but should also be mentioned.
 
 ## Release checklist
 

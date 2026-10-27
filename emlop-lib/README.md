@@ -1,12 +1,13 @@
 # Emerge and portage log/files/process parsing library
 
-Emlop-lib provides information about past and present
-[Portage](https://wiki.gentoo.org/wiki/Project:Portage) activity:
+Emlop-lib provides information about past and present activity of
+[Portage](https://wiki.gentoo.org/wiki/Project:Portage), [Gentoo](https://gentoo.org)'s package
+manager:
 
-* Emerge log history
-* Current merge list (`mtime.db`, `emerge -pv`)
+* Emerge log history (merges, unmerge, syncs, runs...)
+* Current merge list (from `mtime.db` or `emerge -pv`)
 * Package renames
-* Emerge processes
+* Emerge process tree
 * Build logs
 
 ## Usage
@@ -17,4 +18,4 @@ For more information, see
 
 * Online [API docs](https://docs.rs/emlop-lib/latest)
 * Code [examples](examples)
-* [Emlop](https://github.com/vincentdephily/emlop) end-user CLI
+* [Emlop](https://github.com/vincentdephily/emlop/emlop) end-user CLI
