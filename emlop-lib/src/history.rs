@@ -149,23 +149,25 @@ pub enum CmdKind {
 #[derive(Snafu, Debug)]
 #[snafu(context(suffix(Err)))]
 pub enum ELogError {
-    #[snafu(display("{op}: should {source}"))]
+    #[snafu(display("{op} {file}"))]
     /// Standard IO error
-    IO { op: String, source: std::io::Error },
-    #[snafu(display("{msg}"))]
+    IO { op: &'static str, file: String, source: std::io::Error },
+    #[snafu(display("{file}: {msg}"))]
     /// Invalid file format
-    File { msg: String },
+    File { msg: &'static str, file: String },
     /// Invaalid regex
     #[snafu(transparent)]
     Regex { source: regex::Error },
 }
 
+type FileBuf = BufReader<Box<dyn std::io::Read + Send>>;
+
 /// Open maybe-compressed file, returning a BufReader
-fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Send>>, ELogError> {
-    let reader = File::open(name).context(IOErr { op: format!("Open {name}") })?;
-    if name.ends_with(".gz") {
+fn open_any_buffered(file: &str) -> Result<FileBuf, ELogError> {
+    let reader = File::open(file).context(IOErr { op: "Open", file })?;
+    if file.ends_with(".gz") {
         let gz = GzDecoder::new(reader);
-        ensure!(gz.header().is_some(), FileErr { msg: format!("{name}: invalid gzip header") });
+        ensure!(gz.header().is_some(), FileErr { msg: "invalid gzip header", file });
         Ok(BufReader::new(Box::new(gz)))
     } else {
         Ok(BufReader::new(Box::new(reader)))
@@ -178,7 +180,7 @@ fn open_any_buffered(name: &str) -> Result<BufReader<Box<dyn std::io::Read + Sen
 /// 2. Call the filter methodss if needed
 /// 3. Consume with [get()](Self::get()), returning [ELogLine]s
 pub struct ELog {
-    buf: BufReader<Box<dyn std::io::Read + Send>>,
+    buf: FileBuf,
     file: String,
     min: i64,
     max: i64,
