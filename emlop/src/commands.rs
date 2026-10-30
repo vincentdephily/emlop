@@ -15,8 +15,7 @@ pub fn cmd_log(gc: Conf, sc: ConfLog) -> Result<bool, Error> {
                                        .unmerge(sc.show.unmerge || sc.show.pkg || sc.show.tot)
                                        .run(sc.show.run)
                                        .sync(sc.show.sync)
-                                       .search(&sc.search, sc.exact)?
-                                       .get();
+                                       .search(&sc.search, sc.exact)?;
     let mut merges: HashMap<String, (i64, bool)> = HashMap::new();
     let mut unmerges: HashMap<String, i64> = HashMap::new();
     let mut sync_start: Option<i64> = None;
@@ -98,8 +97,7 @@ pub fn cmd_stats(gc: Conf, sc: ConfStats) -> Result<bool, Error> {
                                        .unmerge(sc.show.unmerge || sc.show.pkg || sc.show.tot)
                                        .run(sc.show.run)
                                        .sync(sc.show.sync)
-                                       .search(&sc.search, sc.exact)?
-                                       .get();
+                                       .search(&sc.search, sc.exact)?;
     let moves = PkgMoves::new(&Mtimedb::new(&sc.mtimedbfile));
     let h = [sc.group.name(), "Logged emerges", "Install/Update", "Unmerge/Clean", "Sync"];
     let mut tblc = Table::new(&gc).align_left(0).margin(1, " ").header(h);
@@ -347,7 +345,7 @@ pub fn cmd_predict(gc: Conf, mut sc: ConfPred) -> Result<bool, Error> {
     tbl.header_done();
 
     // Parse emerge log.
-    let elog = ELog::new(&gc.logfiles)?.bounds(gc.from, gc.to)?.get();
+    let elog = ELog::new(&gc.logfiles)?.bounds(gc.from, gc.to)?;
     let mdb = Mtimedb::new(&sc.mtimedbfile);
     let moves = PkgMoves::new(&mdb);
     let mut started: BTreeMap<String, (i64, bool)> = BTreeMap::new();
@@ -514,7 +512,7 @@ impl Stats {
 }
 
 pub fn cmd_accuracy(gc: Conf, sc: ConfAccuracy) -> Result<bool, Error> {
-    let elog = ELog::new(&gc.logfiles)?.bounds(gc.from, gc.to)?.search(&sc.search, sc.exact)?.get();
+    let elog = ELog::new(&gc.logfiles)?.bounds(gc.from, gc.to)?.search(&sc.search, sc.exact)?;
     let mut pkg_starts: HashMap<String, (i64, bool)> = HashMap::new();
     let mut pkg_times: BTreeMap<(String, bool), Times> = BTreeMap::new();
     let mut pkg_errs: BTreeMap<(String, bool), Vec<f64>> = BTreeMap::new();
@@ -614,7 +612,7 @@ pub fn cmd_complete(gc: Conf, sc: ConfComplete) -> Result<bool, Error> {
     }
     // Look for (un)merged matching packages in the log and print each once
     let term: Vec<_> = sc.pkg.map_or(vec![], |p| vec![p]);
-    let elog = ELog::new(&gc.logfiles)?.search(&term, false)?.get();
+    let elog = ELog::new(&gc.logfiles)?.search(&term, false)?;
     let mut pkgs: HashSet<String> = HashSet::new();
     for p in elog {
         if let ELogLine::MergeStart { .. } = p {

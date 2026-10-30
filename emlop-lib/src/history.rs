@@ -1,6 +1,7 @@
 //! Handles emerge.log parsing.
 
 use crate::{FmtUtc, HistBound};
+use atoi::FromRadix10;
 use flate2::read::GzDecoder;
 use log::*;
 use memchr::{memchr, memrchr, memrchr2};
@@ -9,7 +10,7 @@ use snafu::prelude::*;
 use std::{fs::File,
           io::{BufRead, BufReader},
           str::from_utf8,
-          sync::mpsc::{Receiver, SyncSender, sync_channel},
+          sync::mpsc::{Receiver, sync_channel},
           thread,
           time::Instant};
 
@@ -155,9 +156,12 @@ pub enum ELogError {
     #[snafu(display("{file}: {msg}"))]
     /// Invalid file format
     File { msg: &'static str, file: String },
-    /// Invaalid regex
+    /// Invalid regex
     #[snafu(transparent)]
     Regex { source: regex::Error },
+    #[snafu(display("{msg}"))]
+    /// Bad argument
+    Arg { msg: &'static str },
 }
 
 type FileBuf = BufReader<Box<dyn std::io::Read + Send>>;
@@ -178,9 +182,9 @@ fn open_any_buffered(file: &str) -> Result<FileBuf, ELogError> {
 ///
 /// 1. Create a new parser with [new()](Self::new())
 /// 2. Call the filter methodss if needed
-/// 3. Consume with [iter()](Self::iter()), returning an [Iterator]
+/// 3. Consume explicitly with [into_iter()](Self::into_iter()), or implicitly using a `for` loop
 pub struct ELog {
-    bufs: Vec<(String, FileBuf)>,
+    bufs: Vec<(String, i64, FileBuf)>,
     min: i64,
     max: i64,
     merge: bool,
@@ -192,14 +196,20 @@ pub struct ELog {
 impl ELog {
     /// Create a new `emerge.log` file parser
     ///
-    /// Pass `vec![`[DEFAULT_EMERGELOG]`]` if unsure. Compressed files (*.gz) are supported.
+    /// Pass `&[`[DEFAULT_EMERGELOG]`]` if unsure. Compressed files (*.gz) are supported, and files
+    /// order will be inferred from the first timestamp in the file.
     pub fn new(files: &[impl AsRef<str> + std::fmt::Debug]) -> Result<Self, ELogError> {
-        ensure!(!files.is_empty(), FileErr { msg: "Expected one logfile", file: String::new() });
+        ensure!(!files.is_empty(), ArgErr { msg: "Expected at least one logfile" });
         let mut bufs = Vec::with_capacity(files.len());
         for f in files {
-            let b = open_any_buffered(f.as_ref())?;
-            bufs.push((f.as_ref().to_string(), b));
+            let file = f.as_ref().to_string();
+            let mut buf = open_any_buffered(&file)?;
+            let ts = Self::peek_ts(&mut buf).with_context(|| FileErr { msg: "Bad emerge logfile",
+                                                                       file: file.clone() })?;
+            debug!("{file} starts at {}", FmtUtc(ts));
+            bufs.push((file, ts, buf));
         }
+        bufs.sort_by_key(|s| s.1);
         Ok(Self { bufs,
                   min: i64::MIN,
                   max: i64::MAX,
@@ -247,20 +257,26 @@ impl ELog {
         Ok(self)
     }
 
-    /// Start parsing thread, and return an [Iterator] of [ELogLine]s
-    pub fn get(mut self) -> ELogIter {
-        let mut r = Vec::with_capacity(self.bufs.len());
-        while let Some((file, buf)) = self.bufs.pop() {
-            r.push(self.start_parse(file, buf));
+    /// Prefill the buffer, look for the first timestamp, skip past invalid data
+    fn peek_ts(buf: &mut FileBuf) -> Option<i64> {
+        loop {
+            let fill = buf.fill_buf().ok()?;
+            match i64::from_radix_10(fill) {
+                (num, parsed) if parsed > 0 => return Some(num),
+                _ => match buf.skip_until(b'\n') {
+                    Ok(skipped) if skipped > 0 => continue,
+                    _ => return None,
+                },
+            }
         }
-        ELogIter(r)
     }
 
-    fn start_parse(&self, file: String, mut buf: FileBuf) -> Receiver<ELogLine> {
+    /// Start the parsing thread for the given file/buf
+    fn start_parse(&mut self, file: String, mut buf: FileBuf) -> Receiver<ELogLine> {
         let now = Instant::now();
         let filter = self.filter.clone();
         let Self { min, max, merge, unmerge, run, sync, .. } = *self;
-        let (tx, rx): (SyncSender<ELogLine>, Receiver<ELogLine>) = sync_channel(256);
+        let (tx, rx) = sync_channel(256);
         thread::spawn(move || {
             let mut prev_t = 0;
             let mut curline = 1;
@@ -304,17 +320,44 @@ impl ELog {
         rx
     }
 }
+impl IntoIterator for ELog {
+    type Item = ELogLine;
+    type IntoIter = ELogIter;
+    /// Start parsing threads, and turn [ELog] into an [ELogIter]
+    fn into_iter(mut self) -> ELogIter {
+        let mut streams = Vec::with_capacity(self.bufs.len());
+        while let Some((file, ts, buf)) = self.bufs.pop() {
+            let rx = self.start_parse(file.clone(), buf);
+            streams.push((file, ts, rx));
+        }
+        ELogIter { streams, prev_t: 0 }
+    }
+}
 
 /// Iterator for [ELogLine]s
-pub struct ELogIter(Vec<Receiver<ELogLine>>);
+pub struct ELogIter {
+    streams: Vec<(String, i64, Receiver<ELogLine>)>,
+    prev_t: i64,
+}
 impl Iterator for ELogIter {
     type Item = ELogLine;
-    fn next(&mut self) -> std::option::Option<<Self as Iterator>::Item> {
-        if let Ok(i) = self.0.first()?.recv() {
-            return Some(i);
+    fn next(&mut self) -> Option<ELogLine> {
+        loop {
+            let (_, _, rx) = self.streams.last()?;
+            if let Ok(l) = rx.recv() {
+                self.prev_t = l.ts();
+                return Some(l);
+            } else {
+                let (prev_f, _, _) = self.streams.pop()?;
+                if let Some((next_f, next_t, _)) = self.streams.last()
+                   && self.prev_t > *next_t
+                {
+                    warn!("Timestamp overlap at {prev_f}:{} -> {next_f}:{}",
+                          FmtUtc(self.prev_t),
+                          FmtUtc(*next_t));
+                }
+            }
         }
-        self.0.remove(0);
-        self.next()
     }
 }
 
@@ -423,7 +466,6 @@ fn parse_version(atom: &str, filter: &Filter) -> Option<usize> {
 
 /// Parse and filter timestamp, trim line
 fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
-    use atoi::FromRadix10;
     match i64::from_radix_10(line) {
         (ts, n) if n != 0 && ts >= min && ts <= max => {
             let mut line = &line[(n + 1)..];
@@ -572,8 +614,7 @@ mod tests {
                                   .run(show.contains("r"))
                                   .sync(show.contains("s"))
                                   .search(&filter_terms, exact)
-                                  .expect("el search")
-                                  .get();
+                                  .expect("el search");
         let re_atom = Regex::new("^[a-zA-Z0-9-]+/[a-zA-Z0-9_+-]+$").unwrap();
         let re_version = Regex::new("^[0-9][0-9a-z._-]*$").unwrap();
         let mut counts: HashMap<String, usize> = HashMap::new();
@@ -786,6 +827,52 @@ mod tests {
         assert_eq!(Some(("a-b", "2foo-4-")), g("a-b-2foo-4-"));
         assert_eq!(Some(("Noël", "2-bêta")), g("Noël-2-bêta"));
     }
+
+    #[test]
+    fn peek_ts() {
+        for (s, r) in [("", None),
+                       ("123", Some(123)),
+                       ("123foo", Some(123)),
+                       ("\n", None),
+                       ("\n123", Some(123)),
+                       ("\n123foo", Some(123)),
+                       ("\nfoo123", None),
+                       ("foo123bar", None),
+                       ("foo123bar\n456", Some(456)),
+                       ("\n\n\n\n\n\n\n456", Some(456))]
+        {
+            let mut b = BufReader::new(Box::new(s.as_bytes()) as Box<dyn std::io::Read + Send>);
+            assert_eq!(r, ELog::peek_ts(&mut b), "{s:?}");
+        }
+    }
+
+    #[test]
+    /// Check order of ELogIter files (most recent first)
+    fn elog_file_order() {
+        let old = "tests/emerge.badversion.log";
+        let mid = "tests/emerge.log.gz";
+        let new = "tests/emerge.10000.log";
+        for (h, want) in [(vec![old], vec![old]),
+                          (vec![old, new], vec![new, old]),
+                          (vec![new, old], vec![new, old]),
+                          (vec![mid, old, new], vec![new, mid, old])]
+        {
+            let elog = ELog::new(&h).unwrap().into_iter();
+            let have: Vec<_> = elog.streams.into_iter().map(|(s, _, _)| s).collect();
+            assert_eq!(have, want);
+        }
+    }
+
+    #[test]
+    /// Check ELog::new() file rejections
+    fn elog_file_reject() {
+        let good = "tests/emerge.10000.log";
+        let notlog = "tests/1Q-2024";
+        let notfound = "tests/notfound";
+        for h in [vec![], vec![notlog], vec![notfound], vec![good, notlog], vec![good, notfound]] {
+            assert!(ELog::new(&h).is_err());
+        }
+    }
 }
 
 #[cfg(feature = "unstable")]
@@ -819,7 +906,7 @@ mod bench {
             ELogLine::MergeStart { key, .. } => Some(key),
             _ => None,
         };
-        let pkgs: Vec<_> = bench_log().get().filter_map(f).collect();
+        let pkgs: Vec<_> = bench_log().into_iter().filter_map(f).collect();
         assert_eq!(pkgs.len(), 10790);
         pkgs
     });
@@ -871,7 +958,7 @@ mod bench {
                                    .unmerge(s.contains("u"))
                                    .run(s.contains("r"))
                                    .sync(s.contains("s"))
-                                   .get()
+                                   .into_iter()
                                    .count();
              assert_eq!(have, want);
          });

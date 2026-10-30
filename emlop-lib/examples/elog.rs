@@ -35,8 +35,9 @@ fn elog() -> Result<(), Box<dyn std::error::Error>> {
     let stop = var("TO").map_or(Ok(HistBound::None), |s| HistBound::parse(&s, offset, "TO"))?;
     let max = var("MAX").as_deref().unwrap_or("20").parse::<usize>()?;
 
-    // Create the struct that holds `emerge.log` parsing options. File is opened immediately, and
-    // can be gzip-compressed
+    // Create the struct that holds `emerge.log` parsing options. Multiple files can be given, and
+    // the order will be infered from the file content. The actual parsing will happen in separate
+    // threads, when ELog is converted into an ELogIter.
     let elog = ELog::new(&[&file])?
                                    // Set a search term to filter ebuilds or sync repos. Multiple terms
                                    // can be provided, the boolean specifies full string match instead
@@ -50,17 +51,14 @@ fn elog() -> Result<(), Box<dyn std::error::Error>> {
                                    .merge(what.contains('m'))
                                    .unmerge(what.contains('u'))
                                    .sync(what.contains('s'))
-                                   .run(what.contains('r'))
-                                   // Now that everything is configured, start parsing and return an
-                                   // interator over ELogLine
-                                   .get();
+                                   .run(what.contains('r'));
 
     // Init some state to use while looping through ELogLines
     let mut merges: HashMap<String, (i64, &'static str)> = HashMap::new();
     let mut prev_sync = None;
     let mut counts: HashMap<String, usize> = HashMap::new();
 
-    // Each parsed/matched log line
+    // Handle parsed/matched log lines
     for l in elog {
         // Gather stats on number of ElogLine variants
         let kind = format!("{l:?}").split_once(' ').unwrap().0.to_string();
