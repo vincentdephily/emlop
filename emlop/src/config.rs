@@ -177,7 +177,7 @@ impl Conf {
                                 .update(cli.get_one("theme"), "--theme")?;
         let logfiles = if let Some(a) = cli.get_many::<String>("logfile") {
             a.cloned().collect()
-        } else if let Some(a) = toml.logfiles.as_ref() {
+        } else if let Some(ref a) = toml.logfile {
             a.to_vec()
         } else {
             vec![String::from(DEFAULT_EMERGELOG)]

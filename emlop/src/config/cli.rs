@@ -339,31 +339,39 @@ pub fn build_cli() -> Command {
                                      .num_args(1)
                                      .action(Append)
                                      .display_order(40)
-                                     .help("Location of emerge log files");
+                                     .help("Location of emerge log files")
+                                     .long_help("Location of emerge log files\n\
+                                                 Can be passed multiple times\n\
+                                                 Gzip-compressed files are supported\n  \
+                                                 default: /var/log/emerge.log");
     let tmpdir = Arg::new("tmpdir").long("tmpdir")
                                    .value_name("dir")
                                    .num_args(1)
                                    .action(Append)
                                    .value_parser(value_parser!(PathBuf))
                                    .display_order(41)
-                                   .help("Location of portage tmpdir")
-                                   .long_help("Location of portage tmpdir\n\
-                                               Multiple folders can be provided\n\
-                                               Emlop also looks for tmpdir using current emerge processes");
+                                   .help("Location of portage tmpdirs")
+                                   .long_help("Location of portage tmpdirs\n\
+                                               Can be passed multiple times\n  \
+                                               default: /var/tmp, plus values from current emerge processes");
     let mtimedbfile = Arg::new("mtimedbfile").long("mtimedbfile")
                                              .value_name("file")
                                              .num_args(1)
                                              .display_order(42)
-                                             .help("Location of portage mtimedb file");
+                                             .help("Location of portage mtimedb file")
+                                             .long_help("Location of portage mtimedb file\n  \
+                                                         default: /var/cache/edb/mtimedb");
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
                                      .action(Count)
                                      .display_order(43)
-                                     .help("Increase verbosity (can be given multiple times)")
-                                     .long_help("Increase verbosity (defaults to errors only)\n  \
-                                                 -v:   show warnings\n  \
-                                                 -vv:  show info\n  \
-                                                 -vvv: show debug");
+                                     .help("Increase verbosity")
+                                     .long_help("Increase verbosity\n  \
+                                                 default: show errors\n  \
+                                                 -v:      show warnings\n  \
+                                                 -vv:     show infos\n  \
+                                                 -vvv:    show debugs\n  \
+                                                 -vvvv:   show traces");
     #[cfg(feature = "clap_complete")]
     let shell =
         Arg::new("shell").long("shell")

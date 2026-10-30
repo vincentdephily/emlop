@@ -34,9 +34,23 @@ pub struct TomlAccuracy {
     pub avg: Option<String>,
     pub limit: Option<i64>,
 }
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ToVec<T: Clone> {
+    One(T),
+    Vec(Vec<T>),
+}
+impl<T: Clone> ToVec<T> {
+    pub fn to_vec(&self) -> Vec<T> {
+        match self {
+            Self::One(v) => vec![v.clone()],
+            Self::Vec(v) => v.clone(),
+        }
+    }
+}
 #[derive(Deserialize, Debug, Default)]
 pub struct Toml {
-    pub logfiles: Option<Vec<String>>,
+    pub logfile: Option<ToVec<String>>,
     pub date: Option<String>,
     pub duration: Option<String>,
     pub header: Option<bool>,

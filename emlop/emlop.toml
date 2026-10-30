@@ -6,7 +6,7 @@
 # Entries have the same name and format as command-line args, see `emlop <command> --help`.
 # Some args are only avaible via the command line.
 
-# logfile = "/var/log/emerge.log"
+# logfile = ["/var/log/emerge.log"]
 # date = "rfc2822"
 # duration = "human"
 # utc = true

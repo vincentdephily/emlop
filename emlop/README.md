@@ -18,8 +18,8 @@ Emlop is split into commands, which share a lot of common options:
       accuracy  Compare actual merge time against predicted merge time
       complete  Shell completion helper
     Options:
-      -F, --logfile <file>  Location of emerge log file
-      -v...                 Increase verbosity (can be given multiple times)
+      -F, --logfile <file>  Location of emerge log files
+      -v...                 Increase verbosity
       -h, --help            Print help (see more with '--help')
       -V, --version         Print version
     Filter:
