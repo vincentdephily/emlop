@@ -257,18 +257,23 @@ impl ELog {
         Ok(self)
     }
 
-    /// Prefill the buffer, look for the first timestamp, skip past invalid data
-    fn peek_ts(buf: &mut FileBuf) -> Option<i64> {
-        loop {
-            let fill = buf.fill_buf().ok()?;
-            match i64::from_radix_10(fill) {
-                (num, parsed) if parsed > 0 => return Some(num),
-                _ => match buf.skip_until(b'\n') {
-                    Ok(skipped) if skipped > 0 => continue,
-                    _ => return None,
-                },
+    /// Prefill the buffer without advancing it, and look for a timestamp
+    ///
+    /// If no timestamp found in the first buffer-full or 20 lines, consider the file invalid.
+    fn peek_ts(buffer: &mut FileBuf) -> Option<i64> {
+        let buf = buffer.fill_buf().ok()?;
+        let mut pos = 0;
+        for _line in 1..=20 {
+            let (num, next) = i64::from_radix_10(&buf[pos..]);
+            if next > 0 && buf.get(pos + next) == Some(&b':') {
+                return Some(num);
+            }
+            match buf[pos..].iter().position(|b| *b == b'\n') {
+                Some(nl) => pos += nl + 1,
+                None => break,
             }
         }
+        None
     }
 
     /// Start the parsing thread for the given file/buf
@@ -831,15 +836,16 @@ mod tests {
     #[test]
     fn peek_ts() {
         for (s, r) in [("", None),
-                       ("123", Some(123)),
-                       ("123foo", Some(123)),
                        ("\n", None),
-                       ("\n123", Some(123)),
-                       ("\n123foo", Some(123)),
+                       ("123", None),
+                       ("123:", Some(123)),
+                       ("123:foo", Some(123)),
+                       ("\n123", None),
+                       ("\n123:foo", Some(123)),
                        ("\nfoo123", None),
                        ("foo123bar", None),
-                       ("foo123bar\n456", Some(456)),
-                       ("\n\n\n\n\n\n\n456", Some(456))]
+                       ("foo123bar\n456:\n789:", Some(456)),
+                       ("\n\n\n123\n\n\n\n456:", Some(456))]
         {
             let mut b = BufReader::new(Box::new(s.as_bytes()) as Box<dyn std::io::Read + Send>);
             assert_eq!(r, ELog::peek_ts(&mut b), "{s:?}");
