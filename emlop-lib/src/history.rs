@@ -222,7 +222,7 @@ impl ELog {
     /// Parse the file only between `min` and `max`
     pub fn bounds(mut self, min: HistBound, max: HistBound) -> Result<Self, ELogError> {
         // FIXME look at all files
-        (self.min, self.max) = filter_ts(&self.srcs[0].0, min, max)?;
+        (self.min, self.max) = filter_ts(&self.srcs, min, max)?;
         if self.min > self.max {
             std::mem::swap(&mut self.min, &mut self.max);
         }
@@ -368,28 +368,33 @@ impl Iterator for ELogIter {
 
 
 /// Return min/max timestamp depending on options.
-fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), ELogError> {
-    // Parse emerge log into a Vec of emerge command starts
-    // This is a specialized version of the parser, about 20% faster for this usecase
+fn filter_ts(srcs: &[(String, i64, FileBuf)],
+             min: HistBound,
+             max: HistBound)
+             -> Result<(i64, i64), ELogError> {
+    // Parse emerge logs (expected to be in chronological order) into a Vec of emerge runs.
+    // This uses a cut-down parser, about 20% faster than start_parse() for this usecase
     let mut runs = vec![];
     if matches!(min, HistBound::RunFirst(_) | HistBound::RunLast(_))
        || matches!(max, HistBound::RunFirst(_) | HistBound::RunLast(_))
     {
-        let mut buf = open_any_buffered(file)?;
-        let mut line = Vec::with_capacity(255);
-        loop {
-            match buf.read_until(b'\n', &mut line) {
-                Ok(0) => break,
-                Ok(_) => {
-                    if let Some((t, s)) = parse_ts(&line, i64::MIN, i64::MAX)
-                       && s.starts_with(b"*** emerge")
-                    {
-                        runs.push(t)
-                    }
-                },
-                Err(_) => (),
+        for (file, _, _) in srcs {
+            let mut buf = open_any_buffered(file)?;
+            let mut line = Vec::with_capacity(255);
+            loop {
+                match buf.read_until(b'\n', &mut line) {
+                    Ok(0) => break,
+                    Ok(_) => {
+                        if let Some((t, s)) = parse_ts(&line, i64::MIN, i64::MAX)
+                           && s.starts_with(b"*** emerge")
+                        {
+                            runs.push(t)
+                        }
+                    },
+                    Err(_) => (),
+                }
+                line.clear();
             }
-            line.clear();
         }
     }
     // Convert to Option<int>
@@ -812,10 +817,21 @@ mod tests {
     /// Filtering by run number (other HistBound variants are is tested in date.rs)
     fn filter_ts_run() {
         use HistBound::{RunFirst, RunLast};
-        let file = "tests/emerge.10000.log";
-        let t = vec![(RunFirst(0), RunLast(0), (1517698744, 1520991376))];
-        for (argmin, argmax, expect) in t {
-            let res = filter_ts(file, argmin, argmax);
+        let f1 = "tests/emerge.10000.log";
+        let f2 = "tests/emerge.dst.log";
+        let t = vec![// base checks
+                     (vec![f1], RunFirst(0), RunLast(0), (1517698744, 1520991376)),
+                     (vec![f2], RunFirst(0), RunLast(0), (1616781118, 1617015378)),
+                     (vec![f1, f2], RunFirst(0), RunLast(0), (1517698744, 1617015378)),
+                     // RunLast(10) reaches past f2 and into f1
+                     (vec![f1, f2], RunFirst(10), RunLast(10), (1517823042, 1520853735)),
+                     // Going too far yields MIN/MAX
+                     (vec![f2], RunFirst(10), RunLast(10), (i64::MIN, i64::MAX))];
+        for (files, argmin, argmax, expect) in t {
+            let srcs: Vec<_> = files.into_iter()
+                                    .map(|f| (String::from(f), 0i64, open_any_buffered(f).unwrap()))
+                                    .collect();
+            let res = filter_ts(&srcs, argmin, argmax);
             assert_eq!(res.unwrap(), expect);
         }
     }
