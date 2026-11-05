@@ -11,7 +11,7 @@ repository = "https://github.com/vincentdephily/emlop"
 authors = ["Vincent de Phily <moltonel@gmail.com>",
 	   "Sreus <114226379+sricharanandra@users.noreply.github.com>"]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 
 [dependencies]
 atoi = "3.1.0"

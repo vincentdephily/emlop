@@ -15,7 +15,7 @@ authors = ["Vincent de Phily <moltonel@gmail.com>",
 	   "Sreus <114226379+sricharanandra@users.noreply.github.com>",
 	   "Doasu <login+github@doasu.dev>"]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 
 [dependencies]
 anyhow = "1.0.32"
