@@ -370,9 +370,11 @@ impl Iterator for ELogIter {
 /// Return min/max timestamp depending on options.
 fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), ELogError> {
     // Parse emerge log into a Vec of emerge command starts
-    // This is a specialized version of get_hist(), about 20% faster for this usecase
+    // This is a specialized version of the parser, about 20% faster for this usecase
     let mut runs = vec![];
-    if matches!(min, HistBound::Run(_)) || matches!(max, HistBound::Run(_)) {
+    if matches!(min, HistBound::RunFirst(_) | HistBound::RunLast(_))
+       || matches!(max, HistBound::RunFirst(_) | HistBound::RunLast(_))
+    {
         let mut buf = open_any_buffered(file)?;
         let mut line = Vec::with_capacity(255);
         loop {
@@ -392,12 +394,14 @@ fn filter_ts(file: &str, min: HistBound, max: HistBound) -> Result<(i64, i64), E
     }
     // Convert to Option<int>
     let min = match min {
-        HistBound::Run(n) => runs.iter().rev().nth(n).copied(),
+        HistBound::RunFirst(n) => runs.get(n).copied(),
+        HistBound::RunLast(n) => runs.iter().rev().nth(n).copied(),
         HistBound::Unix(n) => Some(n),
         HistBound::None => None,
     };
     let max = match max {
-        HistBound::Run(n) => runs.get(n).copied(),
+        HistBound::RunFirst(n) => runs.get(n).copied(),
+        HistBound::RunLast(n) => runs.iter().rev().nth(n).copied(),
         HistBound::Unix(n) => Some(n),
         HistBound::None => None,
     };
@@ -801,6 +805,18 @@ mod tests {
             let f = Filter::try_new(&t, e).unwrap();
             assert_eq!(f.match_pkg(s), mpkg, "filter({t:?}, {e}).match_pkg({s:?})");
             assert_eq!(f.match_str(s), mstr, "filter({t:?}, {e}).match_str({s:?})");
+        }
+    }
+
+    #[test]
+    /// Filtering by run number (other HistBound variants are is tested in date.rs)
+    fn filter_ts_run() {
+        use HistBound::{RunFirst, RunLast};
+        let file = "tests/emerge.10000.log";
+        let t = vec![(RunFirst(0), RunLast(0), (1517698744, 1520991376))];
+        for (argmin, argmax, expect) in t {
+            let res = filter_ts(file, argmin, argmax);
+            assert_eq!(res.unwrap(), expect);
         }
     }
 

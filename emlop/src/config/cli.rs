@@ -81,7 +81,8 @@ pub fn build_cli() -> Command {
              2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
              123456789:                                       Absolute unix timestamp\n  \
              1 year, 2 months|10d:                            Relative date\n  \
-             1c|2 commands|c                                  Nth emerge command";
+             first|firstrun|f|2f                              Nth-first emerge run\n  \
+             last|lastrun|l|2l                                Nth-last emerge run";
     let from = Arg::new("from").short('f')
                                .long("from")
                                .value_name("date")
@@ -95,7 +96,8 @@ pub fn build_cli() -> Command {
              2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
              123456789:                                       Absolute unix timestamp\n  \
              1 year, 2 months|10d:                            Relative date\n  \
-             1c|2 commands|c                                  Nth-last emerge command";
+             first|firstrun|f|2f                              Nth-first emerge run\n  \
+             last|lastrun|l|2l                                Nth-last emerge run";
     let to = Arg::new("to").short('t')
                            .long("to")
                            .value_name("date")

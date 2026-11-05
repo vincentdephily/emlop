@@ -15,8 +15,10 @@ pub enum HistBound {
     None,
     /// Bound by unix timestamp
     Unix(i64),
-    /// Bound by time of nth first/last emerge run
-    Run(usize),
+    /// Bound by time of nth first emerge run
+    RunFirst(usize),
+    /// Bound by time of nth last emerge run
+    RunLast(usize),
 }
 
 /// Parse HistBound from various formats
@@ -24,15 +26,15 @@ pub enum HistBound {
 /// * A plain unix timestamp
 /// * An absolute date (rfc3339-like, interpreted with the given [UtcOffset], see `parse_date_yyyymmdd()`)
 /// * A relative date (see `parse_date_ago()`)
-/// * An emerge command number (see `parse_command_num()`)
+/// * An emerge command number (see `parse_run_num()`)
 impl ArgParse<String, UtcOffset> for HistBound {
     fn parse(val: &String, offset: UtcOffset, src: &'static str) -> Result<Self, ArgError> {
         let s = val.trim();
         if let Ok(i) = i64::from_str(s) {
             return Ok(Self::Unix(i));
         }
-        if let Some(i) = parse_command_num(s) {
-            return Ok(Self::Run(i));
+        if let Some(r) = parse_run_num(s) {
+            return Ok(r);
         }
         let ea = match parse_date_yyyymmdd(s, offset) {
             Ok(i) => return Ok(Self::Unix(i)),
@@ -62,11 +64,15 @@ enum MyErr<'a> {
 }
 
 /// Parse a command index (parse as 1-based, return as 0-based)
-fn parse_command_num(s: &str) -> Option<usize> {
-    let (num, pos) = usize::from_radix_10(s.as_bytes());
+fn parse_run_num(s: &str) -> Option<HistBound> {
+    let (num, pos) = match usize::from_radix_10(s.as_bytes()) {
+        (_, 0) => (0, 0),
+        (0, _) => return None,
+        (n, p) => (n - 1, p),
+    };
     match s[pos..].trim() {
-        "c" | "command" | "commands" if num > 0 => Some(num - 1),
-        "c" | "command" if pos == 0 => Some(0),
+        "l" | "last" | "lastrun" => Some(HistBound::RunLast(num)),
+        "f" | "first" | "firstrun" => Some(HistBound::RunFirst(num)),
         _ => None,
     }
 }
@@ -204,7 +210,7 @@ mod test {
             assert_eq!(Ok(tb), parse_fromto("2018-04-03T00:00", offset));
         }
 
-        // Relative dates
+        // Relative dates (except HistBound::Run, which is tested in history.rs)
         assert_eq!("2025-05-03T11:57:56Z",
                    parse_ago("1 hour, 3 days  45sec", "2025-05-06T12:58:41Z"));
         assert_eq!("2025-04-01T12:58:41Z", parse_ago("5 weeks", "2025-05-06T12:58:41Z"));
@@ -227,16 +233,20 @@ mod test {
     }
 
     #[test]
-    fn command_num() {
-        assert_eq!(parse_command_num("1c"), Some(0));
-        assert_eq!(parse_command_num("5c"), Some(4));
-        assert_eq!(parse_command_num("c"), Some(0));
-        assert_eq!(parse_command_num("1 commands "), Some(0));
-        assert_eq!(parse_command_num(""), None);
-        assert_eq!(parse_command_num("0c"), None);
-        assert_eq!(parse_command_num("0"), None);
-        assert_eq!(parse_command_num("1cool"), None);
-        assert_eq!(parse_command_num("-1c"), None);
+    fn run_num() {
+        use HistBound::{RunFirst, RunLast};
+        assert_eq!(parse_run_num("1l"), Some(RunLast(0)));
+        assert_eq!(parse_run_num("5f"), Some(RunFirst(4)));
+        assert_eq!(parse_run_num("l"), Some(RunLast(0)));
+        assert_eq!(parse_run_num("1 lastrun "), Some(RunLast(0)));
+        assert_eq!(parse_run_num("5f"), Some(RunFirst(4)));
+        assert_eq!(parse_run_num("last"), Some(RunLast(0)));
+        assert_eq!(parse_run_num(""), None);
+        assert_eq!(parse_run_num("0f"), None);
+        assert_eq!(parse_run_num("0"), None);
+        assert_eq!(parse_run_num("1fist"), None);
+        assert_eq!(parse_run_num("-1f"), None);
+        assert_eq!(parse_run_num("bad 1f"), None);
     }
 }
 
