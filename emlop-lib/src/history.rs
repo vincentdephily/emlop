@@ -184,7 +184,7 @@ fn open_any_buffered(file: &str) -> Result<FileBuf, ELogError> {
 /// 2. Call the filter methodss if needed
 /// 3. Consume explicitly with [into_iter()](Self::into_iter()), or implicitly using a `for` loop
 pub struct ELog {
-    bufs: Vec<(String, i64, FileBuf)>,
+    srcs: Vec<(String, i64, FileBuf)>,
     min: i64,
     max: i64,
     merge: bool,
@@ -200,17 +200,17 @@ impl ELog {
     /// order will be inferred from the first timestamp in the file.
     pub fn new(files: &[impl AsRef<str> + std::fmt::Debug]) -> Result<Self, ELogError> {
         ensure!(!files.is_empty(), ArgErr { msg: "Expected at least one logfile" });
-        let mut bufs = Vec::with_capacity(files.len());
+        let mut srcs = Vec::with_capacity(files.len());
         for f in files {
             let file = f.as_ref().to_string();
             let mut buf = open_any_buffered(&file)?;
             let ts = Self::peek_ts(&mut buf).with_context(|| FileErr { msg: "Bad emerge logfile",
                                                                        file: file.clone() })?;
             debug!("{file} starts at {}", FmtUtc(ts));
-            bufs.push((file, ts, buf));
+            srcs.push((file, ts, buf));
         }
-        bufs.sort_by_key(|s| s.1);
-        Ok(Self { bufs,
+        srcs.sort_by_key(|s| s.1);
+        Ok(Self { srcs,
                   min: i64::MIN,
                   max: i64::MAX,
                   merge: true,
@@ -222,7 +222,7 @@ impl ELog {
     /// Parse the file only between `min` and `max`
     pub fn bounds(mut self, min: HistBound, max: HistBound) -> Result<Self, ELogError> {
         // FIXME look at all files
-        (self.min, self.max) = filter_ts(&self.bufs[0].0, min, max)?;
+        (self.min, self.max) = filter_ts(&self.srcs[0].0, min, max)?;
         if self.min > self.max {
             std::mem::swap(&mut self.min, &mut self.max);
         }
@@ -330,31 +330,31 @@ impl IntoIterator for ELog {
     type IntoIter = ELogIter;
     /// Start parsing threads, and turn [ELog] into an [ELogIter]
     fn into_iter(mut self) -> ELogIter {
-        let mut streams = Vec::with_capacity(self.bufs.len());
-        while let Some((file, ts, buf)) = self.bufs.pop() {
+        let mut srcs = Vec::with_capacity(self.srcs.len());
+        while let Some((file, ts, buf)) = self.srcs.pop() {
             let rx = self.start_parse(file.clone(), buf);
-            streams.push((file, ts, rx));
+            srcs.push((file, ts, rx));
         }
-        ELogIter { streams, prev_t: 0 }
+        ELogIter { srcs, prev_t: 0 }
     }
 }
 
 /// Iterator for [ELogLine]s
 pub struct ELogIter {
-    streams: Vec<(String, i64, Receiver<ELogLine>)>,
+    srcs: Vec<(String, i64, Receiver<ELogLine>)>,
     prev_t: i64,
 }
 impl Iterator for ELogIter {
     type Item = ELogLine;
     fn next(&mut self) -> Option<ELogLine> {
         loop {
-            let (_, _, rx) = self.streams.last()?;
+            let (_, _, rx) = self.srcs.last()?;
             if let Ok(l) = rx.recv() {
                 self.prev_t = l.ts();
                 return Some(l);
             } else {
-                let (prev_f, _, _) = self.streams.pop()?;
-                if let Some((next_f, next_t, _)) = self.streams.last()
+                let (prev_f, _, _) = self.srcs.pop()?;
+                if let Some((next_f, next_t, _)) = self.srcs.last()
                    && self.prev_t > *next_t
                 {
                     warn!("Timestamp overlap at {prev_f}:{} -> {next_f}:{}",
@@ -880,7 +880,7 @@ mod tests {
                           (vec![mid, old, new], vec![new, mid, old])]
         {
             let elog = ELog::new(&h).unwrap().into_iter();
-            let have: Vec<_> = elog.streams.into_iter().map(|(s, _, _)| s).collect();
+            let have: Vec<_> = elog.srcs.into_iter().map(|(s, _, _)| s).collect();
             assert_eq!(have, want);
         }
     }
