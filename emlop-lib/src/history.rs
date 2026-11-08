@@ -491,7 +491,7 @@ fn parse_version(atom: &str, filter: &Filter) -> Option<usize> {
 /// Parse and filter timestamp, trim line
 fn parse_ts(line: &[u8], min: i64, max: i64) -> Option<(i64, &[u8])> {
     match i64::from_radix_10(line) {
-        (ts, n) if n != 0 && ts >= min && ts <= max => {
+        (ts, n) if n != 0 && ts >= min && ts <= max && line.get(n) == Some(&b':') => {
             let mut line = &line[(n + 1)..];
             while let [b' ', rest @ ..] = line {
                 line = rest;
@@ -609,6 +609,26 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
+    #[test]
+    fn parse_ts_() {
+        for (s, r) in vec![("", None as Option<(i64, &[u8])>),
+                           ("\n", None),
+                           ("123", None),
+                           ("123\n", None),
+                           ("123A", None),
+                           ("123A:", None),
+                           ("123:", Some((123, b""))),
+                           ("123:\n", Some((123, b""))),
+                           ("123:  \n", Some((123, b""))),
+                           ("123:boo", Some((123, b"boo"))),
+                           ("123:  boo", Some((123, b"boo"))),
+                           ("123:  boo\n", Some((123, b"boo"))),
+                           ("A123: boo", None),]
+        {
+            assert_eq!(parse_ts(s.as_bytes(), i64::MIN, i64::MAX), r, "parse_ts({s}) -> {r:?}");
+        }
+    }
+
     /// This checks parsing the given emerge.log.
     fn chk_hist(file: &str,
                 show: &str,
@@ -621,7 +641,6 @@ mod tests {
         let (mints, maxts) = match file {
             "10000" => (1517609348, 1520991402),
             "all" => (1483228800, 1483747200),
-            "badtimestamp" => (1327867709, 1327871057),
             "badversion" => (1327867709, 1327871057),
             "nullbytes" => (1327867709, 1327871057),
             "shortline" => (1327867709, 1327871057),
@@ -683,17 +702,6 @@ mod tests {
     fn parse_hist_nullbytes() {
         let t = vec![("MStart", 14), ("MStop", 14)];
         chk_hist("nullbytes", "m", None, None, vec![], false, t);
-    }
-
-    #[test]
-    /// Emerge log with various invalid data
-    fn parse_hist_badtimestamp() {
-        let t = vec![("MStart", 2),
-                     ("MStop", 3),
-                     ("media-libs/jpeg", 1), //letter in timestamp
-                     ("dev-libs/libical", 2),
-                     ("media-libs/libpng", 2)];
-        chk_hist("badtimestamp", "m", None, None, vec![], false, t);
     }
 
     #[test]
@@ -937,13 +945,13 @@ mod bench {
     /// Vec<(full, no_ts)> of emerge.log lines
     static EMERGE_LINES: LazyLock<Vec<(&[u8], &[u8])>> = LazyLock::new(|| {
         let elog = include_str!("../../benches/emerge.log");
-        elog.lines()
-            .map(|l| {
-                let mut p = l.find(' ').unwrap();
+        elog.split('\n')
+            .filter_map(|l| {
+                let mut p = l.find(' ')?;
                 while l.as_bytes().get(p) == Some(&b' ') {
                     p += 1;
                 }
-                (l.as_bytes(), l[p..].as_bytes())
+                Some((l.as_bytes(), l[p..].as_bytes()))
             })
             .collect()
     });
