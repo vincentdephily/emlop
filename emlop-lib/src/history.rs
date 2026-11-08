@@ -279,12 +279,15 @@ impl ELog {
     }
 
     /// Start the parsing thread for the given file/buf
-    fn start_parse(&mut self, file: PathBuf, mut buf: FileBuf) -> Receiver<ELogLine> {
+    fn start_parse(&mut self,
+                   file: PathBuf,
+                   mut buf: FileBuf)
+                   -> (thread::JoinHandle<()>, Receiver<ELogLine>) {
         let now = Instant::now();
         let filter = self.filter.clone();
         let Self { min, max, merge, unmerge, run, sync, .. } = *self;
         let (tx, rx) = sync_channel(256);
-        thread::spawn(move || {
+        let jh = thread::spawn(move || {
             let mut prev_t = 0;
             let mut curline = 1;
             let mut line = Vec::with_capacity(255);
@@ -324,7 +327,7 @@ impl ELog {
             }
             debug!("Parsed {curline} {file:?} lines in {:?}", now.elapsed());
         });
-        rx
+        (jh, rx)
     }
 }
 impl IntoIterator for ELog {
@@ -334,8 +337,8 @@ impl IntoIterator for ELog {
     fn into_iter(mut self) -> ELogIter {
         let mut srcs = Vec::with_capacity(self.srcs.len());
         while let Some((file, ts, buf)) = self.srcs.pop() {
-            let rx = self.start_parse(file.clone(), buf);
-            srcs.push((file, ts, rx));
+            let (jh, rx) = self.start_parse(file.clone(), buf);
+            srcs.push((file, ts, jh, rx));
         }
         ELogIter { srcs, prev_t: 0 }
     }
@@ -343,20 +346,25 @@ impl IntoIterator for ELog {
 
 /// Iterator for [ELogLine]s
 pub struct ELogIter {
-    srcs: Vec<(PathBuf, i64, Receiver<ELogLine>)>,
+    srcs: Vec<(PathBuf, i64, thread::JoinHandle<()>, Receiver<ELogLine>)>,
     prev_t: i64,
 }
 impl Iterator for ELogIter {
     type Item = ELogLine;
     fn next(&mut self) -> Option<ELogLine> {
         loop {
-            let (_, _, rx) = self.srcs.last()?;
+            let (_, _, _, rx) = self.srcs.last()?;
             if let Ok(l) = rx.recv() {
                 self.prev_t = l.ts();
                 return Some(l);
             } else {
-                let (prev_f, _, _) = self.srcs.pop()?;
-                if let Some((next_f, next_t, _)) = self.srcs.last()
+                let (prev_f, _, jh, _) = self.srcs.pop()?;
+                if let Err(e) = jh.join() {
+                    error!("Panic parsing {prev_f:?} after {}. Please report this on the emlop repo",
+                           self.prev_t);
+                    std::panic::resume_unwind(e);
+                }
+                if let Some((next_f, next_t, _, _)) = self.srcs.last()
                    && self.prev_t > *next_t
                 {
                     warn!("Timestamp overlap at {prev_f:?}:{} -> {next_f:?}:{}",
@@ -898,7 +906,7 @@ mod tests {
                           (vec![mid, old, new], vec![new, mid, old])]
         {
             let elog = ELog::new(&h).unwrap().into_iter();
-            let have: Vec<_> = elog.srcs.into_iter().map(|(s, _, _)| s).collect();
+            let have: Vec<_> = elog.srcs.into_iter().map(|(s, _, _, _)| s).collect();
             assert_eq!(have, want.into_iter().map(PathBuf::from).collect::<Vec<_>>());
         }
     }
