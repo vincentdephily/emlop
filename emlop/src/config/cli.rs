@@ -1,4 +1,4 @@
-use clap::{Arg, ArgAction::*, Command, builder::styling, crate_version, value_parser};
+use clap::{Arg, ArgAction, Command, builder::styling, crate_version, value_parser};
 use std::path::PathBuf;
 
 /// Generate cli argument parser without the `complete` subcommand.
@@ -20,7 +20,7 @@ pub fn build_cli() -> Command {
                                             guru:        Matches `guru` (repo sync)");
     let exact = Arg::new("exact").short('e')
                                  .long("exact")
-                                 .action(SetTrue)
+                                 .action(ArgAction::SetTrue)
                                  .display_order(2)
                                  .help_heading("Filter")
                                  .help("Match <search> using plain string")
@@ -339,7 +339,7 @@ pub fn build_cli() -> Command {
                                      .value_name("file")
                                      .global(true)
                                      .num_args(1)
-                                     .action(Append)
+                                     .action(ArgAction::Append)
                                      .display_order(40)
                                      .help("Location of emerge log files")
                                      .long_help("Location of emerge log files\n\
@@ -349,7 +349,7 @@ pub fn build_cli() -> Command {
     let tmpdir = Arg::new("tmpdir").long("tmpdir")
                                    .value_name("dir")
                                    .num_args(1)
-                                   .action(Append)
+                                   .action(ArgAction::Append)
                                    .value_parser(value_parser!(PathBuf))
                                    .display_order(41)
                                    .help("Location of portage tmpdirs")
@@ -365,7 +365,7 @@ pub fn build_cli() -> Command {
                                                          default: /var/cache/edb/mtimedb");
     let verbose = Arg::new("verbose").short('v')
                                      .global(true)
-                                     .action(Count)
+                                     .action(ArgAction::Count)
                                      .display_order(43)
                                      .help("Increase verbosity")
                                      .long_help("Increase verbosity\n  \

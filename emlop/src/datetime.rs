@@ -83,7 +83,7 @@ impl ArgParse<String, ()> for Timespan {
 }
 impl Timespan {
     /// Given a unix timestamp, advance to the beginning of the next year/month/week/day.
-    pub fn next(&self, ts: i64, offset: UtcOffset) -> i64 {
+    pub fn next(self, ts: i64, offset: UtcOffset) -> i64 {
         let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset).date();
         let d2 = match self {
             Self::Year => Date::from_calendar_date(d.year() + 1, Month::January, 1).unwrap(),
@@ -111,7 +111,7 @@ impl Timespan {
         res
     }
 
-    pub fn at(&self, ts: i64, offset: UtcOffset) -> String {
+    pub fn at(self, ts: i64, offset: UtcOffset) -> String {
         let d = OffsetDateTime::from_unix_timestamp(ts).unwrap().to_offset(offset);
         match self {
             Self::Year => d.format(format_description!("[year]")).unwrap(),
@@ -122,7 +122,7 @@ impl Timespan {
         }
     }
 
-    pub const fn name(&self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
             Self::Year => "Year",
             Self::Month => "Month",

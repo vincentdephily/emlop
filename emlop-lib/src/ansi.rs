@@ -31,13 +31,11 @@ impl Ansi {
             // Escaped bel/backspace/tab/lf/ff/cr
             Esc if "78\x0A\x0C\x0D".contains(c) => EscEnd,
             // Not a CSI and not a simple char. Just give up: this shouldn't be in a log file.
-            Esc => EscUnsupported,
+            Esc | EscUnsupported => EscUnsupported,
             // CSI end
             EscCSI if ('@'..='~').contains(&c) => EscEnd,
             // CSI continues
             EscCSI => EscCSI,
-            // Give up until end of string
-            EscUnsupported => EscUnsupported,
         }
     }
     pub fn strip(s: &str, max: usize) -> String {

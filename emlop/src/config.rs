@@ -231,7 +231,7 @@ impl ConfPred {
         let tmpdirs = if let Some(a) = cli.get_many::<PathBuf>("tmpdir") {
             a.cloned().collect()
         } else if let Some(a) = toml.predict.as_ref().and_then(|t| t.tmpdir.as_ref()) {
-            a.to_vec()
+            a.clone()
         } else {
             vec![PathBuf::from(DEFAULT_TMPDIR)]
         };

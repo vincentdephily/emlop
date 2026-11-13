@@ -194,10 +194,10 @@ fn starttime() {
         lines += 1;
         let mut w1 = l1.split_ascii_whitespace();
         let mut w2 = l2.split_ascii_whitespace();
-        let t1 = dbg!(w1.next()).expect("missing t1").parse::<u64>().expect("bad int t1");
-        let d1 = dbg!(w1.next()).expect("missing d1");
-        let t2 = dbg!(w2.next()).expect("missing t2").parse::<u64>().expect("bad int t2");
-        let d2 = dbg!(w2.next()).expect("missing d2");
+        let t1 = w1.next().expect("missing t1").parse::<u64>().expect("bad int t1");
+        let d1 = w1.next().expect("missing d1");
+        let t2 = w2.next().expect("missing t2").parse::<u64>().expect("bad int t2");
+        let d2 = w2.next().expect("missing d2");
         assert!(d1 == d2);
         if d1 != "?" {
             assert!(t2 + d1.parse::<u64>().expect("bad int d1") == t1);

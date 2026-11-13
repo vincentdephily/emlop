@@ -6,7 +6,6 @@ keywords = ["gentoo", "portage", "emerge"]
 categories = ["parsing"]
 readme = "README.md"
 license = "GPL-3.0-only"
-homepage = "https://github.com/vincentdephily/emlop"
 repository = "https://github.com/vincentdephily/emlop"
 authors = ["Vincent de Phily <moltonel@gmail.com>",
 	   "Sreus <114226379+sricharanandra@users.noreply.github.com>"]

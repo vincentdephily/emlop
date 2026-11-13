@@ -4,7 +4,7 @@ use crate::{FmtUtc, HistBound};
 use atoi::FromRadix10;
 use flate2::read::GzDecoder;
 use glob::glob;
-use log::*;
+use log::{debug, error, trace, warn};
 use memchr::{memchr, memrchr, memrchr2};
 use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use snafu::prelude::*;
@@ -202,12 +202,12 @@ pub struct ELog {
 impl ELog {
     /// Create a new `emerge.log` file parser
     ///
-    /// Pass [&\[DEFAULT_EMERGELOG\]](DEFAULT_EMERGELOG) if unsure.  
-    /// Compressed files (*.gz) and [glob patterns](glob::Pattern) are supported.  
+    /// Pass [&\[DEFAULT_EMERGELOG\]](DEFAULT_EMERGELOG) if unsure.\
+    /// Compressed files (*.gz) and [glob patterns](glob::Pattern) are supported.\
     /// File order is inferred from the first timestamp in each file.
     pub fn new(files: &[impl AsRef<str> + std::fmt::Debug]) -> Result<Self, ELogError> {
         let mut srcs = Vec::with_capacity(files.len());
-        for f in files.iter().map(|f| f.as_ref()) {
+        for f in files.iter().map(AsRef::as_ref) {
             let paths = if f.contains(['*', '?', '[']) {
                 glob(f)?.filter_map(Result::ok).collect()
             } else {

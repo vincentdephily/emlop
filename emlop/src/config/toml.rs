@@ -74,7 +74,7 @@ impl Toml {
                 (s, r)
             },
             _ => {
-                let s = format!("{}/.config/emlop.toml", var("HOME").unwrap_or("".to_string()));
+                let s = format!("{}/.config/emlop.toml", var("HOME").unwrap_or_default());
                 let r = Self::doload(&s);
                 (s, r)
             },
