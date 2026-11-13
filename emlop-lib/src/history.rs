@@ -3,6 +3,7 @@
 use crate::{FmtUtc, HistBound};
 use atoi::FromRadix10;
 use flate2::read::GzDecoder;
+use glob::glob;
 use log::*;
 use memchr::{memchr, memrchr, memrchr2};
 use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
@@ -160,6 +161,10 @@ pub enum ELogError {
     /// Invalid regex
     #[snafu(transparent)]
     Regex { source: regex::Error },
+    #[snafu(transparent)]
+    Pattern { source: glob::PatternError },
+    #[snafu(transparent)]
+    Glob { source: glob::GlobError },
     #[snafu(display("{msg}"))]
     /// Bad argument
     Arg { msg: &'static str },
@@ -197,19 +202,34 @@ pub struct ELog {
 impl ELog {
     /// Create a new `emerge.log` file parser
     ///
-    /// Pass `&[`[DEFAULT_EMERGELOG]`]` if unsure. Compressed files (*.gz) are supported, and files
-    /// order will be inferred from the first timestamp in the file.
+    /// Pass [&\[DEFAULT_EMERGELOG\]](DEFAULT_EMERGELOG) if unsure.  
+    /// Compressed files (*.gz) and [glob patterns](glob::Pattern) are supported.  
+    /// File order is inferred from the first timestamp in each file.
     pub fn new(files: &[impl AsRef<str> + std::fmt::Debug]) -> Result<Self, ELogError> {
-        ensure!(!files.is_empty(), ArgErr { msg: "Expected at least one logfile" });
         let mut srcs = Vec::with_capacity(files.len());
-        for f in files {
-            let file = PathBuf::from(f.as_ref()); ////.as_ref().to_string();
-            let mut buf = open_any_buffered(&file)?;
-            let ts = Self::peek_ts(&mut buf).with_context(|| FileErr { msg: "Bad emerge logfile",
-                                                                       file: file.clone() })?;
-            debug!("{file:?} starts at {}", FmtUtc(ts));
-            srcs.push((file, ts, buf));
+        for f in files.iter().map(|f| f.as_ref()) {
+            let paths = if f.contains(['*', '?', '[']) {
+                glob(f)?.filter_map(Result::ok).collect()
+            } else {
+                vec![PathBuf::from(f)]
+            };
+            if paths.is_empty() {
+                warn!("glob pattern {f} does not match any file");
+            }
+            for p in paths {
+                if srcs.iter().all(|(sp, _, _)| *sp != p) {
+                    let mut buf = open_any_buffered(&p)?;
+                    match Self::peek_ts(&mut buf) {
+                        Some(ts) => {
+                            debug!("{p:?} starts at {}", FmtUtc(ts));
+                            srcs.push((p, ts, buf));
+                        },
+                        None => return Err(ELogError::File { msg: "Bad emerge logfile", file: p }),
+                    }
+                }
+            }
         }
+        ensure!(!srcs.is_empty(), ArgErr { msg: "Expected at least one logfile" });
         srcs.sort_by_key(|s| s.1);
         Ok(Self { srcs,
                   min: i64::MIN,
@@ -908,14 +928,21 @@ mod tests {
         let old = "tests/emerge.badversion.log";
         let mid = "tests/emerge.log.gz";
         let new = "tests/emerge.10000.log";
-        for (h, want) in [(vec![old], vec![old]),
-                          (vec![old, new], vec![new, old]),
-                          (vec![new, old], vec![new, old]),
-                          (vec![mid, old, new], vec![new, mid, old])]
+        let glob = "tests/emerge.[bl]*";
+        let badglob = "tests/foo*";
+        for (h, w) in [(vec![old], vec![old]),
+                       (vec![old, new], vec![new, old]),
+                       (vec![old, new, old, new], vec![new, old]),
+                       (vec![new, old], vec![new, old]),
+                       (vec![mid, old, new], vec![new, mid, old]),
+                       (vec![glob], vec![mid, old]),
+                       (vec![glob, mid], vec![mid, old]),
+                       (vec![badglob, mid], vec![mid])]
         {
             let elog = ELog::new(&h).unwrap().into_iter();
             let have: Vec<_> = elog.srcs.into_iter().map(|(s, _, _, _)| s).collect();
-            assert_eq!(have, want.into_iter().map(PathBuf::from).collect::<Vec<_>>());
+            let want: Vec<_> = w.iter().map(PathBuf::from).collect();
+            assert_eq!(have, want, "{h:?} -> {w:?}");
         }
     }
 
@@ -925,8 +952,15 @@ mod tests {
         let good = "tests/emerge.10000.log";
         let notlog = "tests/1Q-2024";
         let notfound = "tests/notfound";
-        for h in [vec![], vec![notlog], vec![notfound], vec![good, notlog], vec![good, notfound]] {
-            assert!(ELog::new(&h).is_err());
+        let badglob = "tests/foo*";
+        for h in [vec![],
+                  vec![notlog],
+                  vec![notfound],
+                  vec![good, notlog],
+                  vec![good, notfound],
+                  vec![badglob]]
+        {
+            assert!(matches!(ELog::new(&h), Err(_)), "{h:?}");
         }
     }
 }
