@@ -5,7 +5,7 @@ processes to yield useful info like merge history and merge time prediction.
 
 It draws inspiration from [genlop](https://github.com/gentoo-perl/genlop) and
 [qlop](https://github.com/gentoo/portage-utils) but aims to be faster, more accurate, and more
-ergonomic, see [comparison](docs/COMPARISON.md).
+ergonomic, see [comparison](../docs/COMPARISON.md).
 
 ## Usage
 

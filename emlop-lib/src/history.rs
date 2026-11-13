@@ -24,7 +24,7 @@ pub const DEFAULT_EMERGELOG: &str = "/var/log/emerge.log";
 /// Each variant corresponds to one interesting log line. The `key` can normaly be used to match
 /// related lines together (the ones with the same prefix).
 ///
-/// See [ELog].
+/// See the [ELog] struct, and the [elog.rs](../src/elog/elog.rs.html) example.
 #[derive(Debug)]
 pub enum ELogLine {
     /// Emerge run started (might never complete).
@@ -184,11 +184,11 @@ fn open_any_buffered(file: &PathBuf) -> Result<FileBuf, ELogError> {
     }
 }
 
-/// Parser for emerge log file
+/// Parser for emerge log files
 ///
-/// 1. Create a new parser with [new()](Self::new())
-/// 2. Call the filter methodss if needed
-/// 3. Consume explicitly with [into_iter()](Self::into_iter()), or implicitly using a `for` loop
+/// 1. Create a new parser with [new()](Self::new()).
+/// 2. Call the filter methodss if needed.
+/// 3. Turn into an [ELogLine] interator, [explicitly](Self::into_iter()) or using a `for` loop.
 pub struct ELog {
     srcs: Vec<(PathBuf, i64, FileBuf)>,
     min: i64,
@@ -240,7 +240,7 @@ impl ELog {
                   sync: false,
                   filter: Filter::True })
     }
-    /// Parse the file only between `min` and `max`
+    /// Parse the files only between `min` and `max`
     pub fn bounds(mut self, min: HistBound, max: HistBound) -> Result<Self, ELogError> {
         // FIXME look at all files
         (self.min, self.max) = filter_ts(&self.srcs, min, max)?;
@@ -271,7 +271,7 @@ impl ELog {
     }
     /// Filter events by ebuild or repo name
     ///
-    /// * If exact=false: Case-insensitive regex matche on `repo` or `categ/ebuild`
+    /// * If exact=false: Case-insensitive regex match on `repo` or `categ/ebuild`
     /// * If exact=true: String equality on `repo`, `categ/ebuild`, or `ebuild`
     pub fn search(mut self, terms: &Vec<String>, exact: bool) -> Result<Self, ELogError> {
         self.filter = Filter::try_new(terms, exact)?;

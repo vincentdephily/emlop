@@ -1,3 +1,21 @@
+# 0.10.0 Unreleased
+
+Feature release
+
+## Emlop
+* Support passing multiple emerge.log files
+  - eg `emlop l -F /var/log/emerge.log -F /var/log/emerge.log.1.gz`
+  - Glob patterns (eg `/var/log/emerge*` or `/var/log/emergre.[0-9].log`) are supported.
+* The `command` in `--from/--to=<nth>command` has been split into `firstrun` and `lastun`. The
+  previous behavior (equivalent to `--from=<nth>lastrun` and `--to=<nth>firstrun`) was a bit
+  confusing and inflexible. Variants `lastrun/last/l` and `firstrun/first/f` are accepted.
+
+## Emlop-lib
+* `ELog::new()` now takes an array of `str|String`
+  - Files are preparsed (for sorting purpose) and can be rejected at this early stage
+* `ElogError` has new/updated variants
+* `HistBound::Run` has been removed in favor of `HistBound::{RunFirst,RunLast}`
+
 # 0.9.1 2026-10-24
 
 Architecture release: Split into a binary and a library
