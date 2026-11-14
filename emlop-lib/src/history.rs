@@ -178,9 +178,9 @@ fn open_any_buffered(file: &PathBuf) -> Result<FileBuf, ELogError> {
     if file.extension().is_some_and(|e| e == "gz") {
         let gz = GzDecoder::new(reader);
         ensure!(gz.header().is_some(), FileErr { msg: "invalid gzip header", file });
-        Ok(BufReader::new(Box::new(gz)))
+        Ok(BufReader::with_capacity(1024 * 64, Box::new(gz)))
     } else {
-        Ok(BufReader::new(Box::new(reader)))
+        Ok(BufReader::with_capacity(1024 * 64, Box::new(reader)))
     }
 }
 
