@@ -15,6 +15,7 @@ Feature release
   - Files are preparsed (for sorting purpose) and can be rejected at this early stage
 * `ElogError` has new/updated variants
 * `HistBound::Run` has been removed in favor of `HistBound::{RunFirst,RunLast}`
+* Fix 'Z' timezone passed to `--from/--to`: treat it as UTC, not local
 
 # 0.9.1 2026-10-24
 

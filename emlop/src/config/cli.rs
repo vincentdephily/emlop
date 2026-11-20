@@ -78,11 +78,11 @@ pub fn build_cli() -> Command {
                                              t: Overall error stats\n  \
                                              a: All of the above");
     let h = "Only parse log entries after <date/command>\n  \
-             2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
-             123456789:                                       Absolute unix timestamp\n  \
-             1 year, 2 months|10d:                            Relative date\n  \
-             first|firstrun|f|2f                              Nth-first emerge run\n  \
-             last|lastrun|l|2l                                Nth-last emerge run";
+             2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34:56Z: Absolute rfc3339 date\n  \
+             123456789:                                           Absolute unix timestamp\n  \
+             1 year, 2 months|10d:                                Relative date\n  \
+             first|firstrun|f|2f                                  Nth-first emerge run\n  \
+             last|lastrun|l|2l                                    Nth-last emerge run";
     let from = Arg::new("from").short('f')
                                .long("from")
                                .value_name("date")
@@ -93,11 +93,11 @@ pub fn build_cli() -> Command {
                                .help(h.split_once('\n').unwrap().0)
                                .long_help(h);
     let h = "Only parse log entries before <date/command>\n  \
-             2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34: Absolute ISO date\n  \
-             123456789:                                       Absolute unix timestamp\n  \
-             1 year, 2 months|10d:                            Relative date\n  \
-             first|firstrun|f|2f                              Nth-first emerge run\n  \
-             last|lastrun|l|2l                                Nth-last emerge run";
+             2018-03-04|2018-03-04 12:34:56|2018-03-04T12:34:56Z: Absolute rfc3339 date\n  \
+             123456789:                                           Absolute unix timestamp\n  \
+             1 year, 2 months|10d:                                Relative date\n  \
+             first|firstrun|f|2f                                  Nth-first emerge run\n  \
+             last|lastrun|l|2l                                    Nth-last emerge run";
     let to = Arg::new("to").short('t')
                            .long("to")
                            .value_name("date")

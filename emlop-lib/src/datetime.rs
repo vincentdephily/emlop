@@ -134,7 +134,10 @@ fn parse_date_span(num: i32, span: &str, now: OffsetDateTime) -> Result<OffsetDa
 }
 
 /// Parse rfc3339-like format with added flexibility
-fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, MyErr<'_>> {
+fn parse_date_yyyymmdd(s: &str, mut offset: UtcOffset) -> Result<i64, MyErr<'_>> {
+    if s.ends_with('Z') {
+        offset = UtcOffset::UTC;
+    }
     let mut p = Parsed::new().with_hour_24(0)
                              .unwrap()
                              .with_minute(0)
@@ -144,8 +147,6 @@ fn parse_date_yyyymmdd(s: &str, offset: UtcOffset) -> Result<i64, MyErr<'_>> {
                              .with_offset_hour(offset.whole_hours())
                              .unwrap()
                              .with_offset_minute_signed(offset.minutes_past_hour())
-                             .unwrap()
-                             .with_offset_second_signed(offset.seconds_past_minute())
                              .unwrap();
     const FMT: &[FormatItem<'_>] = format_description!(
                                                        version = 2,
@@ -189,7 +190,7 @@ mod test {
 
     #[test]
     fn date() {
-        let tb_unix = |rfc| HistBound::Unix(ts(parse_rfc(rfc)));
+        let tb_unix = |rfc: &str| HistBound::Unix(ts(parse_rfc(rfc)));
         let utc = UtcOffset::UTC;
 
         // Absolute dates
@@ -198,16 +199,27 @@ mod test {
         assert_eq!(Ok(tb_unix("2018-04-03T01:02:00Z")), parse_fromto("2018-04-03 01:02", utc));
         assert_eq!(Ok(tb_unix("2018-04-03T01:02:03Z")), parse_fromto("2018-04-03 01:02:03", utc));
         assert_eq!(Ok(tb_unix("2018-04-03T01:02:03Z")), parse_fromto("2018-04-03T01:02:03", utc));
+
         assert_eq!(Ok(tb_unix("2018-04-03T01:02:03Z")), parse_fromto("2018-04-03T01:02:03Z", utc));
         assert_eq!(Ok(tb_unix("2018-04-03T00:02:03Z")),
                    parse_fromto("2018-04-03T01:02:03+01:00", utc));
 
-        // Different timezone (not calling `get_utcoffset()` because tests are threaded, which makes
+        // Different timezones (not calling `get_utcoffset()` because tests are threaded, which makes
         // `UtcOffset::current_local_offset()` error out)
-        for secs in [3600, -7200, 5400, -5400, 42, -42] {
-            let offset = UtcOffset::from_whole_seconds(secs.try_into().unwrap()).unwrap();
-            let tb = HistBound::Unix(ts(parse_rfc("2018-04-03T00:00:00Z")) - secs);
+        for secs in [3600, -7200, 5400, -5400] {
+            let offset = UtcOffset::from_whole_seconds(secs).unwrap();
+            // No timezone specified, uses the one passed as argument
+            let tb = HistBound::Unix(ts(parse_rfc("2018-04-03T00:00:00Z")) - secs as i64);
             assert_eq!(Ok(tb), parse_fromto("2018-04-03T00:00", offset));
+            // Other timezone. Only named timezone supported is `Z`
+            assert_eq!(Ok(tb_unix("2018-04-03T00:00:00Z")),
+                       parse_fromto("2018-04-03T00:00Z", offset));
+            assert_eq!(Ok(tb_unix("2018-04-03T00:00:00Z")),
+                       parse_fromto("2018-04-03T00:00+00:00", offset));
+            assert_eq!(Ok(tb_unix("2018-04-03T01:30:00Z")),
+                       parse_fromto("2018-04-03T00:00-01:30", offset));
+            assert_eq!(Ok(tb_unix("2018-04-02T22:30:00Z")),
+                       parse_fromto("2018-04-03T00:00+01:30", offset));
         }
 
         // Relative dates (except HistBound::Run, which is tested in history.rs)
@@ -226,6 +238,7 @@ mod test {
         assert!(parse_fromto(",", utc).is_err());
         assert!(parse_fromto("junk2018-04-03T01:01:01", utc).is_err());
         assert!(parse_fromto("2018-04-03T01:01:01junk", utc).is_err());
+        assert!(parse_fromto("2018-04-03T01:01:01+00:00Z", utc).is_err());
         assert!(parse_fromto("2018-02-29T01:01:01", utc).is_err());
         assert!(parse_fromto("152271000o", utc).is_err());
         assert!(parse_fromto("1 day 3 centuries", utc).is_err());
