@@ -34,9 +34,9 @@ _emlop() {
             fi
             case "${prev}" in
                 --from|--to|-f|-t)
-                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h 1f 1l $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip|-S)
+                --header|-H|--showskip|-S|--utc)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -44,9 +44,6 @@ _emlop() {
                     ;;
                 --date)
                     COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
-                    ;;
-                --utc)
-                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
@@ -77,9 +74,9 @@ _emlop() {
             fi
             case "${prev}" in
                 --from|--to|-f|-t)
-                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h 1f 1l $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip|-S)
+                --header|-H|--showskip|-S|--utc)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -87,9 +84,6 @@ _emlop() {
                     ;;
                 --date)
                     COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
-                    ;;
-                --utc)
-                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
@@ -136,9 +130,9 @@ _emlop() {
             fi
             case "${prev}" in
                 --from|--to|-f|-t)
-                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h 1f 1l $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip|-S)
+                --header|-H|--showskip|-S|--utc)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -146,9 +140,6 @@ _emlop() {
                     ;;
                 --date)
                     COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
-                    ;;
-                --utc)
-                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
@@ -192,9 +183,9 @@ _emlop() {
             fi
             case "${prev}" in
                 --from|--to|-f|-t)
-                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h 1f 1l $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip|-S)
+                --header|-H|--showskip|-S|--utc)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -202,9 +193,6 @@ _emlop() {
                     ;;
                 --date)
                     COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
-                    ;;
-                --utc)
-                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
@@ -224,10 +212,7 @@ _emlop() {
                 --output|-o)
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
                     ;;
-                --logfile|-F)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    ;;
-                --mtimedbfile)
+                --logfile|-F|--mtimedbfile)
                     COMPREPLY=($(compgen -f "${cur}"))
                     ;;
                 --show|-s)
@@ -265,9 +250,9 @@ _emlop() {
             fi
             case "${prev}" in
                 --from|--to|-f|-t)
-                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h $(date -Is)" "${cur}"))
+                    COMPREPLY=($(compgen -W "1h 1d 1w 1m 1h 1f 1l $(date -Is)" "${cur}"))
                     ;;
-                --header|-H|--showskip|-S)
+                --header|-H|--showskip|-S|--utc)
                     COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --duration)
@@ -275,9 +260,6 @@ _emlop() {
                     ;;
                 --date)
                     COMPREPLY=($(compgen -W "ymd ymdhms ymdhmso rfc3339 rfc2822 compact unix" "${cur}"))
-                    ;;
-                --utc)
-                    COMPREPLY=($(compgen -W "yes no" "${cur}"))
                     ;;
                 --color)
                     COMPREPLY=($(compgen -W "yes no auto" "${cur}"))
@@ -291,10 +273,7 @@ _emlop() {
                 --output|-o)
                     COMPREPLY=($(compgen -W "tab columns auto" "${cur}"))
                     ;;
-                --logfile|-F)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    ;;
-                --mtimedbfile)
+                --logfile|-F|--mtimedbfile)
                     COMPREPLY=($(compgen -f "${cur}"))
                     ;;
                 --show|-s)

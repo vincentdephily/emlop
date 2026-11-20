@@ -1,7 +1,7 @@
 complete -c emlop -e
 complete -c emlop -f
-complete -c emlop -s f -l from -d 'Only parse log entries after <date>' -x -a "{1y	'One year ago',1m	'One month ago',1w	'One week ago',1d	'One day ago',1h	'One hour ago',(date -Is)	'Exact date'}"
-complete -c emlop -s t -l to -d 'Only parse log entries before <date>' -x -a "{1y	'One year ago',1m	'One month ago',1w	'One week ago',1d	'One day ago',1h	'One hour ago',(date -Is)	'Exact date'}"
+complete -c emlop -s f -l from -d 'Only parse log entries after <date>' -x -a "{1y	'One year ago',1m	'One month ago',1w	'One week ago',1d	'One day ago',1h	'One hour ago',1f	'First run',1f	'Last run',(date -Is)	'Exact date'}"
+complete -c emlop -s t -l to -d 'Only parse log entries before <date>' -x -a "{1y	'One year ago',1m	'One month ago',1w	'One week ago',1d	'One day ago',1h	'One hour ago',1f	'First run',1f	'Last run,'(date -Is)	'Exact date'}"
 complete -c emlop -s H -l header -d 'Show table header' -f -a "yes no"
 complete -c emlop -s S -l showskip -d 'Show skipped rows' -f -a "yes no"
 complete -c emlop -l duration -d 'Output durations in different formats' -x -a "hms hmsfixed human secs"
